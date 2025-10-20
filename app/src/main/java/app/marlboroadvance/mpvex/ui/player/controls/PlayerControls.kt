@@ -79,6 +79,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.VolumeSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.toFixed
 import app.marlboroadvance.mpvex.ui.theme.playerRippleConfiguration
 import app.marlboroadvance.mpvex.ui.theme.spacing
+import app.marlboroadvance.mpvex.ui.utils.TVUtils
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.persistentListOf
@@ -86,7 +87,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
 import kotlin.math.abs
-import app.marlboroadvance.mpvex.ui.utils.TVUtils
 
 @Suppress("CompositionLocalAllowlist")
 val LocalPlayerButtonsClickEvent = staticCompositionLocalOf { {} }

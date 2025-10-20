@@ -91,6 +91,7 @@ object VideoFolderRepository {
     }
   }
 
+  @Suppress("CyclomaticComplexMethod", "NestedBlockDepth")
   private fun scanExternalMounts(folders: MutableMap<String, VideoFolderInfo>) {
     val scannedPaths = mutableSetOf<String>()
 
@@ -163,6 +164,7 @@ object VideoFolderRepository {
     }
   }
 
+  @Suppress("ReturnCount")
   private fun scanDirectory(
     directory: File,
     folders: MutableMap<String, VideoFolderInfo>,
@@ -279,6 +281,7 @@ object VideoFolderRepository {
     return Pair(finalBucketId, finalBucketName)
   }
 
+  @Suppress("LongParameterList")
   private fun updateFolderInfo(
     bucketId: String,
     bucketName: String,

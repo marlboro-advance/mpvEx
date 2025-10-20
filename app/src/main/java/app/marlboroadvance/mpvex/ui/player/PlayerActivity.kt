@@ -25,8 +25,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
-import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
+import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -95,7 +95,7 @@ class PlayerActivity : AppCompatActivity() {
     when (focusChange) {
       AudioManager.AUDIOFOCUS_LOSS,
       AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-        -> pausePlayback()
+      -> pausePlayback()
       AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> viewModel.pause()
       AudioManager.AUDIOFOCUS_GAIN -> Unit
     }
@@ -624,6 +624,7 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
+  @Suppress("ReturnCount")
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
 
@@ -943,7 +944,7 @@ class PlayerActivity : AppCompatActivity() {
 
   // ==================== Key Event Handling ====================
 
-  @Suppress("ReturnCount", "CyclomaticComplexMethod")
+  @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod")
   override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
     val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.TracksTV
     val isNoSheetOpen = viewModel.sheetShown.value == Sheets.None
@@ -962,7 +963,7 @@ class PlayerActivity : AppCompatActivity() {
       KeyEvent.KEYCODE_DPAD_DOWN,
       KeyEvent.KEYCODE_DPAD_RIGHT,
       KeyEvent.KEYCODE_DPAD_LEFT,
-        -> {
+      -> {
         if (isTrackSheetOpen) {
           return super.onKeyDown(keyCode, event)
         }

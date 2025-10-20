@@ -85,8 +85,8 @@ import app.marlboroadvance.mpvex.ui.home.presentation.screens.videolist.VideoLis
 import app.marlboroadvance.mpvex.ui.home.utils.MediaUtils
 import app.marlboroadvance.mpvex.ui.home.utils.SortUtils
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
-import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.ui.utils.DeviceUtils
+import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
@@ -352,7 +352,13 @@ object FolderListScreen : Screen {
                 Icon(
                   item.first,
                   contentDescription = null,
-                  modifier = if (item.second == "Recently Played" && !hasRecentlyPlayed) Modifier.alpha(0.5f) else Modifier,
+                  modifier = if (item.second == "Recently Played" && !hasRecentlyPlayed) {
+                    Modifier.alpha(
+                      0.5f
+                    )
+                  } else {
+                    Modifier
+                  },
                 )
               },
               text = { Text(text = item.second) },
@@ -390,10 +396,11 @@ object FolderListScreen : Screen {
                   EmptyState(
                     icon = Icons.Filled.Folder,
                     title = "No video folders found",
-                    message = if (isTV)
+                    message = if (isTV) {
                       "Android TV detected. Try:\n• Use 'Play Link' button to play from URL\n• Place videos in /Movies or /Download folders\n• Connect USB drive with videos"
-                    else
-                      "Add some video files to your device to see them here",
+                    } else {
+                      "Add some video files to your device to see them here"
+                    },
                   )
                 }
               }

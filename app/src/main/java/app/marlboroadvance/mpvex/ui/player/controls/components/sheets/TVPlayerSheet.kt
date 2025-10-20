@@ -78,14 +78,14 @@ fun TVPlayerSheet(
   ) {
     // Semi-transparent background
     Box(
-      modifier = Modifier
+      modifier = modifier
         .fillMaxSize()
         .background(Color.Black.copy(alpha = 0.85f)),
       contentAlignment = Alignment.Center,
     ) {
       // Main content surface
       Surface(
-        modifier = modifier
+        modifier = Modifier
           .fillMaxWidth(0.95f)
           .fillMaxHeight(0.85f),
         shape = MaterialTheme.shapes.large,

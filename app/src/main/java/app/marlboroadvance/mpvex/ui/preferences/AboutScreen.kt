@@ -8,10 +8,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,7 +71,6 @@ object AboutScreen : Screen {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val clipboardManager = LocalClipboardManager.current
-    val githubUrl = context.getString(R.string.github_repo_url)
     val packageManager: PackageManager = context.packageManager
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
     val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName

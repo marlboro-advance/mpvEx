@@ -79,9 +79,11 @@ object TVUtils {
   fun isExternalMount(device: String, mountPoint: String, fsType: String): Boolean {
     return device.startsWith("/dev/block/") &&
       FileSystemPaths.USB_FILE_SYSTEMS.contains(fsType) &&
-      (mountPoint.startsWith("/mnt/media_rw/") ||
-        mountPoint.startsWith("/storage/") && !mountPoint.contains("emulated") ||
-        mountPoint.startsWith("/mnt/usb") ||
-        mountPoint.startsWith("/usbotg"))
+      (
+        mountPoint.startsWith("/mnt/media_rw/") ||
+          mountPoint.startsWith("/storage/") && !mountPoint.contains("emulated") ||
+          mountPoint.startsWith("/mnt/usb") ||
+          mountPoint.startsWith("/usbotg")
+        )
   }
 }
