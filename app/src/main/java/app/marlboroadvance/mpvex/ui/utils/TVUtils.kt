@@ -21,9 +21,6 @@ object TVUtils {
    * TV-specific default configurations
    */
   object Defaults {
-    /** Default dark mode setting for TV (always dark for better viewing experience) */
-    const val DARK_MODE_ENABLED = true
-
     /** Default Material You setting for TV (disabled for consistency) */
     const val MATERIAL_YOU_ENABLED = false
   }
@@ -74,26 +71,6 @@ object TVUtils {
 
     /** Maximum depth for recursive directory scanning */
     const val MAX_SCAN_DEPTH = 3
-  }
-
-  /**
-   * TV-specific UI configurations
-   */
-  object UI {
-    /** Whether to show pull-to-refresh on TV (disabled for D-pad navigation) */
-    const val ENABLE_PULL_TO_REFRESH = false
-
-    /** Whether to show back button in player controls on TV */
-    const val SHOW_BACK_BUTTON = false
-
-    /** Whether to show PIP button on TV */
-    const val SHOW_PIP_BUTTON = false
-
-    /** Message to show when no videos found on TV */
-    const val NO_VIDEOS_MESSAGE = "No videos found. Please connect a USB drive or SD card."
-
-    /** Message to show when no videos found on non-TV devices */
-    const val NO_VIDEOS_MESSAGE_DEFAULT = "No videos found"
   }
 
   /**

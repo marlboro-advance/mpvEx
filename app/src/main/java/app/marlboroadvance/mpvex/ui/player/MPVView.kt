@@ -1,7 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.Context
-import android.os.Build
 import android.os.Environment
 import android.util.AttributeSet
 import android.util.Log
@@ -12,6 +11,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
+import app.marlboroadvance.mpvex.ui.player.PlayerActivity.Companion.TAG
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.toColorHexString
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
@@ -72,7 +72,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
 
     // Limit demuxer cache since the defaults are too high for mobile devices
-    val cacheMegs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) 64 else 32
+    val cacheMegs = 64
     MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
     MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
     //
@@ -111,7 +111,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
   }
 
-  @Suppress("ReturnCount")
+  @Suppress("ReturnCount", "DEPRECATION")
   fun onKey(event: KeyEvent): Boolean {
     if (event.action == KeyEvent.ACTION_MULTIPLE || KeyEvent.isModifierKey(event.keyCode)) {
       return false
@@ -135,7 +135,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
 
     if (event.repeatCount > 0) {
-      return true // eat event but ignore it, mpv has its own key repeat
+      return true
     }
 
     val mod: MutableList<String> = mutableListOf()

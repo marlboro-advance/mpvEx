@@ -7,11 +7,11 @@ class PlayerObserver(
   private val activity: PlayerActivity
 ) : MPVLib.EventObserver {
   override fun eventProperty(property: String) {
-    activity.runOnUiThread { activity.onObserverEvent(property) }
+    activity.runOnUiThread { activity.onObserverEvent() }
   }
 
   override fun eventProperty(property: String, value: Long) {
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    activity.runOnUiThread { activity.onObserverEvent() }
   }
 
   override fun eventProperty(property: String, value: Boolean) {
@@ -23,12 +23,12 @@ class PlayerObserver(
   }
 
   override fun eventProperty(property: String, value: Double) {
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    activity.runOnUiThread { activity.onObserverEvent(property) }
   }
 
   @Suppress("EmptyFunctionBlock")
   override fun eventProperty(property: String, value: MPVNode) {
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    activity.runOnUiThread { activity.onObserverEvent(property) }
   }
 
   override fun event(eventId: Int) {

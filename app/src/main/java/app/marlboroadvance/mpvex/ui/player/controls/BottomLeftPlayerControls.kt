@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -52,10 +51,12 @@ fun BottomLeftPlayerControls(
       enter = fadeIn(),
       exit = fadeOut(),
     ) {
-      CurrentChapter(
-        chapter = currentChapter!!,
-        onClick = { onOpenSheet(Sheets.Chapters) }
-      )
+      currentChapter?.let { chapter ->
+        CurrentChapter(
+          chapter = chapter,
+          onClick = { onOpenSheet(Sheets.Chapters) },
+        )
+      }
     }
   }
 }

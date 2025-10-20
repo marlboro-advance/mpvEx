@@ -47,7 +47,7 @@
 
         <activity
             android:name=".ui.player.PlayerActivity"
-            android:autoRemoveFromRecents="true"
+            android:autoRemoveFromRecents="false"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:exported="true"
             android:launchMode="singleTask"

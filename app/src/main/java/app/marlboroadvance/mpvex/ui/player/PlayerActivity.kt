@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.player
 
-import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,7 +8,6 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -27,8 +25,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
-import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
+import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -38,7 +36,6 @@ import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.TVUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
-import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
@@ -98,9 +95,7 @@ class PlayerActivity : AppCompatActivity() {
     when (focusChange) {
       AudioManager.AUDIOFOCUS_LOSS,
       AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-      -> {
-        pausePlayback()
-      }
+        -> pausePlayback()
       AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> viewModel.pause()
       AudioManager.AUDIOFOCUS_GAIN -> Unit
     }
@@ -135,8 +130,7 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun handleBackPress() {
-    val shouldEnterPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-      pipHelper.isPipSupported &&
+    val shouldEnterPip = pipHelper.isPipSupported &&
       viewModel.paused != true &&
       playerPreferences.automaticallyEnterPip.get()
 
@@ -184,6 +178,7 @@ class PlayerActivity : AppCompatActivity() {
     viewModel.panelShown.update { Panels.None }
   }
 
+  @Suppress("DEPRECATION")
   private fun setupAudioFocus() {
     val result = audioManager.requestAudioFocus(
       audioFocusChangeListener,
@@ -208,7 +203,7 @@ class PlayerActivity : AppCompatActivity() {
   override fun onDestroy() {
     Log.d(TAG, "Exiting PlayerActivity")
 
-    try {
+    runCatching {
       if (isFinishing && !systemUIRestored) {
         restoreSystemUI()
       }
@@ -216,11 +211,11 @@ class PlayerActivity : AppCompatActivity() {
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error during onDestroy", e)
-    } finally {
-      super.onDestroy()
     }
+
+    super.onDestroy()
   }
 
   private fun cleanupMPV() {
@@ -230,7 +225,7 @@ class PlayerActivity : AppCompatActivity() {
       return
     }
 
-    try {
+    runCatching {
       // Pause playback first
       MPVLib.setPropertyString("pause", "yes")
       Thread.sleep(PAUSE_DELAY_MS)
@@ -238,32 +233,33 @@ class PlayerActivity : AppCompatActivity() {
       // Quit MPV properly
       MPVLib.command("quit")
       Thread.sleep(QUIT_DELAY_MS)
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error quitting MPV", e)
     }
 
     // Remove observer
-    try {
+    runCatching {
       MPVLib.removeObserver(playerObserver)
       Thread.sleep(OBSERVER_REMOVAL_DELAY_MS)
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error removing MPV observer", e)
     }
 
     // Destroy MPV
-    try {
+    runCatching {
       MPVLib.destroy()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error destroying MPV (may be expected)", e)
     }
   }
 
+  @Suppress("DEPRECATION")
   private fun cleanupAudio() {
     if (audioFocusRequested) {
-      try {
+      runCatching {
         audioManager.abandonAudioFocus(audioFocusChangeListener)
         audioFocusRequested = false
-      } catch (e: Exception) {
+      }.onFailure { e ->
         Log.e(TAG, "Error abandoning audio focus", e)
       }
     }
@@ -271,19 +267,18 @@ class PlayerActivity : AppCompatActivity() {
 
   private fun cleanupReceivers() {
     if (noisyReceiverRegistered) {
-      try {
+      runCatching {
         unregisterReceiver(noisyReceiver)
         noisyReceiverRegistered = false
-      } catch (e: Exception) {
+      }.onFailure { e ->
         Log.e(TAG, "Error unregistering noisy receiver", e)
       }
     }
   }
 
   override fun onPause() {
-    try {
-      val isInPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-        isInPictureInPictureMode
+    runCatching {
+      val isInPip = isInPictureInPictureMode
 
       if (!isInPip) {
         viewModel.pause()
@@ -294,51 +289,50 @@ class PlayerActivity : AppCompatActivity() {
       if (isFinishing && !isInPip && !systemUIRestored) {
         restoreSystemUI()
       }
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
-    } finally {
-      super.onPause()
     }
+
+    super.onPause()
   }
 
   override fun finish() {
-    try {
+    runCatching {
       if (!systemUIRestored) {
         restoreSystemUI()
       }
       setReturnIntent()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error during finish", e)
-    } finally {
-      super.finish()
     }
+
+    super.finish()
   }
 
   override fun onStop() {
-    try {
+    runCatching {
       pipHelper.onStop()
       saveVideoPlaybackState(fileName)
       viewModel.pause()
       unregisterNoisyReceiver()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error during onStop", e)
-    } finally {
-      super.onStop()
     }
+
+    super.onStop()
   }
 
   private fun unregisterNoisyReceiver() {
     if (noisyReceiverRegistered) {
-      try {
+      runCatching {
         unregisterReceiver(noisyReceiver)
         noisyReceiverRegistered = false
-      } catch (e: Exception) {
+      }.onFailure { e ->
         Log.e(TAG, "Error unregistering noisy receiver in onStop", e)
       }
     }
   }
 
-  @SuppressLint("NewApi")
   override fun onUserLeaveHint() {
     pipHelper.onUserLeaveHint()
     super.onUserLeaveHint()
@@ -346,18 +340,18 @@ class PlayerActivity : AppCompatActivity() {
 
   override fun onStart() {
     super.onStart()
-    try {
+    runCatching {
       setupWindowFlags()
       setupSystemUI()
       registerNoisyReceiver()
       restoreBrightness()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
     }
   }
 
   private fun setupWindowFlags() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && pipHelper.isPipSupported) {
+    if (pipHelper.isPipSupported) {
       pipHelper.updatePictureInPictureParams()
     }
 
@@ -370,9 +364,8 @@ class PlayerActivity : AppCompatActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
   }
 
-  @Suppress("detekt.Indentation")
+  @Suppress("DEPRECATION")
   private fun setupSystemUI() {
-    @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
       View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
@@ -388,14 +381,12 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun setupDisplayCutout() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      window.attributes.layoutInDisplayCutoutMode =
-        if (playerPreferences.drawOverDisplayCutout.get()) {
-          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        } else {
-          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
-        }
-    }
+    window.attributes.layoutInDisplayCutoutMode =
+      if (playerPreferences.drawOverDisplayCutout.get()) {
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+      } else {
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
+      }
   }
 
   private fun restoreBrightness() {
@@ -421,7 +412,7 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun copyMPVAssets() {
-    Utils.copyAssets(this@PlayerActivity)
+    Utils.copyAssets(this)
     copyMPVScripts()
     copyMPVConfigFiles()
     lifecycleScope.launch(Dispatchers.IO) {
@@ -443,7 +434,7 @@ class PlayerActivity : AppCompatActivity() {
 
   private fun copyMPVConfigFiles() {
     val applicationPath = filesDir.path
-    try {
+    runCatching {
       val mpvConfUri = advancedPreferences.mpvConfStorageUri.get().toUri()
       val mpvConf = fileManager.fromUri(mpvConfUri)
         ?: error("User hasn't set any mpvConfig directory")
@@ -457,28 +448,28 @@ class PlayerActivity : AppCompatActivity() {
         fileManager.fromPath(applicationPath),
         true,
       )
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Couldn't copy mpv configuration files: ${e.message}")
       createDefaultConfigFiles(applicationPath)
     }
   }
 
   private fun createDefaultConfigFiles(applicationPath: String) {
-    try {
-      File("$applicationPath/mpv.conf")
-        .also { if (!it.exists()) it.createNewFile() }
-        .writeText(advancedPreferences.mpvConf.get())
+    runCatching {
+      File("$applicationPath/mpv.conf").apply {
+        if (!exists()) createNewFile()
+      }.writeText(advancedPreferences.mpvConf.get())
 
-      File("$applicationPath/input.conf")
-        .also { if (!it.exists()) it.createNewFile() }
-        .writeText(advancedPreferences.inputConf.get())
-    } catch (e: Exception) {
+      File("$applicationPath/input.conf").apply {
+        if (!exists()) createNewFile()
+      }.writeText(advancedPreferences.inputConf.get())
+    }.onFailure { e ->
       Log.e(TAG, "Error creating default config files", e)
     }
   }
 
   private fun copyMPVScripts() {
-    try {
+    runCatching {
       val mpvexLua = assets.open("mpvex.lua")
       val applicationPath = filesDir.path
       val scriptsDir = fileManager.createDir(
@@ -488,16 +479,16 @@ class PlayerActivity : AppCompatActivity() {
 
       fileManager.deleteContent(scriptsDir)
 
-      File("$scriptsDir/mpvex.lua")
-        .also { if (!it.exists()) it.createNewFile() }
-        .writeText(mpvexLua.bufferedReader().readText())
-    } catch (e: Exception) {
+      File("$scriptsDir/mpvex.lua").apply {
+        if (!exists()) createNewFile()
+      }.writeText(mpvexLua.bufferedReader().readText())
+    }.onFailure { e ->
       Log.e(TAG, "Error copying MPV scripts", e)
     }
   }
 
   private fun copyMPVFonts() {
-    try {
+    runCatching {
       val cachePath = cacheDir.path
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
       val fontsDir = fileManager.fromUri(fontsFolderUri)
@@ -511,7 +502,7 @@ class PlayerActivity : AppCompatActivity() {
       copyDefaultSubfont(cachePath, destDir)
 
       fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Couldn't copy fonts to application directory: ${e.message}")
     }
   }
@@ -617,29 +608,27 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
+  @Suppress("DEPRECATION")
   private fun parsePathFromSendIntent(intent: Intent): String? {
-    if (intent.hasExtra(Intent.EXTRA_STREAM)) {
-      return intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this)
-    }
-
-    return intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
-      val uri = text.trim().toUri()
-      if (uri.isHierarchical && !uri.isRelative) {
-        uri.resolveUri(this)
-      } else {
-        null
+    return if (intent.hasExtra(Intent.EXTRA_STREAM)) {
+      intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this)
+    } else {
+      intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
+        val uri = text.trim().toUri()
+        if (uri.isHierarchical && !uri.isRelative) {
+          uri.resolveUri(this)
+        } else {
+          null
+        }
       }
     }
   }
 
-  @Suppress("ReturnCount")
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
 
     // Try to get display name from content resolver
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      getDisplayNameFromUri(uri)?.let { return it }
-    }
+    getDisplayNameFromUri(uri)?.let { return it }
 
     // Fallback to path segment
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
@@ -649,13 +638,13 @@ class PlayerActivity : AppCompatActivity() {
     return if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
     } else {
+      @Suppress("DEPRECATION")
       intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
     }
   }
 
-  @SuppressLint("NewApi")
   private fun getDisplayNameFromUri(uri: Uri): String? {
-    return try {
+    return runCatching {
       contentResolver.query(
         uri,
         arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
@@ -664,10 +653,9 @@ class PlayerActivity : AppCompatActivity() {
       )?.use { cursor ->
         if (cursor.moveToFirst()) cursor.getString(0) else null
       }
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error getting display name from URI", e)
-      null
-    }
+    }.getOrNull()
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
@@ -676,24 +664,16 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun handleConfigurationChange() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      if (!isInPictureInPictureMode) {
-        viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
-      } else {
-        viewModel.hideControls()
-      }
+    if (!isInPictureInPictureMode) {
+      viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
+    } else {
+      viewModel.hideControls()
     }
   }
 
   // ==================== MPV Event Observers ====================
 
-  @Suppress("UnusedParameter")
-  internal fun onObserverEvent(property: String, value: Long) {
-    if (player.isExiting) return
-  }
-
-  @Suppress("UnusedParameter")
-  internal fun onObserverEvent(property: String) {
+  internal fun onObserverEvent() {
     if (player.isExiting) return
   }
 
@@ -727,15 +707,7 @@ class PlayerActivity : AppCompatActivity() {
       "user-data/mpvex" -> viewModel.handleLuaInvocation(property, value)
     }
   }
-
-  @Suppress("UnusedParameter")
-  internal fun onObserverEvent(property: String, value: MPVNode) {
-    if (player.isExiting) return
-  }
-
-  @SuppressLint("NewApi")
-  @Suppress("UnusedParameter")
-  internal fun onObserverEvent(property: String, value: Double) {
+  internal fun onObserverEvent(property: String) {
     if (player.isExiting) return
 
     when (property) {
@@ -781,7 +753,7 @@ class PlayerActivity : AppCompatActivity() {
     if (mediaTitle.isBlank()) return
 
     lifecycleScope.launch(Dispatchers.IO) {
-      try {
+      runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
         Log.d(TAG, "Saving playback state for: $mediaTitle")
 
@@ -804,7 +776,7 @@ class PlayerActivity : AppCompatActivity() {
               ).toInt(),
           ),
         )
-      } catch (e: Exception) {
+      }.onFailure { e ->
         Log.e(TAG, "Error saving playback state", e)
       }
     }
@@ -823,12 +795,12 @@ class PlayerActivity : AppCompatActivity() {
   private suspend fun loadVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
-    try {
+    runCatching {
       val state = playbackStateRepository.getVideoDataByTitle(mediaTitle)
 
       applyPlaybackState(state)
       applyDefaultSettings(state)
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error loading playback state", e)
     }
   }
@@ -836,10 +808,9 @@ class PlayerActivity : AppCompatActivity() {
   private fun applyPlaybackState(state: PlaybackStateEntity?) {
     if (state == null) return
 
-    val subDelay = (state.subDelay ?: subtitlesPreferences.defaultSubDelay.get()) / DELAY_DIVISOR
-    val secondarySubDelay =
-      (state.secondarySubDelay ?: subtitlesPreferences.defaultSecondarySubDelay.get()) / DELAY_DIVISOR
-    val audioDelay = (state.audioDelay ?: audioPreferences.defaultAudioDelay.get()) / DELAY_DIVISOR
+    val subDelay = state.subDelay / DELAY_DIVISOR
+    val secondarySubDelay = state.secondarySubDelay / DELAY_DIVISOR
+    val audioDelay = state.audioDelay / DELAY_DIVISOR
 
     player.sid = state.sid
     player.secondarySid = state.secondarySid
@@ -893,19 +864,17 @@ class PlayerActivity : AppCompatActivity() {
   ) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
-    }
+    pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
 
     binding.controls.alpha = if (isInPictureInPictureMode) 0f else 1f
 
-    try {
+    runCatching {
       if (isInPictureInPictureMode) {
         enterPipUIMode()
       } else {
         exitPipUIMode()
       }
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error handling PiP mode change", e)
     }
   }
@@ -933,24 +902,16 @@ class PlayerActivity : AppCompatActivity() {
     setupDisplayCutout()
   }
 
-  fun enterPipMode() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      pipHelper.enterPipMode()
-    }
-  }
-
   fun enterPipModeHidingOverlay() {
-    try {
+    runCatching {
       enterPipUIMode()
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error entering PiP mode with hidden overlay", e)
     }
 
     binding.controls.alpha = 0f
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      pipHelper.enterPipMode()
-    }
+    pipHelper.enterPipMode()
   }
 
   val isPipSupported: Boolean
@@ -982,81 +943,51 @@ class PlayerActivity : AppCompatActivity() {
 
   // ==================== Key Event Handling ====================
 
-  @Suppress("ReturnCount")
+  @Suppress("ReturnCount", "CyclomaticComplexMethod")
   override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-    // If TracksTV sheet is open, don't intercept DPAD keys - let the sheet handle them
     val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.TracksTV
+    val isNoSheetOpen = viewModel.sheetShown.value == Sheets.None
+    val isNoOverlayOpen = isNoSheetOpen && viewModel.panelShown.value == Panels.None
+    val isTV = TVUtils.isAndroidTV(this)
 
     when (keyCode) {
       KeyEvent.KEYCODE_DPAD_UP -> {
-        // Open tracks sheet on TV when DPAD UP is pressed (only if no sheet is open)
-        if (TVUtils.isAndroidTV(this) &&
-          viewModel.sheetShown.value == Sheets.None &&
-          viewModel.panelShown.value == Panels.None
-        ) {
+        if (isTV && isNoOverlayOpen) {
           viewModel.sheetShown.update { Sheets.TracksTV }
-          return true
-        }
-        // If TracksTV sheet is open, don't handle - let sheet consume the event
-        if (isTrackSheetOpen) {
-          return super.onKeyDown(keyCode, event)
-        }
-        // If other sheet is open, let it handle the key event
-        return super.onKeyDown(keyCode, event)
-      }
-      KeyEvent.KEYCODE_DPAD_DOWN -> {
-        // If TracksTV sheet is open, don't handle - let sheet consume the event
-        if (isTrackSheetOpen) {
-          return super.onKeyDown(keyCode, event)
-        }
-        return super.onKeyDown(keyCode, event)
-      }
-      KeyEvent.KEYCODE_VOLUME_UP -> {
-        viewModel.changeVolumeBy(1)
-        viewModel.displayVolumeSlider()
-        return true
-      }
-      KeyEvent.KEYCODE_VOLUME_DOWN -> {
-        viewModel.changeVolumeBy(-1)
-        viewModel.displayVolumeSlider()
-        return true
-      }
-      KeyEvent.KEYCODE_DPAD_RIGHT -> {
-        // If TracksTV sheet is open, don't handle - let sheet consume the event
-        if (isTrackSheetOpen) {
-          return super.onKeyDown(keyCode, event)
-        }
-        // Only handle if no sheet is open
-        if (viewModel.sheetShown.value == Sheets.None) {
-          viewModel.handleRightDoubleTap()
           return true
         }
         return super.onKeyDown(keyCode, event)
       }
 
-      KeyEvent.KEYCODE_DPAD_LEFT -> {
-        // If TracksTV sheet is open, don't handle - let sheet consume the event
+      KeyEvent.KEYCODE_DPAD_DOWN,
+      KeyEvent.KEYCODE_DPAD_RIGHT,
+      KeyEvent.KEYCODE_DPAD_LEFT,
+        -> {
         if (isTrackSheetOpen) {
           return super.onKeyDown(keyCode, event)
         }
-        // Only handle if no sheet is open
-        if (viewModel.sheetShown.value == Sheets.None) {
-          viewModel.handleLeftDoubleTap()
-          return true
+
+        if (isNoSheetOpen) {
+          when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+              viewModel.handleRightDoubleTap()
+              return true
+            }
+
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+              viewModel.handleLeftDoubleTap()
+              return true
+            }
+          }
         }
         return super.onKeyDown(keyCode, event)
       }
 
       KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-        // If TracksTV sheet is open, don't handle - let sheet consume the event
         if (isTrackSheetOpen) {
           return super.onKeyDown(keyCode, event)
         }
-        // If no sheet is open and on TV, pause/unpause
-        if (TVUtils.isAndroidTV(this) &&
-          viewModel.sheetShown.value == Sheets.None &&
-          viewModel.panelShown.value == Panels.None
-        ) {
+        if (isTV && isNoOverlayOpen) {
           viewModel.pauseUnpause()
           return true
         }
@@ -1065,6 +996,18 @@ class PlayerActivity : AppCompatActivity() {
 
       KeyEvent.KEYCODE_SPACE -> {
         viewModel.pauseUnpause()
+        return true
+      }
+
+      KeyEvent.KEYCODE_VOLUME_UP -> {
+        viewModel.changeVolumeBy(1)
+        viewModel.displayVolumeSlider()
+        return true
+      }
+
+      KeyEvent.KEYCODE_VOLUME_DOWN -> {
+        viewModel.changeVolumeBy(-1)
+        viewModel.displayVolumeSlider()
         return true
       }
 
@@ -1082,6 +1025,7 @@ class PlayerActivity : AppCompatActivity() {
         viewModel.handleRightDoubleTap()
         return true
       }
+
       else -> {
         event?.let { player.onKey(it) }
         return super.onKeyDown(keyCode, event)
@@ -1104,7 +1048,7 @@ class PlayerActivity : AppCompatActivity() {
       return
     }
 
-    try {
+    runCatching {
       window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -1114,13 +1058,11 @@ class PlayerActivity : AppCompatActivity() {
 
       WindowCompat.setDecorFitsSystemWindows(window, true)
 
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        window.attributes.layoutInDisplayCutoutMode =
-          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-      }
+      window.attributes.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
 
       systemUIRestored = true
-    } catch (e: Exception) {
+    }.onFailure { e ->
       Log.e(TAG, "Error restoring system UI", e)
       systemUIRestored = true
     }
@@ -1144,7 +1086,6 @@ class PlayerActivity : AppCompatActivity() {
     private const val DELAY_DIVISOR = 1000.0
     private const val DEFAULT_PLAYBACK_SPEED = 1.0
     private const val DEFAULT_SUB_SPEED = 1.0
+    const val TAG = "mpvex"
   }
 }
-
-const val TAG = "mpvex"

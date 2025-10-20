@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.home.data.repository
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
 import android.media.MediaMetadataRetriever
@@ -15,75 +16,145 @@ import kotlin.math.pow
 
 object VideoRepository {
 
-  private const val tag = "VideoRepository"
+  private const val TAG = "VideoRepository"
+  private const val MAX_DIRECTORY_DEPTH = 2
 
+  // Video file extensions
+  private val VIDEO_EXTENSIONS = setOf(
+    "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
+    "mpg", "mpeg", "3gp", "3g2", "ts", "m2ts", "mts", "vob",
+  )
+
+  // MIME type mappings
+  private val EXTENSION_TO_MIME = mapOf(
+    "mp4" to "video/mp4",
+    "mkv" to "video/x-matroska",
+    "avi" to "video/x-msvideo",
+    "mov" to "video/quicktime",
+    "wmv" to "video/x-ms-wmv",
+    "flv" to "video/x-flv",
+    "webm" to "video/webm",
+    "m4v" to "video/x-m4v",
+    "mpg" to "video/mpeg",
+    "mpeg" to "video/mpeg",
+    "3gp" to "video/3gpp",
+    "3g2" to "video/3gpp2",
+    "ts" to "video/mp2ts",
+    "m2ts" to "video/mp2t",
+    "mts" to "video/mp2t",
+    "vob" to "video/dvd",
+  )
+
+  // MediaStore projection
+  private val PROJECTION = arrayOf(
+    MediaStore.Video.Media._ID,
+    MediaStore.Video.Media.TITLE,
+    MediaStore.Video.Media.DISPLAY_NAME,
+    MediaStore.Video.Media.DATA,
+    MediaStore.Video.Media.DURATION,
+    MediaStore.Video.Media.SIZE,
+    MediaStore.Video.Media.DATE_MODIFIED,
+    MediaStore.Video.Media.DATE_ADDED,
+    MediaStore.Video.Media.MIME_TYPE,
+    MediaStore.Video.Media.BUCKET_ID,
+    MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+  )
+
+  private const val SORT_ORDER = "${MediaStore.Video.Media.TITLE} COLLATE NOCASE ASC"
+
+  @SuppressLint("SdCardPath")
   private fun normalizePath(path: String): String {
-    // Normalize paths to avoid duplicates
     return when {
-      path.startsWith("/sdcard") -> path.replace("/sdcard", TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT)
+      path.startsWith("/sdcard") ->
+        path.replace("/sdcard", TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT)
       else -> {
-        try {
-          File(path).canonicalPath
-        } catch (e: Exception) {
-          path
-        }
+        runCatching { File(path).canonicalPath }.getOrDefault(path)
       }
     }
   }
 
   fun getVideosInFolder(context: Context, bucketId: String): List<Video> {
-    Log.d(tag, "Starting to query videos for bucket: $bucketId")
+    Log.d(TAG, "Starting to query videos for bucket: $bucketId")
     val videos = mutableListOf<Video>()
-    val processedPaths = mutableSetOf<String>() // Track which video files we've already added
+    val processedPaths = mutableSetOf<String>()
     val isTV = TVUtils.isAndroidTV(context)
 
-    val projection = getProjection()
-    val sortOrder = "${MediaStore.Video.Media.TITLE} COLLATE NOCASE ASC"
-
     try {
-      // First, try to query with the bucket ID directly (in case it's a MediaStore bucket ID)
-      var cursor: Cursor? = context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        "${MediaStore.Video.Media.BUCKET_ID} = ?",
-        arrayOf(bucketId),
-        sortOrder,
-      )
+      // Try MediaStore bucket ID query
+      queryMediaStoreBucket(context, bucketId, videos, processedPaths)
 
-      Log.d(tag, "MediaStore bucket query result: ${cursor?.count ?: 0} videos found")
-
-      cursor?.use { c ->
-        processVideoCursor(c, videos, processedPaths)
+      // If no results, try folder path hash matching
+      if (videos.isEmpty()) {
+        Log.d(TAG, "No videos with bucket ID, trying to match by folder path hash")
+        queryAllVideosWithBucketFilter(context, bucketId, videos, processedPaths)
       }
 
-      // If no videos found, it might be our hash-based bucket ID
-      // Query all videos and filter by matching folder path
-      if (videos.isEmpty()) {
-        Log.d(tag, "No videos with bucket ID, trying to match by folder path hash")
-        cursor = context.contentResolver.query(
-          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-          projection,
-          null,
-          null,
-          sortOrder,
-        )
-
-        cursor?.use { c ->
-          processVideoCursorWithBucketFilter(c, bucketId, videos, processedPaths)
-        }
+      // On Android TV, fallback to direct file scan if MediaStore fails
+      if (videos.isEmpty() && isTV) {
+        Log.d(TAG, "No videos found via MediaStore on Android TV, trying direct scan")
+        scanFolderDirectly(bucketId, videos, processedPaths)
       }
     } catch (e: Exception) {
-      Log.e(tag, "Error querying videos for bucket $bucketId", e)
+      Log.e(TAG, "Error querying videos for bucket $bucketId", e)
     }
 
-    // If still no videos found and we're on Android TV, try direct file scan
-    if (videos.isEmpty() && isTV) {
-      Log.d(tag, "No videos found via MediaStore on Android TV, trying direct scan")
-      scanFolderDirectly(bucketId, videos, context, processedPaths)
-    }
-
-    Log.d(tag, "Returning ${videos.size} videos (${processedPaths.size} unique paths)")
+    Log.d(TAG, "Returning ${videos.size} videos (${processedPaths.size} unique paths)")
     return videos
+  }
+
+  private fun queryMediaStoreBucket(
+    context: Context,
+    bucketId: String,
+    videos: MutableList<Video>,
+    processedPaths: MutableSet<String>,
+  ) {
+    context.contentResolver.query(
+      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+      PROJECTION,
+      "${MediaStore.Video.Media.BUCKET_ID} = ?",
+      arrayOf(bucketId),
+      SORT_ORDER,
+    )?.use { cursor ->
+      Log.d(TAG, "MediaStore bucket query result: ${cursor.count} videos found")
+      processVideoCursor(cursor, videos, processedPaths)
+    }
+  }
+
+  private fun queryAllVideosWithBucketFilter(
+    context: Context,
+    bucketId: String,
+    videos: MutableList<Video>,
+    processedPaths: MutableSet<String>,
+  ) {
+    context.contentResolver.query(
+      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+      PROJECTION,
+      null,
+      null,
+      SORT_ORDER,
+    )?.use { cursor ->
+      processVideoCursorWithBucketFilter(cursor, bucketId, videos, processedPaths)
+    }
+  }
+
+  private fun processVideoCursor(
+    cursor: Cursor,
+    videos: MutableList<Video>,
+    processedPaths: MutableSet<String>,
+  ) {
+    val columnIndices = getCursorColumnIndices(cursor)
+
+    while (cursor.moveToNext()) {
+      extractVideoFromCursor(cursor, columnIndices)?.let { video ->
+        val normalizedPath = normalizePath(video.path)
+        if (processedPaths.add(normalizedPath)) {
+          videos.add(video)
+          Log.d(TAG, "Added video: ${video.displayName} at ${video.path}")
+        } else {
+          Log.d(TAG, "Skipping duplicate video from MediaStore: ${video.displayName}")
+        }
+      }
+    }
   }
 
   private fun processVideoCursorWithBucketFilter(
@@ -96,14 +167,13 @@ object VideoRepository {
 
     while (cursor.moveToNext()) {
       extractVideoFromCursor(cursor, columnIndices)?.let { video ->
-        // Check if this video's bucket ID matches our target
         if (video.bucketId == targetBucketId) {
           val normalizedPath = normalizePath(video.path)
           if (processedPaths.add(normalizedPath)) {
             videos.add(video)
-            Log.d(tag, "Added video: ${video.displayName} at ${video.path}")
+            Log.d(TAG, "Added video: ${video.displayName} at ${video.path}")
           } else {
-            Log.d(tag, "Skipping duplicate video from MediaStore: ${video.displayName}")
+            Log.d(TAG, "Skipping duplicate video from MediaStore: ${video.displayName}")
           }
         }
       }
@@ -113,99 +183,94 @@ object VideoRepository {
   private fun scanFolderDirectly(
     bucketId: String,
     videos: MutableList<Video>,
-    context: Context,
     processedPaths: MutableSet<String>,
   ) {
-    try {
-      // Collect all potential folders to check
+    runCatching {
       val allFolders = mutableListOf<File>()
 
-      // Scan internal storage
+      // Collect all potential folders
       scanInternalStorage(allFolders)
-
-      // Scan external USB/SD mounts using /proc/mounts
       scanExternalMountsForVideos(allFolders)
-
-      // Scan common USB mount locations as fallback
       scanCommonUsbLocations(allFolders)
 
-      // Find the folder with matching bucketId
-      for (folder in allFolders) {
+      // Find and scan the matching folder
+      allFolders.firstOrNull { folder ->
         val normalizedPath = normalizePath(folder.absolutePath)
-        val folderBucketId = normalizedPath.hashCode().toString()
-        if (folderBucketId == bucketId) {
-          Log.d(tag, "Found matching folder: ${folder.absolutePath}")
-          scanDirectoryForVideos(folder, videos, context, processedPaths)
-          break
-        }
+        normalizedPath.hashCode().toString() == bucketId
+      }?.let { folder ->
+        Log.d(TAG, "Found matching folder: ${folder.absolutePath}")
+        scanDirectoryForVideos(folder, videos, processedPaths)
       }
-    } catch (e: Exception) {
-      Log.e(tag, "Error scanning folder directly", e)
+    }.onFailure {
+      Log.e(TAG, "Error scanning folder directly")
     }
   }
 
   private fun scanInternalStorage(allFolders: MutableList<File>) {
-    try {
+    runCatching {
       val internalRoot = File(TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT)
       if (internalRoot.exists() && internalRoot.canRead()) {
-        internalRoot.listFiles()?.forEach { file ->
-          if (file.isDirectory && file.canRead()) {
-            allFolders.add(file)
-            // Check subdirectories too (up to 2 levels deep)
-            file.listFiles()?.forEach { subFile ->
-              if (subFile.isDirectory && subFile.canRead()) {
-                allFolders.add(subFile)
-              }
-            }
+        internalRoot.listFiles()
+          ?.filter { it.isDirectory && it.canRead() }
+          ?.forEach { directory ->
+            allFolders.add(directory)
+            // Add subdirectories (up to MAX_DIRECTORY_DEPTH levels deep)
+            directory.listFiles()
+              ?.filter { it.isDirectory && it.canRead() }
+              ?.forEach { allFolders.add(it) }
           }
-        }
       }
-    } catch (e: Exception) {
-      Log.w(tag, "Error scanning internal storage", e)
+    }.onFailure { e ->
+      Log.w(TAG, "Error scanning internal storage", e)
     }
   }
 
   private fun scanExternalMountsForVideos(allFolders: MutableList<File>) {
-    try {
+    runCatching {
       val mountsFile = File("/proc/mounts")
-      if (mountsFile.exists() && mountsFile.canRead()) {
-        mountsFile.bufferedReader().use { reader ->
-          reader.lineSequence().forEach { line ->
-            val parts = line.split("\\s+".toRegex())
-            if (parts.size >= 3) {
-              val device = parts[0]
-              val mountPoint = parts[1]
-              val fsType = parts[2]
+      if (!mountsFile.exists() || !mountsFile.canRead()) return
 
-              if (TVUtils.isExternalMount(device, mountPoint, fsType)) {
-                val mountDir = File(mountPoint)
-                if (mountDir.exists() && mountDir.isDirectory && mountDir.canRead()) {
-                  Log.d(tag, "Found USB mount for video scan: $mountPoint")
-                  addDirectoryAndSubdirectories(mountDir, allFolders, 2)
-                }
-              }
+      mountsFile.bufferedReader().use { reader ->
+        reader.lineSequence()
+          .mapNotNull { line -> parseMountLine(line) }
+          .filter { (device, mountPoint, fsType) ->
+            TVUtils.isExternalMount(device, mountPoint, fsType)
+          }
+          .forEach { (_, mountPoint, _) ->
+            val mountDir = File(mountPoint)
+            if (mountDir.exists() && mountDir.isDirectory && mountDir.canRead()) {
+              Log.d(TAG, "Found USB mount for video scan: $mountPoint")
+              addDirectoryAndSubdirectories(mountDir, allFolders, MAX_DIRECTORY_DEPTH)
             }
           }
-        }
       }
-    } catch (e: Exception) {
-      Log.w(tag, "Error scanning /proc/mounts for videos", e)
+    }.onFailure { e ->
+      Log.w(TAG, "Error scanning /proc/mounts for videos", e)
+    }
+  }
+
+  private fun parseMountLine(line: String): Triple<String, String, String>? {
+    val parts = line.split("\\s+".toRegex())
+    return if (parts.size >= 3) {
+      Triple(parts[0], parts[1], parts[2])
+    } else {
+      null
     }
   }
 
   private fun scanCommonUsbLocations(allFolders: MutableList<File>) {
     TVUtils.FileSystemPaths.COMMON_USB_MOUNT_PATHS.forEach { basePath ->
-      try {
+      runCatching {
         val dir = File(basePath)
         if (dir.exists() && dir.isDirectory && dir.canRead()) {
-          dir.listFiles()?.forEach { mountPoint ->
-            if (mountPoint.isDirectory && mountPoint.canRead()) {
-              addDirectoryAndSubdirectories(mountPoint, allFolders, 2)
+          dir.listFiles()
+            ?.filter { it.isDirectory && it.canRead() }
+            ?.forEach { mountPoint ->
+              addDirectoryAndSubdirectories(mountPoint, allFolders, MAX_DIRECTORY_DEPTH)
             }
-          }
         }
-      } catch (e: Exception) {
-        Log.w(tag, "Error scanning USB location: $basePath", e)
+      }.onFailure { e ->
+        Log.w(TAG, "Error scanning USB location: $basePath", e)
       }
     }
   }
@@ -218,79 +283,60 @@ object VideoRepository {
   ) {
     if (currentDepth > maxDepth) return
 
-    try {
+    runCatching {
       if (directory.exists() && directory.isDirectory && directory.canRead()) {
         allFolders.add(directory)
 
-        directory.listFiles()?.forEach { subDir ->
-          if (subDir.isDirectory && subDir.canRead()) {
+        directory.listFiles()
+          ?.filter { it.isDirectory && it.canRead() }
+          ?.forEach { subDir ->
             addDirectoryAndSubdirectories(subDir, allFolders, maxDepth, currentDepth + 1)
           }
-        }
       }
-    } catch (e: Exception) {
-      Log.w(tag, "Error adding directory: ${directory.absolutePath}", e)
+    }.onFailure { e ->
+      Log.w(TAG, "Error adding directory: ${directory.absolutePath}", e)
     }
   }
 
   private fun scanDirectoryForVideos(
     directory: File,
     videos: MutableList<Video>,
-    context: Context,
     processedPaths: MutableSet<String>,
   ) {
-    try {
-      val files = directory.listFiles() ?: return
-
-      for (file in files) {
-        try {
-          if (file.isFile && isVideoFile(file)) {
-            val video = createVideoFromFile(file, context)
+    runCatching {
+      directory.listFiles()
+        ?.filter { it.isFile && isVideoFile(it) }
+        ?.forEach { file ->
+          runCatching {
             val normalizedPath = normalizePath(file.absolutePath)
             if (processedPaths.add(normalizedPath)) {
+              val video = createVideoFromFile(file)
               videos.add(video)
-              Log.d(tag, "Added video from direct scan: ${file.name}")
+              Log.d(TAG, "Added video from direct scan: ${file.name}")
             } else {
-              Log.d(tag, "Skipping duplicate video from file scan: ${file.name}")
+              Log.d(TAG, "Skipping duplicate video from file scan: ${file.name}")
             }
+          }.onFailure { e ->
+            Log.w(TAG, "Security exception accessing: ${file.absolutePath}", e)
           }
-        } catch (e: SecurityException) {
-          Log.w(tag, "Security exception accessing: ${file.absolutePath}", e)
         }
-      }
 
       videos.sortBy { it.displayName }
-    } catch (e: Exception) {
-      Log.e(tag, "Error scanning directory for videos: ${directory.absolutePath}", e)
+    }.onFailure { e ->
+      Log.e(TAG, "Error scanning directory for videos: ${directory.absolutePath}", e)
     }
   }
 
   private fun isVideoFile(file: File): Boolean {
-    val videoExtensions = setOf(
-      "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
-      "mpg", "mpeg", "3gp", "3g2", "ts", "m2ts", "mts", "vob",
-    )
-    return videoExtensions.contains(file.extension.lowercase())
+    return VIDEO_EXTENSIONS.contains(file.extension.lowercase())
   }
 
-  private fun createVideoFromFile(file: File, context: Context): Video {
+  private fun createVideoFromFile(file: File): Video {
     val uri = Uri.fromFile(file)
     val folderPath = normalizePath(file.parent ?: "")
     val folderName = File(folderPath).name
     val bucketId = folderPath.hashCode().toString()
-
-    // Try to extract duration using MediaMetadataRetriever
-    var duration = 0L
-    try {
-      val retriever = MediaMetadataRetriever()
-      retriever.setDataSource(file.absolutePath)
-      val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-      duration = durationStr?.toLongOrNull() ?: 0L
-      retriever.release()
-      Log.d(tag, "Extracted duration for ${file.name}: $duration ms")
-    } catch (e: Exception) {
-      Log.w(tag, "Could not extract duration for ${file.name}: ${e.message}")
-    }
+    val duration = extractVideoDuration(file)
 
     return Video(
       id = file.absolutePath.hashCode().toLong(),
@@ -310,56 +356,25 @@ object VideoRepository {
     )
   }
 
-  private fun getMimeTypeFromExtension(extension: String): String {
-    return when (extension.lowercase()) {
-      "mp4" -> "video/mp4"
-      "mkv" -> "video/x-matroska"
-      "avi" -> "video/x-msvideo"
-      "mov" -> "video/quicktime"
-      "wmv" -> "video/x-ms-wmv"
-      "flv" -> "video/x-flv"
-      "webm" -> "video/webm"
-      "m4v" -> "video/x-m4v"
-      "mpg", "mpeg" -> "video/mpeg"
-      "3gp" -> "video/3gpp"
-      "3g2" -> "video/3gpp2"
-      "ts" -> "video/mp2ts"
-      "m2ts", "mts" -> "video/mp2t"
-      "vob" -> "video/dvd"
-      else -> "video/*"
-    }
-  }
-
-  private fun getProjection(): Array<String> {
-    return arrayOf(
-      MediaStore.Video.Media._ID,
-      MediaStore.Video.Media.TITLE,
-      MediaStore.Video.Media.DISPLAY_NAME,
-      MediaStore.Video.Media.DATA,
-      MediaStore.Video.Media.DURATION,
-      MediaStore.Video.Media.SIZE,
-      MediaStore.Video.Media.DATE_MODIFIED,
-      MediaStore.Video.Media.DATE_ADDED,
-      MediaStore.Video.Media.MIME_TYPE,
-      MediaStore.Video.Media.BUCKET_ID,
-      MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
-    )
-  }
-
-  private fun processVideoCursor(cursor: Cursor, videos: MutableList<Video>, processedPaths: MutableSet<String>) {
-    val columnIndices = getCursorColumnIndices(cursor)
-
-    while (cursor.moveToNext()) {
-      extractVideoFromCursor(cursor, columnIndices)?.let { video ->
-        val normalizedPath = normalizePath(video.path)
-        if (processedPaths.add(normalizedPath)) {
-          videos.add(video)
-          Log.d(tag, "Added video: ${video.displayName} at ${video.path}")
-        } else {
-          Log.d(tag, "Skipping duplicate video from MediaStore: ${video.displayName}")
-        }
+  private fun extractVideoDuration(file: File): Long {
+    return runCatching {
+      val retriever = MediaMetadataRetriever()
+      try {
+        retriever.setDataSource(file.absolutePath)
+        val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+        durationStr?.toLongOrNull() ?: 0L
+      } finally {
+        retriever.release()
       }
-    }
+    }.onSuccess { duration ->
+      Log.d(TAG, "Extracted duration for ${file.name}: $duration ms")
+    }.onFailure { e ->
+      Log.w(TAG, "Could not extract duration for ${file.name}: ${e.message}")
+    }.getOrDefault(0L)
+  }
+
+  private fun getMimeTypeFromExtension(extension: String): String {
+    return EXTENSION_TO_MIME[extension.lowercase()] ?: "video/*"
   }
 
   private fun getCursorColumnIndices(cursor: Cursor): VideoColumnIndices {
@@ -391,19 +406,19 @@ object VideoRepository {
     val videoBucketId = cursor.getString(indices.bucketId) ?: ""
     val bucketDisplayName = cursor.getString(indices.bucketDisplayName) ?: ""
 
-    // Normalize the path to avoid duplicates
     val normalizedPath = if (path.isNotEmpty()) normalizePath(path) else path
+
+    // Skip non-existent files
+    if (normalizedPath.isEmpty() || !File(normalizedPath).exists()) {
+      Log.w(TAG, "Skipping non-existent file: $normalizedPath")
+      return null
+    }
 
     val (finalBucketId, finalBucketDisplayName) = getFinalBucketInfo(
       videoBucketId,
       bucketDisplayName,
       normalizedPath,
     )
-
-    if (normalizedPath.isEmpty() || !File(normalizedPath).exists()) {
-      Log.w(tag, "Skipping non-existent file: $normalizedPath")
-      return null
-    }
 
     val uri = Uri.withAppendedPath(
       MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -436,12 +451,9 @@ object VideoRepository {
     val parentPath = File(path).parent?.let { normalizePath(it) } ?: ""
     val finalBucketId = bucketId.ifEmpty { parentPath.hashCode().toString() }
     val finalBucketDisplayName = bucketDisplayName.ifEmpty {
-      val isRootStorage = parentPath.startsWith("${TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT}/") &&
-        parentPath == TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT
-      if (isRootStorage) {
-        "Internal Storage"
-      } else {
-        File(parentPath).name.takeIf { it.isNotEmpty() } ?: "Unknown Folder"
+      when {
+        parentPath == TVUtils.FileSystemPaths.EXTERNAL_STORAGE_ROOT -> "Internal Storage"
+        else -> File(parentPath).name.takeIf { it.isNotEmpty() } ?: "Unknown Folder"
       }
     }
     return Pair(finalBucketId, finalBucketDisplayName)
