@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.ui.preferences
 
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.widget.ImageView
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -12,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,14 +45,18 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.presentation.crash.CrashActivity.Companion.collectDeviceInfo
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import compose.icons.SimpleIcons
@@ -65,17 +70,12 @@ object AboutScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
+    val clipboardManager = LocalClipboardManager.current
     val githubUrl = context.getString(R.string.github_repo_url)
-    val githubUsername = githubUrl.toUri().pathSegments.firstOrNull().orEmpty()
     val packageManager: PackageManager = context.packageManager
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-    val versionName = packageInfo.versionName
-    val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      packageInfo.longVersionCode
-    } else {
-      @Suppress("DEPRECATION")
-      packageInfo.versionCode.toLong()
-    }
+    val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName
+    val buildType = BuildConfig.BUILD_TYPE
     Scaffold(
       topBar = {
         TopAppBar(
@@ -173,7 +173,7 @@ object AboutScreen : Screen {
                   )
                   Spacer(Modifier.height(4.dp))
                   Text(
-                    text = "$versionName ($versionCode) by $githubUsername",
+                    text = "v$versionName $buildType",
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onPrimaryContainer.copy(alpha = 0.85f),
                   )
@@ -233,11 +233,44 @@ object AboutScreen : Screen {
                   )
                 }
               }
+
+              Spacer(modifier = Modifier.height(20.dp))
+
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable {
+                    clipboardManager.setText(AnnotatedString(collectDeviceInfo()))
+                  },
+              ) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  modifier = Modifier.padding(bottom = 8.dp),
+                ) {
+                  Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = "Device Info",
+                    modifier = Modifier.size(20.dp),
+                    tint = cs.onPrimaryContainer,
+                  )
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Text(
+                    text = "Device Info",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.onPrimaryContainer,
+                  )
+                }
+                Text(
+                  text = collectDeviceInfo(),
+                  style = MaterialTheme.typography.bodySmall,
+                  color = cs.onPrimaryContainer.copy(alpha = 0.85f),
+                )
+              }
             }
           }
         }
 
-        // Extra spacing at bottom for scroll comfort
         Spacer(Modifier.height(12.dp))
       }
     }
@@ -254,7 +287,7 @@ object LibrariesScreen : Screen {
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { Text(text = stringResource(R.string.pref_about_oss_libraries)) },
+          title = { Text(text = stringResource(id = R.string.pref_about_oss_libraries)) },
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
