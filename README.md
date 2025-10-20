@@ -1,8 +1,6 @@
 # mpvEx
 A media player for Android based on [mpv-android](https://github.com/mpv-android/mpv-android) and [mpvKt](https://github.com/abdallahmehiz/mpvKt) aiming to provide a *nicer* user interface and additional features over the original.
 
-[![Build](https://github.com/marlboro-advance/mpvEx/actions/workflows/preview.yml/badge.svg)](https://github.com/marlboro-advance/mpvEx/actions/workflows/preview.yml)
-
 ## Features
 * Nicer player UI
 * Better playback history implementation
