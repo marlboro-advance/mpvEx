@@ -114,8 +114,8 @@ object FolderListScreen : Screen {
     val videoFolders by viewModel.videoFolders.collectAsState()
     val showLinkDialog = remember { mutableStateOf(false) }
     val sortDialogOpen = remember { mutableStateOf(false) }
-    val sortType = remember { mutableStateOf("Date") }
-    val sortOrderAsc = remember { mutableStateOf(false) }
+    val sortType = remember { mutableStateOf("Title") }
+    val sortOrderAsc = remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -148,8 +148,8 @@ object FolderListScreen : Screen {
 
     LaunchedEffect(Unit) {
       val prefs = context.getSharedPreferences("folder_list_prefs", android.content.Context.MODE_PRIVATE)
-      sortType.value = prefs.getString("sort_type", "Date") ?: "Date"
-      sortOrderAsc.value = prefs.getBoolean("sort_order_asc", false)
+      sortType.value = prefs.getString("sort_type", "Title") ?: "Title"
+      sortOrderAsc.value = prefs.getBoolean("sort_order_asc", true)
     }
 
     LaunchedEffect(sortType.value, sortOrderAsc.value) {
