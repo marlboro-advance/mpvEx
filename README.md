@@ -12,7 +12,6 @@ A media player for Android based on [mpv-android](https://github.com/mpv-android
 * Easier customization
 * Sleep timer, Speed presets
 * Hardware and software video decoding
-* Secondary (or dual) subtitle support
 * High-quality rendering with advanced settings
 * Play network streams with the "Open URL" function
 * Picture-in-Picture, keyboard input supported
