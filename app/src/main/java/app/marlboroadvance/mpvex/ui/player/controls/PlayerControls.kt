@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +86,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
 import kotlin.math.abs
+import app.marlboroadvance.mpvex.ui.utils.TVUtils
 
 @Suppress("CompositionLocalAllowlist")
 val LocalPlayerButtonsClickEvent = staticCompositionLocalOf { {} }
@@ -101,6 +103,8 @@ fun PlayerControls(
   onBackPress: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val context = LocalContext.current
+  val isTV = TVUtils.isAndroidTV(context)
   val spacing = MaterialTheme.spacing
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
@@ -422,7 +426,7 @@ fun PlayerControls(
         }
         val mediaTitle by MPVLib.propString["media-title"].collectAsState()
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
               fadeIn(playerControlsEnterAnimationSpec())
@@ -445,11 +449,12 @@ fun PlayerControls(
           TopLeftPlayerControls(
             mediaTitle = mediaTitle ?: "", // it'll be set when the video loads so no problem keeping it empty for now
             onBackClick = onBackPress,
+            isTV = isTV,
           )
         }
         // Top right controls
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked && !isTV,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
               fadeIn(playerControlsEnterAnimationSpec())
@@ -485,7 +490,7 @@ fun PlayerControls(
         }
         // Bottom right controls
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked && !isTV,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
               fadeIn(playerControlsEnterAnimationSpec())
@@ -509,7 +514,7 @@ fun PlayerControls(
         }
         // Bottom left controls
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked && !isTV,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
               fadeIn(playerControlsEnterAnimationSpec())

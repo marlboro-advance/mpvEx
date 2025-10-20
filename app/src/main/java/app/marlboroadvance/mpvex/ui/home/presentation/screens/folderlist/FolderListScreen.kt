@@ -86,6 +86,7 @@ import app.marlboroadvance.mpvex.ui.home.utils.MediaUtils
 import app.marlboroadvance.mpvex.ui.home.utils.SortUtils
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.ui.utils.DeviceUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
@@ -106,6 +107,7 @@ object FolderListScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
+    val isTV = DeviceUtils.isAndroidTV(context)
     val isRefreshing = remember { mutableStateOf(false) }
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
@@ -195,11 +197,16 @@ object FolderListScreen : Screen {
       }
     }
 
-    val items = listOf(
-      Icons.Filled.FolderOpen to "Open File",
-      Icons.Filled.History to "Recently Played",
-      Icons.Filled.AddLink to "Play Link",
-    )
+    val items = remember(isTV, hasRecentlyPlayed) {
+      buildList {
+        // Don't show "Open File" on TV since there's no file picker
+        if (!isTV) {
+          add(Icons.Filled.FolderOpen to "Open File")
+        }
+        add(Icons.Filled.History to "Recently Played")
+        add(Icons.Filled.AddLink to "Play Link")
+      }
+    }
 
     BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
 
@@ -326,9 +333,9 @@ object FolderListScreen : Screen {
                 ),
               onClick = {
                 fabMenuExpanded = false
-                when (i) {
-                  0 -> filePicker.launch(arrayOf("*/*"))
-                  1 -> {
+                when (item.second) {
+                  "Open File" -> filePicker.launch(arrayOf("*/*"))
+                  "Recently Played" -> {
                     // Play recently played file
                     if (hasRecentlyPlayed) {
                       coroutineScope.launch {
@@ -338,14 +345,14 @@ object FolderListScreen : Screen {
                       }
                     }
                   }
-                  2 -> showLinkDialog.value = true
+                  "Play Link" -> showLinkDialog.value = true
                 }
               },
               icon = {
                 Icon(
                   item.first,
                   contentDescription = null,
-                  modifier = if (i == 1 && !hasRecentlyPlayed) Modifier.alpha(0.5f) else Modifier,
+                  modifier = if (item.second == "Recently Played" && !hasRecentlyPlayed) Modifier.alpha(0.5f) else Modifier,
                 )
               },
               text = { Text(text = item.second) },
@@ -359,7 +366,7 @@ object FolderListScreen : Screen {
           Box(
             Modifier
               .fillMaxWidth()
-              .pullRefresh(pullRefreshState)
+              .then(if (!isTV) Modifier.pullRefresh(pullRefreshState) else Modifier)
               .padding(padding),
           ) {
             LazyColumn(
@@ -383,19 +390,24 @@ object FolderListScreen : Screen {
                   EmptyState(
                     icon = Icons.Filled.Folder,
                     title = "No video folders found",
-                    message = "Add some video files to your device to see them here",
+                    message = if (isTV)
+                      "Android TV detected. Try:\n• Use 'Play Link' button to play from URL\n• Place videos in /Movies or /Download folders\n• Connect USB drive with videos"
+                    else
+                      "Add some video files to your device to see them here",
                   )
                 }
               }
             }
 
-            PullRefreshIndicator(
-              isRefreshing.value,
-              pullRefreshState,
-              Modifier.align(Alignment.TopCenter),
-              backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-              contentColor = MaterialTheme.colorScheme.primary,
-            )
+            if (!isTV) {
+              PullRefreshIndicator(
+                isRefreshing.value,
+                pullRefreshState,
+                Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.primary,
+              )
+            }
           }
         }
 

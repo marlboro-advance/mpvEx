@@ -17,7 +17,7 @@ import org.koin.dsl.module
 val PreferencesModule = module {
   single { AndroidPreferenceStore(androidContext()) }.bind(PreferenceStore::class)
 
-  singleOf(::AppearancePreferences)
+  single { AppearancePreferences(get(), androidContext()) }
   singleOf(::PlayerPreferences)
   singleOf(::GesturePreferences)
   singleOf(::DecoderPreferences)

@@ -35,6 +35,7 @@ import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
+import app.marlboroadvance.mpvex.ui.utils.TVUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -983,7 +984,33 @@ class PlayerActivity : AppCompatActivity() {
 
   @Suppress("ReturnCount")
   override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    // If TracksTV sheet is open, don't intercept DPAD keys - let the sheet handle them
+    val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.TracksTV
+
     when (keyCode) {
+      KeyEvent.KEYCODE_DPAD_UP -> {
+        // Open tracks sheet on TV when DPAD UP is pressed (only if no sheet is open)
+        if (TVUtils.isAndroidTV(this) &&
+          viewModel.sheetShown.value == Sheets.None &&
+          viewModel.panelShown.value == Panels.None
+        ) {
+          viewModel.sheetShown.update { Sheets.TracksTV }
+          return true
+        }
+        // If TracksTV sheet is open, don't handle - let sheet consume the event
+        if (isTrackSheetOpen) {
+          return super.onKeyDown(keyCode, event)
+        }
+        // If other sheet is open, let it handle the key event
+        return super.onKeyDown(keyCode, event)
+      }
+      KeyEvent.KEYCODE_DPAD_DOWN -> {
+        // If TracksTV sheet is open, don't handle - let sheet consume the event
+        if (isTrackSheetOpen) {
+          return super.onKeyDown(keyCode, event)
+        }
+        return super.onKeyDown(keyCode, event)
+      }
       KeyEvent.KEYCODE_VOLUME_UP -> {
         viewModel.changeVolumeBy(1)
         viewModel.displayVolumeSlider()
@@ -995,13 +1022,45 @@ class PlayerActivity : AppCompatActivity() {
         return true
       }
       KeyEvent.KEYCODE_DPAD_RIGHT -> {
-        viewModel.handleRightDoubleTap()
-        return true
+        // If TracksTV sheet is open, don't handle - let sheet consume the event
+        if (isTrackSheetOpen) {
+          return super.onKeyDown(keyCode, event)
+        }
+        // Only handle if no sheet is open
+        if (viewModel.sheetShown.value == Sheets.None) {
+          viewModel.handleRightDoubleTap()
+          return true
+        }
+        return super.onKeyDown(keyCode, event)
       }
 
       KeyEvent.KEYCODE_DPAD_LEFT -> {
-        viewModel.handleLeftDoubleTap()
-        return true
+        // If TracksTV sheet is open, don't handle - let sheet consume the event
+        if (isTrackSheetOpen) {
+          return super.onKeyDown(keyCode, event)
+        }
+        // Only handle if no sheet is open
+        if (viewModel.sheetShown.value == Sheets.None) {
+          viewModel.handleLeftDoubleTap()
+          return true
+        }
+        return super.onKeyDown(keyCode, event)
+      }
+
+      KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+        // If TracksTV sheet is open, don't handle - let sheet consume the event
+        if (isTrackSheetOpen) {
+          return super.onKeyDown(keyCode, event)
+        }
+        // If no sheet is open and on TV, pause/unpause
+        if (TVUtils.isAndroidTV(this) &&
+          viewModel.sheetShown.value == Sheets.None &&
+          viewModel.panelShown.value == Panels.None
+        ) {
+          viewModel.pauseUnpause()
+          return true
+        }
+        return super.onKeyDown(keyCode, event)
       }
 
       KeyEvent.KEYCODE_SPACE -> {

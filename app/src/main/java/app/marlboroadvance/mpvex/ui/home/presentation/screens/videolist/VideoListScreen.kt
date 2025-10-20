@@ -47,6 +47,7 @@ import app.marlboroadvance.mpvex.ui.home.presentation.components.VideoCard
 import app.marlboroadvance.mpvex.ui.home.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.home.utils.MediaUtils
 import app.marlboroadvance.mpvex.ui.home.utils.SortUtils
+import app.marlboroadvance.mpvex.ui.utils.DeviceUtils
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -66,6 +67,7 @@ data class VideoListScreen(
   override fun Content() {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
+    val isTV = DeviceUtils.isAndroidTV(context)
     val viewModel: VideoListViewModel = viewModel(
       key = "VideoListViewModel_$bucketId",
       factory = VideoListViewModel.factory(
@@ -128,15 +130,17 @@ data class VideoListScreen(
             )
           },
           navigationIcon = {
-            IconButton(
-              onClick = backstack::removeLastOrNull,
-              modifier = Modifier.padding(horizontal = 4.dp),
-            ) {
-              Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier.size(28.dp),
-              )
+            if (!isTV) {
+              IconButton(
+                onClick = backstack::removeLastOrNull,
+                modifier = Modifier.padding(horizontal = 4.dp),
+              ) {
+                Icon(
+                  Icons.AutoMirrored.Filled.ArrowBack,
+                  contentDescription = "Back",
+                  modifier = Modifier.size(28.dp),
+                )
+              }
             }
           },
           actions = {
@@ -157,7 +161,7 @@ data class VideoListScreen(
       Box(
         Modifier
           .fillMaxSize()
-          .pullRefresh(pullRefreshState)
+          .then(if (!isTV) Modifier.pullRefresh(pullRefreshState) else Modifier)
           .padding(padding),
       ) {
         if (isLoading && videos.isEmpty()) {
@@ -199,13 +203,15 @@ data class VideoListScreen(
           }
         }
 
-        PullRefreshIndicator(
-          isRefreshing.value,
-          pullRefreshState,
-          Modifier.align(Alignment.TopCenter),
-          backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-          contentColor = MaterialTheme.colorScheme.primary,
-        )
+        if (!isTV) {
+          PullRefreshIndicator(
+            isRefreshing.value,
+            pullRefreshState,
+            Modifier.align(Alignment.TopCenter),
+            backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.primary,
+          )
+        }
       }
 
       SortDialog(

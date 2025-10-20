@@ -2,6 +2,7 @@
 A media player for Android based on [mpv-android](https://github.com/mpv-android/mpv-android) and [mpvKt](https://github.com/abdallahmehiz/mpvKt) aiming to provide a *nicer* user interface and additional features over the original.
 
 [![Build](https://github.com/marlboro-advance/mpvEx/actions/workflows/build.yml/badge.svg)](https://github.com/marlboro-advance/mpvEx/actions/workflows/build.yml)
+
 ## Features
 * Nicer player UI
 * Better playback history implementation
@@ -9,6 +10,7 @@ A media player for Android based on [mpv-android](https://github.com/mpv-android
 * Sleep timer, Speed presets
 * Hardware and software video decoding
 * Secondary (or dual) subtitle support
+* **Android TV support** - Works on Android TV devices with optimized file browsing
 * High-quality rendering with advanced settings (scalers, debanding, interpolation, ...)
 * Play network streams with the "Open URL" function
 * Picture-in-Picture, keyboard input supported

@@ -4,8 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState as composeCollectAsState
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState as preferenceCollectAsState
 import app.marlboroadvance.mpvex.ui.player.Decoder
 import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.Sheets
@@ -16,10 +18,12 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.TVPlayerSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import org.koin.compose.koinInject
 
 @Composable
 fun PlayerSheets(
@@ -134,10 +138,27 @@ fun PlayerSheets(
     }
 
     Sheets.VideoZoom -> {
-      val videoZoom by viewModel.videoZoom.collectAsState()
+      val videoZoom by viewModel.videoZoom.composeCollectAsState()
       VideoZoomSheet(
         videoZoom = videoZoom,
         onSetVideoZoom = viewModel::setVideoZoom,
+        onDismissRequest = onDismissRequest,
+      )
+    }
+
+    Sheets.TracksTV -> {
+      val playerPreferences = koinInject<PlayerPreferences>()
+      val currentAspect by playerPreferences.videoAspect.preferenceCollectAsState()
+      TVPlayerSheet(
+        subtitleTracks = subtitles,
+        audioTracks = audioTracks,
+        currentSpeed = speed,
+        speedPresets = speedPresets,
+        currentAspect = currentAspect,
+        onSelectSubtitle = onSelectSubtitle,
+        onSelectAudio = onSelectAudio,
+        onSpeedChange = onSpeedChange,
+        onAspectChange = viewModel::changeVideoAspect,
         onDismissRequest = onDismissRequest,
       )
     }

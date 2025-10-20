@@ -26,6 +26,7 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.player.PlayerOrientation
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.toFixed
+import app.marlboroadvance.mpvex.ui.utils.DeviceUtils
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
@@ -42,6 +43,7 @@ object PlayerPreferencesScreen : Screen {
   override fun Content() {
     val backstack = LocalBackStack.current
     val context = LocalContext.current
+    val isTV = DeviceUtils.isAndroidTV(context)
     val preferences = koinInject<PlayerPreferences>()
     Scaffold(
       topBar = {
@@ -83,7 +85,7 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.savePositionOnQuit::set,
             title = { Text(stringResource(R.string.pref_player_save_position_on_quit)) },
           )
-          if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+          if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) && !isTV) {
             val enterPiPAutomatically by preferences.automaticallyEnterPip.collectAsState()
             SwitchPreference(
               value = enterPiPAutomatically,

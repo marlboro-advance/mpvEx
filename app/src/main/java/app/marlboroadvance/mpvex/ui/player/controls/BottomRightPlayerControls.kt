@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,7 @@ import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.theme.spacing
+import app.marlboroadvance.mpvex.ui.utils.TVUtils
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
 
@@ -45,6 +47,8 @@ fun BottomRightPlayerControls(
   val playerPreferences = koinInject<PlayerPreferences>()
   val aspect by playerPreferences.videoAspect.collectAsState()
   val currentZoom by viewModel.videoZoom.collectAsState()
+  val context = LocalContext.current
+  val isTV = TVUtils.isAndroidTV(context)
 
   Row(modifier, verticalAlignment = Alignment.CenterVertically) {
     val activity = LocalActivity.current as PlayerActivity
@@ -85,7 +89,7 @@ fun BottomRightPlayerControls(
       )
     }
 
-    if (activity.isPipSupported) {
+    if (activity.isPipSupported && !isTV) {
       ControlsButton(
         Icons.Default.PictureInPictureAlt,
         onClick = {
