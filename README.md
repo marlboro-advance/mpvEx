@@ -28,7 +28,7 @@ A media player for Android based on [mpv-android](https://github.com/mpv-android
 ## Installation
 you can download the app from the [Github releases page](https://github.com/marlboro-advance/mpvEx/releases)
 
-You can also access nightly builds from [here](https://github.com/marlboro-advance/mpvEx/actions/workflows/nightlies.yml)
+You can also download preview builds from [here](https://marlboro-advance.github.io/mpvEx/)
 
 ---
 
