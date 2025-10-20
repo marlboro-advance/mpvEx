@@ -9,6 +9,7 @@ import app.marlboroadvance.mpvex.ui.utils.TVUtils
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
+import java.util.Locale
 
 object VideoFolderRepository {
 
@@ -332,7 +333,7 @@ object VideoFolderRepository {
           lastModified = info.lastModified,
         )
       }
-      .sortedByDescending { it.lastModified }
+      .sortedBy { it.name.lowercase(Locale.getDefault()) }
   }
 
   private data class VideoFolderInfo(
