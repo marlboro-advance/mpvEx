@@ -159,7 +159,7 @@
     <string name="player_sheets_deband_grain">颗粒</string>
     <string name="player_sheets_speed_slider_label">速度</string>
     <string name="player_sheets_speed_make_default">设为默认速度</string>
-    <string name="player_sheets_decoder_formatted">%s (%s)</string>
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
     <string name="numeric_chooser_value_too_big">数值过大</string>
     <string name="numeric_chooser_value_too_small">数值过小</string>
     <string name="player_sheets_more_title">更多</string>

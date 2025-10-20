@@ -211,7 +211,7 @@
     <string name="player_sheets_speed_slider_label">Kecepatan</string>
     <string name="player_sheets_speed_make_default">Jadikan Kecepatan Default</string>
 
-    <string name="player_sheets_decoder_formatted">%s (%s)</string>
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
 
     <string name="numeric_chooser_value_too_big">Nilai terlalu besar</string>
     <string name="numeric_chooser_value_too_small">Nilai terlalu kecil</string>

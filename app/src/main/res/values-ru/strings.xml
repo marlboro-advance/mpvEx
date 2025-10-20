@@ -204,7 +204,7 @@
     <string name="player_sheets_speed_slider_label">Скорость</string>
     <string name="player_sheets_speed_make_default">Задать скорость по умолчанию</string>
 
-    <string name="player_sheets_decoder_formatted">%s (%s)</string>
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
 
     <string name="numeric_chooser_value_too_big">Значение слишком велико</string>
     <string name="numeric_chooser_value_too_small">Значение слишком мало</string>

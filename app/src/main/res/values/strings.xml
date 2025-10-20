@@ -209,7 +209,7 @@
     <string name="player_sheets_speed_slider_label">Speed</string>
     <string name="player_sheets_speed_make_default">Make default speed</string>
 
-    <string name="player_sheets_decoder_formatted">%s (%s)</string>
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
 
     <string name="numeric_chooser_value_too_big">Value too big</string>
     <string name="numeric_chooser_value_too_small">Value too small</string>
