@@ -4,8 +4,11 @@ permissions:
   contents: write
 
 on:
+  push:
+    branches:
+      - dev
   schedule:
-  - cron: '45 18 * * *'
+    - cron: '45 18 * * *'
   workflow_dispatch:
 
 jobs:
@@ -45,37 +48,19 @@ jobs:
       - name: Copy build artifacts
         run: |
           set -e
-
           commit_count=$(git rev-list --count HEAD)
           echo "COMMIT_COUNT=$commit_count" >> $GITHUB_ENV
-
           declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
-
           printf "%s\n" "${apks[@]}" | xargs -n 1 -I {} sh -c '
           cp app/build/outputs/apk/preview/app-{}-preview-signed.apk mpvEx-{}.apk'
 
-      - name: Upload the universal artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: ./mpvEx-universal.apk
-          name: universal-r${{ env.COMMIT_COUNT }}
-      - name: Upload the arm64-v8a artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./mpvEx-arm64-v8a.apk
-          name: arm64-v8a-r${{ env.COMMIT_COUNT }}
-      - name: Upload the armeabi-v7a artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./mpvEx-armeabi-v7a.apk
-          name: armeabi-v7a-r${{ env.COMMIT_COUNT }}
-      - name: Upload the x86 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./mpvEx-x86.apk
-          name: x86-r${{ env.COMMIT_COUNT }}
-      - name: Upload the x86_64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: ./mpvEx-x86_64.apk
-          name: x86_64-r${{ env.COMMIT_COUNT }}
+          name: preview-apks-r${{ env.COMMIT_COUNT }}
+          path: |
+            ./mpvEx-universal.apk
+            ./mpvEx-arm64-v8a.apk
+            ./mpvEx-armeabi-v7a.apk
+            ./mpvEx-x86.apk
+            ./mpvEx-x86_64.apk
