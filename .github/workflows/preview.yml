@@ -1,4 +1,4 @@
-name: make preview
+name: make preview for github pages
 
 permissions:
   contents: write
