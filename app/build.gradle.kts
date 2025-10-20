@@ -169,7 +169,6 @@ tasks.withType<Detekt>().configureEach {
   autoCorrect = true
   reports {
     html.required.set(true)
-    md.required.set(true)
   }
 }
 
