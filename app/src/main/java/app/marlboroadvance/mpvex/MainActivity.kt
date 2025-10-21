@@ -28,7 +28,7 @@ import androidx.navigation3.ui.NavDisplay
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.ui.home.presentation.screens.folderlist.FolderListScreen
+import app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
   override fun onDestroy() {
     try {
       super.onDestroy()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       // Silently handle exceptions during destruction
     }
   }

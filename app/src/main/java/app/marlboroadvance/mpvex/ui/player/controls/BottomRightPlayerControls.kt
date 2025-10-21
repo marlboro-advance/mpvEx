@@ -34,7 +34,7 @@ import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import app.marlboroadvance.mpvex.ui.utils.TVUtils
+import app.marlboroadvance.mpvex.utils.device.TVUtils
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
 

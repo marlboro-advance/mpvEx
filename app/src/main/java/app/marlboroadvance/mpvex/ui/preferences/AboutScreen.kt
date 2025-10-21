@@ -65,6 +65,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 object AboutScreen : Screen {
+  @Suppress("DEPRECATION")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {

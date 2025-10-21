@@ -64,6 +64,7 @@ import kotlin.io.path.readLines
 
 @Serializable
 object AdvancedPreferencesScreen : Screen {
+  @Suppress("DEPRECATION")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {

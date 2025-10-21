@@ -4,6 +4,7 @@ import android.app.Application
 import app.marlboroadvance.mpvex.di.AppModule
 import app.marlboroadvance.mpvex.di.DatabaseModule
 import app.marlboroadvance.mpvex.di.FileManagerModule
+import app.marlboroadvance.mpvex.di.MediaModule
 import app.marlboroadvance.mpvex.di.PreferencesModule
 import app.marlboroadvance.mpvex.di.ViewModelModule
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
@@ -27,6 +28,7 @@ class App : Application(), KoinStartup {
       PreferencesModule,
       DatabaseModule,
       FileManagerModule,
+      MediaModule,
       ViewModelModule,
     )
   }
