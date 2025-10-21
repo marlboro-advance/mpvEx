@@ -180,19 +180,20 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
   private fun setupSubtitlesOptions() {
     MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
 
-    MPVLib.setOptionString("sub-fonts-dir", context.cacheDir.path + "/fonts/")
+    val fontsDirPath = context.filesDir.path + "/fonts/"
+    MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
     MPVLib.setOptionString("sub-delay", (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("sub-speed", subtitlesPreferences.defaultSubSpeed.get().toString())
     MPVLib.setOptionString(
       "secondary-sub-delay",
-      (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString()
+      (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString(),
     )
 
-    MPVLib.setOptionString("sub-font", subtitlesPreferences.font.get())
-    if (subtitlesPreferences.overrideAssSubs.get()) {
-      MPVLib.setOptionString("sub-ass-override", "force")
-      MPVLib.setOptionString("sub-ass-justify", "yes")
-    }
+    // With fonts cached persistently in filesDir/fonts, just set preferred or fallback
+    val preferredFontFamily = subtitlesPreferences.font.get()
+    MPVLib.setOptionString("sub-font", if (preferredFontFamily.isNotBlank()) preferredFontFamily else "sans-serif")
+
+    // Removed SSA/ASS global override; rely on track styling and per-justify settings only
     MPVLib.setOptionString("sub-font-size", subtitlesPreferences.fontSize.get().toString())
     MPVLib.setOptionString("sub-bold", if (subtitlesPreferences.bold.get()) "yes" else "no")
     MPVLib.setOptionString("sub-italic", if (subtitlesPreferences.italic.get()) "yes" else "no")

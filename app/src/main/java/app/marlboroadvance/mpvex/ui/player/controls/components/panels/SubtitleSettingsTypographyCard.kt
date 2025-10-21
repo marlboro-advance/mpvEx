@@ -81,20 +81,16 @@ fun SubtitleSettingsTypographyCard(
     mutableStateOf(indicator)
   }
   LaunchedEffect(Unit) {
-    if (!preferences.fontsFolder.isSet()) {
-      fontsLoadingIndicator = null
-      return@LaunchedEffect
-    }
     withContext(Dispatchers.IO) {
-      fonts.addAll(
-        fileManager.listFiles(
-          fileManager.fromUri(preferences.fontsFolder.get().toUri()) ?: return@withContext,
-        ).filter {
-          fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
-        }.mapNotNull {
-          runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull()
-        }.distinct(),
-      )
+      // Read fonts from the app's persistent cache: filesDir/fonts
+      val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
+      if (fontsDir != null && fileManager.exists(fontsDir)) {
+        val familyNames = fileManager.listFiles(fontsDir)
+          .filter { fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex()) }
+          .mapNotNull { runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull() }
+          .distinct()
+        fonts.addAll(familyNames)
+      }
       fontsLoadingIndicator = null
     }
   }
@@ -271,7 +267,7 @@ fun SubtitleSettingsTypographyCard(
 fun resetTypography(preferences: SubtitlesPreferences) {
   MPVLib.setPropertyBoolean("sub-bold", preferences.bold.deleteAndGet())
   MPVLib.setPropertyBoolean("sub-italic", preferences.italic.deleteAndGet())
-  MPVLib.setPropertyBoolean("sub-ass-justify", preferences.overrideAssSubs.deleteAndGet())
+  MPVLib.setPropertyBoolean("sub-ass-justify", false)
   MPVLib.setPropertyString("sub-justify", preferences.justification.deleteAndGet().value)
   MPVLib.setPropertyString("sub-font", preferences.font.deleteAndGet())
   MPVLib.setPropertyInt("sub-font-size", preferences.fontSize.deleteAndGet())

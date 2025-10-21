@@ -20,7 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -30,11 +33,17 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
+import me.zhanghai.compose.preference.ListPreference
+import me.zhanghai.compose.preference.ListPreferenceType
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import me.zhanghai.compose.preference.TwoTargetIconButtonPreference
 import org.koin.compose.koinInject
+import com.github.k1rakishou.fsaf.FileManager
+import com.yubyf.truetypeparser.TTFFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Serializable
 object SubtitlesPreferencesScreen : Screen {
@@ -44,6 +53,7 @@ object SubtitlesPreferencesScreen : Screen {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<SubtitlesPreferences>()
+    val fileManager = koinInject<FileManager>()
 
     Scaffold(
       topBar = {
@@ -70,6 +80,22 @@ object SubtitlesPreferencesScreen : Screen {
           preferences.fontsFolder.set(uri.toString())
         }
         val fontsFolder by preferences.fontsFolder.collectAsState()
+        val selectedFont by preferences.font.collectAsState()
+        val (availableFonts, setAvailableFonts) = remember { mutableStateOf<List<String>>(emptyList()) }
+        LaunchedEffect(Unit) {
+          withContext(Dispatchers.IO) {
+            val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
+            val families = if (fontsDir != null && fileManager.exists(fontsDir)) {
+              fileManager.listFiles(fontsDir)
+                .filter {
+                  fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
+                }
+                .mapNotNull { runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull() }
+                .distinct()
+            } else emptyList()
+            setAvailableFonts(families)
+          }
+        }
         Column(
           modifier = Modifier
             .fillMaxSize()
@@ -103,8 +129,21 @@ object SubtitlesPreferencesScreen : Screen {
             },
             iconButtonIcon = { Icon(Icons.Default.Clear, null) },
             onIconButtonClick = { preferences.fontsFolder.delete() },
-            iconButtonEnabled = fontsFolder.isNotBlank()
+            iconButtonEnabled = fontsFolder.isNotBlank(),
           )
+          if (availableFonts.isNotEmpty()) {
+            ProvidePreferenceLocals {
+              ListPreference(
+                value = selectedFont,
+                onValueChange = { preferences.font.set(it) },
+                title = { Text(stringResource(R.string.player_sheets_sub_typography_font)) },
+                valueToText = { androidx.compose.ui.text.AnnotatedString(it) },
+                values = availableFonts,
+                type = ListPreferenceType.DROPDOWN_MENU,
+                summary = { Text(selectedFont) },
+              )
+            }
+          }
           val autoloadExternal by preferences.autoLoadExternal.collectAsState()
           SwitchPreference(
             value = autoloadExternal,

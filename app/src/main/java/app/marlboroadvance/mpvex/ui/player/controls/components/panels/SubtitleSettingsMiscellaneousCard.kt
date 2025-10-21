@@ -55,18 +55,6 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
   ) {
     ProvidePreferenceLocals {
       Column {
-        var overrideAssSubs by remember {
-          mutableStateOf(MPVLib.getPropertyString("sub-ass-override").also { println(it) } == "force")
-        }
-        SwitchPreference(
-          overrideAssSubs,
-          onValueChange = {
-            overrideAssSubs = it
-            preferences.overrideAssSubs.set(it)
-            MPVLib.setPropertyString("sub-ass-override", if (it) "force" else "scale")
-          },
-          { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
-        )
         val subScale by MPVLib.propFloat["sub-scale"].collectAsState()
         val subPos by MPVLib.propInt["sub-pos"].collectAsState()
         SliderItem(
@@ -115,8 +103,6 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
               preferences.subScale.deleteAndGet().let {
                 MPVLib.setPropertyFloat("sub-scale", it)
               }
-              preferences.overrideAssSubs.deleteAndGet().let { overrideAssSubs = it }
-              MPVLib.setPropertyString("sub-ass-override", "scale") // mpv's default is 'scale'
             },
           ) {
             Row {

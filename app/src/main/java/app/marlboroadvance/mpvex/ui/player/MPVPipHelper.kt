@@ -29,7 +29,10 @@ const val PIP_INTENTS_FILTER = "pip_action"
 const val PIP_INTENT_ACTION = "pip_action_code"
 const val PIP_PLAY = 1
 const val PIP_PAUSE = 2
+const val PIP_REWIND = 3
+const val PIP_FORWARD = 4
 
+@Suppress("DEPRECATION")
 class MPVPipHelper(
   private val activity: AppCompatActivity,
   private val mpvView: MPVView,
@@ -46,8 +49,7 @@ class MPVPipHelper(
   private var videoHeight: Int = 0
 
   val isPipSupported: Boolean by lazy {
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-      activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+    activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
   }
 
   val isPipEnabled: Boolean
@@ -139,6 +141,22 @@ class MPVPipHelper(
                 MPVLib.setPropertyBoolean("pause", true)
               } catch (e: Exception) {
                 Log.e(TAG, "Error pausing", e)
+              }
+            }
+
+            PIP_REWIND -> {
+              try {
+                MPVLib.command("seek", "-10", "relative+exact")
+              } catch (e: Exception) {
+                Log.e(TAG, "Error rewinding", e)
+              }
+            }
+
+            PIP_FORWARD -> {
+              try {
+                MPVLib.command("seek", "10", "relative+exact")
+              } catch (e: Exception) {
+                Log.e(TAG, "Error forwarding", e)
               }
             }
           }
@@ -250,7 +268,14 @@ class MPVPipHelper(
   private fun createPipActions(): List<RemoteAction> {
     val isCurrentlyPlaying = isPlaying()
 
+    // Order is left-to-right in the PiP UI. Place play/pause in the middle.
     return listOf(
+      createPipRemoteAction(
+        context = activity,
+        title = "rewind",
+        icon = android.R.drawable.ic_media_rew,
+        actionCode = PIP_REWIND,
+      ),
       if (isCurrentlyPlaying) {
         createPipRemoteAction(
           context = activity,
@@ -266,6 +291,12 @@ class MPVPipHelper(
           actionCode = PIP_PLAY,
         )
       },
+      createPipRemoteAction(
+        context = activity,
+        title = "forward",
+        icon = android.R.drawable.ic_media_ff,
+        actionCode = PIP_FORWARD,
+      ),
     )
   }
 

@@ -6,7 +6,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.MediaMetadata
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -25,8 +30,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
-import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
+import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -81,6 +86,13 @@ class PlayerActivity : AppCompatActivity() {
   private var systemUIRestored = false
   private var noisyReceiverRegistered = false
   private var audioFocusRequested = false
+  private var audioFocusRequest: AudioFocusRequest? = null
+  private var resumeOnAudioFocusGain = false
+
+  // Media session
+  private lateinit var mediaSession: MediaSession
+  private var mediaSessionInitialized = false
+  private lateinit var playbackStateBuilder: PlaybackState.Builder
 
   // Receivers and Listeners
   private val noisyReceiver = object : BroadcastReceiver() {
@@ -95,9 +107,27 @@ class PlayerActivity : AppCompatActivity() {
     when (focusChange) {
       AudioManager.AUDIOFOCUS_LOSS,
       AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-      -> pausePlayback()
-      AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> viewModel.pause()
-      AudioManager.AUDIOFOCUS_GAIN -> Unit
+        -> {
+        // If we were playing, remember to resume only on transient loss
+        resumeOnAudioFocusGain = (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) && (viewModel.paused == false)
+        pausePlayback()
+        audioFocusRequested = false
+      }
+
+      AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+        // Policy: pause on duck for a better UX with video content
+        resumeOnAudioFocusGain = true
+        viewModel.pause()
+        audioFocusRequested = false
+      }
+
+      AudioManager.AUDIOFOCUS_GAIN -> {
+        audioFocusRequested = true
+        if (resumeOnAudioFocusGain) {
+          resumeOnAudioFocusGain = false
+          viewModel.unpause()
+        }
+      }
     }
   }
 
@@ -112,6 +142,7 @@ class PlayerActivity : AppCompatActivity() {
     setupPlayerControls()
     setupPipHelper()
     setupAudioFocus()
+    setupMediaSession()
 
     // Start playback
     getPlayableUri(intent)?.let(player::playFile)
@@ -130,18 +161,35 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun handleBackPress() {
+    // 1) Dismiss overlays first
+    if (viewModel.sheetShown.value != Sheets.None) {
+      viewModel.sheetShown.update { Sheets.None }
+      viewModel.showControls()
+      return
+    }
+    if (viewModel.panelShown.value != Panels.None) {
+      viewModel.panelShown.update { Panels.None }
+      viewModel.showControls()
+      return
+    }
+
+    // 2) If controls are hidden, show them instead of exiting
+    if (!viewModel.controlsShown.value) {
+      viewModel.showControls()
+      return
+    }
+
+    // 3) Optionally enter PiP (if playing and enabled)
     val shouldEnterPip = pipHelper.isPipSupported &&
       viewModel.paused != true &&
       playerPreferences.automaticallyEnterPip.get()
-
-    if (shouldEnterPip &&
-      viewModel.sheetShown.value == Sheets.None &&
-      viewModel.panelShown.value == Panels.None
-    ) {
+    if (shouldEnterPip) {
       pipHelper.enterPipMode()
-    } else {
-      finish()
+      return
     }
+
+    // 4) Otherwise finish
+    finish()
   }
 
   private fun setupPlayerControls() {
@@ -178,26 +226,51 @@ class PlayerActivity : AppCompatActivity() {
     viewModel.panelShown.update { Panels.None }
   }
 
-  @Suppress("DEPRECATION")
   private fun setupAudioFocus() {
-    val result = audioManager.requestAudioFocus(
-      audioFocusChangeListener,
-      AudioManager.STREAM_MUSIC,
-      AudioManager.AUDIOFOCUS_GAIN,
-    )
-    audioFocusRequested = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
-    if (!audioFocusRequested) {
-      Log.w(TAG, "Failed to obtain audio focus")
+    val audioAttributes = AudioAttributes.Builder()
+      .setUsage(AudioAttributes.USAGE_MEDIA)
+      .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+      .build()
+
+    audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+      .setAudioAttributes(audioAttributes)
+      .setOnAudioFocusChangeListener(audioFocusChangeListener)
+      .setAcceptsDelayedFocusGain(true)
+      .setWillPauseWhenDucked(true)
+      .build()
+    // Do not request focus here; request only when playback actually starts
+  }
+
+  private fun requestAudioFocusForPlayback(): Boolean {
+    val req = audioFocusRequest ?: return false
+    val result = audioManager.requestAudioFocus(req)
+    return when (result) {
+      AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
+        audioFocusRequested = true
+        resumeOnAudioFocusGain = false
+        true
+      }
+
+      AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
+        audioFocusRequested = false
+        resumeOnAudioFocusGain = true
+        false
+      }
+
+      else -> {
+        audioFocusRequested = false
+        resumeOnAudioFocusGain = false
+        false
+      }
     }
   }
 
-  private fun getPlayableUri(intent: Intent): String? {
-    val uri = parsePathFromIntent(intent) ?: return null
-    return if (uri.startsWith("content://")) {
-      uri.toUri().openContentFd(this)
-    } else {
-      uri
-    }
+  private fun abandonAudioFocusIfHeld() {
+    if (!audioFocusRequested) return
+    runCatching {
+      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+      audioFocusRequested = false
+    }.onFailure { e -> Log.e(TAG, "Error abandoning audio focus", e) }
   }
 
   override fun onDestroy() {
@@ -211,6 +284,7 @@ class PlayerActivity : AppCompatActivity() {
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
+      releaseMediaSession()
     }.onFailure { e ->
       Log.e(TAG, "Error during onDestroy", e)
     }
@@ -253,16 +327,8 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  @Suppress("DEPRECATION")
   private fun cleanupAudio() {
-    if (audioFocusRequested) {
-      runCatching {
-        audioManager.abandonAudioFocus(audioFocusChangeListener)
-        audioFocusRequested = false
-      }.onFailure { e ->
-        Log.e(TAG, "Error abandoning audio focus", e)
-      }
-    }
+    abandonAudioFocusIfHeld()
   }
 
   private fun cleanupReceivers() {
@@ -364,7 +430,6 @@ class PlayerActivity : AppCompatActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
   }
 
-  @Suppress("DEPRECATION")
   private fun setupSystemUI() {
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
@@ -415,9 +480,15 @@ class PlayerActivity : AppCompatActivity() {
     Utils.copyAssets(this)
     copyMPVScripts()
     copyMPVConfigFiles()
-    lifecycleScope.launch(Dispatchers.IO) {
-      copyMPVFonts()
-    }
+    // Ensure default subtitle font is available synchronously before MPV init (persistent dir)
+    runCatching {
+      val fontsPath = filesDir.path
+      val destDir = ensureFontsDirectory(fontsPath)
+      copyDefaultSubfont(fontsPath, destDir)
+    }.onFailure { e -> Log.e(TAG, "Error ensuring default subtitle font", e) }
+
+    // Copy user-provided fonts asynchronously (can be large)
+    lifecycleScope.launch(Dispatchers.IO) { copyMPVFonts() }
   }
 
   private fun setupMPV() {
@@ -489,17 +560,17 @@ class PlayerActivity : AppCompatActivity() {
 
   private fun copyMPVFonts() {
     runCatching {
-      val cachePath = cacheDir.path
+      val persistentPath = filesDir.path
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
       val fontsDir = fileManager.fromUri(fontsFolderUri)
-        ?: error("User hasn't set any fonts directory")
+        ?: return@runCatching // No fonts directory set; keep default font only
 
       if (!fileManager.exists(fontsDir)) {
-        error("Couldn't access fonts directory")
+        return@runCatching // Source folder missing; keep whatever is already cached
       }
 
-      val destDir = ensureFontsDirectory(cachePath)
-      copyDefaultSubfont(cachePath, destDir)
+      val destDir = ensureFontsDirectory(persistentPath)
+      copyDefaultSubfont(persistentPath, destDir)
 
       fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
     }.onFailure { e ->
@@ -507,22 +578,22 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  private fun ensureFontsDirectory(cachePath: String): com.github.k1rakishou.fsaf.file.AbstractFile {
-    val destDir = fileManager.fromPath("$cachePath/fonts")
+  private fun ensureFontsDirectory(basePath: String): com.github.k1rakishou.fsaf.file.AbstractFile {
+    val destDir = fileManager.fromPath("$basePath/fonts")
     if (!fileManager.exists(destDir)) {
-      fileManager.createDir(fileManager.fromPath(cachePath), "fonts")
+      fileManager.createDir(fileManager.fromPath(basePath), "fonts")
     }
     return destDir
   }
 
   private fun copyDefaultSubfont(
-    cachePath: String,
+    basePath: String,
     destDir: com.github.k1rakishou.fsaf.file.AbstractFile,
   ) {
     if (fileManager.findFile(destDir, "subfont.ttf") == null) {
       resources.assets.open("subfont.ttf")
         .use { input ->
-          File("$cachePath/fonts/subfont.ttf")
+          File("$basePath/fonts/subfont.ttf")
             .outputStream()
             .use { output ->
               input.copyTo(output)
@@ -608,7 +679,6 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  @Suppress("DEPRECATION")
   private fun parsePathFromSendIntent(intent: Intent): String? {
     return if (intent.hasExtra(Intent.EXTRA_STREAM)) {
       intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this)
@@ -624,7 +694,6 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  @Suppress("ReturnCount")
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
 
@@ -639,7 +708,6 @@ class PlayerActivity : AppCompatActivity() {
     return if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
     } else {
-      @Suppress("DEPRECATION")
       intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
     }
   }
@@ -657,6 +725,15 @@ class PlayerActivity : AppCompatActivity() {
     }.onFailure { e ->
       Log.e(TAG, "Error getting display name from URI", e)
     }.getOrNull()
+  }
+
+  private fun getPlayableUri(intent: Intent): String? {
+    val uri = parsePathFromIntent(intent) ?: return null
+    return if (uri.startsWith("content://")) {
+      uri.toUri().openContentFd(this)
+    } else {
+      uri
+    }
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
@@ -690,9 +767,22 @@ class PlayerActivity : AppCompatActivity() {
   private fun handlePauseStateChange(isPaused: Boolean) {
     if (isPaused) {
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      abandonAudioFocusIfHeld()
     } else {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      val hasFocus = requestAudioFocusForPlayback()
+      if (!hasFocus) {
+        // Do not play without focus
+        viewModel.pause()
+      }
     }
+    updateMediaSessionPlaybackState(!isPaused)
+    // Refresh PiP actions to reflect play/pause state
+    runCatching {
+      if (isInPictureInPictureMode && pipHelper.isPipSupported) {
+        pipHelper.updatePictureInPictureParams()
+      }
+    }.onFailure { /* no-op */ }
   }
 
   private fun handleEndOfFile(isEof: Boolean) {
@@ -708,6 +798,7 @@ class PlayerActivity : AppCompatActivity() {
       "user-data/mpvex" -> viewModel.handleLuaInvocation(property, value)
     }
   }
+
   internal fun onObserverEvent(property: String) {
     if (player.isExiting) return
 
@@ -746,9 +837,14 @@ class PlayerActivity : AppCompatActivity() {
     viewModel.setVideoZoom(defaultZoom)
 
     viewModel.unpause()
-  }
 
-  // ==================== Playback State Management ====================
+    // MediaSession metadata/state
+    updateMediaSessionMetadata(
+      title = fileName,
+      durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
+    )
+    updateMediaSessionPlaybackState(isPlaying = true)
+  }
 
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
@@ -1069,7 +1165,75 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  // ==================== Constants ====================
+  private fun setupMediaSession() {
+    runCatching {
+      mediaSession = MediaSession(this, TAG).apply {
+        setCallback(
+          object : MediaSession.Callback() {
+            override fun onPlay() {
+              viewModel.unpause()
+              updateMediaSessionPlaybackState(isPlaying = true)
+            }
+
+            override fun onPause() {
+              viewModel.pause()
+              updateMediaSessionPlaybackState(isPlaying = false)
+            }
+
+            override fun onSeekTo(pos: Long) {
+              viewModel.seekTo((pos / 1000).toInt(), precise = true)
+              updateMediaSessionPlaybackState(isPlaying = viewModel.paused == false)
+            }
+          },
+        )
+        isActive = true
+      }
+      playbackStateBuilder = PlaybackState.Builder()
+        .setActions(
+          PlaybackState.ACTION_PLAY or
+            PlaybackState.ACTION_PAUSE or
+            PlaybackState.ACTION_PLAY_PAUSE or
+            PlaybackState.ACTION_SEEK_TO,
+        )
+      mediaSessionInitialized = true
+    }.onFailure { e ->
+      Log.e(TAG, "Failed to initialize MediaSession", e)
+      mediaSessionInitialized = false
+    }
+  }
+
+  private fun updateMediaSessionPlaybackState(isPlaying: Boolean) {
+    if (!mediaSessionInitialized) return
+    runCatching {
+      val state = if (isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED
+      val positionMs = (viewModel.pos ?: 0) * 1000L
+      mediaSession.setPlaybackState(
+        playbackStateBuilder
+          .setState(state, positionMs, if (isPlaying) 1.0f else 0f)
+          .build(),
+      )
+    }.onFailure { e -> Log.e(TAG, "Error updating playback state", e) }
+  }
+
+  private fun updateMediaSessionMetadata(title: String, durationMs: Long) {
+    if (!mediaSessionInitialized) return
+    runCatching {
+      val metadata = MediaMetadata.Builder()
+        .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+        .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs)
+        .build()
+      mediaSession.setMetadata(metadata)
+    }.onFailure { e -> Log.e(TAG, "Error updating metadata", e) }
+  }
+
+  private fun releaseMediaSession() {
+    if (!mediaSessionInitialized) return
+    runCatching {
+      mediaSession.isActive = false
+      mediaSession.release()
+    }.onFailure { e -> Log.e(TAG, "Error releasing MediaSession", e) }
+    mediaSessionInitialized = false
+  }
 
   companion object {
     private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"
