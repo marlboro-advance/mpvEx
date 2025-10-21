@@ -70,9 +70,9 @@ class PlayerViewModel(
   val chapters = MPVLib.propNode["chapter-list"]
     .map { (it?.toObject<List<ChapterNode>>(json) ?: persistentListOf()).map { it.toSegment() }.toImmutableList() }
 
-  private val _controlsShown = MutableStateFlow(true)
+  private val _controlsShown = MutableStateFlow(false)
   val controlsShown = _controlsShown.asStateFlow()
-  private val _seekBarShown = MutableStateFlow(true)
+  private val _seekBarShown = MutableStateFlow(false)
   val seekBarShown = _seekBarShown.asStateFlow()
   private val _areControlsLocked = MutableStateFlow(false)
   val areControlsLocked = _areControlsLocked.asStateFlow()

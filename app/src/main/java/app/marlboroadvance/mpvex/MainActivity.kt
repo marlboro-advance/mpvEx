@@ -89,9 +89,9 @@ class MainActivity : ComponentActivity() {
                 TransformOrigin(-1f, .5f),
               )
             ).togetherWith(
-            fadeOut(animationSpec = tween(220)) +
-              scaleOut(animationSpec = tween(220, delayMillis = 30), targetScale = .9f, TransformOrigin(-1f, .5f)),
-          )
+              fadeOut(animationSpec = tween(220)) +
+                scaleOut(animationSpec = tween(220, delayMillis = 30), targetScale = .9f, TransformOrigin(-1f, .5f)),
+            )
         },
       )
     }
