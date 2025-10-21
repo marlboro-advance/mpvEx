@@ -1,4 +1,4 @@
-name: make preview for github pages
+name: Preview Build & Deploy
 
 permissions:
   contents: write
@@ -9,7 +9,29 @@ on:
   push:
     branches:
       - dev
-  workflow_dispatch:
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'build.gradle.kts'
+      - 'settings.gradle'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'build.gradle.kts'
+      - 'settings.gradle'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew.bat'
+
+  workflow_dispatch: # Manual trigger
 
 jobs:
   build:
@@ -122,7 +144,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
