@@ -523,29 +523,11 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   private fun copyMPVConfigFiles() {
     val applicationPath = filesDir.path
     runCatching {
-      // If both files already exist in app storage, treat them as cached and skip heavy copy
-      val appMpvConf = File("$applicationPath/mpv.conf")
-      val appInputConf = File("$applicationPath/input.conf")
-      if (appMpvConf.exists() && appInputConf.exists()) {
-        return@runCatching
-      }
-
-      val mpvConfUri = advancedPreferences.mpvConfStorageUri.get().toUri()
-      val mpvConf = fileManager.fromUri(mpvConfUri)
-        ?: error("User hasn't set any mpvConfig directory")
-
-      if (!fileManager.exists(mpvConf)) {
-        error("Couldn't access mpv configuration directory")
-      }
-
-      fileManager.copyDirectoryWithContent(
-        mpvConf,
-        fileManager.fromPath(applicationPath),
-        true,
-      )
-    }.onFailure { e ->
-      Log.e(TAG, "Couldn't copy mpv configuration files: ${e.message}")
+      // Simply ensure default config files exist
+      // The actual content is managed by AdvancedPreferencesScreen via cache
       createDefaultConfigFiles(applicationPath)
+    }.onFailure { e ->
+      Log.e(TAG, "Error ensuring config files exist: ${e.message}")
     }
   }
 
@@ -554,13 +536,11 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       val mpvConfFile = File("$applicationPath/mpv.conf")
       if (!mpvConfFile.exists()) {
         mpvConfFile.createNewFile()
-        mpvConfFile.writeText(advancedPreferences.mpvConf.get())
       }
 
       val inputConfFile = File("$applicationPath/input.conf")
       if (!inputConfFile.exists()) {
         inputConfFile.createNewFile()
-        inputConfFile.writeText(advancedPreferences.inputConf.get())
       }
     }.onFailure { e ->
       Log.e(TAG, "Error creating default config files", e)

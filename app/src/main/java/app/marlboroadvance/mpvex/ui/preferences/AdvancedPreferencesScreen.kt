@@ -63,7 +63,6 @@ import kotlin.io.path.readLines
 
 @Serializable
 object AdvancedPreferencesScreen : Screen {
-  @Suppress("DEPRECATION")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -114,14 +113,9 @@ object AdvancedPreferencesScreen : Screen {
             onIconButtonClick = { preferences.mpvConfStorageUri.delete() },
             iconButtonEnabled = mpvConfStorageLocation.isNotBlank(),
           )
-          var mpvConf by remember { mutableStateOf("") }
-          var mpvConfFileExists by remember { mutableStateOf(false) }
+          var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
           LaunchedEffect(mpvConfStorageLocation) {
-            if (mpvConfStorageLocation.isBlank()) {
-              mpvConfFileExists = false
-              mpvConf = ""
-              return@LaunchedEffect
-            }
+            if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
             withContext(Dispatchers.IO) {
               val tempFile = kotlin.io.path.createTempFile()
               runCatching {
@@ -129,31 +123,15 @@ object AdvancedPreferencesScreen : Screen {
                   context,
                   mpvConfStorageLocation.toUri(),
                 )
-                var mpvConfFile = tree?.findFile("mpv.conf")
+                val mpvConfFile = tree?.findFile("mpv.conf")
                 if (mpvConfFile != null && mpvConfFile.exists()) {
-                  mpvConfFileExists = true
                   context.contentResolver.openInputStream(mpvConfFile.uri)?.copyTo(tempFile.outputStream())
                   val content = tempFile.readLines().fastJoinToString("\n")
-                  mpvConf = content
-                } else {
-                  // Create the file if it doesn't exist
-                  if (tree != null) {
-                    mpvConfFile = tree.createFile("text/plain", "mpv.conf")
-                    mpvConfFile?.renameTo("mpv.conf")
-                    if (mpvConfFile != null) {
-                      // Create with empty content
-                      val out = context.contentResolver.openOutputStream(mpvConfFile.uri)
-                      out?.write("".toByteArray())
-                      out?.flush()
-                      out?.close()
-                      mpvConfFileExists = true
-                      mpvConf = ""
-                    }
+                  preferences.mpvConf.set(content)
+                  withContext(Dispatchers.Main) {
+                    mpvConf = content
                   }
                 }
-              }.onFailure {
-                mpvConfFileExists = false
-                mpvConf = ""
               }
               tempFile.deleteIfExists()
             }
@@ -162,7 +140,6 @@ object AdvancedPreferencesScreen : Screen {
             value = mpvConf,
             onValueChange = { mpvConf = it },
             title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
-            enabled = mpvConfStorageLocation.isNotBlank() && mpvConfFileExists,
             textField = { value, onValueChange, onOk ->
               OutlinedTextField(
                 value = value,
@@ -172,41 +149,29 @@ object AdvancedPreferencesScreen : Screen {
               )
             },
             textToValue = {
+              preferences.mpvConf.set(it)
+              File(context.filesDir, "mpv.conf").writeText(it)
               if (mpvConfStorageLocation.isNotBlank()) {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val mpvConfFile = tree.findFile("mpv.conf")
-                val uri = if (mpvConfFile == null) {
+                val uri = if (tree.findFile("mpv.conf") == null) {
                   val conf = tree.createFile("text/plain", "mpv.conf")!!
                   conf.renameTo("mpv.conf")
                   conf.uri
                 } else {
-                  mpvConfFile.uri
+                  tree.findFile("mpv.conf")!!.uri
                 }
-                val out = context.contentResolver.openOutputStream(uri)
+                val out = context.contentResolver.openOutputStream(uri, "wt")
                 out!!.write(it.toByteArray())
                 out.flush()
                 out.close()
               }
               it
             },
-            summary = {
-            if (!mpvConfFileExists || mpvConfStorageLocation.isBlank()) {
-                Text("Set storage location to enable editing")
-              } else if (mpvConf.isNotBlank()) {
-                Text(mpvConf.lines()[0])
-              } else {
-                Text("Empty configuration file")
-              }
-            },
+            summary = { if (mpvConf.isNotBlank()) Text(mpvConf.lines()[0]) },
           )
-          var inputConf by remember { mutableStateOf("") }
-          var inputConfFileExists by remember { mutableStateOf(false) }
+          var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
           LaunchedEffect(mpvConfStorageLocation) {
-            if (mpvConfStorageLocation.isBlank()) {
-              inputConfFileExists = false
-              inputConf = ""
-              return@LaunchedEffect
-            }
+            if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
             withContext(Dispatchers.IO) {
               val tempFile = kotlin.io.path.createTempFile()
               runCatching {
@@ -214,31 +179,15 @@ object AdvancedPreferencesScreen : Screen {
                   context,
                   mpvConfStorageLocation.toUri(),
                 )
-                var inputConfFile = tree?.findFile("input.conf")
+                val inputConfFile = tree?.findFile("input.conf")
                 if (inputConfFile != null && inputConfFile.exists()) {
-                  inputConfFileExists = true
                   context.contentResolver.openInputStream(inputConfFile.uri)?.copyTo(tempFile.outputStream())
                   val content = tempFile.readLines().fastJoinToString("\n")
-                  inputConf = content
-                } else {
-                  // Create the file if it doesn't exist
-                  if (tree != null) {
-                    inputConfFile = tree.createFile("text/plain", "input.conf")
-                    inputConfFile?.renameTo("input.conf")
-                    if (inputConfFile != null) {
-                      // Create with empty content
-                      val out = context.contentResolver.openOutputStream(inputConfFile.uri)
-                      out?.write("".toByteArray())
-                      out?.flush()
-                      out?.close()
-                      inputConfFileExists = true
-                      inputConf = ""
-                    }
+                  preferences.inputConf.set(content)
+                  withContext(Dispatchers.Main) {
+                    inputConf = content
                   }
                 }
-              }.onFailure {
-                inputConfFileExists = false
-                inputConf = ""
               }
               tempFile.deleteIfExists()
             }
@@ -247,7 +196,6 @@ object AdvancedPreferencesScreen : Screen {
             value = inputConf,
             onValueChange = { inputConf = it },
             title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
-            enabled = mpvConfStorageLocation.isNotBlank() && inputConfFileExists,
             textField = { value, onValueChange, onOk ->
               OutlinedTextField(
                 value = value,
@@ -257,32 +205,25 @@ object AdvancedPreferencesScreen : Screen {
               )
             },
             textToValue = {
+              preferences.inputConf.set(it)
+              File(context.filesDir, "input.conf").writeText(it)
               if (mpvConfStorageLocation.isNotBlank()) {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val inputConfFile = tree.findFile("input.conf")
-                val uri = if (inputConfFile == null) {
+                val uri = if (tree.findFile("input.conf") == null) {
                   val conf = tree.createFile("text/plain", "input.conf")!!
                   conf.renameTo("input.conf")
                   conf.uri
                 } else {
-                  inputConfFile.uri
+                  tree.findFile("input.conf")!!.uri
                 }
-                val out = context.contentResolver.openOutputStream(uri)
+                val out = context.contentResolver.openOutputStream(uri, "wt")
                 out!!.write(it.toByteArray())
                 out.flush()
                 out.close()
               }
               it
             },
-            summary = {
-            if (!inputConfFileExists || mpvConfStorageLocation.isBlank()) {
-                Text("Set storage location to enable editing")
-              } else if (inputConf.isNotBlank()) {
-                Text(inputConf.lines()[0])
-              } else {
-                Text("Empty configuration file")
-              }
-            },
+            summary = { if (inputConf.isNotBlank()) Text(inputConf.lines()[0]) },
           )
           val activity = LocalActivity.current!!
           val clipboard = LocalClipboardManager.current
@@ -318,18 +259,59 @@ object AdvancedPreferencesScreen : Screen {
               stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
               onConfirm = {
                 scope.launch(Dispatchers.IO) {
-                  mpvexDatabase.videoDataDao().clearAllPlaybackStates()
+                  runCatching {
+                    mpvexDatabase.videoDataDao().clearAllPlaybackStates()
+                    mpvexDatabase.recentlyPlayedDao().clearAll()
+                  }.onSuccess {
+                    withContext(Dispatchers.Main) {
+                      isConfirmDialogShown = false
+                      Toast.makeText(
+                        context,
+                        context.getString(R.string.pref_advanced_cleared_playback_history),
+                        Toast.LENGTH_SHORT,
+                      ).show()
+                    }
+                  }.onFailure { error ->
+                    withContext(Dispatchers.Main) {
+                      isConfirmDialogShown = false
+                      Toast.makeText(
+                        context,
+                        "Failed to clear: ${error.message}",
+                        Toast.LENGTH_LONG,
+                      ).show()
+                    }
+                  }
                 }
-                isConfirmDialogShown = false
-                Toast.makeText(
-                  context,
-                  context.getString(R.string.pref_advanced_cleared_playback_history),
-                  Toast.LENGTH_SHORT,
-                ).show()
               },
               onCancel = { isConfirmDialogShown = false },
             )
           }
+          Preference(
+            title = { Text(text = "Clear Config Cache") },
+            onClick = {
+              scope.launch(Dispatchers.IO) {
+                val mpvConfFile = File(context.filesDir, "mpv.conf")
+                val inputConfFile = File(context.filesDir, "input.conf")
+
+                mpvConfFile.delete()
+                inputConfFile.delete()
+
+                // Clear preferences too
+                preferences.mpvConf.delete()
+                preferences.inputConf.delete()
+
+                withContext(Dispatchers.Main) {
+                  mpvConf = ""
+                  inputConf = ""
+                  Toast.makeText(
+                    context,
+                    "Config cache cleared",
+                    Toast.LENGTH_SHORT,
+                  ).show()
+                }
+              }
+            },
+          )
           Preference(
             title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
             onClick = {
