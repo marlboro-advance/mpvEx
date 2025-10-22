@@ -217,10 +217,15 @@ class PlayerViewModel(
   fun changeBrightnessTo(
     brightness: Float,
   ) {
+    val coercedBrightness = brightness.coerceIn(0f, 1f)
     host.hostWindow.attributes = host.hostWindow.attributes.apply {
-      screenBrightness = brightness.coerceIn(0f, 1f).also {
+      screenBrightness = coercedBrightness.also {
         currentBrightness.update { _ -> it }
       }
+    }
+    // Save brightness to preferences if remember brightness is enabled
+    if (playerPreferences.rememberBrightness.get()) {
+      playerPreferences.defaultBrightness.set(coercedBrightness)
     }
   }
 

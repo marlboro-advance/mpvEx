@@ -10,6 +10,7 @@ about-libs = "12.2.4"
 navigation3 = "1.0.0-alpha06"
 kotlinx-serialization = "1.9.0"
 accompanist = "0.36.0"
+uiTextGoogleFonts = "1.9.3"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -63,6 +64,7 @@ about-libs-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "
 about-libs-ui-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "about-libs" }
 simple-icons = { module = "br.com.devsrsouza.compose.icons:simple-icons", version = "1.1.1" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
+androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel", "koin-startup"]
