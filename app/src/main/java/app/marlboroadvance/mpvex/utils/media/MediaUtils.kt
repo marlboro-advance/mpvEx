@@ -2,7 +2,9 @@ package app.marlboroadvance.mpvex.utils.media
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.net.toUri
+import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import `is`.xyz.mpv.Utils
@@ -14,26 +16,18 @@ import org.koin.java.KoinJavaComponent.inject
 object MediaUtils {
 
   private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+  private const val TAG = "MediaUtils"
 
-  fun playFile(filepath: String, context: Context) {
-    // Save the recently played file in the database
+  fun playFile(video: Video, context: Context) {
+    // Save the recently played file with the actual file path for proper folder matching
     CoroutineScope(Dispatchers.IO).launch {
-      val fileName = extractFileName(filepath)
-      recentlyPlayedRepository.addRecentlyPlayed(filepath, fileName)
+      Log.d(TAG, "Saving recently played video: filePath='${video.path}', fileName='${video.displayName}'")
+      recentlyPlayedRepository.addRecentlyPlayed(video.path, video.displayName)
     }
 
-    val intent = Intent(Intent.ACTION_VIEW, filepath.toUri())
+    val intent = Intent(Intent.ACTION_VIEW, video.uri)
     intent.setClass(context, PlayerActivity::class.java)
     context.startActivity(intent)
-  }
-
-  private fun extractFileName(filepath: String): String {
-    return try {
-      val uri = filepath.toUri()
-      uri.lastPathSegment ?: filepath
-    } catch (_: Exception) {
-      filepath
-    }
   }
 
   suspend fun getRecentlyPlayedFile(): String? {

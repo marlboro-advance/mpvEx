@@ -7,15 +7,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
+import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 class VideoListViewModel(
   private val application: Application,
   private val bucketId: String,
-  folderName: String,
 ) : ViewModel() {
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
@@ -24,25 +25,27 @@ class VideoListViewModel(
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+  private val _recentlyPlayedFilePath = MutableStateFlow<String?>(null)
+  val recentlyPlayedFilePath: StateFlow<String?> = _recentlyPlayedFilePath.asStateFlow()
+
+  private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
   private val tag = "VideoListViewModel"
 
   init {
-    Log.d(tag, "ViewModel initialized for bucket: $bucketId, folder: $folderName")
     loadVideos()
+    loadRecentlyPlayed()
   }
 
   fun refresh() {
-    Log.d(tag, "Refresh called for bucket: $bucketId")
     loadVideos()
+    loadRecentlyPlayed()
   }
 
   private fun loadVideos() {
     viewModelScope.launch {
       try {
         _isLoading.value = true
-        Log.d(tag, "Starting to load videos for bucket: $bucketId")
         val videoList = VideoRepository.getVideosInFolder(application, bucketId)
-        Log.d(tag, "Loaded ${videoList.size} videos")
         _videos.value = videoList
       } catch (e: Exception) {
         Log.e(tag, "Error loading videos for bucket $bucketId", e)
@@ -53,12 +56,24 @@ class VideoListViewModel(
     }
   }
 
+  private fun loadRecentlyPlayed() {
+    viewModelScope.launch {
+      try {
+        val recentlyPlayed = recentlyPlayedRepository.getLastPlayed()
+        _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
+      } catch (e: Exception) {
+        Log.e(tag, "Error loading recently played", e)
+        _recentlyPlayedFilePath.value = null
+      }
+    }
+  }
+
   companion object {
-    fun factory(application: Application, bucketId: String, folderName: String) =
+    fun factory(application: Application, bucketId: String) =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-          return VideoListViewModel(application, bucketId, folderName) as T
+          return VideoListViewModel(application, bucketId) as T
         }
       }
   }

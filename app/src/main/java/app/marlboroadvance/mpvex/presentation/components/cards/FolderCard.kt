@@ -32,6 +32,7 @@ fun FolderCard(
   folder: VideoFolder,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  isRecentlyPlayed: Boolean = false,
 ) {
   Card(
     modifier = modifier
@@ -66,7 +67,7 @@ fun FolderCard(
         Text(
           folder.name,
           style = MaterialTheme.typography.titleMedium,
-          color = MaterialTheme.colorScheme.onSurface,
+          color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )

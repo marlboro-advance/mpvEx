@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -52,7 +55,6 @@ import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.device.TVUtils
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -75,14 +77,15 @@ data class VideoListScreen(
       factory = VideoListViewModel.factory(
         context.applicationContext as android.app.Application,
         bucketId,
-        folderName,
       ),
     )
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
     val isTV = TVUtils.isAndroidTV(context)
@@ -103,7 +106,6 @@ data class VideoListScreen(
         isRefreshing.value = true
         coroutineScope.launch {
           viewModel.refresh()
-          delay(800)
           isRefreshing.value = false
         }
       },
@@ -112,6 +114,13 @@ data class VideoListScreen(
     )
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
+
+    // Refresh recently played when returning to this screen
+    LaunchedEffect(lifecycleOwner) {
+      lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+        viewModel.refresh()
+      }
+    }
 
     Scaffold(
       topBar = {
@@ -129,7 +138,8 @@ data class VideoListScreen(
         isTV = isTV,
         isRefreshing = isRefreshing,
         pullRefreshState = pullRefreshState,
-        onVideoClick = { video -> MediaUtils.playFile(video.uri.toString(), context) },
+        recentlyPlayedFilePath = recentlyPlayedFilePath,
+        onVideoClick = { video -> MediaUtils.playFile(video, context) },
         modifier = Modifier.padding(padding),
       )
 
@@ -207,6 +217,7 @@ private fun VideoListContent(
   isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
   pullRefreshState: androidx.compose.material.pullrefresh.PullRefreshState,
+  recentlyPlayedFilePath: String?,
   onVideoClick: (Video) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -248,9 +259,15 @@ private fun VideoListContent(
           contentPadding = PaddingValues(8.dp),
         ) {
           items(videos.size) { index ->
+            val video = videos[index]
+            val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
+              video.path == filePath
+            } ?: false
+
             VideoCard(
-              video = videos[index],
-              onClick = { onVideoClick(videos[index]) },
+              video = video,
+              isRecentlyPlayed = isRecentlyPlayed,
+              onClick = { onVideoClick(video) },
             )
           }
         }

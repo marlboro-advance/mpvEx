@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CalendarToday
@@ -45,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
@@ -72,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import java.io.File
 
 @Serializable
 object FolderListScreen : Screen {
@@ -91,6 +95,7 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
     val isTV = TVUtils.isAndroidTV(context)
@@ -100,6 +105,7 @@ object FolderListScreen : Screen {
     val sortDialogOpen = remember { mutableStateOf(false) }
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var hasRecentlyPlayed by remember { mutableStateOf(false) }
+    val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
 
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
@@ -149,6 +155,13 @@ object FolderListScreen : Screen {
       hasRecentlyPlayed = MediaUtils.hasRecentlyPlayedFile()
     }
 
+    // Refresh when returning to the screen (STARTED state)
+    LaunchedEffect(lifecycleOwner) {
+      lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.refresh()
+      }
+    }
+
     LaunchedEffect(fabMenuExpanded) {
       if (fabMenuExpanded) {
         hasRecentlyPlayed = MediaUtils.hasRecentlyPlayedFile()
@@ -187,6 +200,7 @@ object FolderListScreen : Screen {
             isTV = isTV,
             isRefreshing = isRefreshing,
             pullRefreshState = pullRefreshState,
+            recentlyPlayedFilePath = recentlyPlayedFilePath,
             onFolderClick = { folder ->
               fabMenuExpanded = false
               backstack.add(VideoListScreen(folder.bucketId, folder.name))
@@ -276,6 +290,7 @@ private fun FolderListContent(
   isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
   pullRefreshState: androidx.compose.material.pullrefresh.PullRefreshState,
+  recentlyPlayedFilePath: String?,
   onFolderClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -289,10 +304,17 @@ private fun FolderListContent(
       modifier = Modifier.fillMaxWidth(),
       contentPadding = PaddingValues(8.dp),
     ) {
-      items(folders.size) { index ->
+      items(folders) { folder ->
+        // Check if this folder contains the recently played video
+        val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
+          val file = File(filePath)
+          file.parent == folder.path
+        } ?: false
+
         FolderCard(
-          folder = folders[index],
-          onClick = { onFolderClick(folders[index]) },
+          folder = folder,
+          isRecentlyPlayed = isRecentlyPlayed,
+          onClick = { onFolderClick(folder) },
         )
       }
 

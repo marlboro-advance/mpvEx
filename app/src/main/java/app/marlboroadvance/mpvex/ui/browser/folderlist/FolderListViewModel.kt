@@ -7,47 +7,64 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.data.media.repository.VideoFolderRepository
+import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 class FolderListViewModel(private val application: Application) : ViewModel() {
 
   private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
 
-  private val tag = "FolderListViewModel"
+  private val _recentlyPlayedFilePath = MutableStateFlow<String?>(null)
+  val recentlyPlayedFilePath: StateFlow<String?> = _recentlyPlayedFilePath.asStateFlow()
+
+  private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+
+  companion object {
+    private const val TAG = "FolderListViewModel"
+
+    fun factory(application: Application) = object : ViewModelProvider.Factory {
+      @Suppress("UNCHECKED_CAST")
+      override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return FolderListViewModel(application) as T
+      }
+    }
+  }
 
   init {
-    Log.d(tag, "ViewModel initialized, loading folders")
     loadVideoFolders()
+    loadRecentlyPlayed()
   }
 
   fun refresh() {
-    Log.d(tag, "Refresh called, reloading folders")
     loadVideoFolders()
+    loadRecentlyPlayed()
   }
 
   private fun loadVideoFolders() {
     viewModelScope.launch {
       try {
-        Log.d(tag, "Starting to load video folders")
         val folders = VideoFolderRepository.getVideoFolders(application)
-        Log.d(tag, "Loaded ${folders.size} folders: ${folders.map { it.name }}")
         _videoFolders.value = folders
       } catch (e: Exception) {
-        Log.e(tag, "Error loading video folders", e)
+        Log.e(TAG, "Error loading video folders", e)
         _videoFolders.value = emptyList()
       }
     }
   }
 
-  companion object {
-    fun factory(application: Application) = object : ViewModelProvider.Factory {
-      @Suppress("UNCHECKED_CAST")
-      override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return FolderListViewModel(application) as T
+  private fun loadRecentlyPlayed() {
+    viewModelScope.launch {
+      try {
+        val recentlyPlayed = recentlyPlayedRepository.getLastPlayed()
+        _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
+      } catch (e: Exception) {
+        Log.e(TAG, "Error loading recently played", e)
+        _recentlyPlayedFilePath.value = null
       }
     }
   }

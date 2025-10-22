@@ -33,6 +33,7 @@ fun VideoCard(
   video: Video,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  isRecentlyPlayed: Boolean = false,
 ) {
   Card(
     modifier = modifier
@@ -67,7 +68,7 @@ fun VideoCard(
         Text(
           video.displayName,
           style = MaterialTheme.typography.titleSmall,
-          color = MaterialTheme.colorScheme.onSurface,
+          color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )

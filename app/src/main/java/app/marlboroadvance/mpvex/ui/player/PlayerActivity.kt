@@ -29,9 +29,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
-import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
+import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
@@ -966,10 +967,34 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     runCatching {
       // Extract the original URI from the intent
       val uri = extractUriFromIntent(intent) ?: return@runCatching
-      val uriString = uri.toString()
+
+      // Try to get the actual file path from the content URI
+      val filePath = if (uri.scheme == "content") {
+        // Try to resolve content URI to actual file path
+        contentResolver.query(
+          uri,
+          arrayOf(MediaStore.MediaColumns.DATA),
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          if (cursor.moveToFirst()) {
+            val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+            if (columnIndex != -1) cursor.getString(columnIndex) else null
+          } else {
+            null
+          }
+        } ?: uri.toString() // Fallback to URI string if we can't resolve
+      } else {
+        uri.toString()
+      }
+
+      if (BuildConfig.DEBUG) {
+        Log.d(TAG, "Saving recently played from PlayerActivity: filePath='$filePath', fileName='$fileName'")
+      }
 
       recentlyPlayedRepository.addRecentlyPlayed(
-        filePath = uriString,
+        filePath = filePath,
         fileName = fileName,
       )
     }.onFailure { e ->
