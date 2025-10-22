@@ -60,7 +60,7 @@ class FolderListViewModel(private val application: Application) : ViewModel() {
   private fun loadRecentlyPlayed() {
     viewModelScope.launch {
       try {
-        val recentlyPlayed = recentlyPlayedRepository.getLastPlayed()
+        val recentlyPlayed = recentlyPlayedRepository.getLastPlayedForHighlight()
         _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
       } catch (e: Exception) {
         Log.e(TAG, "Error loading recently played", e)

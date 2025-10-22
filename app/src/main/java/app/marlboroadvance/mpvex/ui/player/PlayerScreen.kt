@@ -11,7 +11,10 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 @Serializable
-data class PlayerScreen(val source: String) : Screen {
+data class PlayerScreen(
+  val source: String,
+  val launchSource: String? = null,
+) : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -24,6 +27,7 @@ data class PlayerScreen(val source: String) : Screen {
         setClass(context, PlayerActivity::class.java)
         addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        launchSource?.let { putExtra("launch_source", it) }
       }
       context.startActivity(intent)
       // Remove this trampoline screen from backstack

@@ -15,6 +15,16 @@ interface RecentlyPlayedDao {
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 
+  @Query(
+    """
+    SELECT * FROM RecentlyPlayedEntity 
+    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal'
+    ORDER BY timestamp DESC 
+    LIMIT 1
+  """,
+  )
+  suspend fun getLastPlayedForHighlight(): RecentlyPlayedEntity?
+
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 

@@ -88,6 +88,8 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   private var audioFocusRequested = false
   private var audioFocusRequest: AudioFocusRequest? = null
   private var resumeOnAudioFocusGain = false
+  private var isInitializing = false
+  private var hasVideoLoaded = false
 
   // Media session
   private lateinit var mediaSession: MediaSession
@@ -135,6 +137,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
+
+    // Mark as initializing to prevent issues during stream loading
+    isInitializing = true
+    hasVideoLoaded = false
 
     setupMPV()
     setupAudio()
@@ -363,6 +369,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
 
   override fun finish() {
     runCatching {
+      // Set flag to indicate we're finishing
+      isInitializing = false
+      hasVideoLoaded = false
+
       if (!systemUIRestored && !isDestroyed) {
         restoreSystemUI()
       }
@@ -513,6 +523,13 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   private fun copyMPVConfigFiles() {
     val applicationPath = filesDir.path
     runCatching {
+      // If both files already exist in app storage, treat them as cached and skip heavy copy
+      val appMpvConf = File("$applicationPath/mpv.conf")
+      val appInputConf = File("$applicationPath/input.conf")
+      if (appMpvConf.exists() && appInputConf.exists()) {
+        return@runCatching
+      }
+
       val mpvConfUri = advancedPreferences.mpvConfStorageUri.get().toUri()
       val mpvConf = fileManager.fromUri(mpvConfUri)
         ?: error("User hasn't set any mpvConfig directory")
@@ -534,13 +551,17 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
 
   private fun createDefaultConfigFiles(applicationPath: String) {
     runCatching {
-      File("$applicationPath/mpv.conf").apply {
-        if (!exists()) createNewFile()
-      }.writeText(advancedPreferences.mpvConf.get())
+      val mpvConfFile = File("$applicationPath/mpv.conf")
+      if (!mpvConfFile.exists()) {
+        mpvConfFile.createNewFile()
+        mpvConfFile.writeText(advancedPreferences.mpvConf.get())
+      }
 
-      File("$applicationPath/input.conf").apply {
-        if (!exists()) createNewFile()
-      }.writeText(advancedPreferences.inputConf.get())
+      val inputConfFile = File("$applicationPath/input.conf")
+      if (!inputConfFile.exists()) {
+        inputConfFile.createNewFile()
+        inputConfFile.writeText(advancedPreferences.inputConf.get())
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error creating default config files", e)
     }
@@ -745,7 +766,11 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    handleConfigurationChange()
+    // Only handle configuration change if video has loaded
+    // This prevents issues during initialization
+    if (!isInitializing && hasVideoLoaded) {
+      handleConfigurationChange()
+    }
   }
 
   private fun handleConfigurationChange() {
@@ -822,8 +847,21 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     if (player.isExiting) return
 
     when (eventId) {
-      MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED -> handleFileLoaded()
-      MPVLib.mpvEventId.MPV_EVENT_PLAYBACK_RESTART -> player.isExiting = false
+      MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED -> {
+        handleFileLoaded()
+        // Mark initialization complete when file is loaded
+        isInitializing = false
+        hasVideoLoaded = true
+      }
+
+      MPVLib.mpvEventId.MPV_EVENT_PLAYBACK_RESTART -> {
+        player.isExiting = false
+        // Also mark as not initializing on playback restart
+        if (!hasVideoLoaded) {
+          isInitializing = false
+          hasVideoLoaded = true
+        }
+      }
     }
   }
 
@@ -844,27 +882,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     setOrientation()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
 
-    // Initialize video zoom with priority order:
-    // 1. MPV config file (mpv.conf) video-zoom setting takes highest priority (if set to non-zero)
-    // 2. App's defaultVideoZoom preference (user's saved default)
-    // 3. Fallback to 0 (standard zoom, no scaling)
-    //
-    // This allows users to override the zoom behavior via mpv.conf if they want,
-    // while still respecting the app's preference system for most users.
-    val mpvConfigZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat()
-    val finalZoom = if (mpvConfigZoom != null && mpvConfigZoom != 0f) {
-      // MPV config has an explicit non-zero zoom value - respect it
-      mpvConfigZoom
-    } else {
-      // Use app preference (defaults to 0 if never set)
-      playerPreferences.defaultVideoZoom.get()
-    }
-
-    // Apply zoom if it differs from what MPV already has
-    if (finalZoom != mpvConfigZoom) {
-      MPVLib.setPropertyDouble("video-zoom", finalZoom.toDouble())
-    }
-    viewModel.setVideoZoom(finalZoom)
+    // Initialize video zoom from the app preference only (ignore mpv.conf)
+    val zoomPreference = playerPreferences.defaultVideoZoom.get()
+    MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
+    viewModel.setVideoZoom(zoomPreference)
 
     viewModel.unpause()
 
@@ -964,6 +985,13 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   }
 
   private suspend fun saveRecentlyPlayed() {
+    // Determine launch source
+    val launchSource = when {
+      intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
+      intent.action == Intent.ACTION_SEND -> "share"
+      else -> "normal" // Normal playback from list
+    }
+
     runCatching {
       // Extract the original URI from the intent
       val uri = extractUriFromIntent(intent) ?: return@runCatching
@@ -990,12 +1018,16 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       }
 
       if (BuildConfig.DEBUG) {
-        Log.d(TAG, "Saving recently played from PlayerActivity: filePath='$filePath', fileName='$fileName'")
+        Log.d(
+          TAG,
+          "Saving recently played from PlayerActivity: filePath='$filePath', fileName='$fileName', launchSource='$launchSource'",
+        )
       }
 
       recentlyPlayedRepository.addRecentlyPlayed(
         filePath = filePath,
         fileName = fileName,
+        launchSource = launchSource,
       )
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played", e)

@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.di
 
 import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl

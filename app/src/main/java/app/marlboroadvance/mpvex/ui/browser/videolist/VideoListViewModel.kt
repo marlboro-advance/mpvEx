@@ -59,7 +59,7 @@ class VideoListViewModel(
   private fun loadRecentlyPlayed() {
     viewModelScope.launch {
       try {
-        val recentlyPlayed = recentlyPlayedRepository.getLastPlayed()
+        val recentlyPlayed = recentlyPlayedRepository.getLastPlayedForHighlight()
         _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
       } catch (e: Exception) {
         Log.e(tag, "Error loading recently played", e)

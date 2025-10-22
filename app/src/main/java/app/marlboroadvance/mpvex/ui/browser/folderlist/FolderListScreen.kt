@@ -131,7 +131,7 @@ object FolderListScreen : Screen {
             Intent.FLAG_GRANT_READ_URI_PERMISSION,
           )
         }
-        backstack.add(PlayerScreen(it.toString()))
+        backstack.add(PlayerScreen(it.toString(), launchSource = "open_file"))
       }
     }
 
@@ -183,7 +183,8 @@ object FolderListScreen : Screen {
           onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
-              MediaUtils.getRecentlyPlayedFile()?.let { backstack.add(PlayerScreen(it)) }
+              MediaUtils.getRecentlyPlayedFile()
+                ?.let { backstack.add(PlayerScreen(it, launchSource = "recently_played_button")) }
             }
           },
           onPlayLink = { showLinkDialog.value = true },
@@ -220,7 +221,7 @@ object FolderListScreen : Screen {
       PlayLinkDialog(
         isOpen = showLinkDialog.value,
         onDismiss = { showLinkDialog.value = false },
-        onPlayLink = { url -> backstack.add(PlayerScreen(url)) },
+        onPlayLink = { url -> backstack.add(PlayerScreen(url, launchSource = "play_link")) },
       )
 
       FolderSortDialog(
