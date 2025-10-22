@@ -37,16 +37,16 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
 class PlayerViewModelProviderFactory(
-  private val activity: PlayerActivity,
+  private val host: PlayerHost,
 ) : ViewModelProvider.Factory {
   override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-    return PlayerViewModel(activity) as T
+    return PlayerViewModel(host) as T
   }
 }
 
 @Suppress("TooManyFunctions")
 class PlayerViewModel(
-  private val activity: PlayerActivity,
+  private val host: PlayerHost,
 ) : ViewModel(), KoinComponent {
   private val playerPreferences: PlayerPreferences by inject()
   private val gesturePreferences: GesturePreferences by inject()
@@ -58,7 +58,7 @@ class PlayerViewModel(
   val duration by MPVLib.propInt["duration"].collectAsState(viewModelScope)
   private val currentMPVVolume by MPVLib.propInt["volume"].collectAsState(viewModelScope)
 
-  val currentVolume = MutableStateFlow(activity.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+  val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
 
   val subtitleTracks = MPVLib.propNode["track-list"]
@@ -82,7 +82,7 @@ class PlayerViewModel(
   val isVolumeSliderShown = MutableStateFlow(false)
   val currentBrightness = MutableStateFlow(
     runCatching {
-      Settings.System.getFloat(activity.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+      Settings.System.getFloat(host.hostContentResolver, Settings.System.SCREEN_BRIGHTNESS)
         .normalize(0f, 255f, 0f, 1f)
     }.getOrElse { 0f },
   )
@@ -123,7 +123,11 @@ class PlayerViewModel(
         delay(1000)
       }
       MPVLib.setPropertyBoolean("pause", true)
-      Toast.makeText(activity, activity.getString(R.string.toast_sleep_timer_ended), Toast.LENGTH_SHORT).show()
+      Toast.makeText(
+        host.context,
+        host.context.getString(R.string.toast_sleep_timer_ended),
+        Toast.LENGTH_SHORT,
+      ).show()
     }
   }
 
@@ -131,24 +135,24 @@ class PlayerViewModel(
     MPVLib.setPropertyString(
       "hwdec",
       when (Decoder.getDecoderFromValue(MPVLib.getPropertyString("hwdec-current") ?: return)) {
-        Decoder.HWPlus -> Decoder.HW.value
-        Decoder.HW -> Decoder.SW.value
-        Decoder.SW -> Decoder.HWPlus.value
-        Decoder.AutoCopy -> Decoder.SW.value
-        Decoder.Auto -> Decoder.SW.value
+        Decoder.HWPlus -> Decoder.SW.value
+        Decoder.SW -> Decoder.HW.value
+        Decoder.HW -> Decoder.HWPlus.value
+        Decoder.AutoCopy -> Decoder.HWPlus.value
+        Decoder.Auto -> Decoder.HWPlus.value
       },
     )
   }
 
   fun addAudio(uri: Uri) {
     val url = uri.toString()
-    val path = if (url.startsWith("content://")) url.toUri().openContentFd(activity) else url
+    val path = if (url.startsWith("content://")) url.toUri().openContentFd(host.context) else url
     MPVLib.command("audio-add", path ?: return, "cached")
   }
 
   fun addSubtitle(uri: Uri) {
     val url = uri.toString()
-    val path = if (url.startsWith("content://")) url.toUri().openContentFd(activity) else url
+    val path = if (url.startsWith("content://")) url.toUri().openContentFd(host.context) else url
     MPVLib.command("sub-add", path ?: return, "cached")
   }
 
@@ -171,12 +175,12 @@ class PlayerViewModel(
   private val showStatusBar = playerPreferences.showSystemStatusBar.get()
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (showStatusBar) activity.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+    if (showStatusBar) host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
     _controlsShown.update { true }
   }
 
   fun hideControls() {
-    activity.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
     _controlsShown.update { false }
   }
 
@@ -213,7 +217,7 @@ class PlayerViewModel(
   fun changeBrightnessTo(
     brightness: Float,
   ) {
-    activity.window.attributes = activity.window.attributes.apply {
+    host.hostWindow.attributes = host.hostWindow.attributes.apply {
       screenBrightness = brightness.coerceIn(0f, 1f).also {
         currentBrightness.update { _ -> it }
       }
@@ -224,7 +228,7 @@ class PlayerViewModel(
     isBrightnessSliderShown.update { true }
   }
 
-  val maxVolume = activity.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+  val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
   fun changeVolumeBy(change: Int) {
     val mpvVolume = MPVLib.getPropertyInt("volume")
     if ((volumeBoostCap ?: audioPreferences.volumeBoostCap.get()) > 0 && currentVolume.value == maxVolume) {
@@ -240,7 +244,7 @@ class PlayerViewModel(
 
   fun changeVolumeTo(volume: Int) {
     val newVolume = volume.coerceIn(0..maxVolume)
-    activity.audioManager.setStreamVolume(
+    host.audioManager.setStreamVolume(
       AudioManager.STREAM_MUSIC,
       newVolume,
       0,
@@ -275,7 +279,7 @@ class PlayerViewModel(
 
       VideoAspect.Stretch -> {
         val dm = DisplayMetrics()
-        activity.windowManager.defaultDisplay.getRealMetrics(dm)
+        host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
         ratio = dm.widthPixels / dm.heightPixels.toDouble()
         pan = 0.0
       }
@@ -287,7 +291,7 @@ class PlayerViewModel(
   }
 
   fun cycleScreenRotations() {
-    activity.requestedOrientation = when (activity.requestedOrientation) {
+    host.hostRequestedOrientation = when (host.hostRequestedOrientation) {
       ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
       ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
       ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
@@ -360,7 +364,7 @@ class PlayerViewModel(
     MPVLib.setPropertyString(property, "")
   }
 
-  private val inputMethodManager = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+  private val inputMethodManager = host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
   private fun forceShowSoftwareKeyboard() {
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
   }
@@ -464,8 +468,26 @@ class PlayerViewModel(
     }
   }
 
+  /**
+   * Sets the video zoom level.
+   * This updates both the local state and MPV's video-zoom property.
+   *
+   * @param zoom The zoom level to set (typically between -2.0 and 3.0).
+   *             Positive values zoom in, negative values zoom out.
+   *             0 is the default/no zoom.
+   */
   fun setVideoZoom(zoom: Float) {
     _videoZoom.update { zoom }
+    MPVLib.setPropertyDouble("video-zoom", zoom.toDouble())
+  }
+
+  /**
+   * Resets video zoom to 0 (default/no zoom).
+   * This is the baseline zoom level and should always reset to 0 regardless of
+   * any user preferences or MPV config settings.
+   */
+  fun resetVideoZoom() {
+    setVideoZoom(0f)
   }
 
   fun updateFrameInfo() {

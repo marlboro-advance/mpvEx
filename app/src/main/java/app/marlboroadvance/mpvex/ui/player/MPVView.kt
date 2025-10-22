@@ -58,7 +58,12 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
   override fun initOptions() {
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
     MPVLib.setOptionString("profile", "fast")
-    MPVLib.setOptionString("hwdec", if (decoderPreferences.tryHWDecoding.get()) "auto" else "no")
+    // Set hwdec with fallback order: HW+ (mediacodec) -> SW (no) -> HW (mediacodec-copy)
+    MPVLib.setOptionString(
+      "hwdec",
+      if (decoderPreferences.tryHWDecoding.get()) "mediacodec,no,mediacodec-copy" else "no",
+    )
+    MPVLib.setOptionString("hwdec-codecs", "all")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
@@ -179,6 +184,12 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
   // Setup
   private fun setupSubtitlesOptions() {
     MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
+
+    // Load all available subtitle tracks (not just the default)
+    MPVLib.setOptionString("sub-auto", "all")
+
+    // Load external subtitle files from the same directory as the video
+    MPVLib.setOptionString("sub-file-paths", "")
 
     val fontsDirPath = context.filesDir.path + "/fonts/"
     MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)

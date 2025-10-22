@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.folderlist
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,7 @@ import app.marlboroadvance.mpvex.presentation.components.states.EmptyState
 import app.marlboroadvance.mpvex.presentation.components.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
+import app.marlboroadvance.mpvex.ui.player.PlayerScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.device.TVUtils
@@ -115,7 +117,16 @@ object FolderListScreen : Screen {
     val filePicker = rememberLauncherForActivityResult(
       contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
-      uri?.let { MediaUtils.playFile(it.toString(), context) }
+      uri?.let {
+        // Persist read permission so we can reopen later (e.g., recently played)
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            it,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+          )
+        }
+        backstack.add(PlayerScreen(it.toString()))
+      }
     }
 
     // Pull to refresh
@@ -156,10 +167,10 @@ object FolderListScreen : Screen {
           listState = listState,
           isTV = isTV,
           hasRecentlyPlayed = hasRecentlyPlayed,
-          onOpenFile = { filePicker.launch(arrayOf("*/*")) },
+          onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
-              MediaUtils.getRecentlyPlayedFile()?.let { MediaUtils.playFile(it, context) }
+              MediaUtils.getRecentlyPlayedFile()?.let { backstack.add(PlayerScreen(it)) }
             }
           },
           onPlayLink = { showLinkDialog.value = true },
@@ -195,7 +206,7 @@ object FolderListScreen : Screen {
       PlayLinkDialog(
         isOpen = showLinkDialog.value,
         onDismiss = { showLinkDialog.value = false },
-        onPlayLink = { url -> MediaUtils.playFile(url, context) },
+        onPlayLink = { url -> backstack.add(PlayerScreen(url)) },
       )
 
       FolderSortDialog(

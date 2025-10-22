@@ -1,37 +1,41 @@
 package app.marlboroadvance.mpvex.ui.player
 
+import android.os.Handler
+import android.os.Looper
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 
 class PlayerObserver(
-  private val activity: PlayerActivity
+  private val callbacks: PlayerObserverCallbacks
 ) : MPVLib.EventObserver {
+  private val handler = Handler(Looper.getMainLooper())
+
   override fun eventProperty(property: String) {
-    activity.runOnUiThread { activity.onObserverEvent() }
+    handler.post { callbacks.onObserverEvent() }
   }
 
   override fun eventProperty(property: String, value: Long) {
-    activity.runOnUiThread { activity.onObserverEvent() }
+    handler.post { callbacks.onObserverEvent() }
   }
 
   override fun eventProperty(property: String, value: Boolean) {
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    handler.post { callbacks.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(property: String, value: String) {
-    activity.runOnUiThread { activity.onObserverEvent(property, value) }
+    handler.post { callbacks.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(property: String, value: Double) {
-    activity.runOnUiThread { activity.onObserverEvent(property) }
+    handler.post { callbacks.onObserverEvent(property) }
   }
 
   @Suppress("EmptyFunctionBlock")
   override fun eventProperty(property: String, value: MPVNode) {
-    activity.runOnUiThread { activity.onObserverEvent(property) }
+    handler.post { callbacks.onObserverEvent(property) }
   }
 
   override fun event(eventId: Int) {
-    activity.runOnUiThread { activity.event(eventId) }
+    handler.post { callbacks.event(eventId) }
   }
 }

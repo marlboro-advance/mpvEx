@@ -32,6 +32,7 @@ import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
+import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -43,6 +44,7 @@ import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -54,7 +56,7 @@ import java.io.File
  * and playback state persistence.
  */
 @Suppress("TooManyFunctions", "LargeClass")
-class PlayerActivity : AppCompatActivity() {
+class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks {
 
   // ViewModels and Bindings
   private val viewModel: PlayerViewModel by viewModels<PlayerViewModel> {
@@ -65,13 +67,10 @@ class PlayerActivity : AppCompatActivity() {
 
   // Repositories
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val recentlyPlayedRepository: RecentlyPlayedRepository by inject()
 
   // Views and Controllers
   val player by lazy { binding.player }
-  val windowInsetsController by lazy {
-    WindowCompat.getInsetsController(window, window.decorView)
-  }
-  val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
 
   // Preferences
   private val playerPreferences: PlayerPreferences by inject()
@@ -299,32 +298,31 @@ class PlayerActivity : AppCompatActivity() {
       return
     }
 
-    runCatching {
-      // Pause playback first
-      MPVLib.setPropertyString("pause", "yes")
-      Thread.sleep(PAUSE_DELAY_MS)
-
-      // Quit MPV properly
-      MPVLib.command("quit")
-      Thread.sleep(QUIT_DELAY_MS)
-    }.onFailure { e ->
-      Log.e(TAG, "Error quitting MPV", e)
-    }
-
-    // Remove observer
-    runCatching {
-      MPVLib.removeObserver(playerObserver)
-      Thread.sleep(OBSERVER_REMOVAL_DELAY_MS)
-    }.onFailure { e ->
-      Log.e(TAG, "Error removing MPV observer", e)
-    }
-
-    // Destroy MPV
-    runCatching {
-      MPVLib.destroy()
-    }.onFailure { e ->
-      Log.e(TAG, "Error destroying MPV (may be expected)", e)
-    }
+    // Perform shutdown asynchronously to avoid blocking UI thread
+    Thread {
+      try {
+        MPVLib.setPropertyString("pause", "yes")
+        Thread.sleep(PAUSE_DELAY_MS)
+      } catch (_: Throwable) {
+      }
+      try {
+        MPVLib.command("quit")
+        Thread.sleep(QUIT_DELAY_MS)
+      } catch (e: Throwable) {
+        Log.e(TAG, "Error quitting MPV", e)
+      }
+      try {
+        MPVLib.removeObserver(playerObserver)
+        Thread.sleep(OBSERVER_REMOVAL_DELAY_MS)
+      } catch (e: Throwable) {
+        Log.e(TAG, "Error removing MPV observer", e)
+      }
+      try {
+        MPVLib.destroy()
+      } catch (e: Throwable) {
+        Log.e(TAG, "Error destroying MPV (may be expected)", e)
+      }
+    }.start()
   }
 
   private fun cleanupAudio() {
@@ -364,10 +362,12 @@ class PlayerActivity : AppCompatActivity() {
 
   override fun finish() {
     runCatching {
-      if (!systemUIRestored) {
+      if (!systemUIRestored && !isDestroyed) {
         restoreSystemUI()
       }
-      setReturnIntent()
+      if (!isDestroyed) {
+        setReturnIntent()
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during finish", e)
     }
@@ -477,18 +477,24 @@ class PlayerActivity : AppCompatActivity() {
   }
 
   private fun copyMPVAssets() {
-    Utils.copyAssets(this)
-    copyMPVScripts()
-    copyMPVConfigFiles()
-    // Ensure default subtitle font is available synchronously before MPV init (persistent dir)
+    // Only copy critical default subfont synchronously (fast operation)
     runCatching {
       val fontsPath = filesDir.path
       val destDir = ensureFontsDirectory(fontsPath)
       copyDefaultSubfont(fontsPath, destDir)
     }.onFailure { e -> Log.e(TAG, "Error ensuring default subtitle font", e) }
 
-    // Copy user-provided fonts asynchronously (can be large)
-    lifecycleScope.launch(Dispatchers.IO) { copyMPVFonts() }
+    // Move heavy I/O operations to background thread
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        Utils.copyAssets(this@PlayerActivity)
+        copyMPVScripts()
+        copyMPVConfigFiles()
+        copyMPVFonts()
+      }.onFailure { e ->
+        Log.e(TAG, "Error copying MPV assets in background", e)
+      }
+    }
   }
 
   private fun setupMPV() {
@@ -751,11 +757,11 @@ class PlayerActivity : AppCompatActivity() {
 
   // ==================== MPV Event Observers ====================
 
-  internal fun onObserverEvent() {
+  override fun onObserverEvent() {
     if (player.isExiting) return
   }
 
-  internal fun onObserverEvent(property: String, value: Boolean) {
+  override fun onObserverEvent(property: String, value: Boolean) {
     if (player.isExiting) return
 
     when (property) {
@@ -791,7 +797,7 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  internal fun onObserverEvent(property: String, value: String) {
+  override fun onObserverEvent(property: String, value: String) {
     if (player.isExiting) return
 
     when (property.substringBeforeLast("/")) {
@@ -799,7 +805,7 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  internal fun onObserverEvent(property: String) {
+  override fun onObserverEvent(property: String) {
     if (player.isExiting) return
 
     when (property) {
@@ -811,7 +817,7 @@ class PlayerActivity : AppCompatActivity() {
     }
   }
 
-  internal fun event(eventId: Int) {
+  override fun event(eventId: Int) {
     if (player.isExiting) return
 
     when (eventId) {
@@ -829,12 +835,35 @@ class PlayerActivity : AppCompatActivity() {
       loadVideoPlaybackState(fileName)
     }
 
+    // Save recently played in GlobalScope to ensure it completes even if activity finishes
+    GlobalScope.launch(Dispatchers.IO) {
+      saveRecentlyPlayed()
+    }
+
     setOrientation()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
 
-    val defaultZoom = playerPreferences.defaultVideoZoom.get()
-    MPVLib.setPropertyDouble("video-zoom", defaultZoom.toDouble())
-    viewModel.setVideoZoom(defaultZoom)
+    // Initialize video zoom with priority order:
+    // 1. MPV config file (mpv.conf) video-zoom setting takes highest priority (if set to non-zero)
+    // 2. App's defaultVideoZoom preference (user's saved default)
+    // 3. Fallback to 0 (standard zoom, no scaling)
+    //
+    // This allows users to override the zoom behavior via mpv.conf if they want,
+    // while still respecting the app's preference system for most users.
+    val mpvConfigZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat()
+    val finalZoom = if (mpvConfigZoom != null && mpvConfigZoom != 0f) {
+      // MPV config has an explicit non-zero zoom value - respect it
+      mpvConfigZoom
+    } else {
+      // Use app preference (defaults to 0 if never set)
+      playerPreferences.defaultVideoZoom.get()
+    }
+
+    // Apply zoom if it differs from what MPV already has
+    if (finalZoom != mpvConfigZoom) {
+      MPVLib.setPropertyDouble("video-zoom", finalZoom.toDouble())
+    }
+    viewModel.setVideoZoom(finalZoom)
 
     viewModel.unpause()
 
@@ -849,7 +878,8 @@ class PlayerActivity : AppCompatActivity() {
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
-    lifecycleScope.launch(Dispatchers.IO) {
+    // Use GlobalScope to ensure save completes even if activity is finishing
+    GlobalScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
         Log.d(TAG, "Saving playback state for: $mediaTitle")
@@ -929,6 +959,21 @@ class PlayerActivity : AppCompatActivity() {
     if (state == null) {
       val defaultSubSpeed = subtitlesPreferences.defaultSubSpeed.get().toDouble()
       MPVLib.setPropertyDouble("sub-speed", defaultSubSpeed)
+    }
+  }
+
+  private suspend fun saveRecentlyPlayed() {
+    runCatching {
+      // Extract the original URI from the intent
+      val uri = extractUriFromIntent(intent) ?: return@runCatching
+      val uriString = uri.toString()
+
+      recentlyPlayedRepository.addRecentlyPlayed(
+        filePath = uriString,
+        fileName = fileName,
+      )
+    }.onFailure { e ->
+      Log.e(TAG, "Error saving recently played", e)
     }
   }
 
@@ -1146,17 +1191,20 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     runCatching {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // Guard against detached window
+      if (!isFinishing && !isDestroyed) {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-      windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-      windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-      windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+        windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
 
-      WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
 
-      window.attributes.layoutInDisplayCutoutMode =
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+        window.attributes.layoutInDisplayCutoutMode =
+          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+      }
 
       systemUIRestored = true
     }.onFailure { e ->
@@ -1234,6 +1282,25 @@ class PlayerActivity : AppCompatActivity() {
     }.onFailure { e -> Log.e(TAG, "Error releasing MediaSession", e) }
     mediaSessionInitialized = false
   }
+
+  // PlayerHost
+  override val context: Context
+    get() = this
+  override val windowInsetsController: WindowInsetsControllerCompat
+    get() = WindowCompat.getInsetsController(window, window.decorView)
+  override val hostWindow: android.view.Window
+    get() = window
+  override val hostWindowManager: android.view.WindowManager
+    get() = windowManager
+  override val hostContentResolver: android.content.ContentResolver
+    get() = contentResolver
+  override val audioManager: AudioManager
+    get() = getSystemService(AUDIO_SERVICE) as AudioManager
+  override var hostRequestedOrientation: Int
+    get() = requestedOrientation
+    set(value) {
+      requestedOrientation = value
+    }
 
   companion object {
     private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"

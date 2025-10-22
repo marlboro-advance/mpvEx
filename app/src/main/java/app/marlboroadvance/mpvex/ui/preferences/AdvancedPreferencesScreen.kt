@@ -272,12 +272,26 @@ object AdvancedPreferencesScreen : Screen {
           Preference(
             title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
             onClick = {
-              fileManager.deleteContent(fileManager.fromPath(context.cacheDir.path + "/fonts"))
-              Toast.makeText(
-                context,
-                context.getString(R.string.pref_advanced_cleared_fonts_cache),
-                Toast.LENGTH_SHORT,
-              ).show()
+              scope.launch(Dispatchers.IO) {
+                val fontsDir = File(context.filesDir.path + "/fonts")
+                if (fontsDir.exists()) {
+                  fontsDir.listFiles()?.forEach { file ->
+                    // Delete all font files but keep the default subfont.ttf
+                    if (file.isFile && file.name.lowercase()
+                        .matches(".*\\.[ot]tf$".toRegex()) && file.name != "subfont.ttf"
+                    ) {
+                      file.delete()
+                    }
+                  }
+                }
+                withContext(Dispatchers.Main) {
+                  Toast.makeText(
+                    context,
+                    context.getString(R.string.pref_advanced_cleared_fonts_cache),
+                    Toast.LENGTH_SHORT,
+                  ).show()
+                }
+              }
             },
           )
         }
