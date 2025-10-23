@@ -7,10 +7,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
-import app.marlboroadvance.mpvex.utils.device.TVUtils
-import java.io.BufferedReader
 import java.io.File
-import java.io.FileReader
 import java.util.Locale
 
 object VideoFolderRepository {
@@ -25,7 +22,6 @@ object VideoFolderRepository {
   fun getVideoFolders(context: Context): List<VideoFolder> {
     Log.d(Tag, "Starting video folder scan")
     val folders = mutableMapOf<String, VideoFolderInfo>()
-    val isTV = TVUtils.isAndroidTV(context)
 
     val projection = getProjection()
     val cursor: Cursor? = context.contentResolver.query(
@@ -38,19 +34,6 @@ object VideoFolderRepository {
 
     cursor?.use { c ->
       processFolderCursor(c, folders)
-    }
-
-    // If no folders found and we're on Android TV, scan file system directly
-    if (folders.isEmpty() && isTV) {
-      Log.d(Tag, "No folders found via MediaStore on Android TV, scanning file system")
-      scanCommonTVDirectories(folders)
-    }
-
-    // On Android TV, always scan for external USB/SD mounts even if MediaStore found something
-    // This ensures USB drives are detected even if internal storage has videos
-    if (isTV) {
-      Log.d(Tag, "Android TV detected, scanning for external USB/SD mounts")
-      scanExternalMounts(folders)
     }
 
     Log.d(Tag, "Finished video folder scan")
@@ -110,155 +93,6 @@ object VideoFolderRepository {
       Log.w(Tag, "Error normalizing path: $path", e)
       preprocessedPath.trimEnd('/')
     }
-  }
-
-  private fun scanCommonTVDirectories(folders: MutableMap<String, VideoFolderInfo>) {
-    // Scan root of external storage
-    scanDirectory(File(externalStoragePath), folders, maxDepth = 2)
-
-    // Scan common paths
-    TVUtils.FileSystemPaths.COMMON_VIDEO_DIRECTORIES.forEach { path ->
-      val dir = File(path)
-      if (dir.exists() && dir.isDirectory) {
-        Log.d(Tag, "Scanning directory: $path")
-        scanDirectory(dir, folders, maxDepth = TVUtils.FileSystemPaths.MAX_SCAN_DEPTH)
-      }
-    }
-
-    // Scan for external USB/SD card mounts
-    val mediaRwDir = File(TVUtils.FileSystemPaths.MEDIA_RW_DIR)
-    if (mediaRwDir.exists() && mediaRwDir.isDirectory) {
-      mediaRwDir.listFiles()?.forEach { mountPoint ->
-        if (mountPoint.isDirectory) {
-          Log.d(Tag, "Scanning external mount: ${mountPoint.absolutePath}")
-          scanDirectory(mountPoint, folders, maxDepth = TVUtils.FileSystemPaths.MAX_SCAN_DEPTH)
-        }
-      }
-    }
-  }
-
-  @Suppress("CyclomaticComplexMethod", "NestedBlockDepth")
-  private fun scanExternalMounts(folders: MutableMap<String, VideoFolderInfo>) {
-    val scannedPaths = mutableSetOf<String>()
-
-    // First, try to parse /proc/mounts to find all mounted filesystems
-    try {
-      val mountsFile = File("/proc/mounts")
-      if (mountsFile.exists() && mountsFile.canRead()) {
-        Log.d(Tag, "Reading /proc/mounts for USB/SD card detection")
-        BufferedReader(FileReader(mountsFile)).use { reader ->
-          reader.lineSequence().forEach { line ->
-            parseMountLine(line, folders, scannedPaths)
-          }
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(Tag, "Error reading /proc/mounts", e)
-    }
-
-    // Fallback: Scan common USB mount locations that might not be in /proc/mounts
-    TVUtils.FileSystemPaths.COMMON_USB_MOUNT_PATHS.forEach { basePath ->
-      try {
-        val dir = File(basePath)
-        if (dir.exists() && dir.isDirectory && dir.canRead()) {
-          // For directories that contain subdirectories (like /mnt/media_rw or /storage)
-          dir.listFiles()?.forEach { subDir ->
-            if (subDir.isDirectory && subDir.canRead()) {
-              val normalizedPath = normalizePath(subDir.absolutePath)
-              if (!scannedPaths.contains(normalizedPath)) {
-                Log.d(Tag, "Scanning fallback USB location: ${subDir.absolutePath}")
-                scannedPaths.add(normalizedPath)
-                scanDirectory(subDir, folders, maxDepth = TVUtils.FileSystemPaths.MAX_SCAN_DEPTH)
-              }
-            }
-          }
-        }
-      } catch (e: Exception) {
-        Log.w(Tag, "Error scanning common USB path: $basePath", e)
-      }
-    }
-  }
-
-  private fun parseMountLine(
-    line: String,
-    folders: MutableMap<String, VideoFolderInfo>,
-    scannedPaths: MutableSet<String>,
-  ) {
-    try {
-      // Mount line format: device mountpoint filesystem options ...
-      val parts = line.split("\\s+".toRegex())
-      if (parts.size < 3) return
-
-      val device = parts[0]
-      val mountPoint = parts[1]
-      val fsType = parts[2]
-
-      // Check if this looks like a USB/SD mount using TVUtils
-      if (TVUtils.isExternalMount(device, mountPoint, fsType)) {
-        val mountDir = File(mountPoint)
-        if (mountDir.exists() && mountDir.isDirectory && mountDir.canRead()) {
-          val normalizedPath = normalizePath(mountPoint)
-          if (!scannedPaths.contains(normalizedPath)) {
-            Log.d(Tag, "Found external mount: $mountPoint (fs: $fsType, device: $device)")
-            scannedPaths.add(normalizedPath)
-            scanDirectory(mountDir, folders, maxDepth = TVUtils.FileSystemPaths.MAX_SCAN_DEPTH)
-          }
-        }
-      }
-    } catch (e: Exception) {
-      Log.w(Tag, "Error parsing mount line: $line", e)
-    }
-  }
-
-  @Suppress("ReturnCount")
-  private fun scanDirectory(
-    directory: File,
-    folders: MutableMap<String, VideoFolderInfo>,
-    currentDepth: Int = 0,
-    maxDepth: Int = TVUtils.FileSystemPaths.MAX_SCAN_DEPTH,
-  ) {
-    if (currentDepth > maxDepth) return
-    if (!directory.canRead()) return
-
-    try {
-      val files = directory.listFiles() ?: return
-
-      for (file in files) {
-        try {
-          if (file.isDirectory && currentDepth < maxDepth) {
-            scanDirectory(file, folders, currentDepth + 1, maxDepth)
-          } else if (file.isFile && isVideoFile(file)) {
-            val folderPath = normalizePath(file.parent ?: continue)
-            val bucketId = folderPath.hashCode().toString()
-            val bucketName = File(folderPath).name
-
-            Log.d(Tag, "Found video via direct scan: ${file.absolutePath}")
-            updateFolderInfo(
-              bucketId = bucketId,
-              bucketName = bucketName,
-              folderPath = folderPath,
-              dateModified = file.lastModified() / 1000,
-              size = file.length(),
-              duration = 0,
-              filePath = file.absolutePath,
-              folders = folders,
-            )
-          }
-        } catch (e: SecurityException) {
-          Log.w(Tag, "Security exception accessing: ${file.absolutePath}", e)
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(Tag, "Error scanning directory: ${directory.absolutePath}", e)
-    }
-  }
-
-  private fun isVideoFile(file: File): Boolean {
-    val videoExtensions = setOf(
-      "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
-      "mpg", "mpeg", "3gp", "3g2", "ts", "m2ts", "mts", "vob",
-    )
-    return videoExtensions.contains(file.extension.lowercase())
   }
 
   private fun getProjection(): Array<String> {

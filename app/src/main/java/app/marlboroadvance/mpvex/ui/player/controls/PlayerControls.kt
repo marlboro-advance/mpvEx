@@ -79,7 +79,6 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.VolumeSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.toFixed
 import app.marlboroadvance.mpvex.ui.theme.playerRippleConfiguration
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import app.marlboroadvance.mpvex.utils.device.TVUtils
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.persistentListOf
@@ -104,7 +103,6 @@ fun PlayerControls(
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
-  val isTV = TVUtils.isAndroidTV(context)
   val spacing = MaterialTheme.spacing
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
@@ -449,12 +447,11 @@ fun PlayerControls(
           TopLeftPlayerControls(
             mediaTitle = mediaTitle ?: "", // it'll be set when the video loads so no problem keeping it empty for now
             onBackClick = onBackPress,
-            isTV = isTV,
           )
         }
         // Top right controls
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked && !isTV,
+          visible = controlsShown && !areControlsLocked,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
               fadeIn(playerControlsEnterAnimationSpec())
@@ -490,7 +487,7 @@ fun PlayerControls(
         }
         // Bottom right controls
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked && !isTV,
+          visible = controlsShown && !areControlsLocked,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
               fadeIn(playerControlsEnterAnimationSpec())
@@ -514,7 +511,7 @@ fun PlayerControls(
         }
         // Bottom left controls
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked && !isTV,
+          visible = controlsShown && !areControlsLocked,
           enter = if (!reduceMotion) {
             slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
               fadeIn(playerControlsEnterAnimationSpec())

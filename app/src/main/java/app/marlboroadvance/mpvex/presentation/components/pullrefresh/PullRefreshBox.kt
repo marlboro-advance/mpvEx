@@ -20,13 +20,11 @@ import kotlinx.coroutines.launch
  * A reusable Box composable that wraps content with pull-to-refresh functionality.
  *
  * Automatically handles:
- * - TV detection (disables pull-to-refresh on TV devices)
  * - Material Design theming for the refresh indicator
  * - Configurable refresh offset and threshold
  * - Delay after refresh for visual feedback
  *
  * @param isRefreshing State that tracks whether refresh is in progress
- * @param isTV Whether the device is an Android TV (disables pull-to-refresh)
  * @param onRefresh Lambda to invoke when refresh is triggered
  * @param modifier Modifier to apply to the Box
  * @param refreshingOffset Distance that the indicator can be pulled beyond the trigger point
@@ -38,7 +36,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun PullRefreshBox(
   isRefreshing: MutableState<Boolean>,
-  isTV: Boolean,
   onRefresh: suspend () -> Unit,
   modifier: Modifier = Modifier,
   refreshingOffset: Dp = 80.dp,
@@ -63,20 +60,16 @@ fun PullRefreshBox(
   )
 
   Box(
-    modifier = modifier.then(
-      if (!isTV) Modifier.pullRefresh(pullRefreshState) else Modifier,
-    ),
+    modifier = modifier.pullRefresh(pullRefreshState),
   ) {
     content()
 
-    if (!isTV) {
-      PullRefreshIndicator(
-        refreshing = isRefreshing.value,
-        state = pullRefreshState,
-        modifier = Modifier.align(Alignment.TopCenter),
-        backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.primary,
-      )
-    }
+    PullRefreshIndicator(
+      refreshing = isRefreshing.value,
+      state = pullRefreshState,
+      modifier = Modifier.align(Alignment.TopCenter),
+      backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+      contentColor = MaterialTheme.colorScheme.primary,
+    )
   }
 }

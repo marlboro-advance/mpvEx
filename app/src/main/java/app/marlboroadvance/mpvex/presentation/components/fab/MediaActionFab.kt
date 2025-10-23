@@ -58,7 +58,7 @@ data class MediaActionItem(
  * A floating action button menu for media-related actions.
  *
  * Features:
- * - Opens files (non-TV only)
+ * - Opens files
  * - Plays recently played media
  * - Plays media from URL
  * - Auto-collapses on scroll
@@ -68,7 +68,6 @@ data class MediaActionItem(
 @Composable
 fun MediaActionFab(
   listState: LazyListState,
-  isTV: Boolean,
   hasRecentlyPlayed: Boolean,
   onOpenFile: () -> Unit,
   onPlayRecentlyPlayed: () -> Unit,
@@ -91,12 +90,10 @@ fun MediaActionFab(
     onExpandedChange(false)
   }
 
-  // Build menu items based on platform and state
-  val menuItems = remember(isTV, hasRecentlyPlayed) {
+  // Build menu items based on state
+  val menuItems = remember(hasRecentlyPlayed) {
     buildList {
-      if (!isTV) {
-        add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
-      }
+      add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
       add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
       add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
     }

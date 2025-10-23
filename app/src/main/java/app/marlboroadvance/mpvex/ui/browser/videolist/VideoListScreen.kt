@@ -33,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,7 +49,6 @@ import app.marlboroadvance.mpvex.presentation.components.cards.VideoCard
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import app.marlboroadvance.mpvex.utils.device.TVUtils
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.serialization.Serializable
@@ -81,7 +79,6 @@ data class VideoListScreen(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
-    val isTV = TVUtils.isAndroidTV(context)
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = remember { mutableStateOf(false) }
 
@@ -105,7 +102,6 @@ data class VideoListScreen(
       topBar = {
         VideoListTopBar(
           title = displayFolderName,
-          isTV = isTV,
           onBackClick = backstack::removeLastOrNull,
           onSortClick = { sortDialogOpen.value = true },
         )
@@ -114,7 +110,6 @@ data class VideoListScreen(
       VideoListContent(
         videos = sortedVideos,
         isLoading = isLoading && videos.isEmpty(),
-        isTV = isTV,
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
         onRefresh = { viewModel.refresh() },
@@ -142,7 +137,6 @@ data class VideoListScreen(
 @Composable
 private fun VideoListTopBar(
   title: String,
-  isTV: Boolean,
   onBackClick: () -> Unit,
   onSortClick: () -> Unit,
 ) {
@@ -157,17 +151,15 @@ private fun VideoListTopBar(
       )
     },
     navigationIcon = {
-      if (!isTV) {
-        IconButton(
-          onClick = onBackClick,
-          modifier = Modifier.padding(horizontal = 4.dp),
-        ) {
-          Icon(
-            Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            modifier = Modifier.size(28.dp),
-          )
-        }
+      IconButton(
+        onClick = onBackClick,
+        modifier = Modifier.padding(horizontal = 4.dp),
+      ) {
+        Icon(
+          Icons.AutoMirrored.Filled.ArrowBack,
+          contentDescription = "Back",
+          modifier = Modifier.size(28.dp),
+        )
       }
     },
     actions = {
@@ -192,7 +184,6 @@ private fun VideoListTopBar(
 private fun VideoListContent(
   videos: List<Video>,
   isLoading: Boolean,
-  isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
@@ -201,7 +192,6 @@ private fun VideoListContent(
 ) {
   PullRefreshBox(
     isRefreshing = isRefreshing,
-    isTV = isTV,
     onRefresh = onRefresh,
     modifier = modifier.fillMaxSize(),
   ) {

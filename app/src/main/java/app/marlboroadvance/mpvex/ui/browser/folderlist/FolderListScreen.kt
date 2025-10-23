@@ -3,7 +3,6 @@ package app.marlboroadvance.mpvex.ui.browser.folderlist
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -63,13 +61,11 @@ import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
 import app.marlboroadvance.mpvex.ui.player.PlayerScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import app.marlboroadvance.mpvex.utils.device.TVUtils
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -95,7 +91,6 @@ object FolderListScreen : Screen {
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
-    val isTV = TVUtils.isAndroidTV(context)
     val listState = rememberLazyListState()
     val isRefreshing = remember { mutableStateOf(false) }
     val showLinkDialog = remember { mutableStateOf(false) }
@@ -160,7 +155,6 @@ object FolderListScreen : Screen {
       floatingActionButton = {
         MediaActionFab(
           listState = listState,
-          isTV = isTV,
           hasRecentlyPlayed = hasRecentlyPlayed,
           onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
@@ -180,7 +174,6 @@ object FolderListScreen : Screen {
           FolderListContent(
             folders = sortedFolders,
             listState = listState,
-            isTV = isTV,
             isRefreshing = isRefreshing,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
             onRefresh = { viewModel.refresh() },
@@ -269,7 +262,6 @@ private fun FolderListTopBar(
 private fun FolderListContent(
   folders: List<VideoFolder>,
   listState: LazyListState,
-  isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
@@ -278,7 +270,6 @@ private fun FolderListContent(
 ) {
   PullRefreshBox(
     isRefreshing = isRefreshing,
-    isTV = isTV,
     onRefresh = onRefresh,
     modifier = modifier.fillMaxWidth(),
   ) {
@@ -306,11 +297,7 @@ private fun FolderListContent(
           EmptyState(
             icon = Icons.Filled.Folder,
             title = "No video folders found",
-            message = if (isTV) {
-              "Android TV detected. Try:\n• Use 'Play Link' button to play from URL\n• Place videos in /Movies or /Download folders\n• Connect USB drive with videos"
-            } else {
-              "Add some video files to your device to see them here"
-            },
+            message = "Add some video files to your device to see them here",
           )
         }
       }

@@ -40,7 +40,6 @@ import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
-import app.marlboroadvance.mpvex.utils.device.TVUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
@@ -1124,17 +1123,13 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
 
   @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod")
   override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-    val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.TracksTV
+    val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.SubtitleTracks ||
+      viewModel.sheetShown.value == Sheets.AudioTracks
     val isNoSheetOpen = viewModel.sheetShown.value == Sheets.None
     val isNoOverlayOpen = isNoSheetOpen && viewModel.panelShown.value == Panels.None
-    val isTV = TVUtils.isAndroidTV(this)
 
     when (keyCode) {
       KeyEvent.KEYCODE_DPAD_UP -> {
-        if (isTV && isNoOverlayOpen) {
-          viewModel.sheetShown.update { Sheets.TracksTV }
-          return true
-        }
         return super.onKeyDown(keyCode, event)
       }
 
@@ -1165,10 +1160,6 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
         if (isTrackSheetOpen) {
           return super.onKeyDown(keyCode, event)
-        }
-        if (isTV && isNoOverlayOpen) {
-          viewModel.pauseUnpause()
-          return true
         }
         return super.onKeyDown(keyCode, event)
       }

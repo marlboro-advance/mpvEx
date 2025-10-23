@@ -68,7 +68,6 @@ enum class Sheets {
   Decoders,
   More,
   VideoZoom,
-  TracksTV, // Consolidated subtitle + audio tracks for TV
 }
 
 enum class Panels {

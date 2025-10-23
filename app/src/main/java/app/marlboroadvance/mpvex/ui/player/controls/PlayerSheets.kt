@@ -16,7 +16,6 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
-import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.TVPlayerSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -142,23 +141,6 @@ fun PlayerSheets(
       VideoZoomSheet(
         videoZoom = videoZoom,
         onSetVideoZoom = viewModel::setVideoZoom,
-        onDismissRequest = onDismissRequest,
-      )
-    }
-
-    Sheets.TracksTV -> {
-      val playerPreferences = koinInject<PlayerPreferences>()
-      val currentAspect by playerPreferences.videoAspect.preferenceCollectAsState()
-      TVPlayerSheet(
-        subtitleTracks = subtitles,
-        audioTracks = audioTracks,
-        currentSpeed = speed,
-        speedPresets = speedPresets,
-        currentAspect = currentAspect,
-        onSelectSubtitle = onSelectSubtitle,
-        onSelectAudio = onSelectAudio,
-        onSpeedChange = onSpeedChange,
-        onAspectChange = viewModel::changeVideoAspect,
         onDismissRequest = onDismissRequest,
       )
     }

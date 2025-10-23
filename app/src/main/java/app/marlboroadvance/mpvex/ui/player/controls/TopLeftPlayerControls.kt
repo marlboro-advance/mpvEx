@@ -17,18 +17,15 @@ fun TopLeftPlayerControls(
   mediaTitle: String,
   onBackClick: () -> Unit,
   modifier: Modifier = Modifier,
-  isTV: Boolean = false,
 ) {
   Row(
     modifier = modifier,
     verticalAlignment = Alignment.CenterVertically
   ) {
-    if (!isTV) {
-      ControlsButton(
-        icon = Icons.AutoMirrored.Default.ArrowBack,
-        onClick = onBackClick,
-      )
-    }
+    ControlsButton(
+      icon = Icons.AutoMirrored.Default.ArrowBack,
+      onClick = onBackClick,
+    )
     Text(
       mediaTitle,
       maxLines = 1,
