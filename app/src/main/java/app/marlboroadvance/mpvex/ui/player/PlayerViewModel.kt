@@ -416,6 +416,25 @@ class PlayerViewModel(
     playerUpdate.update { PlayerUpdates.AspectRatio }
   }
 
+  fun setCustomAspectRatio(ratio: Double) {
+    MPVLib.setPropertyDouble("panscan", 0.0)
+    MPVLib.setPropertyDouble("video-aspect-override", ratio)
+    playerPreferences.currentAspectRatio.set(ratio.toFloat())
+    playerUpdate.update { PlayerUpdates.AspectRatio }
+  }
+
+  fun getCurrentAspectRatio(): Double? {
+    return MPVLib.getPropertyDouble("video-aspect-override")
+  }
+
+  fun restoreCustomAspectRatio() {
+    val savedRatio = playerPreferences.currentAspectRatio.get()
+    if (savedRatio > 0) {
+      MPVLib.setPropertyDouble("panscan", 0.0)
+      MPVLib.setPropertyDouble("video-aspect-override", savedRatio.toDouble())
+    }
+  }
+
   fun cycleScreenRotations() {
     host.hostRequestedOrientation =
       when (host.hostRequestedOrientation) {

@@ -21,6 +21,8 @@ class PlayerPreferences(
   val pinchToZoomGesture = preferenceStore.getBoolean("pinch_to_zoom_gesture", true)
 
   val videoAspect = preferenceStore.getEnum("video_aspect", VideoAspect.Fit)
+  val customAspectRatios = preferenceStore.getStringSet("custom_aspect_ratios", emptySet())
+  val currentAspectRatio = preferenceStore.getFloat("current_aspect_ratio", -1f)
   val currentChaptersIndicator = preferenceStore.getBoolean("show_video_chapter_indicator", true)
   val showChaptersButton = preferenceStore.getBoolean("show_video_chapters_button")
 

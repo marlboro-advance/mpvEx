@@ -104,6 +104,9 @@ fun BottomRightPlayerControls(
           VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Fit)
         }
       },
+      onLongClick = {
+        viewModel.sheetShown.update { Sheets.AspectRatios }
+      },
     )
   }
 }

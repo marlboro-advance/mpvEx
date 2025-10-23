@@ -7,8 +7,8 @@ import app.marlboroadvance.mpvex.ui.theme.DarkMode
 class AppearancePreferences(
   preferenceStore: PreferenceStore,
 ) {
-  // Default to Dark theme and Material You disabled
+  // Default to Dark theme and Material You enabled
   val darkMode = preferenceStore.getEnum("dark_mode", DarkMode.Dark)
-  val materialYou = preferenceStore.getBoolean("material_you", false)
+  val materialYou = preferenceStore.getBoolean("material_you", true)
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
 }

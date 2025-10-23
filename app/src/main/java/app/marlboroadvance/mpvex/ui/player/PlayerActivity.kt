@@ -876,6 +876,7 @@ class PlayerActivity :
 
     setOrientation()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
+    viewModel.restoreCustomAspectRatio()
 
     // Initialize video zoom from the app preference only (ignore mpv.conf)
     val zoomPreference = playerPreferences.defaultVideoZoom.get()

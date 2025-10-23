@@ -79,6 +79,7 @@ enum class Sheets {
   Decoders,
   More,
   VideoZoom,
+  AspectRatios,
 }
 
 enum class Panels {
