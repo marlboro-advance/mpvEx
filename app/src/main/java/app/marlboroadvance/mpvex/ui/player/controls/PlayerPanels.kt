@@ -80,10 +80,11 @@ fun PlayerPanels(
 val CARDS_MAX_WIDTH = 420.dp
 val panelCardsColors: @Composable () -> CardColors = {
   val playerPreferences = koinInject<PlayerPreferences>()
+  val transparency = playerPreferences.panelTransparency.get()
 
   val colors = CardDefaults.cardColors()
   colors.copy(
-    containerColor = MaterialTheme.colorScheme.surface.copy(playerPreferences.panelTransparency.get()),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(playerPreferences.panelTransparency.get()),
+    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = transparency),
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(alpha = transparency),
   )
 }
