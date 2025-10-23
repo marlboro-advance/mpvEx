@@ -56,7 +56,6 @@ class PlayerViewModel(
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
   val pos by MPVLib.propInt["time-pos"].collectAsState(viewModelScope)
   val duration by MPVLib.propInt["duration"].collectAsState(viewModelScope)
-  private val currentMPVVolume by MPVLib.propInt["volume"].collectAsState(viewModelScope)
 
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
@@ -210,10 +209,6 @@ class PlayerViewModel(
     MPVLib.command("seek", position.toString(), if (precise) "absolute" else "absolute+keyframes")
   }
 
-  fun changeBrightnessBy(change: Float) {
-    changeBrightnessTo(currentBrightness.value + change)
-  }
-
   fun changeBrightnessTo(
     brightness: Float,
   ) {
@@ -261,17 +256,13 @@ class PlayerViewModel(
     MPVLib.setPropertyInt("volume", volume)
   }
 
-  fun setMPVVolume(volume: Int) {
-    if (volume != currentMPVVolume) displayVolumeSlider()
-  }
-
   fun displayVolumeSlider() {
     isVolumeSliderShown.update { true }
   }
 
   fun changeVideoAspect(aspect: VideoAspect) {
     var ratio = -1.0
-    var pan = 1.0
+    var pan: Double
     when (aspect) {
       VideoAspect.Crop -> {
         pan = 1.0
@@ -484,15 +475,6 @@ class PlayerViewModel(
   fun setVideoZoom(zoom: Float) {
     _videoZoom.update { zoom }
     MPVLib.setPropertyDouble("video-zoom", zoom.toDouble())
-  }
-
-  /**
-   * Resets video zoom to 0 (default/no zoom).
-   * This is the baseline zoom level and should always reset to 0 regardless of
-   * any user preferences or MPV config settings.
-   */
-  fun resetVideoZoom() {
-    setVideoZoom(0f)
   }
 
   fun updateFrameInfo() {

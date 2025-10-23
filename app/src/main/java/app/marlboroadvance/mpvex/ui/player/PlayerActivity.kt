@@ -29,7 +29,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
-import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
@@ -992,13 +991,6 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
         } ?: uri.toString() // Fallback to URI string if we can't resolve
       } else {
         uri.toString()
-      }
-
-      if (BuildConfig.DEBUG) {
-        Log.d(
-          TAG,
-          "Saving recently played from PlayerActivity: filePath='$filePath', fileName='$fileName', launchSource='$launchSource'",
-        )
       }
 
       recentlyPlayedRepository.addRecentlyPlayed(

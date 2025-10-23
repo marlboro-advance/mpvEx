@@ -15,8 +15,15 @@ dependencyResolutionManagement {
   repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
   repositories {
     google()
-    maven(url = "https://www.jitpack.io")
     mavenCentral()
+    maven(url = "https://www.jitpack.io") {
+      content {
+        // Only use JitPack for specific dependencies to avoid unnecessary checks
+        includeGroup("io.github.abdallahmehiz")
+        includeGroup("com.github.abdallahmehiz")
+        includeGroup("com.github.K1rakishou")
+      }
+    }
   }
 }
 

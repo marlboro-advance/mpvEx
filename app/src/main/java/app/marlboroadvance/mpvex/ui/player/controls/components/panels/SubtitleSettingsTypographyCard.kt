@@ -41,7 +41,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.SubtitleJustification
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
@@ -84,7 +83,7 @@ fun SubtitleSettingsTypographyCard(
     withContext(Dispatchers.IO) {
       // Read fonts from the app's persistent cache: filesDir/fonts
       val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
-      if (fontsDir != null && fileManager.exists(fontsDir)) {
+      if (fileManager.exists(fontsDir)) {
         val familyNames = fileManager.listFiles(fontsDir)
           .filter { fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex()) }
           .mapNotNull { runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull() }
