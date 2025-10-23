@@ -89,6 +89,13 @@ object AppearancePreferencesScreen : Screen {
             },
             enabled = isMaterialYouAvailable,
           )
+          val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
+          SwitchPreference(
+            value = unlimitedNameLines,
+            onValueChange = { preferences.unlimitedNameLines.set(it) },
+            title = { Text(text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_summary)) },
+          )
         }
       }
     }

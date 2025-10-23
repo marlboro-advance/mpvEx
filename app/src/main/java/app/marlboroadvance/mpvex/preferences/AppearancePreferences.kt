@@ -10,4 +10,5 @@ class AppearancePreferences(
   // Default to Dark theme and Material You disabled
   val darkMode = preferenceStore.getEnum("dark_mode", DarkMode.Dark)
   val materialYou = preferenceStore.getBoolean("material_you", false)
+  val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
 }
