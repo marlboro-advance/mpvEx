@@ -52,7 +52,7 @@ inline fun <reified T : Enum<T>> PreferenceStore.getEnum(
     deserializer = {
       try {
         enumValueOf(it)
-      } catch (e: IllegalArgumentException) {
+      } catch (_: IllegalArgumentException) {
         defaultValue
       }
     },

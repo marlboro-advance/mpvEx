@@ -35,7 +35,7 @@ sealed class AndroidPreference<T>(
   override fun get(): T =
     try {
       read(preferences, key, defaultValue)
-    } catch (e: ClassCastException) {
+    } catch (_: ClassCastException) {
       delete()
       defaultValue
     }
@@ -204,7 +204,7 @@ sealed class AndroidPreference<T>(
     ): T =
       try {
         preferences.getString(key, null)?.let(deserializer) ?: defaultValue
-      } catch (e: Exception) {
+      } catch (_: Exception) {
         defaultValue
       }
 

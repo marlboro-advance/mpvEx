@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,7 +45,6 @@ fun BottomRightPlayerControls(
   val playerPreferences = koinInject<PlayerPreferences>()
   val aspect by playerPreferences.videoAspect.collectAsState()
   val currentZoom by viewModel.videoZoom.collectAsState()
-  val context = LocalContext.current
 
   Row(modifier, verticalAlignment = Alignment.CenterVertically) {
     val activity = LocalActivity.current as PlayerActivity

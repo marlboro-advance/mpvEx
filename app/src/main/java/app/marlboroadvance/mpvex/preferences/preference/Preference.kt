@@ -26,11 +26,6 @@ interface Preference<T> {
   fun stateIn(scope: CoroutineScope): StateFlow<T>
 }
 
-inline fun <reified T, R : T> Preference<T>.getAndSet(crossinline block: (T) -> R) =
-  set(
-    block(get()),
-  )
-
 inline fun <reified T> Preference<T>.deleteAndGet(): T {
   delete()
   return get()
@@ -42,11 +37,6 @@ operator fun <T> Preference<Set<T>>.plusAssign(item: T) {
 
 operator fun <T> Preference<Set<T>>.minusAssign(item: T) {
   set(get() - item)
-}
-
-fun Preference<Boolean>.toggle(): Boolean {
-  set(!get())
-  return get()
 }
 
 @Composable

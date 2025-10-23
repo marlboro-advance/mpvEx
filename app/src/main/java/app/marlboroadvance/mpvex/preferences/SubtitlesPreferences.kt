@@ -15,7 +15,6 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.panels.SubtitlesB
 class SubtitlesPreferences(
   preferenceStore: PreferenceStore,
 ) {
-  val autoLoadExternal = preferenceStore.getBoolean("sub_autoload", true)
   val preferredLanguages = preferenceStore.getString("sub_preferred_languages")
 
   val fontsFolder = preferenceStore.getString("sub_fonts_folder")

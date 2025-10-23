@@ -61,12 +61,7 @@ data class TrackNode(
   @SerialName("dolby-vision-level") val dolbyVisionLevel: Long? = null,
   val metadata: Map<String, String?>? = null,
 ) {
-  val isVideo = type == "video"
   val isAudio = type == "audio"
   val isSubtitle = type == "sub"
   val isSelected = selected == true
-
-  fun getMetadata(key: String): String? = metadata?.get(key)
-
-  fun hasMetadata(): Boolean = !metadata.isNullOrEmpty()
 }

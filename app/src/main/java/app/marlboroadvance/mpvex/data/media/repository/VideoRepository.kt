@@ -3,7 +3,6 @@ package app.marlboroadvance.mpvex.data.media.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
@@ -15,27 +14,6 @@ import kotlin.math.pow
 
 object VideoRepository {
   private const val TAG = "VideoRepository"
-
-  // Video file extensions
-  private val VIDEO_EXTENSIONS =
-    setOf(
-      "mp4",
-      "mkv",
-      "avi",
-      "mov",
-      "wmv",
-      "flv",
-      "webm",
-      "m4v",
-      "mpg",
-      "mpeg",
-      "3gp",
-      "3g2",
-      "ts",
-      "m2ts",
-      "mts",
-      "vob",
-    )
 
   // MIME type mappings
   private val EXTENSION_TO_MIME =
@@ -183,9 +161,6 @@ object VideoRepository {
       }
     }
   }
-
-  private fun getMimeTypeFromExtension(extension: String): String =
-    EXTENSION_TO_MIME[extension.lowercase()] ?: "video/*"
 
   private fun getCursorColumnIndices(cursor: Cursor): VideoColumnIndices =
     VideoColumnIndices(

@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,9 +38,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.SubtitleJustification
@@ -59,7 +57,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ListPreferenceType
-import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
@@ -474,8 +471,7 @@ object SubtitlesPreferencesScreen : Screen {
             onValueChange = { preferences.justification.set(it) },
             title = { Text("Text Alignment") },
             valueToText = {
-              androidx.compose.ui.text
-                .AnnotatedString(it.name)
+              AnnotatedString(it.name)
             },
             values = SubtitleJustification.entries,
             type = ListPreferenceType.DROPDOWN_MENU,
@@ -488,8 +484,7 @@ object SubtitlesPreferencesScreen : Screen {
             onValueChange = { preferences.borderStyle.set(it) },
             title = { Text("Border Style") },
             valueToText = {
-              androidx.compose.ui.text
-                .AnnotatedString(it.name.replace("And", " & "))
+              AnnotatedString(it.name.replace("And", " & "))
             },
             values = SubtitlesBorderStyle.entries,
             type = ListPreferenceType.DROPDOWN_MENU,

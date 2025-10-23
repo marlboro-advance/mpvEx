@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -102,7 +101,6 @@ fun PlayerControls(
   onBackPress: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val context = LocalContext.current
   val spacing = MaterialTheme.spacing
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()

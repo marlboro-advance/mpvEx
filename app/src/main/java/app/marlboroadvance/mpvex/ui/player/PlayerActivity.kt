@@ -455,6 +455,7 @@ class PlayerActivity :
   }
 
   private fun setupSystemUI() {
+    @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
       View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
@@ -721,6 +722,7 @@ class PlayerActivity :
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
   }
 
+  @Suppress("DEPRECATION")
   private fun extractUriFromIntent(intent: Intent): Uri? =
     if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
@@ -1170,7 +1172,6 @@ class PlayerActivity :
       viewModel.sheetShown.value == Sheets.SubtitleTracks ||
         viewModel.sheetShown.value == Sheets.AudioTracks
     val isNoSheetOpen = viewModel.sheetShown.value == Sheets.None
-    val isNoOverlayOpen = isNoSheetOpen && viewModel.panelShown.value == Panels.None
 
     when (keyCode) {
       KeyEvent.KEYCODE_DPAD_UP -> {

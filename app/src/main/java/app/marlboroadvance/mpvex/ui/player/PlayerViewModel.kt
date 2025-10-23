@@ -287,7 +287,9 @@ class PlayerViewModel(
       }
 
       VideoAspect.Stretch -> {
+        @Suppress("DEPRECATION")
         val dm = DisplayMetrics()
+        @Suppress("DEPRECATION")
         host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
         ratio = dm.widthPixels / dm.heightPixels.toDouble()
         pan = 0.0
@@ -381,10 +383,12 @@ class PlayerViewModel(
 
   private val inputMethodManager = host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
+  @Suppress("DEPRECATION")
   private fun forceShowSoftwareKeyboard() {
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
   }
 
+  @Suppress("DEPRECATION")
   private fun forceHideSoftwareKeyboard() {
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0)
   }

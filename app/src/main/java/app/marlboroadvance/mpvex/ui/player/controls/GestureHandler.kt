@@ -160,7 +160,8 @@ fun GestureHandler(
               }
             },
           )
-        }.pointerInput(areControlsLocked) {
+        }
+        .pointerInput(areControlsLocked) {
           if (!seekGesture || areControlsLocked) return@pointerInput
           var startingPosition = position ?: 0
           var startingX = 0f
@@ -198,7 +199,8 @@ fun GestureHandler(
 
             if (showSeekbarWhenSeeking) viewModel.showSeekBar()
           }
-        }.pointerInput(areControlsLocked) {
+        }
+        .pointerInput(areControlsLocked) {
           if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
           var startingY = 0f
           var mpvVolumeStartingY = 0f
@@ -358,10 +360,3 @@ fun calculateNewHorizontalGestureValue(
   newX: Float,
   sensitivity: Float,
 ): Int = originalValue + ((newX - startingX) * sensitivity).toInt()
-
-fun calculateNewHorizontalGestureValue(
-  originalValue: Float,
-  startingX: Float,
-  newX: Float,
-  sensitivity: Float,
-): Float = originalValue + ((newX - startingX) * sensitivity)

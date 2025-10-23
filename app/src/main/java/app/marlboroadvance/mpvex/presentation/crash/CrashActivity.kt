@@ -99,7 +99,7 @@ class CrashActivity : ComponentActivity() {
   override fun onDestroy() {
     try {
       super.onDestroy()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       // Silently handle exceptions during destruction
     }
   }
@@ -188,7 +188,8 @@ class CrashActivity : ComponentActivity() {
                 Offset(size.width, 0f),
                 strokeWidth = Dp.Hairline.value,
               )
-            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+            }
+            .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
           Row(

@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.ui.player.Decoder
 import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.Sheets
@@ -20,9 +19,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomS
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
-import org.koin.compose.koinInject
 import androidx.compose.runtime.collectAsState as composeCollectAsState
-import app.marlboroadvance.mpvex.preferences.preference.collectAsState as preferenceCollectAsState
 
 @Composable
 fun PlayerSheets(

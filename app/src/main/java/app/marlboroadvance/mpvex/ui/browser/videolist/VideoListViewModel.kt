@@ -9,11 +9,8 @@ import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 
