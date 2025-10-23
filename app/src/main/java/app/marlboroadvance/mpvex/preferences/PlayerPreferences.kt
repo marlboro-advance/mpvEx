@@ -18,6 +18,7 @@ class PlayerPreferences(
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)
   val volumeGesture = preferenceStore.getBoolean("volume_brightness", true)
+  val pinchToZoomGesture = preferenceStore.getBoolean("pinch_to_zoom_gesture", true)
 
   val videoAspect = preferenceStore.getEnum("video_aspect", VideoAspect.Fit)
   val currentChaptersIndicator = preferenceStore.getBoolean("show_video_chapter_indicator", true)

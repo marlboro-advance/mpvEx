@@ -140,6 +140,12 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.volumeGesture::set,
             title = { Text(stringResource(R.string.pref_player_gestures_volume)) },
           )
+          val pinchToZoomGesture by preferences.pinchToZoomGesture.collectAsState()
+          SwitchPreference(
+            value = pinchToZoomGesture,
+            onValueChange = preferences.pinchToZoomGesture::set,
+            title = { Text(stringResource(R.string.pref_player_gestures_pinch_to_zoom)) },
+          )
           val holdForMultipleSpeed by preferences.holdForMultipleSpeed.collectAsState()
           SliderPreference(
             value = holdForMultipleSpeed,

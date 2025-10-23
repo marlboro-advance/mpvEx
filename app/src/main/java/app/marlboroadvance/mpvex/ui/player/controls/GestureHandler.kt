@@ -2,8 +2,10 @@ package app.marlboroadvance.mpvex.ui.player.controls
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -73,6 +76,7 @@ fun GestureHandler(
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val isSeekingForwards by viewModel.isSeekingForwards.collectAsState()
+  val videoZoom by viewModel.videoZoom.collectAsState()
   var isDoubleTapSeeking by remember { mutableStateOf(false) }
   LaunchedEffect(seekAmount) {
     delay(800)
@@ -88,6 +92,7 @@ fun GestureHandler(
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val seekGesture by playerPreferences.horizontalSeekGesture.collectAsState()
   val showSeekbarWhenSeeking by playerPreferences.showSeekBarWhenSeeking.collectAsState()
+  val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
   val currentVolume by viewModel.currentVolume.collectAsState()
   val currentMPVVolume by MPVLib.propInt["volume"].collectAsState()
@@ -281,6 +286,70 @@ fun GestureHandler(
               volumeGesture -> changeVolume()
               else -> {}
             }
+          }
+        }
+        .pointerInput(areControlsLocked) {
+          if (areControlsLocked || !pinchToZoomGesture) return@pointerInput
+
+          awaitEachGesture {
+            var gestureStartZoom = 0f
+            var isZoomGestureStarted = false
+            var initialDistance = 0f
+            val minDistanceChangeThreshold = 20f // Minimum change in pixels to activate zoom
+
+            // Keep processing events until all pointers are up
+            do {
+              val event = awaitPointerEvent()
+              val pointerCount = event.changes.count { it.pressed }
+
+              if (pointerCount == 2) {
+                // Exactly two fingers - zoom gesture
+                val currentPointers = event.changes.filter { it.pressed }
+
+                if (currentPointers.size == 2) {
+                  // Calculate current distance between the two fingers
+                  val pointer1 = currentPointers[0].position
+                  val pointer2 = currentPointers[1].position
+                  val currentDistance = kotlin.math.sqrt(
+                    ((pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
+                      (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
+                  ).toFloat()
+
+                  // Store initial distance on first detection
+                  if (initialDistance == 0f) {
+                    initialDistance = currentDistance
+                  }
+
+                  // Check if distance changed enough to activate zoom
+                  val distanceChange = kotlin.math.abs(currentDistance - initialDistance)
+
+                  if (distanceChange > minDistanceChangeThreshold) {
+                    if (!isZoomGestureStarted) {
+                      // Start of zoom gesture - only after threshold is passed
+                      gestureStartZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+                      isZoomGestureStarted = true
+                      viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
+                    }
+
+                    if (initialDistance > 0) {
+                      val zoomScale = currentDistance / initialDistance
+                      // Use logarithmic scale for natural zoom feel
+                      val zoomDelta = kotlin.math.ln(zoomScale.toDouble()).toFloat() * 1.5f
+                      val newZoom = (gestureStartZoom + zoomDelta).coerceIn(-2f, 3f)
+                      viewModel.setVideoZoom(newZoom)
+
+                      // Consume the event to prevent other gestures from processing it
+                      currentPointers.forEach { it.consume() }
+                    }
+                  }
+                }
+              } else if (pointerCount > 2 || (isZoomGestureStarted && pointerCount < 2)) {
+                // If more than 2 fingers or zoom was active but now less than 2 fingers, end the zoom gesture
+                break
+              }
+            } while (event.changes.any { it.pressed })
+
+            // Gesture ended - variables will be reset on next gesture
           }
         },
   )

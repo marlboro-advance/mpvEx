@@ -185,7 +185,8 @@ fun PlayerControls(
                 Pair(1f, Color.Black),
               ),
               alpha = transparentOverlay,
-            ).padding(horizontal = MaterialTheme.spacing.medium),
+            )
+            .padding(horizontal = MaterialTheme.spacing.medium),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -295,7 +296,8 @@ fun PlayerControls(
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
         val aspectRatio by playerPreferences.videoAspect.collectAsState()
-        LaunchedEffect(currentPlayerUpdate, aspectRatio) {
+        val videoZoom by viewModel.videoZoom.collectAsState()
+        LaunchedEffect(currentPlayerUpdate, aspectRatio, videoZoom) {
           if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed || currentPlayerUpdate is PlayerUpdates.None) {
             return@LaunchedEffect
           }
@@ -316,6 +318,10 @@ fun PlayerControls(
             is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed)
             is PlayerUpdates.AspectRatio -> TextPlayerUpdate(stringResource(aspectRatio.titleRes))
             is PlayerUpdates.ShowText -> TextPlayerUpdate((currentPlayerUpdate as PlayerUpdates.ShowText).value)
+            is PlayerUpdates.VideoZoom -> {
+              val zoomPercentage = (videoZoom * 100).toInt()
+              TextPlayerUpdate("Zoom: $zoomPercentage%")
+            }
             else -> {}
           }
         }
@@ -385,7 +391,8 @@ fun PlayerControls(
                       interaction,
                       ripple(),
                       onClick = viewModel::pauseUnpause,
-                    ).padding(MaterialTheme.spacing.medium),
+                    )
+                    .padding(MaterialTheme.spacing.medium),
                 contentDescription = null,
               )
           }

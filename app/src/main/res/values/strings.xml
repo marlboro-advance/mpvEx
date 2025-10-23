@@ -54,6 +54,7 @@
     <string name="pref_player_gestures_seek">Horizontal seek gestures</string>
     <string name="pref_player_gestures_brightness">Brightness gestures</string>
     <string name="pref_player_gestures_volume">Volume gestures</string>
+    <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
     <string name="pref_player_gestures_hold_for_double_speed">Hold for 2x speed</string>
     <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
 

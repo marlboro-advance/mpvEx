@@ -97,6 +97,8 @@ sealed class PlayerUpdates {
 
   data object AspectRatio : PlayerUpdates()
 
+  data object VideoZoom : PlayerUpdates()
+
   data class ShowText(
     val value: String,
   ) : PlayerUpdates()
