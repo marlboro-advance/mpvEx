@@ -961,36 +961,58 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   }
 
   private suspend fun saveRecentlyPlayed() {
-    // Determine launch source
-    val launchSource = when {
-      intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
-      intent.action == Intent.ACTION_SEND -> "share"
-      else -> "normal" // Normal playback from list
-    }
-
     runCatching {
       // Extract the original URI from the intent
-      val uri = extractUriFromIntent(intent) ?: return@runCatching
+      val uri = extractUriFromIntent(intent)
+      
+      // Early return if URI is null - cannot save recently played without a valid URI
+      if (uri == null) {
+        Log.w(TAG, "Cannot save recently played: URI is null")
+        return@runCatching
+      }
 
-      // Try to get the actual file path from the content URI
-      val filePath = if (uri.scheme == "content") {
-        // Try to resolve content URI to actual file path
-        contentResolver.query(
-          uri,
-          arrayOf(MediaStore.MediaColumns.DATA),
-          null,
-          null,
-          null,
-        )?.use { cursor ->
-          if (cursor.moveToFirst()) {
-            val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
-            if (columnIndex != -1) cursor.getString(columnIndex) else null
-          } else {
-            null
-          }
-        } ?: uri.toString() // Fallback to URI string if we can't resolve
-      } else {
-        uri.toString()
+      // Validate URI has a scheme
+      if (uri.scheme == null) {
+        Log.w(TAG, "Cannot save recently played: URI has null scheme: $uri")
+        return@runCatching
+      }
+
+      // Determine launch source
+      val launchSource = when {
+        intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
+        intent.action == Intent.ACTION_SEND -> "share"
+        else -> "normal" // Normal playback from list
+      }
+
+      // Determine the file path to store
+      val filePath = when (uri.scheme) {
+        "file" -> {
+          // For file URIs, use the path directly
+          uri.path ?: uri.toString()
+        }
+
+        "content" -> {
+          // For content URIs, try to resolve to actual file path first
+          contentResolver.query(
+            uri,
+            arrayOf(MediaStore.MediaColumns.DATA),
+            null,
+            null,
+            null,
+          )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+              val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+              if (columnIndex != -1) cursor.getString(columnIndex) else null
+            } else {
+              null
+            }
+          } ?: uri.toString() // Fallback to full URI string if we can't resolve
+        }
+
+        else -> {
+          // For other schemes (http, https, etc.), store the full URI
+          uri.toString()
+        }
       }
 
       recentlyPlayedRepository.addRecentlyPlayed(
@@ -998,6 +1020,8 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
         fileName = fileName,
         launchSource = launchSource,
       )
+
+      Log.d(TAG, "Saved recently played: $filePath (source: $launchSource)")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played", e)
     }

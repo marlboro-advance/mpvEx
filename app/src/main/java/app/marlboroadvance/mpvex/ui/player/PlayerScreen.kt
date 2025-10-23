@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
@@ -49,7 +48,7 @@ data class PlayerScreen(
 }
 
 private fun resolveToUri(source: String): Uri {
-  val parsed = source.toUri()
+  val parsed = Uri.parse(source)
   return if (parsed.scheme.isNullOrEmpty()) {
     Uri.fromFile(File(source))
   } else parsed

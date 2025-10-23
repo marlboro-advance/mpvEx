@@ -18,6 +18,12 @@ internal fun Uri.openContentFd(context: Context): String? {
 }
 
 internal fun Uri.resolveUri(context: Context): String? {
+  // Handle null scheme case first
+  if (scheme == null) {
+    Log.e(TAG, "URI has null scheme, cannot resolve: $this")
+    return null
+  }
+
   val filepath = when (scheme) {
     "file" -> path
     "content" -> openContentFd(context)

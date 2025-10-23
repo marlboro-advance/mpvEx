@@ -60,7 +60,29 @@ object MediaUtils {
    * @param launchSource Optional source identifier for analytics
    */
   fun playFile(source: String, context: Context, launchSource: String? = null) {
+    // Validate the source string is not empty
+    if (source.isBlank()) {
+      android.util.Log.e("MediaUtils", "Cannot play file: source is empty")
+      return
+    }
+
     val uri = source.toUri()
+
+    // Validate that the URI has a scheme
+    if (uri.scheme == null) {
+      android.util.Log.e("MediaUtils", "Cannot play file: URI has no scheme: $source")
+      // Try to treat it as a file path
+      val fileUri = "file://$source".toUri()
+      if (fileUri.scheme != null) {
+        playFileWithIntent(fileUri, context, launchSource)
+      }
+      return
+    }
+
+    playFileWithIntent(uri, context, launchSource)
+  }
+
+  private fun playFileWithIntent(uri: android.net.Uri, context: Context, launchSource: String?) {
     val intent = Intent(Intent.ACTION_VIEW, uri)
     intent.setClass(context, PlayerActivity::class.java)
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
