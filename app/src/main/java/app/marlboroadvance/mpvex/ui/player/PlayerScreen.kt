@@ -11,6 +11,17 @@ import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 import java.io.File
 
+/**
+ * @deprecated Use MediaUtils.playFile() instead for consistency
+ * This screen is kept for backward compatibility but should not be used in new code
+ */
+@Deprecated(
+  message = "Use MediaUtils.playFile() instead",
+  replaceWith = ReplaceWith(
+    "MediaUtils.playFile(source, context, launchSource)",
+    "app.marlboroadvance.mpvex.utils.media.MediaUtils",
+  ),
+)
 @Serializable
 data class PlayerScreen(
   val source: String,

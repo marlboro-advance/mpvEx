@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,6 +67,7 @@ import java.io.File
 
 @Serializable
 object SubtitlesPreferencesScreen : Screen {
+  @SuppressLint("DefaultLocale")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -89,7 +92,7 @@ object SubtitlesPreferencesScreen : Screen {
         val fontsFolder by preferences.fontsFolder.collectAsState()
         val selectedFont by preferences.font.collectAsState()
         var availableFonts by remember { mutableStateOf<List<String>>(emptyList()) }
-        var fontLoadTrigger by remember { mutableStateOf(0) }
+        var fontLoadTrigger by remember { mutableIntStateOf(0) }
         var isLoadingFonts by remember { mutableStateOf(false) }
 
         val locationPicker = rememberLauncherForActivityResult(
@@ -495,7 +498,7 @@ object SubtitlesPreferencesScreen : Screen {
     fileManager: FileManager,
   ): List<String> = withContext(Dispatchers.IO) {
     val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
-    if (fontsDir != null && fileManager.exists(fontsDir)) {
+    if (fileManager.exists(fontsDir)) {
       fileManager.listFiles(fontsDir)
         .filter { file ->
           fileManager.isFile(file) && fileManager.getName(file).lowercase().matches(".*\\.[ot]tf$".toRegex())
@@ -515,7 +518,7 @@ object SubtitlesPreferencesScreen : Screen {
   /**
    * Copies font files from the selected directory to app's internal storage
    */
-  private suspend fun copyFontsFromDirectory(
+  private fun copyFontsFromDirectory(
     context: android.content.Context,
     fileManager: FileManager,
     uriString: String,
@@ -525,7 +528,7 @@ object SubtitlesPreferencesScreen : Screen {
       val destinationDir = fileManager.fromPath(destinationPath)
 
       // Ensure destination directory exists
-      if (destinationDir == null || !fileManager.exists(destinationDir)) {
+      if (!fileManager.exists(destinationDir)) {
         File(destinationPath).mkdirs()
       }
 

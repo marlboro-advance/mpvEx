@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CalendarToday
@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
 import app.marlboroadvance.mpvex.preferences.SortOrder
@@ -56,9 +57,7 @@ import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefresh
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.presentation.components.states.EmptyState
 import app.marlboroadvance.mpvex.presentation.components.states.PermissionDeniedState
-import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
-import app.marlboroadvance.mpvex.ui.player.PlayerScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -123,7 +122,7 @@ object FolderListScreen : Screen {
             Intent.FLAG_GRANT_READ_URI_PERMISSION,
           )
         }
-        backstack.add(PlayerScreen(it.toString(), launchSource = "open_file"))
+        MediaUtils.playFile(it.toString(), context, "open_file")
       }
     }
 
@@ -160,7 +159,7 @@ object FolderListScreen : Screen {
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
               MediaUtils.getRecentlyPlayedFile()
-                ?.let { backstack.add(PlayerScreen(it, launchSource = "recently_played_button")) }
+                ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
             }
           },
           onPlayLink = { showLinkDialog.value = true },
@@ -196,7 +195,7 @@ object FolderListScreen : Screen {
       PlayLinkDialog(
         isOpen = showLinkDialog.value,
         onDismiss = { showLinkDialog.value = false },
-        onPlayLink = { url -> backstack.add(PlayerScreen(url, launchSource = "play_link")) },
+        onPlayLink = { url -> MediaUtils.playFile(url, context, "play_link") },
       )
 
       FolderSortDialog(
