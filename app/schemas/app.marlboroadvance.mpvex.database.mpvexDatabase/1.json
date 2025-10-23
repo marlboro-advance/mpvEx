@@ -103,11 +103,6 @@
             "columnName": "timestamp",
             "affinity": "INTEGER",
             "notNull": true
-          },
-          {
-            "fieldPath": "launchSource",
-            "columnName": "launchSource",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
