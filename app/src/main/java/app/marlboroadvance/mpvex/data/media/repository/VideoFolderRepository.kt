@@ -239,6 +239,7 @@ object VideoFolderRepository {
               folderPath = folderPath,
               dateModified = file.lastModified() / 1000,
               size = file.length(),
+              duration = 0,
               filePath = file.absolutePath,
               folders = folders,
             )
@@ -267,6 +268,7 @@ object VideoFolderRepository {
       MediaStore.Video.Media.DATA,
       MediaStore.Video.Media.DATE_MODIFIED,
       MediaStore.Video.Media.SIZE,
+      MediaStore.Video.Media.DURATION,
     )
   }
 
@@ -279,6 +281,7 @@ object VideoFolderRepository {
     val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
     val dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
     val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+    val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
 
     while (cursor.moveToNext()) {
       val bucketId = cursor.getString(bucketIdColumn)
@@ -286,8 +289,9 @@ object VideoFolderRepository {
       val filePath = cursor.getString(dataColumn)
       val dateModified = cursor.getLong(dateModifiedColumn)
       val size = cursor.getLong(sizeColumn)
+      val duration = cursor.getLong(durationColumn)
 
-      processVideoFile(filePath, bucketId, bucketName, dateModified, size, folders)
+      processVideoFile(filePath, bucketId, bucketName, dateModified, size, duration, folders)
     }
   }
 
@@ -297,6 +301,7 @@ object VideoFolderRepository {
     bucketName: String?,
     dateModified: Long,
     size: Long,
+    duration: Long,
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     if (filePath == null) return
@@ -306,7 +311,7 @@ object VideoFolderRepository {
 
     Log.d(Tag, "Found video: $filePath, bucketId: $finalBucketId, bucketName: $finalBucketName")
 
-    updateFolderInfo(finalBucketId, finalBucketName, normalizedPath, dateModified, size, filePath, folders)
+    updateFolderInfo(finalBucketId, finalBucketName, normalizedPath, dateModified, size, duration, filePath, folders)
   }
 
   private fun getFinalBucketInfo(
@@ -334,6 +339,7 @@ object VideoFolderRepository {
     folderPath: String,
     dateModified: Long,
     size: Long,
+    duration: Long,
     filePath: String,
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
@@ -346,6 +352,7 @@ object VideoFolderRepository {
       path = folderPath,
       videoCount = 0,
       totalSize = 0L,
+      totalDuration = 0L,
       lastModified = 0L,
       processedVideos = mutableSetOf(),
     )
@@ -355,6 +362,7 @@ object VideoFolderRepository {
       folders[bucketId] = folderInfo.copy(
         videoCount = folderInfo.videoCount + 1,
         totalSize = folderInfo.totalSize + size,
+        totalDuration = folderInfo.totalDuration + duration,
         lastModified = maxOf(folderInfo.lastModified, dateModified),
         processedVideos = folderInfo.processedVideos, // Keep the same set reference
       )
@@ -375,6 +383,7 @@ object VideoFolderRepository {
           path = info.path,
           videoCount = info.videoCount,
           totalSize = info.totalSize,
+          totalDuration = info.totalDuration,
           lastModified = info.lastModified,
         )
       }
@@ -387,6 +396,7 @@ object VideoFolderRepository {
     val path: String,
     val videoCount: Int,
     val totalSize: Long,
+    val totalDuration: Long,
     val lastModified: Long,
     val processedVideos: MutableSet<String> = mutableSetOf(), // Track which videos we've already counted
   )

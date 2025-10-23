@@ -14,11 +14,9 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +30,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,12 +47,12 @@ import app.marlboroadvance.mpvex.preferences.VideoSortType
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.cards.VideoCard
+import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.device.TVUtils
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -65,10 +62,7 @@ data class VideoListScreen(
   private val folderName: String,
 ) : Screen {
 
-  @OptIn(
-    ExperimentalMaterial3Api::class,
-    androidx.compose.material.ExperimentalMaterialApi::class,
-  )
+  @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -83,7 +77,6 @@ data class VideoListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
-    val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
@@ -98,20 +91,6 @@ data class VideoListScreen(
     val sortedVideos = remember(videos, videoSortType, videoSortOrder) {
       SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
     }
-
-    // Pull to refresh
-    val pullRefreshState = rememberPullRefreshState(
-      refreshing = isRefreshing.value,
-      onRefresh = {
-        isRefreshing.value = true
-        coroutineScope.launch {
-          viewModel.refresh()
-          isRefreshing.value = false
-        }
-      },
-      refreshingOffset = 80.dp,
-      refreshThreshold = 72.dp,
-    )
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
 
@@ -137,8 +116,8 @@ data class VideoListScreen(
         isLoading = isLoading && videos.isEmpty(),
         isTV = isTV,
         isRefreshing = isRefreshing,
-        pullRefreshState = pullRefreshState,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
+        onRefresh = { viewModel.refresh() },
         onVideoClick = { video -> MediaUtils.playFile(video, context) },
         modifier = Modifier.padding(padding),
       )
@@ -159,7 +138,7 @@ data class VideoListScreen(
 /**
  * Top app bar for the video list screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun VideoListTopBar(
   title: String,
@@ -171,7 +150,7 @@ private fun VideoListTopBar(
     title = {
       Text(
         title,
-        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+        style = MaterialTheme.typography.headlineSmallEmphasized,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -209,22 +188,22 @@ private fun VideoListTopBar(
 /**
  * Main content showing the list of videos
  */
-@OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 private fun VideoListContent(
   videos: List<Video>,
   isLoading: Boolean,
   isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
-  pullRefreshState: androidx.compose.material.pullrefresh.PullRefreshState,
   recentlyPlayedFilePath: String?,
+  onRefresh: suspend () -> Unit,
   onVideoClick: (Video) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Box(
-    modifier
-      .fillMaxSize()
-      .then(if (!isTV) Modifier.pullRefresh(pullRefreshState) else Modifier),
+  PullRefreshBox(
+    isRefreshing = isRefreshing,
+    isTV = isTV,
+    onRefresh = onRefresh,
+    modifier = modifier.fillMaxSize(),
   ) {
     when {
       isLoading -> {
@@ -272,16 +251,6 @@ private fun VideoListContent(
           }
         }
       }
-    }
-
-    if (!isTV) {
-      PullRefreshIndicator(
-        isRefreshing.value,
-        pullRefreshState,
-        Modifier.align(Alignment.TopCenter),
-        backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.primary,
-      )
     }
   }
 }

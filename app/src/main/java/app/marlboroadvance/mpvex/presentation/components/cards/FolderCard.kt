@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +42,9 @@ fun FolderCard(
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
+
+  // Remove the redundant folder name from the path
+  val parentPath = folder.path.substringBeforeLast("/", folder.path)
 
   Card(
     modifier = modifier
@@ -80,25 +84,54 @@ fun FolderCard(
           overflow = TextOverflow.Ellipsis,
         )
         Text(
-          folder.path,
+          parentPath,
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
         )
-      }
-      Spacer(modifier = Modifier.width(16.dp))
-      Text(
-        if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
-        style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier
-          .background(
-            MaterialTheme.colorScheme.surfaceContainerHigh,
-            RoundedCornerShape(8.dp),
+        Spacer(modifier = Modifier.height(4.dp))
+        Row {
+          Text(
+            if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier
+              .background(
+                MaterialTheme.colorScheme.surfaceContainerHigh,
+                RoundedCornerShape(8.dp),
+              )
+              .padding(horizontal = 8.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.onSurface,
           )
-          .padding(horizontal = 8.dp, vertical = 4.dp),
-        color = MaterialTheme.colorScheme.onSurface,
-      )
+          if (folder.totalDuration > 0) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+              formatDuration(folder.totalDuration),
+              style = MaterialTheme.typography.labelSmall,
+              modifier = Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+          }
+        }
+      }
     }
+  }
+}
+
+private fun formatDuration(durationMs: Long): String {
+  val seconds = durationMs / 1000
+  val hours = seconds / 3600
+  val minutes = (seconds % 3600) / 60
+  val secs = seconds % 60
+
+  return when {
+    hours > 0 -> "${hours}h ${minutes}m"
+    minutes > 0 -> "${minutes}m"
+    else -> "${secs}s"
   }
 }

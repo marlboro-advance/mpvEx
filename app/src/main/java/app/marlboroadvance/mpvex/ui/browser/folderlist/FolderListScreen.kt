@@ -19,9 +19,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -57,6 +54,7 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.cards.FolderCard
 import app.marlboroadvance.mpvex.presentation.components.dialogs.PlayLinkDialog
 import app.marlboroadvance.mpvex.presentation.components.fab.MediaActionFab
+import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.presentation.components.states.EmptyState
 import app.marlboroadvance.mpvex.presentation.components.states.PermissionDeniedState
@@ -84,7 +82,6 @@ object FolderListScreen : Screen {
     ExperimentalPermissionsApi::class,
     ExperimentalMaterial3Api::class,
     ExperimentalMaterial3ExpressiveApi::class,
-    androidx.compose.material.ExperimentalMaterialApi::class,
   )
   @Composable
   override fun Content() {
@@ -134,21 +131,6 @@ object FolderListScreen : Screen {
         backstack.add(PlayerScreen(it.toString(), launchSource = "open_file"))
       }
     }
-
-    // Pull to refresh
-    val pullRefreshState = rememberPullRefreshState(
-      refreshing = isRefreshing.value,
-      onRefresh = {
-        isRefreshing.value = true
-        coroutineScope.launch {
-          viewModel.refresh()
-          delay(800)
-          isRefreshing.value = false
-        }
-      },
-      refreshingOffset = 80.dp,
-      refreshThreshold = 72.dp,
-    )
 
     // Effects
     LaunchedEffect(Unit) {
@@ -200,8 +182,8 @@ object FolderListScreen : Screen {
             listState = listState,
             isTV = isTV,
             isRefreshing = isRefreshing,
-            pullRefreshState = pullRefreshState,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
+            onRefresh = { viewModel.refresh() },
             onFolderClick = { folder ->
               fabMenuExpanded = false
               backstack.add(VideoListScreen(folder.bucketId, folder.name))
@@ -239,7 +221,7 @@ object FolderListScreen : Screen {
 /**
  * Top app bar for the folder list screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FolderListTopBar(
   onSortClick: () -> Unit,
@@ -249,7 +231,7 @@ private fun FolderListTopBar(
     title = {
       Text(
         stringResource(app.marlboroadvance.mpvex.R.string.app_name),
-        style = MaterialTheme.typography.headlineMedium,
+        style = MaterialTheme.typography.headlineMediumEmphasized,
         fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 8.dp),
@@ -283,22 +265,22 @@ private fun FolderListTopBar(
 /**
  * Main content showing the list of folders
  */
-@OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 private fun FolderListContent(
   folders: List<VideoFolder>,
   listState: LazyListState,
   isTV: Boolean,
   isRefreshing: MutableState<Boolean>,
-  pullRefreshState: androidx.compose.material.pullrefresh.PullRefreshState,
   recentlyPlayedFilePath: String?,
+  onRefresh: suspend () -> Unit,
   onFolderClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Box(
-    modifier
-      .fillMaxWidth()
-      .then(if (!isTV) Modifier.pullRefresh(pullRefreshState) else Modifier),
+  PullRefreshBox(
+    isRefreshing = isRefreshing,
+    isTV = isTV,
+    onRefresh = onRefresh,
+    modifier = modifier.fillMaxWidth(),
   ) {
     LazyColumn(
       state = listState,
@@ -332,16 +314,6 @@ private fun FolderListContent(
           )
         }
       }
-    }
-
-    if (!isTV) {
-      PullRefreshIndicator(
-        isRefreshing.value,
-        pullRefreshState,
-        Modifier.align(Alignment.TopCenter),
-        backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.primary,
-      )
     }
   }
 }
