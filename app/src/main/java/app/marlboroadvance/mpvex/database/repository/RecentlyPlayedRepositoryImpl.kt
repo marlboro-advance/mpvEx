@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.database.repository
 import app.marlboroadvance.mpvex.database.dao.RecentlyPlayedDao
 import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import kotlinx.coroutines.flow.Flow
 
 class RecentlyPlayedRepositoryImpl(
   private val recentlyPlayedDao: RecentlyPlayedDao,
@@ -22,8 +23,16 @@ class RecentlyPlayedRepositoryImpl(
     return recentlyPlayedDao.getLastPlayed()
   }
 
+  override fun observeLastPlayed(): Flow<RecentlyPlayedEntity?> {
+    return recentlyPlayedDao.observeLastPlayed()
+  }
+
   override suspend fun getLastPlayedForHighlight(): RecentlyPlayedEntity? {
     return recentlyPlayedDao.getLastPlayedForHighlight()
+  }
+
+  override fun observeLastPlayedForHighlight(): Flow<RecentlyPlayedEntity?> {
+    return recentlyPlayedDao.observeLastPlayedForHighlight()
   }
 
   override suspend fun getRecentlyPlayed(limit: Int): List<RecentlyPlayedEntity> {

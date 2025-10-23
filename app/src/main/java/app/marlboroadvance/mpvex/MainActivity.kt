@@ -69,29 +69,30 @@ class MainActivity : ComponentActivity() {
         onBack = { backstack.removeLastOrNull() },
         entryProvider = { route -> NavEntry(route) { (it as Screen).Content() } },
         popTransitionSpec = {
-          fadeIn(animationSpec = tween(220)) +
-            slideIn(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) } togetherWith
-            fadeOut(animationSpec = tween(220)) +
-            slideOut(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }
+          (fadeIn(animationSpec = tween(220)) +
+            slideIn(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }) togetherWith
+            (fadeOut(animationSpec = tween(220)) +
+              slideOut(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) })
         },
         transitionSpec = {
-          fadeIn(animationSpec = tween(220)) +
-            slideIn(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) } togetherWith
-            fadeOut(animationSpec = tween(220)) +
-            slideOut(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }
+          (fadeIn(animationSpec = tween(220)) +
+            slideIn(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }) togetherWith
+            (fadeOut(animationSpec = tween(220)) +
+              slideOut(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) })
         },
         predictivePopTransitionSpec = {
-          (
-            fadeIn(animationSpec = tween(220)) +
-              scaleIn(
+          (fadeIn(animationSpec = tween(220)) +
+            scaleIn(
+              animationSpec = tween(220, delayMillis = 30),
+              initialScale = .9f,
+              TransformOrigin(-1f, .5f),
+            )) togetherWith
+            (fadeOut(animationSpec = tween(220)) +
+              scaleOut(
                 animationSpec = tween(220, delayMillis = 30),
-                initialScale = .9f,
+                targetScale = .9f,
                 TransformOrigin(-1f, .5f),
-              )
-            ).togetherWith(
-            fadeOut(animationSpec = tween(220)) +
-              scaleOut(animationSpec = tween(220, delayMillis = 30), targetScale = .9f, TransformOrigin(-1f, .5f)),
-          )
+              ))
         },
       )
     }
