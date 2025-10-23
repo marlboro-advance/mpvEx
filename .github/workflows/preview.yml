@@ -82,7 +82,7 @@ jobs:
           declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
           mkdir -p output
           for arch in "${apks[@]}"; do
-            cp app/build/outputs/apk/preview/app-${arch}-preview-signed.apk output/mpvEx-${arch}.apk
+            cp app/build/outputs/apk/preview/app-${arch}-preview-signed.apk output/mpvEx-preview-r${commit_count}-${arch}.apk
           done
 
       - name: Upload all artifacts
@@ -124,11 +124,11 @@ jobs:
             <p>Build time: ${build_time}</p>
             <p>Download the latest signed APKs:</p>
             <ul>
-              <li><a href='mpvEx-universal.apk?v=${commit_count}'>Universal</a></li>
-              <li><a href='mpvEx-arm64-v8a.apk?v=${commit_count}'>arm64-v8a</a></li>
-              <li><a href='mpvEx-armeabi-v7a.apk?v=${commit_count}'>armeabi-v7a</a></li>
-              <li><a href='mpvEx-x86.apk?v=${commit_count}'>x86</a></li>
-              <li><a href='mpvEx-x86_64.apk?v=${commit_count}'>x86_64</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'>Universal</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'>arm64-v8a</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'>armeabi-v7a</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64</a></li>
             </ul>
             <p class='note'>Built automatically from the <code>dev</code> branch.</p>
           </body>
