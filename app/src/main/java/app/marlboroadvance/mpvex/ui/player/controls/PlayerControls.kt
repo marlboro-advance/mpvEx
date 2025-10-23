@@ -185,8 +185,7 @@ fun PlayerControls(
                 Pair(1f, Color.Black),
               ),
               alpha = transparentOverlay,
-            )
-            .padding(horizontal = MaterialTheme.spacing.medium),
+            ).padding(horizontal = MaterialTheme.spacing.medium),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -391,8 +390,7 @@ fun PlayerControls(
                       interaction,
                       ripple(),
                       onClick = viewModel::pauseUnpause,
-                    )
-                    .padding(MaterialTheme.spacing.medium),
+                    ).padding(MaterialTheme.spacing.medium),
                 contentDescription = null,
               )
           }
@@ -583,6 +581,7 @@ fun PlayerControls(
       subtitles = subtitles,
       onAddSubtitle = viewModel::addSubtitle,
       onSelectSubtitle = viewModel::selectSub,
+      onRemoveSubtitle = viewModel::removeSubtitle,
       audioTracks = audioTracks,
       onAddAudio = viewModel::addAudio,
       onSelectAudio = {

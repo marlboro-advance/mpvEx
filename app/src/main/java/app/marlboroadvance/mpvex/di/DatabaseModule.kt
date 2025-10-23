@@ -8,6 +8,7 @@ import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -21,13 +22,32 @@ val MIGRATION_1_2 =
     }
   }
 
+val MIGRATION_2_3 =
+  object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      // Create ExternalSubtitleEntity table
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS ExternalSubtitleEntity (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          originalUri TEXT NOT NULL,
+          originalFileName TEXT NOT NULL,
+          cachedFilePath TEXT NOT NULL,
+          mediaTitle TEXT NOT NULL,
+          addedTimestamp INTEGER NOT NULL
+        )
+        """.trimIndent(),
+      )
+    }
+  }
+
 val DatabaseModule =
   module {
     single<MpvExDatabase> {
       Room
         .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
-        .addMigrations(MIGRATION_1_2)
-        .fallbackToDestructiveMigrationOnDowngrade(false)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .fallbackToDestructiveMigrationOnDowngrade(true)
         .build()
     }
 
@@ -35,5 +55,12 @@ val DatabaseModule =
 
     single<RecentlyPlayedRepository> {
       RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
+    }
+
+    single<ExternalSubtitleRepository> {
+      ExternalSubtitleRepository(
+        context = androidContext(),
+        dao = get<MpvExDatabase>().externalSubtitleDao(),
+      )
     }
   }

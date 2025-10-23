@@ -29,6 +29,7 @@ fun PlayerSheets(
   subtitles: ImmutableList<TrackNode>,
   onAddSubtitle: (Uri) -> Unit,
   onSelectSubtitle: (Int) -> Unit,
+  onRemoveSubtitle: (Int) -> Unit,
   // audio sheet
   audioTracks: ImmutableList<TrackNode>,
   onAddAudio: (Uri) -> Unit,
@@ -55,6 +56,8 @@ fun PlayerSheets(
   onOpenPanel: (Panels) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
+  val externalSubtitleMetadata by viewModel.externalSubtitleMetadata.composeCollectAsState()
+
   when (sheetShown) {
     Sheets.None -> {}
     Sheets.SubtitleTracks -> {
@@ -68,10 +71,24 @@ fun PlayerSheets(
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onSelect = onSelectSubtitle,
-        onAddSubtitle = { subtitlesPicker.launch(arrayOf("*/*")) },
+        onAddSubtitle = {
+          subtitlesPicker.launch(
+            arrayOf(
+              "text/plain",
+              "text/srt",
+              "text/vtt",
+              "application/x-subrip",
+              "application/x-subtitle",
+              "text/x-ssa",
+              "*/*", // Fallback for systems that don't recognize subtitle MIME types
+            ),
+          )
+        },
+        onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
         onDismissRequest = onDismissRequest,
+        externalSubtitleMetadata = externalSubtitleMetadata,
       )
     }
 

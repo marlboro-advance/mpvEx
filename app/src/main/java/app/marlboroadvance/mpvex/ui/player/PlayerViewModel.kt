@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.inputmethod.InputMethodManager
@@ -15,6 +16,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -33,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -53,6 +56,7 @@ class PlayerViewModel(
   private val playerPreferences: PlayerPreferences by inject()
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
+  private val externalSubtitleRepository: ExternalSubtitleRepository by inject()
   private val json: Json by inject()
 
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
@@ -61,6 +65,10 @@ class PlayerViewModel(
 
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
+
+  // Map to track external subtitle filenames by their cached path
+  private val _externalSubtitleMetadata = MutableStateFlow<Map<String, String>>(emptyMap())
+  val externalSubtitleMetadata = _externalSubtitleMetadata.asStateFlow()
 
   val subtitleTracks =
     MPVLib.propNode["track-list"]
@@ -119,6 +127,9 @@ class PlayerViewModel(
   private val _remainingTime = MutableStateFlow(0)
   val remainingTime = _remainingTime.asStateFlow()
 
+  // Store current media title for subtitle association
+  private var currentMediaTitle: String = ""
+
   fun startTimer(seconds: Int) {
     timerJob?.cancel()
     _remainingTime.value = seconds
@@ -153,15 +164,119 @@ class PlayerViewModel(
   }
 
   fun addAudio(uri: Uri) {
-    val url = uri.toString()
-    val path = if (url.startsWith("content://")) url.toUri().openContentFd(host.context) else url
-    MPVLib.command("audio-add", path ?: return, "cached")
+    viewModelScope.launch {
+      runCatching {
+        val path = uri.resolveUri(host.context)
+        if (path == null) {
+          showToast("Failed to load audio file: Invalid URI")
+          return@launch
+        }
+
+        MPVLib.command("audio-add", path, "cached")
+        showToast("Audio track added")
+      }.onFailure { e ->
+        showToast("Failed to load audio: ${e.message}")
+        android.util.Log.e("PlayerViewModel", "Error adding audio", e)
+      }
+    }
   }
 
   fun addSubtitle(uri: Uri) {
-    val url = uri.toString()
-    val path = if (url.startsWith("content://")) url.toUri().openContentFd(host.context) else url
-    MPVLib.command("sub-add", path ?: return, "cached")
+    viewModelScope.launch {
+      runCatching {
+        val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
+
+        if (!isValidSubtitleFile(fileName)) {
+          showToast("Invalid subtitle file format")
+          return@launch
+        }
+
+        val cachedPath =
+          externalSubtitleRepository
+            .cacheSubtitle(uri, fileName, currentMediaTitle)
+            .getOrElse {
+              showToast("Failed to cache subtitle")
+              return@launch
+            }
+
+        MPVLib.command("sub-add", cachedPath, "select")
+        _externalSubtitleMetadata.update { it + (cachedPath to fileName) }
+
+        val displayName = if (fileName.length > 30) "${fileName.take(27)}..." else fileName
+        showToast("$displayName added")
+      }.onFailure {
+        showToast("Failed to load subtitle")
+      }
+    }
+  }
+
+  /**
+   * Set the current media title and restore cached subtitles
+   */
+  fun setMediaTitle(mediaTitle: String) {
+    currentMediaTitle = mediaTitle
+    viewModelScope.launch {
+      delay(100) // Allow MPV to set media title first
+      restoreCachedSubtitles(mediaTitle)
+    }
+  }
+
+  /**
+   * Restore previously cached subtitles for a media file
+   */
+  private suspend fun restoreCachedSubtitles(mediaTitle: String) {
+    val subtitles = externalSubtitleRepository.getSubtitlesForMedia(mediaTitle)
+    val metadata = mutableMapOf<String, String>()
+
+    subtitles.forEach { subtitle ->
+      if (File(subtitle.cachedFilePath).exists()) {
+        MPVLib.command("sub-add", subtitle.cachedFilePath, "select")
+        metadata[subtitle.cachedFilePath] = subtitle.originalFileName
+      } else {
+        externalSubtitleRepository.deleteSubtitle(subtitle.cachedFilePath)
+      }
+    }
+
+    _externalSubtitleMetadata.update { metadata }
+  }
+
+  private fun getFileNameFromUri(uri: Uri): String? =
+    when (uri.scheme) {
+      "content" ->
+        host.context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+          val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+        }
+      "file" -> uri.lastPathSegment
+      else -> uri.lastPathSegment
+    }
+
+  private fun isValidSubtitleFile(fileName: String): Boolean {
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    return extension in VALID_SUBTITLE_EXTENSIONS
+  }
+
+  fun removeSubtitle(id: Int) {
+    viewModelScope.launch {
+      val tracks = MPVLib.propNode["track-list"].value?.toObject<List<TrackNode>>(json) ?: emptyList()
+      val track = tracks.find { it.id == id && it.isSubtitle && it.external == true }
+
+      track?.externalFilename?.let { filename ->
+        externalSubtitleRepository.deleteSubtitle(filename)
+        _externalSubtitleMetadata.update { it - filename }
+      }
+
+      MPVLib.command("sub-remove", id.toString())
+    }
+  }
+
+  private fun showToast(message: String) {
+    Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
+  }
+
+  companion object {
+    private val VALID_SUBTITLE_EXTENSIONS =
+      setOf("srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "txt", "pgs")
   }
 
   fun selectSub(id: Int) {

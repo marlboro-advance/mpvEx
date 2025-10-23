@@ -864,7 +864,6 @@ class PlayerActivity :
   private fun handleFileLoaded() {
     fileName = getFileName(intent)
     setIntentExtras(intent.extras)
-    MPVLib.setPropertyString("force-media-title", fileName)
 
     lifecycleScope.launch(Dispatchers.IO) {
       loadVideoPlaybackState(fileName)
@@ -882,6 +881,11 @@ class PlayerActivity :
     val zoomPreference = playerPreferences.defaultVideoZoom.get()
     MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
     viewModel.setVideoZoom(zoomPreference)
+
+    // Set media title AFTER all MPV properties are set and BEFORE unpause
+    // This ensures subtitle restoration doesn't interfere with the title
+    MPVLib.setPropertyString("force-media-title", fileName)
+    viewModel.setMediaTitle(fileName)
 
     viewModel.unpause()
 

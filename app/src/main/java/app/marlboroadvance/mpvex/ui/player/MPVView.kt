@@ -198,8 +198,9 @@ class MPVView(
   private fun setupSubtitlesOptions() {
     MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
 
-    // Load all available subtitle tracks (not just the default)
-    MPVLib.setOptionString("sub-auto", "all")
+    // Disable automatic subtitle loading from video directory
+    // Users must manually add subtitles via the subtitle picker
+    MPVLib.setOptionString("sub-auto", "no")
 
     // Load external subtitle files from the same directory as the video
     MPVLib.setOptionString("sub-file-paths", "")

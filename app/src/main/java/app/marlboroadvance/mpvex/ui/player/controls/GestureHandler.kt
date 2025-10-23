@@ -165,8 +165,7 @@ fun GestureHandler(
               }
             },
           )
-        }
-        .pointerInput(areControlsLocked) {
+        }.pointerInput(areControlsLocked) {
           if (!seekGesture || areControlsLocked) return@pointerInput
           var startingPosition = position ?: 0
           var startingX = 0f
@@ -204,8 +203,7 @@ fun GestureHandler(
 
             if (showSeekbarWhenSeeking) viewModel.showSeekBar()
           }
-        }
-        .pointerInput(areControlsLocked) {
+        }.pointerInput(areControlsLocked) {
           if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
           var startingY = 0f
           var mpvVolumeStartingY = 0f
@@ -287,8 +285,7 @@ fun GestureHandler(
               else -> {}
             }
           }
-        }
-        .pointerInput(areControlsLocked) {
+        }.pointerInput(areControlsLocked) {
           if (areControlsLocked || !pinchToZoomGesture) return@pointerInput
 
           awaitEachGesture {
@@ -310,10 +307,14 @@ fun GestureHandler(
                   // Calculate current distance between the two fingers
                   val pointer1 = currentPointers[0].position
                   val pointer2 = currentPointers[1].position
-                  val currentDistance = kotlin.math.sqrt(
-                    ((pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
-                      (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
-                  ).toFloat()
+                  val currentDistance =
+                    kotlin.math
+                      .sqrt(
+                        (
+                          (pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
+                            (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)
+                        ).toDouble(),
+                      ).toFloat()
 
                   // Store initial distance on first detection
                   if (initialDistance == 0f) {

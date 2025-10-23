@@ -296,7 +296,7 @@ object AdvancedPreferencesScreen : Screen {
             )
           }
           Preference(
-            title = { Text(text = "Clear Config Cache") },
+            title = { Text(text = "Clear config cache") },
             onClick = {
               scope.launch(Dispatchers.IO) {
                 val mpvConfFile = File(context.filesDir, "mpv.conf")
@@ -344,6 +344,30 @@ object AdvancedPreferencesScreen : Screen {
                     .makeText(
                       context,
                       context.getString(R.string.pref_advanced_cleared_fonts_cache),
+                      Toast.LENGTH_SHORT,
+                    ).show()
+                }
+              }
+            },
+          )
+          Preference(
+            title = { Text(text = "Clear subtitle cache") },
+            summary = { Text("Delete all cached external subtitle files") },
+            onClick = {
+              scope.launch(Dispatchers.IO) {
+                val subtitleCacheDir = File(context.filesDir, "subtitle_cache")
+                val deletedCount =
+                  subtitleCacheDir.listFiles()?.count { it.isFile && it.delete() } ?: 0
+
+                mpvexDatabase.externalSubtitleDao().getAll().forEach {
+                  mpvexDatabase.externalSubtitleDao().deleteById(it.id)
+                }
+
+                withContext(Dispatchers.Main) {
+                  Toast
+                    .makeText(
+                      context,
+                      "Cleared $deletedCount cached subtitle files",
                       Toast.LENGTH_SHORT,
                     ).show()
                 }

@@ -188,8 +188,7 @@ class CrashActivity : ComponentActivity() {
                 Offset(size.width, 0f),
                 strokeWidth = Dp.Hairline.value,
               )
-            }
-            .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
           Row(

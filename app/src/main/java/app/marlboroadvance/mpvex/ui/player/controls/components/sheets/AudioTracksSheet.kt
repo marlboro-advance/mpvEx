@@ -48,7 +48,7 @@ fun AudioTracksSheet(
     },
     track = {
       AudioTrackRow(
-        title = getTrackTitle(it),
+        title = getTrackTitle(it, emptyMap()),
         isSelected = it.isSelected,
         onClick = { onSelect(it) },
       )
@@ -69,7 +69,7 @@ fun AudioTrackRow(
       modifier
         .fillMaxWidth()
         .clickable(onClick = onClick)
-        .padding(start = MaterialTheme.spacing.smaller, end = MaterialTheme.spacing.medium),
+        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
