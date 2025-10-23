@@ -548,32 +548,92 @@ private fun FrameNavigationCardTitle(
 private suspend fun takeSnapshot(context: Context) {
   withContext(Dispatchers.IO) {
     try {
-      // Create mpvSnaps folder in Pictures directory
-      val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-      val snapshotsDir = File(picturesDir, "mpvSnaps")
-      if (!snapshotsDir.exists()) {
-        snapshotsDir.mkdirs()
-      }
-
       // Generate filename with timestamp
       val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
       val filename = "mpv_snapshot_$timestamp.png"
-      val snapshotPath = File(snapshotsDir, filename).absolutePath
 
-      // Take screenshot using MPV in PNG format for lossless quality
-      MPVLib.command("screenshot-to-file", snapshotPath, "video")
+      // Create a temporary file first
+      val tempFile = File(context.cacheDir, filename)
 
-      // Show toast notification
-      withContext(Dispatchers.Main) {
-        Toast.makeText(
-          context,
-          context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
-          Toast.LENGTH_SHORT,
-        ).show()
+      // Take screenshot using MPV to temp file
+      MPVLib.command("screenshot-to-file", tempFile.absolutePath, "video")
+
+      // Wait a bit for MPV to finish writing the file
+      kotlinx.coroutines.delay(200)
+
+      // Check if file was created
+      if (!tempFile.exists() || tempFile.length() == 0L) {
+        withContext(Dispatchers.Main) {
+          Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
+        }
+        return@withContext
+      }
+
+      // Use MediaStore to save the image properly (works on all Android versions)
+      val contentValues = android.content.ContentValues().apply {
+        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+        put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+        put(
+          android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+          "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+        )
+        put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+      }
+
+      val resolver = context.contentResolver
+      val imageUri = resolver.insert(
+        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        contentValues,
+      )
+
+      if (imageUri != null) {
+        // Copy temp file to MediaStore
+        resolver.openOutputStream(imageUri)?.use { outputStream ->
+          tempFile.inputStream().use { inputStream ->
+            inputStream.copyTo(outputStream)
+          }
+        }
+
+        // Mark as finished
+        contentValues.clear()
+        contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+        resolver.update(imageUri, contentValues, null, null)
+
+        // Delete temp file
+        tempFile.delete()
+
+        // Show success toast
+        withContext(Dispatchers.Main) {
+          Toast.makeText(
+            context,
+            context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+            Toast.LENGTH_SHORT,
+          ).show()
+        }
+      } else {
+        // Fallback for Android 10 and below if MediaStore fails
+        // Try saving directly to app-specific external directory
+        val picturesDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        val snapshotsDir = File(picturesDir, "mpvSnaps")
+        if (!snapshotsDir.exists()) {
+          snapshotsDir.mkdirs()
+        }
+
+        val destFile = File(snapshotsDir, filename)
+        tempFile.copyTo(destFile, overwrite = true)
+        tempFile.delete()
+
+        withContext(Dispatchers.Main) {
+          Toast.makeText(
+            context,
+            "Snapshot saved to ${destFile.absolutePath}",
+            Toast.LENGTH_LONG,
+          ).show()
+        }
       }
     } catch (e: Exception) {
       withContext(Dispatchers.Main) {
-        Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
       }
     }
   }

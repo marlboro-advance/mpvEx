@@ -200,13 +200,13 @@ class PlayerViewModel(
     _areControlsLocked.update { false }
   }
 
-  fun seekBy(offset: Int, precise: Boolean = false) {
-    MPVLib.command("seek", offset.toString(), if (precise) "relative+exact" else "relative")
+  fun seekBy(offset: Int) {
+    MPVLib.command("seek", offset.toString(), "relative")
   }
 
-  fun seekTo(position: Int, precise: Boolean = true) {
+  fun seekTo(position: Int) {
     if (position !in 0..(MPVLib.getPropertyInt("duration") ?: 0)) return
-    MPVLib.command("seek", position.toString(), if (precise) "absolute" else "absolute+keyframes")
+    MPVLib.command("seek", position.toString(), "absolute+keyframes")
   }
 
   fun changeBrightnessTo(
@@ -373,7 +373,7 @@ class PlayerViewModel(
     _isSeekingForwards.value = seekValue > 0
     _doubleTapSeekAmount.value = seekValue - (pos ?: return)
     _seekText.update { text }
-    seekTo(seekValue, playerPreferences.preciseSeeking.get())
+    seekTo(seekValue)
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
@@ -383,7 +383,7 @@ class PlayerViewModel(
     }
     _seekText.update { text }
     _isSeekingForwards.value = value > 0
-    seekBy(value, playerPreferences.preciseSeeking.get())
+    seekBy(value)
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
@@ -400,7 +400,7 @@ class PlayerViewModel(
   fun leftSeek() {
     if ((pos ?: return) > 0) _doubleTapSeekAmount.value -= doubleTapToSeekDuration
     _isSeekingForwards.value = false
-    seekBy(-doubleTapToSeekDuration, playerPreferences.preciseSeeking.get())
+    seekBy(-doubleTapToSeekDuration)
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
@@ -409,7 +409,7 @@ class PlayerViewModel(
       _doubleTapSeekAmount.value += doubleTapToSeekDuration
     }
     _isSeekingForwards.value = true
-    seekBy(doubleTapToSeekDuration, playerPreferences.preciseSeeking.get())
+    seekBy(doubleTapToSeekDuration)
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 

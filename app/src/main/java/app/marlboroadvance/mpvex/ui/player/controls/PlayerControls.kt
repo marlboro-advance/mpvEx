@@ -118,7 +118,6 @@ fun PlayerControls(
   val gestureSeekAmount by viewModel.gestureSeekAmount.collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
-  val showSeekIcon by playerPreferences.showSeekIcon.collectAsState()
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
   var isSeeking by remember { mutableStateOf(false) }
   var resetControls by remember { mutableStateOf(true) }
@@ -167,7 +166,7 @@ fun PlayerControls(
     viewModel = viewModel,
     interactionSource = interactionSource,
   )
-  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekIcon, showSeekTime, interactionSource)
+  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, interactionSource)
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
     LocalPlayerButtonsClickEvent provides { resetControls = !resetControls },
@@ -406,14 +405,13 @@ fun PlayerControls(
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
           val readAhead by MPVLib.propFloat["demuxer-cache-seconds"].collectAsState()
-          val preciseSeeking by playerPreferences.preciseSeeking.collectAsState()
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
             readAheadValue = readAhead ?: 0f,
             onValueChange = {
               isSeeking = true
-              viewModel.seekTo(it.toInt(), preciseSeeking)
+              viewModel.seekTo(it.toInt())
             },
             onValueChangeFinished = { isSeeking = false },
             timersInverted = Pair(false, invertDuration),

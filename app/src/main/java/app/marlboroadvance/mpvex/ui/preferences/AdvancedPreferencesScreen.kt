@@ -128,6 +128,7 @@ object AdvancedPreferencesScreen : Screen {
                   context.contentResolver.openInputStream(mpvConfFile.uri)?.copyTo(tempFile.outputStream())
                   val content = tempFile.readLines().fastJoinToString("\n")
                   preferences.mpvConf.set(content)
+                  File(context.filesDir, "mpv.conf").writeText(content)
                   withContext(Dispatchers.Main) {
                     mpvConf = content
                   }
@@ -184,6 +185,7 @@ object AdvancedPreferencesScreen : Screen {
                   context.contentResolver.openInputStream(inputConfFile.uri)?.copyTo(tempFile.outputStream())
                   val content = tempFile.readLines().fastJoinToString("\n")
                   preferences.inputConf.set(content)
+                  File(context.filesDir, "input.conf").writeText(content)
                   withContext(Dispatchers.Main) {
                     inputConf = content
                   }

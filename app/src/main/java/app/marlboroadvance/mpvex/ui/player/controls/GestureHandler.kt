@@ -83,11 +83,10 @@ fun GestureHandler(
     viewModel.hideSeekBar()
   }
   val multipleSpeedGesture by playerPreferences.holdForMultipleSpeed.collectAsState()
-  val brightnessGesture = playerPreferences.brightnessGesture.get()
+  val brightnessGesture by playerPreferences.brightnessGesture.collectAsState()
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val seekGesture by playerPreferences.horizontalSeekGesture.collectAsState()
-  val preciseSeeking by playerPreferences.preciseSeeking.collectAsState()
   val showSeekbarWhenSeeking by playerPreferences.showSeekBarWhenSeeking.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
   val currentVolume by viewModel.currentVolume.collectAsState()
@@ -193,7 +192,7 @@ fun GestureHandler(
                   .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
               )
             }
-            viewModel.seekTo(it, preciseSeeking)
+            viewModel.seekTo(it)
           }
 
           if (showSeekbarWhenSeeking) viewModel.showSeekBar()
@@ -287,7 +286,6 @@ fun DoubleTapToSeekOvals(
   amount: Int,
   text: String?,
   showOvals: Boolean,
-  showSeekIcon: Boolean,
   showSeekTime: Boolean,
   interactionSource: MutableInteractionSource,
   modifier: Modifier = Modifier,
@@ -316,7 +314,7 @@ fun DoubleTapToSeekOvals(
                 .indication(interactionSource, ripple()),
             )
           }
-          if (showSeekIcon || showSeekTime) {
+          if (showSeekTime) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               DoubleTapSeekTriangles(isForward = amount > 0)
               Text(

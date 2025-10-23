@@ -40,15 +40,12 @@
     <string name="pref_player_orientation_landscape">Landscape</string>
     <string name="pref_player_orientation_reverse_landscape">Reverse landscape</string>
     <string name="pref_player_orientation_sensor_landscape">Sensor landscape</string>
-    <string name="pref_player_draw_over_cutout">Draw over display cutout</string>
     <string name="pref_player_save_position_on_quit">Save position on quit</string>
     <string name="pref_player_double_tap_to_pause">Double tap to pause</string>
     <string name="pref_player_double_tap_to_seek">Double tap to seek</string>
     <string name="pref_player_double_tap_seek_duration">Double tap seek duration</string>
     <string name="pref_player_show_seekbar_when_seeking">Show seekbar when seeking</string>
     <string name="pref_player_seeking_title">Seeking</string>
-    <string name="pref_player_precise_seeking_title">Precise seeking</string>
-    <string name="pref_player_precise_seeking_summary">Seek to exact positions instead of keyframes (slow)</string>
     <string name="pref_player_automatically_enter_pip">Automatically switch to PiP</string>
     <string name="pref_player_close_after_eof">Close after the end of playback</string>
     <string name="pref_player_remember_brightness">Remember display brightness</string>
@@ -273,10 +270,4 @@
         <item quantity="one">%1$d second</item>
         <item quantity="other">%1$d seconds</item>
     </plurals>
-
-    <!-- <string name="app_name">My Awesome App</string> -->
-
-    <!-- <string name="app_name">My Awesome App</string> -->
-
-    <!-- <string name="app_name">My Awesome App</string> -->
 </resources>

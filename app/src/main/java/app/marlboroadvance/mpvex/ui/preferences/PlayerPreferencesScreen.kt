@@ -71,12 +71,6 @@ object PlayerPreferencesScreen : Screen {
             title = { Text(text = stringResource(id = R.string.pref_player_orientation)) },
             summary = { Text(text = stringResource(id = orientation.titleRes)) },
           )
-          val drawOverDisplayCutout by preferences.drawOverDisplayCutout.collectAsState()
-          SwitchPreference(
-            value = drawOverDisplayCutout,
-            onValueChange = preferences.drawOverDisplayCutout::set,
-            title = { Text(stringResource(R.string.pref_player_draw_over_cutout)) },
-          )
           val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           SwitchPreference(
             value = savePositionOnQuit,
@@ -118,24 +112,11 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.showSeekBarWhenSeeking::set,
             title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) }
           )
-          val preciseSeeking by preferences.preciseSeeking.collectAsState()
-          SwitchPreference(
-            value = preciseSeeking,
-            onValueChange = preferences.preciseSeeking::set,
-            title = { Text(stringResource(R.string.pref_player_precise_seeking_title)) },
-            summary = { Text(stringResource(R.string.pref_player_precise_seeking_summary)) }
-          )
           val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
           SwitchPreference(
             value = showDoubleTapOvals,
             onValueChange = preferences.showDoubleTapOvals::set,
             title = { Text(stringResource(R.string.show_splash_ovals_on_double_tap_to_seek)) },
-          )
-          val showSeekIcon by preferences.showSeekIcon.collectAsState()
-          SwitchPreference(
-            value = showSeekIcon,
-            onValueChange = preferences.showSeekIcon::set,
-            title = { Text(stringResource(R.string.show_icon_on_double_tap_to_seek)) },
           )
           val showSeekTimeWhileSeeking by preferences.showSeekTimeWhileSeeking.collectAsState()
           SwitchPreference(

@@ -149,6 +149,9 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     // Start playback
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
+
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
   private fun setupBackPressHandler() {
@@ -449,16 +452,8 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     windowInsetsController.systemBarsBehavior =
       WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-    setupDisplayCutout()
-  }
-
-  private fun setupDisplayCutout() {
     window.attributes.layoutInDisplayCutoutMode =
-      if (playerPreferences.drawOverDisplayCutout.get()) {
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-      } else {
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
-      }
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
   private fun restoreBrightness() {
@@ -1091,7 +1086,8 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
 
-    setupDisplayCutout()
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
   fun enterPipModeHidingOverlay() {
@@ -1271,7 +1267,7 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
             }
 
             override fun onSeekTo(pos: Long) {
-              viewModel.seekTo((pos / 1000).toInt(), precise = true)
+              viewModel.seekTo((pos / 1000).toInt())
               updateMediaSessionPlaybackState(isPlaying = viewModel.paused == false)
             }
           },

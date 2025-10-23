@@ -65,7 +65,7 @@ fun PlayerPanels(
           onPause = viewModel::pause,
           onUnpause = viewModel::unpause,
           onPauseUnpause = viewModel::pauseUnpause,
-          onSeekTo = viewModel::seekTo,
+          onSeekTo = { position, _ -> viewModel.seekTo(position) },
           onDismissRequest = onDismissRequest,
         )
       }
