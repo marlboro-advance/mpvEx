@@ -54,8 +54,10 @@ import java.io.File
  * and playback state persistence.
  */
 @Suppress("TooManyFunctions", "LargeClass")
-class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks {
-
+class PlayerActivity :
+  AppCompatActivity(),
+  PlayerHost,
+  PlayerObserverCallbacks {
   // ViewModels and Bindings
   private val viewModel: PlayerViewModel by viewModels<PlayerViewModel> {
     PlayerViewModelProviderFactory(this)
@@ -93,41 +95,47 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   private lateinit var playbackStateBuilder: PlaybackState.Builder
 
   // Receivers and Listeners
-  private val noisyReceiver = object : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {
-      if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-        pausePlayback()
-      }
-    }
-  }
-
-  private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-    when (focusChange) {
-      AudioManager.AUDIOFOCUS_LOSS,
-      AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-        -> {
-        // If we were playing, remember to resume only on transient loss
-        resumeOnAudioFocusGain = (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) && (viewModel.paused == false)
-        pausePlayback()
-        audioFocusRequested = false
-      }
-
-      AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-        // Policy: pause on duck for a better UX with video content
-        resumeOnAudioFocusGain = true
-        viewModel.pause()
-        audioFocusRequested = false
-      }
-
-      AudioManager.AUDIOFOCUS_GAIN -> {
-        audioFocusRequested = true
-        if (resumeOnAudioFocusGain) {
-          resumeOnAudioFocusGain = false
-          viewModel.unpause()
+  private val noisyReceiver =
+    object : BroadcastReceiver() {
+      override fun onReceive(
+        context: Context?,
+        intent: Intent?,
+      ) {
+        if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+          pausePlayback()
         }
       }
     }
-  }
+
+  private val audioFocusChangeListener =
+    AudioManager.OnAudioFocusChangeListener { focusChange ->
+      when (focusChange) {
+        AudioManager.AUDIOFOCUS_LOSS,
+        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+        -> {
+          // If we were playing, remember to resume only on transient loss
+          resumeOnAudioFocusGain =
+            (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) && (viewModel.paused == false)
+          pausePlayback()
+          audioFocusRequested = false
+        }
+
+        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+          // Policy: pause on duck for a better UX with video content
+          resumeOnAudioFocusGain = true
+          viewModel.pause()
+          audioFocusRequested = false
+        }
+
+        AudioManager.AUDIOFOCUS_GAIN -> {
+          audioFocusRequested = true
+          if (resumeOnAudioFocusGain) {
+            resumeOnAudioFocusGain = false
+            viewModel.unpause()
+          }
+        }
+      }
+    }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -185,9 +193,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     }
 
     // 3) Optionally enter PiP (if playing and enabled)
-    val shouldEnterPip = pipHelper.isPipSupported &&
-      viewModel.paused != true &&
-      playerPreferences.automaticallyEnterPip.get()
+    val shouldEnterPip =
+      pipHelper.isPipSupported &&
+        viewModel.paused != true &&
+        playerPreferences.automaticallyEnterPip.get()
     if (shouldEnterPip) {
       pipHelper.enterPipMode()
       return
@@ -210,16 +219,17 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   }
 
   private fun setupPipHelper() {
-    pipHelper = MPVPipHelper(
-      activity = this,
-      mpvView = player,
-      autoPipEnabled = playerPreferences.automaticallyEnterPip.get(),
-      onPipModeChanged = { isInPipMode ->
-        if (isInPipMode) {
-          hideAllUIElements()
-        }
-      },
-    )
+    pipHelper =
+      MPVPipHelper(
+        activity = this,
+        mpvView = player,
+        autoPipEnabled = playerPreferences.automaticallyEnterPip.get(),
+        onPipModeChanged = { isInPipMode ->
+          if (isInPipMode) {
+            hideAllUIElements()
+          }
+        },
+      )
   }
 
   private fun hideAllUIElements() {
@@ -232,17 +242,21 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   }
 
   private fun setupAudioFocus() {
-    val audioAttributes = AudioAttributes.Builder()
-      .setUsage(AudioAttributes.USAGE_MEDIA)
-      .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-      .build()
+    val audioAttributes =
+      AudioAttributes
+        .Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+        .build()
 
-    audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-      .setAudioAttributes(audioAttributes)
-      .setOnAudioFocusChangeListener(audioFocusChangeListener)
-      .setAcceptsDelayedFocusGain(true)
-      .setWillPauseWhenDucked(true)
-      .build()
+    audioFocusRequest =
+      AudioFocusRequest
+        .Builder(AudioManager.AUDIOFOCUS_GAIN)
+        .setAudioAttributes(audioAttributes)
+        .setOnAudioFocusChangeListener(audioFocusChangeListener)
+        .setAcceptsDelayedFocusGain(true)
+        .setWillPauseWhenDucked(true)
+        .build()
     // Do not request focus here; request only when playback actually starts
   }
 
@@ -542,16 +556,18 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     runCatching {
       val mpvexLua = assets.open("mpvex.lua")
       val applicationPath = filesDir.path
-      val scriptsDir = fileManager.createDir(
-        fileManager.fromPath(applicationPath),
-        "scripts",
-      ) ?: error("Failed to create scripts directory")
+      val scriptsDir =
+        fileManager.createDir(
+          fileManager.fromPath(applicationPath),
+          "scripts",
+        ) ?: error("Failed to create scripts directory")
 
       fileManager.deleteContent(scriptsDir)
 
-      File("$scriptsDir/mpvex.lua").apply {
-        if (!exists()) createNewFile()
-      }.writeText(mpvexLua.bufferedReader().readText())
+      File("$scriptsDir/mpvex.lua")
+        .apply {
+          if (!exists()) createNewFile()
+        }.writeText(mpvexLua.bufferedReader().readText())
     }.onFailure { e ->
       Log.e(TAG, "Error copying MPV scripts", e)
     }
@@ -561,8 +577,9 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     runCatching {
       val persistentPath = filesDir.path
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
-      val fontsDir = fileManager.fromUri(fontsFolderUri)
-        ?: return@runCatching // No fonts directory set; keep default font only
+      val fontsDir =
+        fileManager.fromUri(fontsFolderUri)
+          ?: return@runCatching // No fonts directory set; keep default font only
 
       if (!fileManager.exists(fontsDir)) {
         return@runCatching // Source folder missing; keep whatever is already cached
@@ -590,7 +607,8 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     destDir: com.github.k1rakishou.fsaf.file.AbstractFile,
   ) {
     if (fileManager.findFile(destDir, "subfont.ttf") == null) {
-      resources.assets.open("subfont.ttf")
+      resources.assets
+        .open("subfont.ttf")
         .use { input ->
           File("$basePath/fonts/subfont.ttf")
             .outputStream()
@@ -655,13 +673,15 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       }
 
       if (headers.size > 2) {
-        val headersString = headers.asSequence()
-          .drop(2)
-          .chunked(2)
-          .filter { it.size == 2 }
-          .associate { it[0] to it[1] }
-          .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
-          .joinToString(",")
+        val headersString =
+          headers
+            .asSequence()
+            .drop(2)
+            .chunked(2)
+            .filter { it.size == 2 }
+            .associate { it[0] to it[1] }
+            .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
+            .joinToString(",")
 
         if (headersString.isNotEmpty()) {
           MPVLib.setPropertyString("http-header-fields", headersString)
@@ -670,16 +690,15 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     }
   }
 
-  private fun parsePathFromIntent(intent: Intent): String? {
-    return when (intent.action) {
+  private fun parsePathFromIntent(intent: Intent): String? =
+    when (intent.action) {
       Intent.ACTION_VIEW -> intent.data?.resolveUri(this)
       Intent.ACTION_SEND -> parsePathFromSendIntent(intent)
       else -> intent.getStringExtra("uri")
     }
-  }
 
-  private fun parsePathFromSendIntent(intent: Intent): String? {
-    return if (intent.hasExtra(Intent.EXTRA_STREAM)) {
+  private fun parsePathFromSendIntent(intent: Intent): String? =
+    if (intent.hasExtra(Intent.EXTRA_STREAM)) {
       intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this)
     } else {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
@@ -691,7 +710,6 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
         }
       }
     }
-  }
 
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
@@ -703,28 +721,27 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
   }
 
-  private fun extractUriFromIntent(intent: Intent): Uri? {
-    return if (intent.type == "text/plain") {
+  private fun extractUriFromIntent(intent: Intent): Uri? =
+    if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
     } else {
       intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
     }
-  }
 
-  private fun getDisplayNameFromUri(uri: Uri): String? {
-    return runCatching {
-      contentResolver.query(
-        uri,
-        arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
-        null,
-        null,
-      )?.use { cursor ->
-        if (cursor.moveToFirst()) cursor.getString(0) else null
-      }
+  private fun getDisplayNameFromUri(uri: Uri): String? =
+    runCatching {
+      contentResolver
+        .query(
+          uri,
+          arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+          null,
+          null,
+        )?.use { cursor ->
+          if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
     }.onFailure { e ->
       Log.e(TAG, "Error getting display name from URI", e)
     }.getOrNull()
-  }
 
   private fun getPlayableUri(intent: Intent): String? {
     val uri = parsePathFromIntent(intent) ?: return null
@@ -758,7 +775,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     if (player.isExiting) return
   }
 
-  override fun onObserverEvent(property: String, value: Boolean) {
+  override fun onObserverEvent(
+    property: String,
+    value: Boolean,
+  ) {
     if (player.isExiting) return
 
     when (property) {
@@ -794,7 +814,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     }
   }
 
-  override fun onObserverEvent(property: String, value: String) {
+  override fun onObserverEvent(
+    property: String,
+    value: String,
+  ) {
     if (player.isExiting) return
 
     when (property.substringBeforeLast("/")) {
@@ -886,13 +909,15 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
             secondarySid = player.secondarySid,
-            secondarySubDelay = (
-              (MPVLib.getPropertyDouble("secondary-sub-delay") ?: 0.0) *
-                MILLISECONDS_TO_SECONDS
+            secondarySubDelay =
+              (
+                (MPVLib.getPropertyDouble("secondary-sub-delay") ?: 0.0) *
+                  MILLISECONDS_TO_SECONDS
               ).toInt(),
             aid = player.aid,
-            audioDelay = (
-              (MPVLib.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS
+            audioDelay =
+              (
+                (MPVLib.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS
               ).toInt(),
           ),
         )
@@ -959,7 +984,7 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     runCatching {
       // Extract the original URI from the intent
       val uri = extractUriFromIntent(intent)
-      
+
       // Early return if URI is null - cannot save recently played without a valid URI
       if (uri == null) {
         Log.w(TAG, "Cannot save recently played: URI is null")
@@ -973,42 +998,45 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
       }
 
       // Determine launch source
-      val launchSource = when {
-        intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
-        intent.action == Intent.ACTION_SEND -> "share"
-        else -> "normal" // Normal playback from list
-      }
+      val launchSource =
+        when {
+          intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
+          intent.action == Intent.ACTION_SEND -> "share"
+          else -> "normal" // Normal playback from list
+        }
 
       // Determine the file path to store
-      val filePath = when (uri.scheme) {
-        "file" -> {
-          // For file URIs, use the path directly
-          uri.path ?: uri.toString()
-        }
+      val filePath =
+        when (uri.scheme) {
+          "file" -> {
+            // For file URIs, use the path directly
+            uri.path ?: uri.toString()
+          }
 
-        "content" -> {
-          // For content URIs, try to resolve to actual file path first
-          contentResolver.query(
-            uri,
-            arrayOf(MediaStore.MediaColumns.DATA),
-            null,
-            null,
-            null,
-          )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-              val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
-              if (columnIndex != -1) cursor.getString(columnIndex) else null
-            } else {
-              null
-            }
-          } ?: uri.toString() // Fallback to full URI string if we can't resolve
-        }
+          "content" -> {
+            // For content URIs, try to resolve to actual file path first
+            contentResolver
+              .query(
+                uri,
+                arrayOf(MediaStore.MediaColumns.DATA),
+                null,
+                null,
+                null,
+              )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                  val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                  if (columnIndex != -1) cursor.getString(columnIndex) else null
+                } else {
+                  null
+                }
+              } ?: uri.toString() // Fallback to full URI string if we can't resolve
+          }
 
-        else -> {
-          // For other schemes (http, https, etc.), store the full URI
-          uri.toString()
+          else -> {
+            // For other schemes (http, https, etc.), store the full URI
+            uri.toString()
+          }
         }
-      }
 
       recentlyPlayedRepository.addRecentlyPlayed(
         filePath = filePath,
@@ -1027,10 +1055,11 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   private fun setReturnIntent() {
     Log.d(TAG, "Setting return intent")
 
-    val resultIntent = Intent(RESULT_INTENT).apply {
-      viewModel.pos?.let { putExtra("position", it * MILLISECONDS_TO_SECONDS) }
-      viewModel.duration?.let { putExtra("duration", it * MILLISECONDS_TO_SECONDS) }
-    }
+    val resultIntent =
+      Intent(RESULT_INTENT).apply {
+        viewModel.pos?.let { putExtra("position", it * MILLISECONDS_TO_SECONDS) }
+        viewModel.duration?.let { putExtra("duration", it * MILLISECONDS_TO_SECONDS) }
+      }
 
     setResult(RESULT_OK, resultIntent)
   }
@@ -1108,16 +1137,17 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   // ==================== Orientation Management ====================
 
   private fun setOrientation() {
-    requestedOrientation = when (playerPreferences.orientation.get()) {
-      PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
-      PlayerOrientation.Video -> determineVideoOrientation()
-      PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-      PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-      PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-      PlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-      PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-      PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    }
+    requestedOrientation =
+      when (playerPreferences.orientation.get()) {
+        PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        PlayerOrientation.Video -> determineVideoOrientation()
+        PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+        PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        PlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+        PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+      }
   }
 
   private fun determineVideoOrientation(): Int {
@@ -1132,9 +1162,13 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
   // ==================== Key Event Handling ====================
 
   @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod")
-  override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-    val isTrackSheetOpen = viewModel.sheetShown.value == Sheets.SubtitleTracks ||
-      viewModel.sheetShown.value == Sheets.AudioTracks
+  override fun onKeyDown(
+    keyCode: Int,
+    event: KeyEvent?,
+  ): Boolean {
+    val isTrackSheetOpen =
+      viewModel.sheetShown.value == Sheets.SubtitleTracks ||
+        viewModel.sheetShown.value == Sheets.AudioTracks
     val isNoSheetOpen = viewModel.sheetShown.value == Sheets.None
     val isNoOverlayOpen = isNoSheetOpen && viewModel.panelShown.value == Panels.None
 
@@ -1213,7 +1247,10 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     }
   }
 
-  override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+  override fun onKeyUp(
+    keyCode: Int,
+    event: KeyEvent?,
+  ): Boolean {
     event?.let {
       if (player.onKey(it)) return true
     }
@@ -1253,34 +1290,37 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
 
   private fun setupMediaSession() {
     runCatching {
-      mediaSession = MediaSession(this, TAG).apply {
-        setCallback(
-          object : MediaSession.Callback() {
-            override fun onPlay() {
-              viewModel.unpause()
-              updateMediaSessionPlaybackState(isPlaying = true)
-            }
+      mediaSession =
+        MediaSession(this, TAG).apply {
+          setCallback(
+            object : MediaSession.Callback() {
+              override fun onPlay() {
+                viewModel.unpause()
+                updateMediaSessionPlaybackState(isPlaying = true)
+              }
 
-            override fun onPause() {
-              viewModel.pause()
-              updateMediaSessionPlaybackState(isPlaying = false)
-            }
+              override fun onPause() {
+                viewModel.pause()
+                updateMediaSessionPlaybackState(isPlaying = false)
+              }
 
-            override fun onSeekTo(pos: Long) {
-              viewModel.seekTo((pos / 1000).toInt())
-              updateMediaSessionPlaybackState(isPlaying = viewModel.paused == false)
-            }
-          },
-        )
-        isActive = true
-      }
-      playbackStateBuilder = PlaybackState.Builder()
-        .setActions(
-          PlaybackState.ACTION_PLAY or
-            PlaybackState.ACTION_PAUSE or
-            PlaybackState.ACTION_PLAY_PAUSE or
-            PlaybackState.ACTION_SEEK_TO,
-        )
+              override fun onSeekTo(pos: Long) {
+                viewModel.seekTo((pos / 1000).toInt())
+                updateMediaSessionPlaybackState(isPlaying = viewModel.paused == false)
+              }
+            },
+          )
+          isActive = true
+        }
+      playbackStateBuilder =
+        PlaybackState
+          .Builder()
+          .setActions(
+            PlaybackState.ACTION_PLAY or
+              PlaybackState.ACTION_PAUSE or
+              PlaybackState.ACTION_PLAY_PAUSE or
+              PlaybackState.ACTION_SEEK_TO,
+          )
       mediaSessionInitialized = true
     }.onFailure { e ->
       Log.e(TAG, "Failed to initialize MediaSession", e)
@@ -1301,13 +1341,18 @@ class PlayerActivity : AppCompatActivity(), PlayerHost, PlayerObserverCallbacks 
     }.onFailure { e -> Log.e(TAG, "Error updating playback state", e) }
   }
 
-  private fun updateMediaSessionMetadata(title: String, durationMs: Long) {
+  private fun updateMediaSessionMetadata(
+    title: String,
+    durationMs: Long,
+  ) {
     if (!mediaSessionInitialized) return
     runCatching {
-      val metadata = MediaMetadata.Builder()
-        .putString(MediaMetadata.METADATA_KEY_TITLE, title)
-        .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs)
-        .build()
+      val metadata =
+        MediaMetadata
+          .Builder()
+          .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+          .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs)
+          .build()
       mediaSession.setMetadata(metadata)
     }.onFailure { e -> Log.e(TAG, "Error updating metadata", e) }
   }

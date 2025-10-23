@@ -28,7 +28,6 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState as prefer
 fun PlayerSheets(
   sheetShown: Sheets,
   viewModel: app.marlboroadvance.mpvex.ui.player.PlayerViewModel,
-
   // subtitles sheet
   subtitles: ImmutableList<TrackNode>,
   onAddSubtitle: (Uri) -> Unit,
@@ -56,19 +55,19 @@ fun PlayerSheets(
   // More sheet
   sleepTimerTimeRemaining: Int,
   onStartSleepTimer: (Int) -> Unit,
-
   onOpenPanel: (Panels) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
   when (sheetShown) {
     Sheets.None -> {}
     Sheets.SubtitleTracks -> {
-      val subtitlesPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-      ) {
-        if (it == null) return@rememberLauncherForActivityResult
-        onAddSubtitle(it)
-      }
+      val subtitlesPicker =
+        rememberLauncherForActivityResult(
+          ActivityResultContracts.OpenDocument(),
+        ) {
+          if (it == null) return@rememberLauncherForActivityResult
+          onAddSubtitle(it)
+        }
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onSelect = onSelectSubtitle,
@@ -80,12 +79,13 @@ fun PlayerSheets(
     }
 
     Sheets.AudioTracks -> {
-      val audioPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-      ) {
-        if (it == null) return@rememberLauncherForActivityResult
-        onAddAudio(it)
-      }
+      val audioPicker =
+        rememberLauncherForActivityResult(
+          ActivityResultContracts.OpenDocument(),
+        ) {
+          if (it == null) return@rememberLauncherForActivityResult
+          onAddAudio(it)
+        }
       AudioTracksSheet(
         tracks = audioTracks,
         onSelect = onSelectAudio,

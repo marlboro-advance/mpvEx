@@ -41,25 +41,28 @@ fun SortTypeSelector(
       ) {
         IconButton(
           onClick = { onSortTypeChange(type) },
-          modifier = Modifier
-            .size(56.dp)
-            .background(
-              color = if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-              } else {
-                MaterialTheme.colorScheme.surfaceContainer
-              },
-              shape = RoundedCornerShape(28.dp),
-            ),
+          modifier =
+            Modifier
+              .size(56.dp)
+              .background(
+                color =
+                  if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                  } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                  },
+                shape = RoundedCornerShape(28.dp),
+              ),
         ) {
           Icon(
             imageVector = icons[index],
             contentDescription = type,
-            tint = if (selected) {
-              MaterialTheme.colorScheme.primaryContainer
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            tint =
+              if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
             modifier = Modifier.size(24.dp),
           )
         }
@@ -67,11 +70,12 @@ fun SortTypeSelector(
         Text(
           text = type,
           style = MaterialTheme.typography.bodySmall,
-          color = if (selected) {
-            MaterialTheme.colorScheme.onSurface
-          } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-          },
+          color =
+            if (selected) {
+              MaterialTheme.colorScheme.onSurface
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
         )
       }
     }

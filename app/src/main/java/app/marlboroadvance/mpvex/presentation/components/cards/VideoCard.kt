@@ -44,22 +44,25 @@ fun VideoCard(
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
   Card(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick),
     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
-        modifier = Modifier
-          .size(64.dp)
-          .clip(RoundedCornerShape(12.dp))
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier =
+          Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
@@ -85,24 +88,24 @@ fun VideoCard(
           Text(
             video.durationFormatted,
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                RoundedCornerShape(8.dp),
-              )
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
           Spacer(modifier = Modifier.width(4.dp))
           Text(
             video.sizeFormatted,
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                RoundedCornerShape(8.dp),
-              )
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
         }

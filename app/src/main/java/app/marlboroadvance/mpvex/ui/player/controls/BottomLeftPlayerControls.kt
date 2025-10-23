@@ -27,7 +27,7 @@ fun BottomLeftPlayerControls(
   onCycleRotation: () -> Unit,
   onPlaybackSpeedChange: (Float) -> Unit,
   onOpenSheet: (Sheets) -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   Row(
     modifier = modifier.fillMaxWidth(),
@@ -39,7 +39,7 @@ fun BottomLeftPlayerControls(
     )
     ControlsButton(
       icon = Icons.Default.ScreenRotation,
-      onClick = onCycleRotation
+      onClick = onCycleRotation,
     )
     ControlsButton(
       text = stringResource(R.string.player_speed, playbackSpeed),

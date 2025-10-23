@@ -59,7 +59,7 @@ data class TrackNode(
   @SerialName("replaygain-album-gain") val replayGainAlbumGain: Double? = null,
   @SerialName("dolby-vision-profile") val dolbyVisionProfile: Long? = null,
   @SerialName("dolby-vision-level") val dolbyVisionLevel: Long? = null,
-  val metadata: Map<String, String?>? = null
+  val metadata: Map<String, String?>? = null,
 ) {
   val isVideo = type == "video"
   val isAudio = type == "audio"
@@ -67,5 +67,6 @@ data class TrackNode(
   val isSelected = selected == true
 
   fun getMetadata(key: String): String? = metadata?.get(key)
+
   fun hasMetadata(): Boolean = !metadata.isNullOrEmpty()
 }

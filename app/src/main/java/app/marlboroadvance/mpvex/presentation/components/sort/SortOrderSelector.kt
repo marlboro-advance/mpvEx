@@ -27,16 +27,18 @@ fun SortOrderSelector(
   val selectedIndex = if (sortOrderAsc) 0 else 1
 
   SingleChoiceSegmentedButtonRow(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(vertical = 16.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(vertical = 16.dp),
   ) {
     options.forEachIndexed { index, label ->
       SegmentedButton(
-        shape = SegmentedButtonDefaults.itemShape(
-          index = index,
-          count = options.size,
-        ),
+        shape =
+          SegmentedButtonDefaults.itemShape(
+            index = index,
+            count = options.size,
+          ),
         onClick = {
           onSortOrderChange(index == 0)
         },

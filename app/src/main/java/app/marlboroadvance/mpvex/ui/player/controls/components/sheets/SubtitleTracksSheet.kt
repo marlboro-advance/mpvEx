@@ -81,10 +81,11 @@ fun SubtitleTrackRow(
   modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick)
-      .padding(start = MaterialTheme.spacing.smaller, end = MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(start = MaterialTheme.spacing.smaller, end = MaterialTheme.spacing.medium),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Checkbox(

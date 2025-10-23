@@ -39,15 +39,17 @@ import kotlin.reflect.KProperty
 class PlayerViewModelProviderFactory(
   private val host: PlayerHost,
 ) : ViewModelProvider.Factory {
-  override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-    return PlayerViewModel(host) as T
-  }
+  override fun <T : ViewModel> create(
+    modelClass: Class<T>,
+    extras: CreationExtras,
+  ): T = PlayerViewModel(host) as T
 }
 
 @Suppress("TooManyFunctions")
 class PlayerViewModel(
   private val host: PlayerHost,
-) : ViewModel(), KoinComponent {
+) : ViewModel(),
+  KoinComponent {
   private val playerPreferences: PlayerPreferences by inject()
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
@@ -60,14 +62,17 @@ class PlayerViewModel(
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
 
-  val subtitleTracks = MPVLib.propNode["track-list"]
-    .map { (it?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle } ?: persistentListOf()).toImmutableList() }
+  val subtitleTracks =
+    MPVLib.propNode["track-list"]
+      .map { (it?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle } ?: persistentListOf()).toImmutableList() }
 
-  val audioTracks = MPVLib.propNode["track-list"]
-    .map { (it?.toObject<List<TrackNode>>(json)?.filter { it.isAudio } ?: persistentListOf()).toImmutableList() }
+  val audioTracks =
+    MPVLib.propNode["track-list"]
+      .map { (it?.toObject<List<TrackNode>>(json)?.filter { it.isAudio } ?: persistentListOf()).toImmutableList() }
 
-  val chapters = MPVLib.propNode["chapter-list"]
-    .map { (it?.toObject<List<ChapterNode>>(json) ?: persistentListOf()).map { it.toSegment() }.toImmutableList() }
+  val chapters =
+    MPVLib.propNode["chapter-list"]
+      .map { (it?.toObject<List<ChapterNode>>(json) ?: persistentListOf()).map { it.toSegment() }.toImmutableList() }
 
   private val _controlsShown = MutableStateFlow(false)
   val controlsShown = _controlsShown.asStateFlow()
@@ -79,12 +84,14 @@ class PlayerViewModel(
   val playerUpdate = MutableStateFlow<PlayerUpdates>(PlayerUpdates.None)
   val isBrightnessSliderShown = MutableStateFlow(false)
   val isVolumeSliderShown = MutableStateFlow(false)
-  val currentBrightness = MutableStateFlow(
-    runCatching {
-      Settings.System.getFloat(host.hostContentResolver, Settings.System.SCREEN_BRIGHTNESS)
-        .normalize(0f, 255f, 0f, 1f)
-    }.getOrElse { 0f },
-  )
+  val currentBrightness =
+    MutableStateFlow(
+      runCatching {
+        Settings.System
+          .getFloat(host.hostContentResolver, Settings.System.SCREEN_BRIGHTNESS)
+          .normalize(0f, 255f, 0f, 1f)
+      }.getOrElse { 0f },
+    )
 
   val sheetShown = MutableStateFlow(Sheets.None)
   val panelShown = MutableStateFlow(Panels.None)
@@ -116,18 +123,20 @@ class PlayerViewModel(
     timerJob?.cancel()
     _remainingTime.value = seconds
     if (seconds < 1) return
-    timerJob = viewModelScope.launch {
-      for (time in seconds downTo 0) {
-        _remainingTime.value = time
-        delay(1000)
+    timerJob =
+      viewModelScope.launch {
+        for (time in seconds downTo 0) {
+          _remainingTime.value = time
+          delay(1000)
+        }
+        MPVLib.setPropertyBoolean("pause", true)
+        Toast
+          .makeText(
+            host.context,
+            host.context.getString(R.string.toast_sleep_timer_ended),
+            Toast.LENGTH_SHORT,
+          ).show()
       }
-      MPVLib.setPropertyBoolean("pause", true)
-      Toast.makeText(
-        host.context,
-        host.context.getString(R.string.toast_sleep_timer_ended),
-        Toast.LENGTH_SHORT,
-      ).show()
-    }
   }
 
   fun cycleDecoders() {
@@ -168,10 +177,13 @@ class PlayerViewModel(
   }
 
   fun pauseUnpause() = MPVLib.command("cycle", "pause")
+
   fun pause() = MPVLib.setPropertyBoolean("pause", true)
+
   fun unpause() = MPVLib.setPropertyBoolean("pause", false)
 
   private val showStatusBar = playerPreferences.showSystemStatusBar.get()
+
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
     if (showStatusBar) host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
@@ -209,15 +221,15 @@ class PlayerViewModel(
     MPVLib.command("seek", position.toString(), "absolute+keyframes")
   }
 
-  fun changeBrightnessTo(
-    brightness: Float,
-  ) {
+  fun changeBrightnessTo(brightness: Float) {
     val coercedBrightness = brightness.coerceIn(0f, 1f)
-    host.hostWindow.attributes = host.hostWindow.attributes.apply {
-      screenBrightness = coercedBrightness.also {
-        currentBrightness.update { _ -> it }
+    host.hostWindow.attributes =
+      host.hostWindow.attributes.apply {
+        screenBrightness =
+          coercedBrightness.also {
+            currentBrightness.update { _ -> it }
+          }
       }
-    }
     // Save brightness to preferences if remember brightness is enabled
     if (playerPreferences.rememberBrightness.get()) {
       playerPreferences.defaultBrightness.set(coercedBrightness)
@@ -229,6 +241,7 @@ class PlayerViewModel(
   }
 
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
   fun changeVolumeBy(change: Int) {
     val mpvVolume = MPVLib.getPropertyInt("volume")
     if ((volumeBoostCap ?: audioPreferences.volumeBoostCap.get()) > 0 && currentVolume.value == maxVolume) {
@@ -287,28 +300,33 @@ class PlayerViewModel(
   }
 
   fun cycleScreenRotations() {
-    host.hostRequestedOrientation = when (host.hostRequestedOrientation) {
-      ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
-      ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-      -> {
-        playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
-        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-      }
+    host.hostRequestedOrientation =
+      when (host.hostRequestedOrientation) {
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+        -> {
+          playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
+          ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        }
 
-      else -> {
-        playerPreferences.orientation.set(PlayerOrientation.SensorLandscape)
-        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        else -> {
+          playerPreferences.orientation.set(PlayerOrientation.SensorLandscape)
+          ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
       }
-    }
   }
 
   @Suppress("CyclomaticComplexMethod", "LongMethod")
-  fun handleLuaInvocation(property: String, value: String) {
-    val data = value
-      .removePrefix("\"")
-      .removeSuffix("\"")
-      .ifEmpty { return }
+  fun handleLuaInvocation(
+    property: String,
+    value: String,
+  ) {
+    val data =
+      value
+        .removePrefix("\"")
+        .removeSuffix("\"")
+        .ifEmpty { return }
 
     when (property.substringAfterLast("/")) {
       "show_text" -> playerUpdate.update { PlayerUpdates.ShowText(data) }
@@ -349,18 +367,20 @@ class PlayerViewModel(
 
       "seek_by" -> seekByWithText(data.toInt(), null)
       "seek_to" -> seekToWithText(data.toInt(), null)
-      "software_keyboard" -> when (data) {
-        "show" -> forceShowSoftwareKeyboard()
-        "hide" -> forceHideSoftwareKeyboard()
-        "toggle" if !inputMethodManager.isActive -> forceShowSoftwareKeyboard()
-        else -> forceHideSoftwareKeyboard()
-      }
+      "software_keyboard" ->
+        when (data) {
+          "show" -> forceShowSoftwareKeyboard()
+          "hide" -> forceHideSoftwareKeyboard()
+          "toggle" if !inputMethodManager.isActive -> forceShowSoftwareKeyboard()
+          else -> forceHideSoftwareKeyboard()
+        }
     }
 
     MPVLib.setPropertyString(property, "")
   }
 
   private val inputMethodManager = host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
   private fun forceShowSoftwareKeyboard() {
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
   }
@@ -369,7 +389,10 @@ class PlayerViewModel(
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0)
   }
 
-  private fun seekToWithText(seekValue: Int, text: String?) {
+  private fun seekToWithText(
+    seekValue: Int,
+    text: String?,
+  ) {
     _isSeekingForwards.value = seekValue > 0
     _doubleTapSeekAmount.value = seekValue - (pos ?: return)
     _seekText.update { text }
@@ -377,7 +400,10 @@ class PlayerViewModel(
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
-  private fun seekByWithText(value: Int, text: String?) {
+  private fun seekByWithText(
+    value: Int,
+    text: String?,
+  ) {
     _doubleTapSeekAmount.update {
       if (value < 0 && it < 0 || (pos ?: return) + value > (duration ?: return)) 0 else it + value
     }
@@ -495,13 +521,25 @@ class PlayerViewModel(
   }
 }
 
-fun Float.normalize(inMin: Float, inMax: Float, outMin: Float, outMax: Float): Float {
-  return (this - inMin) * (outMax - outMin) / (inMax - inMin) + outMin
-}
+fun Float.normalize(
+  inMin: Float,
+  inMax: Float,
+  outMin: Float,
+  outMax: Float,
+): Float = (this - inMin) * (outMax - outMin) / (inMax - inMin) + outMin
 
-fun <T> Flow<T>.collectAsState(scope: CoroutineScope, initialValue: T? = null) =
-  object : ReadOnlyProperty<Any?, T?> {
-    private var value: T? = initialValue
-    init { scope.launch { collect { value = it } } }
-    override fun getValue(thisRef: Any?, property: KProperty<*>) = value
+fun <T> Flow<T>.collectAsState(
+  scope: CoroutineScope,
+  initialValue: T? = null,
+) = object : ReadOnlyProperty<Any?, T?> {
+  private var value: T? = initialValue
+
+  init {
+    scope.launch { collect { value = it } }
   }
+
+  override fun getValue(
+    thisRef: Any?,
+    property: KProperty<*>,
+  ) = value
+}

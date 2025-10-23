@@ -65,9 +65,7 @@ import org.koin.compose.koinInject
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
-fun SubtitleSettingsTypographyCard(
-  modifier: Modifier = Modifier,
-) {
+fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   val context = LocalContext.current
   val preferences = koinInject<SubtitlesPreferences>()
   val fileManager = koinInject<FileManager>()
@@ -84,10 +82,19 @@ fun SubtitleSettingsTypographyCard(
       // Read fonts from the app's persistent cache: filesDir/fonts
       val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
       if (fileManager.exists(fontsDir)) {
-        val familyNames = fileManager.listFiles(fontsDir)
-          .filter { fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex()) }
-          .mapNotNull { runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull() }
-          .distinct()
+        val familyNames =
+          fileManager
+            .listFiles(fontsDir)
+            .filter { fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex()) }
+            .mapNotNull {
+              runCatching {
+                TTFFile
+                  .open(
+                    fileManager.getInputStream(it)!!,
+                  ).families.values
+                  .first()
+              }.getOrNull()
+            }.distinct()
         fonts.addAll(familyNames)
       }
       fontsLoadingIndicator = null
@@ -281,5 +288,5 @@ enum class SubtitlesBorderStyle(
 ) {
   OutlineAndShadow("outline-and-shadow", R.string.player_sheets_subtitles_border_style_outline_and_shadow),
   OpaqueBox("opaque-box", R.string.player_sheets_subtitles_border_style_opaque_box),
-  BackgroundBox("background-box", R.string.player_sheets_subtitles_border_style_background_box)
+  BackgroundBox("background-box", R.string.player_sheets_subtitles_border_style_background_box),
 }

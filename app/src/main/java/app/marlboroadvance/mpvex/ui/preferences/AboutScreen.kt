@@ -96,18 +96,20 @@ object AboutScreen : Screen {
       val fraction by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-          animation = tween(durationMillis = 5000),
-          repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+          infiniteRepeatable(
+            animation = tween(durationMillis = 5000),
+            repeatMode = RepeatMode.Reverse,
+          ),
       )
       val cornerRadius = 28.dp
 
       Column(
-        modifier = Modifier
-          .padding(paddingValues)
-          .verticalScroll(rememberScrollState())
-          .padding(horizontal = 16.dp, vertical = 16.dp),
+        modifier =
+          Modifier
+            .padding(paddingValues)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 16.dp),
       ) {
         Surface(
           modifier = Modifier.fillMaxWidth(),
@@ -117,28 +119,30 @@ object AboutScreen : Screen {
           tonalElevation = 0.dp,
         ) {
           Box(
-            modifier = Modifier
-              .drawWithCache {
-                val cx = size.width - size.width * fraction
-                val cy = size.height * fraction
+            modifier =
+              Modifier
+                .drawWithCache {
+                  val cx = size.width - size.width * fraction
+                  val cy = size.height * fraction
 
-                val gradient = Brush.radialGradient(
-                  colors = listOf(colorPrimary, colorTertiary),
-                  center = Offset(cx, cy),
-                  radius = 800f,
-                )
+                  val gradient =
+                    Brush.radialGradient(
+                      colors = listOf(colorPrimary, colorTertiary),
+                      center = Offset(cx, cy),
+                      radius = 800f,
+                    )
 
-                onDrawBehind {
-                  drawRoundRect(
-                    brush = gradient,
-                    cornerRadius = CornerRadius(
-                      cornerRadius.toPx(),
-                      cornerRadius.toPx(),
-                    ),
-                  )
-                }
-              }
-              .padding(20.dp),
+                  onDrawBehind {
+                    drawRoundRect(
+                      brush = gradient,
+                      cornerRadius =
+                        CornerRadius(
+                          cornerRadius.toPx(),
+                          cornerRadius.toPx(),
+                        ),
+                    )
+                  }
+                }.padding(20.dp),
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -190,14 +194,16 @@ object AboutScreen : Screen {
                 val btnContent = cs.onPrimary
                 Button(
                   onClick = { backstack.add(LibrariesScreen) },
-                  modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
+                  modifier =
+                    Modifier
+                      .weight(1f)
+                      .height(56.dp),
                   shape = RoundedCornerShape(16.dp),
-                  colors = ButtonDefaults.buttonColors(
-                    containerColor = btnContainer,
-                    contentColor = btnContent,
-                  ),
+                  colors =
+                    ButtonDefaults.buttonColors(
+                      containerColor = btnContainer,
+                      contentColor = btnContent,
+                    ),
                 ) {
                   Text(
                     text = stringResource(id = R.string.pref_about_oss_libraries),
@@ -215,14 +221,16 @@ object AboutScreen : Screen {
                       ),
                     )
                   },
-                  modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
+                  modifier =
+                    Modifier
+                      .weight(1f)
+                      .height(56.dp),
                   shape = RoundedCornerShape(16.dp),
-                  colors = ButtonDefaults.buttonColors(
-                    containerColor = btnContainer,
-                    contentColor = btnContent,
-                  ),
+                  colors =
+                    ButtonDefaults.buttonColors(
+                      containerColor = btnContainer,
+                      contentColor = btnContent,
+                    ),
                 ) {
                   Icon(imageVector = SimpleIcons.Github, contentDescription = null)
                   Spacer(Modifier.width(8.dp))
@@ -237,11 +245,12 @@ object AboutScreen : Screen {
               Spacer(modifier = Modifier.height(20.dp))
 
               Column(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .clickable {
-                    clipboardManager.setText(AnnotatedString(collectDeviceInfo()))
-                  },
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      clipboardManager.setText(AnnotatedString(collectDeviceInfo()))
+                    },
               ) {
                 Row(
                   verticalAlignment = Alignment.CenterVertically,

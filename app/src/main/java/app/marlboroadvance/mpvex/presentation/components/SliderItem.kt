@@ -38,12 +38,13 @@ fun SliderItem(
   val haptic = LocalHapticFeedback.current
 
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(
-        horizontal = MaterialTheme.spacing.medium,
-        vertical = MaterialTheme.spacing.smaller,
-      ),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.smaller,
+        ),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
   ) {
@@ -87,12 +88,13 @@ fun SliderItem(
   val haptic = LocalHapticFeedback.current
 
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(
-        horizontal = MaterialTheme.spacing.medium,
-        vertical = MaterialTheme.spacing.smaller,
-      ),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.smaller,
+        ),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
   ) {
@@ -135,12 +137,13 @@ fun VerticalSliderItem(
   val haptic = LocalHapticFeedback.current
 
   Column(
-    modifier = modifier
-      .fillMaxHeight()
-      .padding(
-        horizontal = MaterialTheme.spacing.medium,
-        vertical = MaterialTheme.spacing.smaller,
-      ),
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.smaller,
+        ),
     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.larger),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
@@ -174,26 +177,26 @@ fun VerticalSlider(
   modifier: Modifier = Modifier,
 ) {
   Slider(
-    modifier = modifier
-      .graphicsLayer {
-        rotationZ = 270f
-        transformOrigin = TransformOrigin(0f, 0f)
-      }
-      .layout { measurable, constraints ->
-        val placeable = measurable.measure(
-          Constraints(
-            minWidth = constraints.minHeight,
-            maxWidth = constraints.maxHeight,
-            minHeight = constraints.minWidth,
-            maxHeight = constraints.maxWidth,
-          ),
-        )
-        layout(placeable.height, placeable.width) {
-          placeable.place(-placeable.width, 0)
-        }
-      }
-      .width(180.dp)
-      .height(50.dp),
+    modifier =
+      modifier
+        .graphicsLayer {
+          rotationZ = 270f
+          transformOrigin = TransformOrigin(0f, 0f)
+        }.layout { measurable, constraints ->
+          val placeable =
+            measurable.measure(
+              Constraints(
+                minWidth = constraints.minHeight,
+                maxWidth = constraints.maxHeight,
+                minHeight = constraints.minWidth,
+                maxHeight = constraints.maxWidth,
+              ),
+            )
+          layout(placeable.height, placeable.width) {
+            placeable.place(-placeable.width, 0)
+          }
+        }.width(180.dp)
+        .height(50.dp),
     value = value.toFloat(),
     valueRange = min.toFloat()..max.toFloat(),
     onValueChange = { onValueChange(it.toInt()) },

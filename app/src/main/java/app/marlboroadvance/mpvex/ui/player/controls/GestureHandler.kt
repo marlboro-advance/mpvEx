@@ -59,7 +59,7 @@ import org.koin.compose.koinInject
 fun GestureHandler(
   viewModel: PlayerViewModel,
   interactionSource: MutableInteractionSource,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
@@ -95,188 +95,192 @@ fun GestureHandler(
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
   val haptics = LocalHapticFeedback.current
   Box(
-    modifier = modifier
-      .fillMaxSize()
-      .windowInsetsPadding(WindowInsets.safeGestures)
-      .pointerInput(Unit) {
-        var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
-        detectTapGestures(
-          onTap = {
-            if (controlsShown) viewModel.hideControls() else viewModel.showControls()
-          },
-          onDoubleTap = {
-            if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
-            if (it.x > size.width * 3 / 5) {
-              if (!isSeekingForwards) viewModel.updateSeekAmount(0)
-              viewModel.handleRightDoubleTap()
-              isDoubleTapSeeking = true
-            } else if (it.x < size.width * 2 / 5) {
-              if (isSeekingForwards) viewModel.updateSeekAmount(0)
-              viewModel.handleLeftDoubleTap()
-              isDoubleTapSeeking = true
-            } else {
-              viewModel.handleCenterDoubleTap()
-            }
-          },
-          onPress = {
-            if (panelShown != Panels.None && !allowGesturesInPanels) {
-              viewModel.panelShown.update { Panels.None }
-            }
-            if (!areControlsLocked && isDoubleTapSeeking && seekAmount != 0) {
+    modifier =
+      modifier
+        .fillMaxSize()
+        .windowInsetsPadding(WindowInsets.safeGestures)
+        .pointerInput(Unit) {
+          var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
+          detectTapGestures(
+            onTap = {
+              if (controlsShown) viewModel.hideControls() else viewModel.showControls()
+            },
+            onDoubleTap = {
+              if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
               if (it.x > size.width * 3 / 5) {
                 if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleRightDoubleTap()
+                isDoubleTapSeeking = true
               } else if (it.x < size.width * 2 / 5) {
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
+                isDoubleTapSeeking = true
               } else {
                 viewModel.handleCenterDoubleTap()
               }
-            } else {
-              isDoubleTapSeeking = false
-            }
-            val press = PressInteraction.Press(
-              it.copy(x = if (it.x > size.width * 3 / 5) it.x - size.width * 0.6f else it.x),
-            )
-            interactionSource.emit(press)
-            tryAwaitRelease()
-            if (isLongPressing) {
-              isLongPressing = false
-              MPVLib.setPropertyFloat("speed", originalSpeed)
-              viewModel.playerUpdate.update { PlayerUpdates.None }
-            }
-            interactionSource.emit(PressInteraction.Release(press))
-          },
-          onLongPress = {
-            if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
-            if (!isLongPressing && paused == false) {
-              originalSpeed = playbackSpeed ?: return@detectTapGestures
-              haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-              isLongPressing = true
-              MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
-              viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
-            }
-          },
-        )
-      }
-      .pointerInput(areControlsLocked) {
-        if (!seekGesture || areControlsLocked) return@pointerInput
-        var startingPosition = position ?: 0
-        var startingX = 0f
-        var wasPlayerAlreadyPause = false
-        detectHorizontalDragGestures(
-          onDragStart = {
-            startingPosition = position ?: 0
-            startingX = it.x
-            wasPlayerAlreadyPause = paused ?: false
-            viewModel.pause()
-          },
-          onDragEnd = {
-            viewModel.gestureSeekAmount.update { null }
-            viewModel.hideSeekBar()
-            if (!wasPlayerAlreadyPause) viewModel.unpause()
-          },
-        ) { change, dragAmount ->
-          if ((position ?: 0) <= 0f && dragAmount < 0) return@detectHorizontalDragGestures
-          if ((position ?: 0) >= (duration ?: 0) && dragAmount > 0) return@detectHorizontalDragGestures
-          calculateNewHorizontalGestureValue(
-            startingPosition,
-            startingX,
-            change.position.x,
-            0.15f
-          ).let {
-            viewModel.gestureSeekAmount.update { _ ->
-              Pair(
-                startingPosition,
-                (it - startingPosition)
-                  .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
-              )
-            }
-            viewModel.seekTo(it)
-          }
-
-          if (showSeekbarWhenSeeking) viewModel.showSeekBar()
-        }
-      }
-      .pointerInput(areControlsLocked) {
-        if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
-        var startingY = 0f
-        var mpvVolumeStartingY = 0f
-        var originalVolume = currentVolume
-        var originalMPVVolume = currentMPVVolume
-        var originalBrightness = currentBrightness
-        val brightnessGestureSens = 0.001f
-        val volumeGestureSens = 0.03f
-        val mpvVolumeGestureSens = 0.02f
-        val isIncreasingVolumeBoost: (Float) -> Boolean = {
-          volumeBoostingCap > 0 && currentVolume == viewModel.maxVolume &&
-            (currentMPVVolume ?: 100) - 100 < volumeBoostingCap && it < 0
-        }
-        val isDecreasingVolumeBoost: (Float) -> Boolean = {
-          volumeBoostingCap > 0 && currentVolume == viewModel.maxVolume &&
-            (currentMPVVolume ?: 100) - 100 in 1..volumeBoostingCap && it > 0
-        }
-        detectVerticalDragGestures(
-          onDragEnd = { startingY = 0f },
-          onDragStart = {
-            startingY = 0f
-            mpvVolumeStartingY = 0f
-            originalVolume = currentVolume
-            originalMPVVolume = currentMPVVolume
-            originalBrightness = currentBrightness
-          },
-        ) { change, amount ->
-          val changeVolume: () -> Unit = {
-            if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
-              if (mpvVolumeStartingY == 0f) {
-                startingY = 0f
-                originalVolume = currentVolume
-                mpvVolumeStartingY = change.position.y
+            },
+            onPress = {
+              if (panelShown != Panels.None && !allowGesturesInPanels) {
+                viewModel.panelShown.update { Panels.None }
               }
-              viewModel.changeMPVVolumeTo(
-                calculateNewVerticalGestureValue(
-                  originalMPVVolume ?: 100,
-                  mpvVolumeStartingY,
-                  change.position.y,
-                  mpvVolumeGestureSens,
-                )
-                  .coerceIn(100..volumeBoostingCap + 100),
-              )
-            } else {
-              if (startingY == 0f) {
-                mpvVolumeStartingY = 0f
-                originalMPVVolume = currentMPVVolume
-                startingY = change.position.y
-              }
-              viewModel.changeVolumeTo(
-                calculateNewVerticalGestureValue(originalVolume, startingY, change.position.y, volumeGestureSens),
-              )
-            }
-            viewModel.displayVolumeSlider()
-          }
-          val changeBrightness: () -> Unit = {
-            if (startingY == 0f) startingY = change.position.y
-            viewModel.changeBrightnessTo(
-              calculateNewVerticalGestureValue(originalBrightness, startingY, change.position.y, brightnessGestureSens),
-            )
-            viewModel.displayBrightnessSlider()
-          }
-          when {
-            volumeGesture && brightnessGesture -> {
-              if (swapVolumeAndBrightness) {
-                if (change.position.x > size.width / 2) changeBrightness() else changeVolume()
+              if (!areControlsLocked && isDoubleTapSeeking && seekAmount != 0) {
+                if (it.x > size.width * 3 / 5) {
+                  if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+                  viewModel.handleRightDoubleTap()
+                } else if (it.x < size.width * 2 / 5) {
+                  if (isSeekingForwards) viewModel.updateSeekAmount(0)
+                  viewModel.handleLeftDoubleTap()
+                } else {
+                  viewModel.handleCenterDoubleTap()
+                }
               } else {
-                if (change.position.x < size.width / 2) changeBrightness() else changeVolume()
+                isDoubleTapSeeking = false
               }
+              val press =
+                PressInteraction.Press(
+                  it.copy(x = if (it.x > size.width * 3 / 5) it.x - size.width * 0.6f else it.x),
+                )
+              interactionSource.emit(press)
+              tryAwaitRelease()
+              if (isLongPressing) {
+                isLongPressing = false
+                MPVLib.setPropertyFloat("speed", originalSpeed)
+                viewModel.playerUpdate.update { PlayerUpdates.None }
+              }
+              interactionSource.emit(PressInteraction.Release(press))
+            },
+            onLongPress = {
+              if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
+              if (!isLongPressing && paused == false) {
+                originalSpeed = playbackSpeed ?: return@detectTapGestures
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                isLongPressing = true
+                MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
+                viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
+              }
+            },
+          )
+        }.pointerInput(areControlsLocked) {
+          if (!seekGesture || areControlsLocked) return@pointerInput
+          var startingPosition = position ?: 0
+          var startingX = 0f
+          var wasPlayerAlreadyPause = false
+          detectHorizontalDragGestures(
+            onDragStart = {
+              startingPosition = position ?: 0
+              startingX = it.x
+              wasPlayerAlreadyPause = paused ?: false
+              viewModel.pause()
+            },
+            onDragEnd = {
+              viewModel.gestureSeekAmount.update { null }
+              viewModel.hideSeekBar()
+              if (!wasPlayerAlreadyPause) viewModel.unpause()
+            },
+          ) { change, dragAmount ->
+            if ((position ?: 0) <= 0f && dragAmount < 0) return@detectHorizontalDragGestures
+            if ((position ?: 0) >= (duration ?: 0) && dragAmount > 0) return@detectHorizontalDragGestures
+            calculateNewHorizontalGestureValue(
+              startingPosition,
+              startingX,
+              change.position.x,
+              0.15f,
+            ).let {
+              viewModel.gestureSeekAmount.update { _ ->
+                Pair(
+                  startingPosition,
+                  (it - startingPosition)
+                    .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
+                )
+              }
+              viewModel.seekTo(it)
             }
 
-            brightnessGesture -> changeBrightness()
-            // it's not always true, AS is drunk
-            volumeGesture -> changeVolume()
-            else -> {}
+            if (showSeekbarWhenSeeking) viewModel.showSeekBar()
           }
-        }
-      },
+        }.pointerInput(areControlsLocked) {
+          if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
+          var startingY = 0f
+          var mpvVolumeStartingY = 0f
+          var originalVolume = currentVolume
+          var originalMPVVolume = currentMPVVolume
+          var originalBrightness = currentBrightness
+          val brightnessGestureSens = 0.001f
+          val volumeGestureSens = 0.03f
+          val mpvVolumeGestureSens = 0.02f
+          val isIncreasingVolumeBoost: (Float) -> Boolean = {
+            volumeBoostingCap > 0 && currentVolume == viewModel.maxVolume &&
+              (currentMPVVolume ?: 100) - 100 < volumeBoostingCap && it < 0
+          }
+          val isDecreasingVolumeBoost: (Float) -> Boolean = {
+            volumeBoostingCap > 0 && currentVolume == viewModel.maxVolume &&
+              (currentMPVVolume ?: 100) - 100 in 1..volumeBoostingCap && it > 0
+          }
+          detectVerticalDragGestures(
+            onDragEnd = { startingY = 0f },
+            onDragStart = {
+              startingY = 0f
+              mpvVolumeStartingY = 0f
+              originalVolume = currentVolume
+              originalMPVVolume = currentMPVVolume
+              originalBrightness = currentBrightness
+            },
+          ) { change, amount ->
+            val changeVolume: () -> Unit = {
+              if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
+                if (mpvVolumeStartingY == 0f) {
+                  startingY = 0f
+                  originalVolume = currentVolume
+                  mpvVolumeStartingY = change.position.y
+                }
+                viewModel.changeMPVVolumeTo(
+                  calculateNewVerticalGestureValue(
+                    originalMPVVolume ?: 100,
+                    mpvVolumeStartingY,
+                    change.position.y,
+                    mpvVolumeGestureSens,
+                  ).coerceIn(100..volumeBoostingCap + 100),
+                )
+              } else {
+                if (startingY == 0f) {
+                  mpvVolumeStartingY = 0f
+                  originalMPVVolume = currentMPVVolume
+                  startingY = change.position.y
+                }
+                viewModel.changeVolumeTo(
+                  calculateNewVerticalGestureValue(originalVolume, startingY, change.position.y, volumeGestureSens),
+                )
+              }
+              viewModel.displayVolumeSlider()
+            }
+            val changeBrightness: () -> Unit = {
+              if (startingY == 0f) startingY = change.position.y
+              viewModel.changeBrightnessTo(
+                calculateNewVerticalGestureValue(
+                  originalBrightness,
+                  startingY,
+                  change.position.y,
+                  brightnessGestureSens,
+                ),
+              )
+              viewModel.displayBrightnessSlider()
+            }
+            when {
+              volumeGesture && brightnessGesture -> {
+                if (swapVolumeAndBrightness) {
+                  if (change.position.x > size.width / 2) changeBrightness() else changeVolume()
+                } else {
+                  if (change.position.x < size.width / 2) changeBrightness() else changeVolume()
+                }
+              }
+
+              brightnessGesture -> changeBrightness()
+              // it's not always true, AS is drunk
+              volumeGesture -> changeVolume()
+              else -> {}
+            }
+          }
+        },
   )
 }
 
@@ -300,18 +304,21 @@ fun DoubleTapToSeekOvals(
     ) {
       if (amount != 0) {
         Box(
-          modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(0.4f), // 2 fifths
+          modifier =
+            Modifier
+              .fillMaxHeight()
+              .fillMaxWidth(0.4f),
+          // 2 fifths
           contentAlignment = Alignment.Center,
         ) {
           if (showOvals) {
             Box(
-              modifier = Modifier
-                .fillMaxSize()
-                .clip(if (amount > 0) RightSideOvalShape else LeftSideOvalShape)
-                .background(Color.White.copy(alpha))
-                .indication(interactionSource, ripple()),
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .clip(if (amount > 0) RightSideOvalShape else LeftSideOvalShape)
+                  .background(Color.White.copy(alpha))
+                  .indication(interactionSource, ripple()),
             )
           }
           if (showSeekTime) {
@@ -331,18 +338,30 @@ fun DoubleTapToSeekOvals(
   }
 }
 
-fun calculateNewVerticalGestureValue(originalValue: Int, startingY: Float, newY: Float, sensitivity: Float): Int {
-  return originalValue + ((startingY - newY) * sensitivity).toInt()
-}
+fun calculateNewVerticalGestureValue(
+  originalValue: Int,
+  startingY: Float,
+  newY: Float,
+  sensitivity: Float,
+): Int = originalValue + ((startingY - newY) * sensitivity).toInt()
 
-fun calculateNewVerticalGestureValue(originalValue: Float, startingY: Float, newY: Float, sensitivity: Float): Float {
-  return originalValue + ((startingY - newY) * sensitivity)
-}
+fun calculateNewVerticalGestureValue(
+  originalValue: Float,
+  startingY: Float,
+  newY: Float,
+  sensitivity: Float,
+): Float = originalValue + ((startingY - newY) * sensitivity)
 
-fun calculateNewHorizontalGestureValue(originalValue: Int, startingX: Float, newX: Float, sensitivity: Float): Int {
-  return originalValue + ((newX - startingX) * sensitivity).toInt()
-}
+fun calculateNewHorizontalGestureValue(
+  originalValue: Int,
+  startingX: Float,
+  newX: Float,
+  sensitivity: Float,
+): Int = originalValue + ((newX - startingX) * sensitivity).toInt()
 
-fun calculateNewHorizontalGestureValue(originalValue: Float, startingX: Float, newX: Float, sensitivity: Float): Float {
-  return originalValue + ((newX - startingX) * sensitivity)
-}
+fun calculateNewHorizontalGestureValue(
+  originalValue: Float,
+  startingX: Float,
+  newX: Float,
+  sensitivity: Float,
+): Float = originalValue + ((newX - startingX) * sensitivity)

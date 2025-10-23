@@ -47,22 +47,25 @@ fun FolderCard(
   val parentPath = folder.path.substringBeforeLast("/", folder.path)
 
   Card(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick),
     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
-        modifier = Modifier
-          .size(64.dp)
-          .clip(RoundedCornerShape(12.dp))
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier =
+          Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
@@ -95,12 +98,12 @@ fun FolderCard(
           Text(
             if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                RoundedCornerShape(8.dp),
-              )
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
           if (folder.totalDuration > 0) {
@@ -108,12 +111,12 @@ fun FolderCard(
             Text(
               formatDuration(folder.totalDuration),
               style = MaterialTheme.typography.labelSmall,
-              modifier = Modifier
-                .background(
-                  MaterialTheme.colorScheme.surfaceContainerHigh,
-                  RoundedCornerShape(8.dp),
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  ).padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
           }

@@ -72,7 +72,6 @@ import java.io.File
 
 @Serializable
 object FolderListScreen : Screen {
-
   @OptIn(
     ExperimentalPermissionsApi::class,
     ExperimentalMaterial3Api::class,
@@ -101,30 +100,33 @@ object FolderListScreen : Screen {
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
-    val sortedFolders = remember(videoFolders, folderSortType, folderSortOrder) {
-      SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
-    }
+    val sortedFolders =
+      remember(videoFolders, folderSortType, folderSortOrder) {
+        SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
+      }
 
     // Permissions
-    val permissionState = PermissionUtils.handleStoragePermission(
-      onPermissionGranted = { viewModel.refresh() },
-    )
+    val permissionState =
+      PermissionUtils.handleStoragePermission(
+        onPermissionGranted = { viewModel.refresh() },
+      )
 
     // File picker
-    val filePicker = rememberLauncherForActivityResult(
-      contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-      uri?.let {
-        // Persist read permission so we can reopen later (e.g., recently played)
-        runCatching {
-          context.contentResolver.takePersistableUriPermission(
-            it,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-          )
+    val filePicker =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+      ) { uri ->
+        uri?.let {
+          // Persist read permission so we can reopen later (e.g., recently played)
+          runCatching {
+            context.contentResolver.takePersistableUriPermission(
+              it,
+              Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+          }
+          MediaUtils.playFile(it.toString(), context, "open_file")
         }
-        MediaUtils.playFile(it.toString(), context, "open_file")
       }
-    }
 
     // Effects
     LaunchedEffect(Unit) {
@@ -158,7 +160,8 @@ object FolderListScreen : Screen {
           onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
-              MediaUtils.getRecentlyPlayedFile()
+              MediaUtils
+                .getRecentlyPlayedFile()
                 ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
             }
           },
@@ -279,10 +282,11 @@ private fun FolderListContent(
     ) {
       items(folders) { folder ->
         // Check if this folder contains the recently played video
-        val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
-          val file = File(filePath)
-          file.parent == folder.path
-        } ?: false
+        val isRecentlyPlayed =
+          recentlyPlayedFilePath?.let { filePath ->
+            val file = File(filePath)
+            file.parent == folder.path
+          } ?: false
 
         FolderCard(
           folder = folder,
@@ -328,16 +332,18 @@ private fun FolderSortDialog(
     onSortOrderChange = { isAsc ->
       onSortOrderChange(if (isAsc) SortOrder.Ascending else SortOrder.Descending)
     },
-    types = listOf(
-      FolderSortType.Title.displayName,
-      FolderSortType.Date.displayName,
-      FolderSortType.Size.displayName,
-    ),
-    icons = listOf(
-      Icons.Filled.Title,
-      Icons.Filled.CalendarToday,
-      Icons.Filled.SwapVert,
-    ),
+    types =
+      listOf(
+        FolderSortType.Title.displayName,
+        FolderSortType.Date.displayName,
+        FolderSortType.Size.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.Filled.Title,
+        Icons.Filled.CalendarToday,
+        Icons.Filled.SwapVert,
+      ),
     getLabelForType = { type, _ ->
       when (type) {
         FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")

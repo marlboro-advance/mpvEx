@@ -42,13 +42,15 @@ import org.koin.java.KoinJavaComponent.inject
  * - **ACTION_VIEW Intent**: External apps launching player, skips MediaUtils
  */
 object MediaUtils {
-
   private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
 
   /**
    * Play a video from the video list
    */
-  fun playFile(video: Video, context: Context) {
+  fun playFile(
+    video: Video,
+    context: Context,
+  ) {
     val intent = Intent(Intent.ACTION_VIEW, video.uri)
     intent.setClass(context, PlayerActivity::class.java)
     context.startActivity(intent)
@@ -59,7 +61,11 @@ object MediaUtils {
    * @param source URI string or file path
    * @param launchSource Optional source identifier for analytics
    */
-  fun playFile(source: String, context: Context, launchSource: String? = null) {
+  fun playFile(
+    source: String,
+    context: Context,
+    launchSource: String? = null,
+  ) {
     // Validate the source string is not empty
     if (source.isBlank()) {
       android.util.Log.e("MediaUtils", "Cannot play file: source is empty")
@@ -82,7 +88,11 @@ object MediaUtils {
     playFileWithIntent(uri, context, launchSource)
   }
 
-  private fun playFileWithIntent(uri: android.net.Uri, context: Context, launchSource: String?) {
+  private fun playFileWithIntent(
+    uri: android.net.Uri,
+    context: Context,
+    launchSource: String?,
+  ) {
     val intent = Intent(Intent.ACTION_VIEW, uri)
     intent.setClass(context, PlayerActivity::class.java)
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -91,20 +101,17 @@ object MediaUtils {
     context.startActivity(intent)
   }
 
-  suspend fun getRecentlyPlayedFile(): String? {
-    return recentlyPlayedRepository.getLastPlayed()?.filePath
-  }
+  suspend fun getRecentlyPlayedFile(): String? = recentlyPlayedRepository.getLastPlayed()?.filePath
 
-  suspend fun hasRecentlyPlayedFile(): Boolean {
-    return recentlyPlayedRepository.getLastPlayed() != null
-  }
+  suspend fun hasRecentlyPlayedFile(): Boolean = recentlyPlayedRepository.getLastPlayed() != null
 
   fun isURLValid(url: String): Boolean {
     val uri = url.toUri()
 
-    val isValidStructure = uri.isHierarchical &&
-      !uri.isRelative &&
-      (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
+    val isValidStructure =
+      uri.isHierarchical &&
+        !uri.isRelative &&
+        (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
 
     val hasValidProtocol = Utils.PROTOCOLS.contains(uri.scheme)
 

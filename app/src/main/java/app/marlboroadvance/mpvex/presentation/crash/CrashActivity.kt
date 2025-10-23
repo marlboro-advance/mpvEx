@@ -72,7 +72,6 @@ import java.io.File
 import java.io.InputStreamReader
 
 class CrashActivity : ComponentActivity() {
-
   private val clipboardManager by lazy { getSystemService(CLIPBOARD_SERVICE) as ClipboardManager }
   private lateinit var logcat: String
   private val appearancePreferences: AppearancePreferences by inject()
@@ -133,19 +132,19 @@ class CrashActivity : ComponentActivity() {
       deviceInfo: String,
       crashLogs: String? = null,
       logcat: String,
-    ): String {
-      return StringBuilder().apply {
-        appendLine(deviceInfo)
-        appendLine()
-        if (!crashLogs.isNullOrBlank()) {
-          appendLine("Exception:")
-          appendLine(crashLogs)
+    ): String =
+      StringBuilder()
+        .apply {
+          appendLine(deviceInfo)
           appendLine()
-        }
-        appendLine("Logcat:")
-        appendLine(logcat)
-      }.toString()
-    }
+          if (!crashLogs.isNullOrBlank()) {
+            appendLine("Exception:")
+            appendLine(crashLogs)
+            appendLine()
+          }
+          appendLine("Logcat:")
+          appendLine(logcat)
+        }.toString()
 
     fun collectLogcat(): String {
       val process = Runtime.getRuntime()
@@ -156,8 +155,8 @@ class CrashActivity : ComponentActivity() {
       return logcat.toString()
     }
 
-    fun collectDeviceInfo(): String {
-      return """
+    fun collectDeviceInfo(): String =
+      """
       App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})
       Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})
       Device brand: ${Build.BRAND}
@@ -167,7 +166,6 @@ class CrashActivity : ComponentActivity() {
       ffmpeg version: ${Utils.VERSIONS.ffmpeg}
       libplacebo version: ${Utils.VERSIONS.libPlacebo}
       """.trimIndent()
-    }
   }
 
   @Composable
@@ -190,8 +188,7 @@ class CrashActivity : ComponentActivity() {
                 Offset(size.width, 0f),
                 strokeWidth = Dp.Hairline.value,
               )
-            }
-            .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
           Row(
@@ -231,10 +228,11 @@ class CrashActivity : ComponentActivity() {
       },
     ) { paddingValues ->
       Column(
-        modifier = Modifier
-          .padding(paddingValues)
-          .padding(horizontal = MaterialTheme.spacing.medium)
-          .verticalScroll(rememberScrollState()),
+        modifier =
+          Modifier
+            .padding(paddingValues)
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
         Spacer(Modifier.height(paddingValues.calculateTopPadding()))
@@ -273,9 +271,10 @@ class CrashActivity : ComponentActivity() {
     modifier: Modifier = Modifier,
   ) {
     LazyRow(
-      modifier = modifier
-        .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant),
+      modifier =
+        modifier
+          .clip(RoundedCornerShape(16.dp))
+          .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
       item {
         SelectionContainer {

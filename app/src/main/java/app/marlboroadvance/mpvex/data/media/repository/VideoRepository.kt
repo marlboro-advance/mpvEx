@@ -14,58 +14,75 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 object VideoRepository {
-
   private const val TAG = "VideoRepository"
 
   // Video file extensions
-  private val VIDEO_EXTENSIONS = setOf(
-    "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
-    "mpg", "mpeg", "3gp", "3g2", "ts", "m2ts", "mts", "vob",
-  )
+  private val VIDEO_EXTENSIONS =
+    setOf(
+      "mp4",
+      "mkv",
+      "avi",
+      "mov",
+      "wmv",
+      "flv",
+      "webm",
+      "m4v",
+      "mpg",
+      "mpeg",
+      "3gp",
+      "3g2",
+      "ts",
+      "m2ts",
+      "mts",
+      "vob",
+    )
 
   // MIME type mappings
-  private val EXTENSION_TO_MIME = mapOf(
-    "mp4" to "video/mp4",
-    "mkv" to "video/x-matroska",
-    "avi" to "video/x-msvideo",
-    "mov" to "video/quicktime",
-    "wmv" to "video/x-ms-wmv",
-    "flv" to "video/x-flv",
-    "webm" to "video/webm",
-    "m4v" to "video/x-m4v",
-    "mpg" to "video/mpeg",
-    "mpeg" to "video/mpeg",
-    "3gp" to "video/3gpp",
-    "3g2" to "video/3gpp2",
-    "ts" to "video/mp2ts",
-    "m2ts" to "video/mp2t",
-    "mts" to "video/mp2t",
-    "vob" to "video/dvd",
-  )
+  private val EXTENSION_TO_MIME =
+    mapOf(
+      "mp4" to "video/mp4",
+      "mkv" to "video/x-matroska",
+      "avi" to "video/x-msvideo",
+      "mov" to "video/quicktime",
+      "wmv" to "video/x-ms-wmv",
+      "flv" to "video/x-flv",
+      "webm" to "video/webm",
+      "m4v" to "video/x-m4v",
+      "mpg" to "video/mpeg",
+      "mpeg" to "video/mpeg",
+      "3gp" to "video/3gpp",
+      "3g2" to "video/3gpp2",
+      "ts" to "video/mp2ts",
+      "m2ts" to "video/mp2t",
+      "mts" to "video/mp2t",
+      "vob" to "video/dvd",
+    )
 
   // MediaStore projection
-  private val PROJECTION = arrayOf(
-    MediaStore.Video.Media._ID,
-    MediaStore.Video.Media.TITLE,
-    MediaStore.Video.Media.DISPLAY_NAME,
-    MediaStore.Video.Media.DATA,
-    MediaStore.Video.Media.DURATION,
-    MediaStore.Video.Media.SIZE,
-    MediaStore.Video.Media.DATE_MODIFIED,
-    MediaStore.Video.Media.DATE_ADDED,
-    MediaStore.Video.Media.MIME_TYPE,
-    MediaStore.Video.Media.BUCKET_ID,
-    MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
-  )
+  private val PROJECTION =
+    arrayOf(
+      MediaStore.Video.Media._ID,
+      MediaStore.Video.Media.TITLE,
+      MediaStore.Video.Media.DISPLAY_NAME,
+      MediaStore.Video.Media.DATA,
+      MediaStore.Video.Media.DURATION,
+      MediaStore.Video.Media.SIZE,
+      MediaStore.Video.Media.DATE_MODIFIED,
+      MediaStore.Video.Media.DATE_ADDED,
+      MediaStore.Video.Media.MIME_TYPE,
+      MediaStore.Video.Media.BUCKET_ID,
+      MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+    )
 
   private const val SORT_ORDER = "${MediaStore.Video.Media.TITLE} COLLATE NOCASE ASC"
 
   @SuppressLint("SdCardPath")
-  private fun normalizePath(path: String): String {
-    return runCatching { File(path).canonicalPath }.getOrDefault(path)
-  }
+  private fun normalizePath(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(path)
 
-  fun getVideosInFolder(context: Context, bucketId: String): List<Video> {
+  fun getVideosInFolder(
+    context: Context,
+    bucketId: String,
+  ): List<Video> {
     Log.d(TAG, "Starting to query videos for bucket: $bucketId")
     val videos = mutableListOf<Video>()
     val processedPaths = mutableSetOf<String>()
@@ -93,16 +110,17 @@ object VideoRepository {
     videos: MutableList<Video>,
     processedPaths: MutableSet<String>,
   ) {
-    context.contentResolver.query(
-      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-      PROJECTION,
-      "${MediaStore.Video.Media.BUCKET_ID} = ?",
-      arrayOf(bucketId),
-      SORT_ORDER,
-    )?.use { cursor ->
-      Log.d(TAG, "MediaStore bucket query result: ${cursor.count} videos found")
-      processVideoCursor(cursor, videos, processedPaths)
-    }
+    context.contentResolver
+      .query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        PROJECTION,
+        "${MediaStore.Video.Media.BUCKET_ID} = ?",
+        arrayOf(bucketId),
+        SORT_ORDER,
+      )?.use { cursor ->
+        Log.d(TAG, "MediaStore bucket query result: ${cursor.count} videos found")
+        processVideoCursor(cursor, videos, processedPaths)
+      }
   }
 
   private fun queryAllVideosWithBucketFilter(
@@ -111,15 +129,16 @@ object VideoRepository {
     videos: MutableList<Video>,
     processedPaths: MutableSet<String>,
   ) {
-    context.contentResolver.query(
-      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-      PROJECTION,
-      null,
-      null,
-      SORT_ORDER,
-    )?.use { cursor ->
-      processVideoCursorWithBucketFilter(cursor, bucketId, videos, processedPaths)
-    }
+    context.contentResolver
+      .query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        PROJECTION,
+        null,
+        null,
+        SORT_ORDER,
+      )?.use { cursor ->
+        processVideoCursorWithBucketFilter(cursor, bucketId, videos, processedPaths)
+      }
   }
 
   private fun processVideoCursor(
@@ -165,12 +184,11 @@ object VideoRepository {
     }
   }
 
-  private fun getMimeTypeFromExtension(extension: String): String {
-    return EXTENSION_TO_MIME[extension.lowercase()] ?: "video/*"
-  }
+  private fun getMimeTypeFromExtension(extension: String): String =
+    EXTENSION_TO_MIME[extension.lowercase()] ?: "video/*"
 
-  private fun getCursorColumnIndices(cursor: Cursor): VideoColumnIndices {
-    return VideoColumnIndices(
+  private fun getCursorColumnIndices(cursor: Cursor): VideoColumnIndices =
+    VideoColumnIndices(
       id = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID),
       title = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE),
       displayName = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME),
@@ -183,9 +201,11 @@ object VideoRepository {
       bucketId = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID),
       bucketDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME),
     )
-  }
 
-  private fun extractVideoFromCursor(cursor: Cursor, indices: VideoColumnIndices): Video? {
+  private fun extractVideoFromCursor(
+    cursor: Cursor,
+    indices: VideoColumnIndices,
+  ): Video? {
     val id = cursor.getLong(indices.id)
     val title = cursor.getString(indices.title) ?: ""
     val displayName = cursor.getString(indices.displayName) ?: ""
@@ -206,16 +226,18 @@ object VideoRepository {
       return null
     }
 
-    val (finalBucketId, finalBucketDisplayName) = getFinalBucketInfo(
-      videoBucketId,
-      bucketDisplayName,
-      normalizedPath,
-    )
+    val (finalBucketId, finalBucketDisplayName) =
+      getFinalBucketInfo(
+        videoBucketId,
+        bucketDisplayName,
+        normalizedPath,
+      )
 
-    val uri = Uri.withAppendedPath(
-      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-      id.toString(),
-    )
+    val uri =
+      Uri.withAppendedPath(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        id.toString(),
+      )
 
     return Video(
       id = id,
@@ -242,9 +264,10 @@ object VideoRepository {
   ): Pair<String, String> {
     val parentPath = File(path).parent?.let { normalizePath(it) } ?: ""
     val finalBucketId = bucketId.ifEmpty { parentPath.hashCode().toString() }
-    val finalBucketDisplayName = bucketDisplayName.ifEmpty {
-      File(parentPath).name.takeIf { it.isNotEmpty() } ?: "Unknown Folder"
-    }
+    val finalBucketDisplayName =
+      bucketDisplayName.ifEmpty {
+        File(parentPath).name.takeIf { it.isNotEmpty() } ?: "Unknown Folder"
+      }
     return Pair(finalBucketId, finalBucketDisplayName)
   }
 

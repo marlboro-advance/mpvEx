@@ -62,16 +62,18 @@ fun SeekbarWithTimers(
       onValueChange = onValueChange,
       onValueChangeFinished = onValueChangeFinished,
       readAheadValue = readAheadValue,
-      segments = chapters
-        .filter { it.start in 0f..duration }
-        .let { (if (it.isNotEmpty() && it[0].start != 0f) persistentListOf(Segment("", 0f)) + it else it) + it },
+      segments =
+        chapters
+          .filter { it.start in 0f..duration }
+          .let { (if (it.isNotEmpty() && it[0].start != 0f) persistentListOf(Segment("", 0f)) + it else it) + it },
       modifier = Modifier.weight(1f),
-      colors = SeekerDefaults.seekerColors(
-        progressColor = MaterialTheme.colorScheme.primary,
-        thumbColor = MaterialTheme.colorScheme.primary,
-        trackColor = MaterialTheme.colorScheme.background,
-        readAheadColor = MaterialTheme.colorScheme.inversePrimary,
-      ),
+      colors =
+        SeekerDefaults.seekerColors(
+          progressColor = MaterialTheme.colorScheme.primary,
+          thumbColor = MaterialTheme.colorScheme.primary,
+          trackColor = MaterialTheme.colorScheme.background,
+          readAheadColor = MaterialTheme.colorScheme.inversePrimary,
+        ),
     )
     VideoTimer(
       value = if (timersInverted.second) position - duration else duration,
@@ -94,14 +96,14 @@ fun VideoTimer(
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   Text(
-    modifier = modifier
-      .fillMaxHeight()
-      .clickable(
-        interactionSource = interactionSource,
-        indication = ripple(),
-        onClick = onClick,
-      )
-      .wrapContentHeight(Alignment.CenterVertically),
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .clickable(
+          interactionSource = interactionSource,
+          indication = ripple(),
+          onClick = onClick,
+        ).wrapContentHeight(Alignment.CenterVertically),
     text = Utils.prettyTime(value.toInt(), isInverted),
     color = Color.White,
     textAlign = TextAlign.Center,
@@ -120,6 +122,6 @@ private fun PreviewSeekBar() {
     Pair(false, true),
     {},
     {},
-    persistentListOf<Segment>()
+    persistentListOf<Segment>(),
   )
 }

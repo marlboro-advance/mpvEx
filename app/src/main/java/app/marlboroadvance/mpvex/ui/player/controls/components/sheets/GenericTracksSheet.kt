@@ -60,19 +60,21 @@ fun AddTrackRow(
   actions: @Composable RowScope.() -> Unit = {},
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick)
-      .height(48.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .height(48.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
     Row(
-      modifier = Modifier
-        .clickable(onClick = onClick)
-        .fillMaxHeight()
-        .weight(1f)
-        .padding(start = MaterialTheme.spacing.medium),
+      modifier =
+        Modifier
+          .clickable(onClick = onClick)
+          .fillMaxHeight()
+          .weight(1f)
+          .padding(start = MaterialTheme.spacing.medium),
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       verticalAlignment = Alignment.CenterVertically,
     ) {

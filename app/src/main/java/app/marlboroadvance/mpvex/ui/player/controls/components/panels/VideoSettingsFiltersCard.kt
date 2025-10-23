@@ -33,9 +33,7 @@ import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
 @Composable
-fun VideoSettingsFiltersCard(
-  modifier: Modifier = Modifier,
-) {
+fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
   val decoderPreferences = koinInject<DecoderPreferences>()
   var isExpanded by remember { mutableStateOf(true) }
 

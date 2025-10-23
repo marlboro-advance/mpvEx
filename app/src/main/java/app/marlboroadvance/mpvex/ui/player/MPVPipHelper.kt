@@ -39,7 +39,6 @@ class MPVPipHelper(
   private var autoPipEnabled: Boolean = true,
   private val onPipModeChanged: ((Boolean) -> Unit)? = null,
 ) {
-
   var isPipActive: Boolean = false
     private set
 
@@ -75,14 +74,13 @@ class MPVPipHelper(
       }
     }
 
-  private fun isPlaying(): Boolean {
-    return try {
+  private fun isPlaying(): Boolean =
+    try {
       MPVLib.getPropertyBoolean("pause") == false
     } catch (e: Exception) {
       Log.e(TAG, "Error checking playback state", e)
       false
     }
-  }
 
   private fun updateVideoDimensions() {
     try {
@@ -123,49 +121,53 @@ class MPVPipHelper(
     isPipActive = isInPictureInPictureMode
 
     if (isInPictureInPictureMode) {
-      pipBroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-          if (intent == null || intent.action != PIP_INTENTS_FILTER) return
+      pipBroadcastReceiver =
+        object : BroadcastReceiver() {
+          override fun onReceive(
+            context: Context?,
+            intent: Intent?,
+          ) {
+            if (intent == null || intent.action != PIP_INTENTS_FILTER) return
 
-          when (intent.getIntExtra(PIP_INTENT_ACTION, 0)) {
-            PIP_PLAY -> {
-              try {
-                MPVLib.setPropertyBoolean("pause", false)
-              } catch (e: Exception) {
-                Log.e(TAG, "Error playing", e)
+            when (intent.getIntExtra(PIP_INTENT_ACTION, 0)) {
+              PIP_PLAY -> {
+                try {
+                  MPVLib.setPropertyBoolean("pause", false)
+                } catch (e: Exception) {
+                  Log.e(TAG, "Error playing", e)
+                }
+              }
+
+              PIP_PAUSE -> {
+                try {
+                  MPVLib.setPropertyBoolean("pause", true)
+                } catch (e: Exception) {
+                  Log.e(TAG, "Error pausing", e)
+                }
+              }
+
+              PIP_REWIND -> {
+                try {
+                  MPVLib.command("seek", "-10", "relative+exact")
+                } catch (e: Exception) {
+                  Log.e(TAG, "Error rewinding", e)
+                }
+              }
+
+              PIP_FORWARD -> {
+                try {
+                  MPVLib.command("seek", "10", "relative+exact")
+                } catch (e: Exception) {
+                  Log.e(TAG, "Error forwarding", e)
+                }
               }
             }
 
-            PIP_PAUSE -> {
-              try {
-                MPVLib.setPropertyBoolean("pause", true)
-              } catch (e: Exception) {
-                Log.e(TAG, "Error pausing", e)
-              }
+            if (isInPictureInPictureMode && !activity.isFinishing && !activity.isDestroyed) {
+              updatePictureInPictureParams()
             }
-
-            PIP_REWIND -> {
-              try {
-                MPVLib.command("seek", "-10", "relative+exact")
-              } catch (e: Exception) {
-                Log.e(TAG, "Error rewinding", e)
-              }
-            }
-
-            PIP_FORWARD -> {
-              try {
-                MPVLib.command("seek", "10", "relative+exact")
-              } catch (e: Exception) {
-                Log.e(TAG, "Error forwarding", e)
-              }
-            }
-          }
-
-          if (isInPictureInPictureMode && !activity.isFinishing && !activity.isDestroyed) {
-            updatePictureInPictureParams()
           }
         }
-      }
 
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         activity.registerReceiver(
@@ -193,9 +195,7 @@ class MPVPipHelper(
   }
 
   @RequiresApi(Build.VERSION_CODES.O)
-  fun updatePictureInPictureParams(
-    enableAutoEnter: Boolean = isPlaying(),
-  ): PictureInPictureParams {
+  fun updatePictureInPictureParams(enableAutoEnter: Boolean = isPlaying()): PictureInPictureParams {
     val viewWidth = mpvView.width
     val viewHeight = mpvView.height
 
@@ -208,29 +208,32 @@ class MPVPipHelper(
 
     val displayAspectRatio = Rational(viewWidth, viewHeight)
 
-    return PictureInPictureParams.Builder().apply {
-      val aspectRatio = calculateVideoAspectRatio()
-      if (aspectRatio != null) {
-        val sourceRectHint = calculateSourceRectHint(displayAspectRatio, aspectRatio)
-        setAspectRatio(aspectRatio)
-        setSourceRectHint(sourceRectHint)
-      }
-
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        setSeamlessResizeEnabled(autoPipEnabled && enableAutoEnter)
-        setAutoEnterEnabled(autoPipEnabled && enableAutoEnter)
-      }
-
-      setActions(createPipActions())
-    }.build().also { params ->
-      try {
-        if (!activity.isFinishing && !activity.isDestroyed) {
-          activity.setPictureInPictureParams(params)
+    return PictureInPictureParams
+      .Builder()
+      .apply {
+        val aspectRatio = calculateVideoAspectRatio()
+        if (aspectRatio != null) {
+          val sourceRectHint = calculateSourceRectHint(displayAspectRatio, aspectRatio)
+          setAspectRatio(aspectRatio)
+          setSourceRectHint(sourceRectHint)
         }
-      } catch (e: IllegalStateException) {
-        Log.e(TAG, "Failed to set picture-in-picture params", e)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          setSeamlessResizeEnabled(autoPipEnabled && enableAutoEnter)
+          setAutoEnterEnabled(autoPipEnabled && enableAutoEnter)
+        }
+
+        setActions(createPipActions())
+      }.build()
+      .also { params ->
+        try {
+          if (!activity.isFinishing && !activity.isDestroyed) {
+            activity.setPictureInPictureParams(params)
+          }
+        } catch (e: IllegalStateException) {
+          Log.e(TAG, "Failed to set picture-in-picture params", e)
+        }
       }
-    }
   }
 
   private fun calculateVideoAspectRatio(): Rational? {
@@ -241,7 +244,10 @@ class MPVPipHelper(
     }
   }
 
-  private fun calculateSourceRectHint(displayAspectRatio: Rational, aspectRatio: Rational): Rect {
+  private fun calculateSourceRectHint(
+    displayAspectRatio: Rational,
+    aspectRatio: Rational,
+  ): Rect {
     val viewWidth = mpvView.width.toFloat()
     val viewHeight = mpvView.height.toFloat()
 
@@ -303,20 +309,22 @@ class MPVPipHelper(
   @RequiresApi(Build.VERSION_CODES.O)
   fun enterPipMode() {
     if (!isPipSupported) {
-      Toast.makeText(
-        activity,
-        "Picture-in-Picture is not supported on this device",
-        Toast.LENGTH_SHORT,
-      ).show()
+      Toast
+        .makeText(
+          activity,
+          "Picture-in-Picture is not supported on this device",
+          Toast.LENGTH_SHORT,
+        ).show()
       return
     }
 
     if (!isPipEnabled) {
-      Toast.makeText(
-        activity,
-        "Please enable Picture-in-Picture in Settings",
-        Toast.LENGTH_SHORT,
-      ).show()
+      Toast
+        .makeText(
+          activity,
+          "Please enable Picture-in-Picture in Settings",
+          Toast.LENGTH_SHORT,
+        ).show()
       try {
         Intent("android.settings.PICTURE_IN_PICTURE_SETTINGS").apply {
           data = "package:${activity.packageName}".toUri()
@@ -350,8 +358,8 @@ private fun createPipRemoteAction(
   title: String,
   @DrawableRes icon: Int,
   actionCode: Int,
-): RemoteAction {
-  return RemoteAction(
+): RemoteAction =
+  RemoteAction(
     Icon.createWithResource(context, icon),
     title,
     title,
@@ -365,4 +373,3 @@ private fun createPipRemoteAction(
       PendingIntent.FLAG_IMMUTABLE,
     ),
   )
-}

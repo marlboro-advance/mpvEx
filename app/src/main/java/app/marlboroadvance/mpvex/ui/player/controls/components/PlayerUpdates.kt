@@ -29,11 +29,12 @@ fun PlayerUpdate(
   content: @Composable () -> Unit = {},
 ) {
   Box(
-    modifier = modifier
-      .clip(RoundedCornerShape(16.dp))
-      .background(Color.Black.copy(0.4f))
-      .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium)
-      .animateContentSize(),
+    modifier =
+      modifier
+        .clip(RoundedCornerShape(16.dp))
+        .background(Color.Black.copy(0.4f))
+        .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium)
+        .animateContentSize(),
     contentAlignment = Alignment.Center,
   ) { content() }
 }
@@ -41,7 +42,7 @@ fun PlayerUpdate(
 @Composable
 fun TextPlayerUpdate(
   text: String,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   PlayerUpdate(modifier) {
     Text(text)
@@ -51,7 +52,7 @@ fun TextPlayerUpdate(
 @Composable
 fun MultipleSpeedPlayerUpdate(
   currentSpeed: Float,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   PlayerUpdate(modifier) {
     Row(

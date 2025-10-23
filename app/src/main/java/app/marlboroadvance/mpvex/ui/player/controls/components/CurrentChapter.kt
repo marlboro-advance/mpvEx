@@ -39,11 +39,12 @@ fun CurrentChapter(
   onClick: () -> Unit = {},
 ) {
   Box(
-    modifier = modifier
-      .clip(RoundedCornerShape(25))
-      .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6F))
-      .clickable(onClick = onClick)
-      .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+    modifier =
+      modifier
+        .clip(RoundedCornerShape(25))
+        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6F))
+        .clickable(onClick = onClick)
+        .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
   ) {
     AnimatedContent(
       targetState = chapter,
@@ -62,15 +63,16 @@ fun CurrentChapter(
     ) { currentChapter ->
       Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
         Icon(
           imageVector = Icons.Default.Bookmarks,
           contentDescription = null,
-          modifier = Modifier
-            .padding(end = MaterialTheme.spacing.extraSmall)
-            .size(16.dp),
-          tint = MaterialTheme.colorScheme.onBackground
+          modifier =
+            Modifier
+              .padding(end = MaterialTheme.spacing.extraSmall)
+              .size(16.dp),
+          tint = MaterialTheme.colorScheme.onBackground,
         )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),

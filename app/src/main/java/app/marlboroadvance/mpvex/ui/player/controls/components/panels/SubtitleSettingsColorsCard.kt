@@ -50,9 +50,7 @@ import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 
 @Composable
-fun SubtitleSettingsColorsCard(
-  modifier: Modifier = Modifier,
-) {
+fun SubtitleSettingsColorsCard(modifier: Modifier = Modifier) {
   val preferences = koinInject<SubtitlesPreferences>()
   var isExpanded by remember { mutableStateOf(true) }
   ExpandableCard(
@@ -78,10 +76,11 @@ fun SubtitleSettingsColorsCard(
       Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-          .fillMaxWidth()
-          .horizontalScroll(rememberScrollState())
-          .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
       ) {
         SubColorType.entries.forEach { type ->
           IconToggleButton(
@@ -156,10 +155,13 @@ enum class SubColorType(
     R.string.player_sheets_subtitles_color_background,
     "sub-back-color",
     preference = SubtitlesPreferences::backgroundColor,
-  )
+  ),
 }
 
-fun resetColors(preferences: SubtitlesPreferences, type: SubColorType) {
+fun resetColors(
+  preferences: SubtitlesPreferences,
+  type: SubColorType,
+) {
   when (type) {
     SubColorType.Text -> {
       MPVLib.setPropertyString("sub-color", preferences.textColor.deleteAndGet().toColorHexString())

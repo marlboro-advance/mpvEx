@@ -6,7 +6,7 @@ import app.marlboroadvance.mpvex.ui.player.PlayerOrientation
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 
 class PlayerPreferences(
-  preferenceStore: PreferenceStore
+  preferenceStore: PreferenceStore,
 ) {
   val orientation = preferenceStore.getEnum("player_orientation", PlayerOrientation.SensorLandscape)
   val invertDuration = preferenceStore.getBoolean("invert_duration")
@@ -24,10 +24,11 @@ class PlayerPreferences(
   val showChaptersButton = preferenceStore.getBoolean("show_video_chapters_button")
 
   val defaultSpeed = preferenceStore.getFloat("default_speed", 1f)
-  val speedPresets = preferenceStore.getStringSet(
-    "default_speed_presets",
-    setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0", "3.5", "4.0")
-  )
+  val speedPresets =
+    preferenceStore.getStringSet(
+      "default_speed_presets",
+      setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0", "3.5", "4.0"),
+    )
   val displayVolumeAsPercentage = preferenceStore.getBoolean("display_volume_as_percentage", true)
   val swapVolumeAndBrightness = preferenceStore.getBoolean("display_volume_on_right")
   val showLoadingCircle = preferenceStore.getBoolean("show_loading_circle", true)

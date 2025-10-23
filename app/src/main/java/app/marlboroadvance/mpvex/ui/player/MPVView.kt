@@ -20,8 +20,11 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
 
-class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context, attributes), KoinComponent {
-
+class MPVView(
+  context: Context,
+  attributes: AttributeSet,
+) : BaseMPVView(context, attributes),
+  KoinComponent {
   private val audioPreferences: AudioPreferences by inject()
   private val playerPreferences: PlayerPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
@@ -40,13 +43,23 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
   }
 
-  class TrackDelegate(private val name: String) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Int {
+  class TrackDelegate(
+    private val name: String,
+  ) {
+    operator fun getValue(
+      thisRef: Any?,
+      property: KProperty<*>,
+    ): Int {
       val v = MPVLib.getPropertyString(name)
       // we can get null here for "no" or other invalid value
       return v?.toIntOrNull() ?: -1
     }
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+
+    operator fun setValue(
+      thisRef: Any?,
+      property: KProperty<*>,
+      value: Int,
+    ) {
       if (value == -1) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
     }
   }
@@ -156,23 +169,23 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     return true
   }
 
-  private val observedProps = mapOf(
-    "pause" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
-    "video-params/aspect" to MPVLib.mpvFormat.MPV_FORMAT_DOUBLE,
-    "eof-reached" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
-
-    "user-data/mpvex/show_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/toggle_ui" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/show_panel" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/set_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/reset_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/toggle_button" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_by" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_to" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_by_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_to_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/software_keyboard" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-  )
+  private val observedProps =
+    mapOf(
+      "pause" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
+      "video-params/aspect" to MPVLib.mpvFormat.MPV_FORMAT_DOUBLE,
+      "eof-reached" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
+      "user-data/mpvex/show_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/toggle_ui" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/show_panel" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/set_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/reset_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/toggle_button" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_by" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_to" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_by_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_to_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/software_keyboard" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
+    )
 
   private fun setupAudioOptions() {
     MPVLib.setOptionString("alang", audioPreferences.preferredLanguages.get())

@@ -90,9 +90,10 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           },
         )
         Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium),
           horizontalArrangement = Arrangement.End,
         ) {
           TextButton(

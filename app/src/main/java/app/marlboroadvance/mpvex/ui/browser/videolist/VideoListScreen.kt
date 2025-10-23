@@ -59,18 +59,19 @@ data class VideoListScreen(
   private val bucketId: String,
   private val folderName: String,
 ) : Screen {
-
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
-    val viewModel: VideoListViewModel = viewModel(
-      key = "VideoListViewModel_$bucketId",
-      factory = VideoListViewModel.factory(
-        context.applicationContext as android.app.Application,
-        bucketId,
-      ),
-    )
+    val viewModel: VideoListViewModel =
+      viewModel(
+        key = "VideoListViewModel_$bucketId",
+        factory =
+          VideoListViewModel.factory(
+            context.applicationContext as android.app.Application,
+            bucketId,
+          ),
+      )
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
@@ -85,9 +86,10 @@ data class VideoListScreen(
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-    val sortedVideos = remember(videos, videoSortType, videoSortOrder) {
-      SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
-    }
+    val sortedVideos =
+      remember(videos, videoSortType, videoSortOrder) {
+        SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
+      }
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
 
@@ -229,9 +231,10 @@ private fun VideoListContent(
         ) {
           items(videos.size) { index ->
             val video = videos[index]
-            val isRecentlyPlayed = recentlyPlayedFilePath?.let { filePath ->
-              video.path == filePath
-            } ?: false
+            val isRecentlyPlayed =
+              recentlyPlayedFilePath?.let { filePath ->
+                video.path == filePath
+              } ?: false
 
             VideoCard(
               video = video,
@@ -269,18 +272,20 @@ private fun VideoSortDialog(
     onSortOrderChange = { isAsc ->
       onSortOrderChange(if (isAsc) SortOrder.Ascending else SortOrder.Descending)
     },
-    types = listOf(
-      VideoSortType.Title.displayName,
-      VideoSortType.Duration.displayName,
-      VideoSortType.Date.displayName,
-      VideoSortType.Size.displayName,
-    ),
-    icons = listOf(
-      Icons.Filled.Title,
-      Icons.Filled.AccessTime,
-      Icons.Filled.CalendarToday,
-      Icons.Filled.SwapVert,
-    ),
+    types =
+      listOf(
+        VideoSortType.Title.displayName,
+        VideoSortType.Duration.displayName,
+        VideoSortType.Date.displayName,
+        VideoSortType.Size.displayName,
+      ),
+    icons =
+      listOf(
+        Icons.Filled.Title,
+        Icons.Filled.AccessTime,
+        Icons.Filled.CalendarToday,
+        Icons.Filled.SwapVert,
+      ),
     getLabelForType = { type, _ ->
       when (type) {
         VideoSortType.Title.displayName -> Pair("A-Z", "Z-A")

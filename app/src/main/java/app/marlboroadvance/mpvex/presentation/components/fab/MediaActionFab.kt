@@ -91,13 +91,14 @@ fun MediaActionFab(
   }
 
   // Build menu items based on state
-  val menuItems = remember(hasRecentlyPlayed) {
-    buildList {
-      add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
-      add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
-      add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
+  val menuItems =
+    remember(hasRecentlyPlayed) {
+      buildList {
+        add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
+        add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
+        add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
+      }
     }
-  }
 
   FloatingActionButtonMenu(
     modifier = modifier,
@@ -112,36 +113,37 @@ fun MediaActionFab(
   ) {
     menuItems.forEachIndexed { index, item ->
       FloatingActionButtonMenuItem(
-        modifier = Modifier
-          .semantics {
-            isTraversalGroup = true
-            // Add close action for the last item
-            if (index == menuItems.lastIndex) {
-              customActions = listOf(
-                CustomAccessibilityAction("Close menu") {
-                  onExpandedChange(false)
-                  true
-                },
-              )
-            }
-          }
-          .then(
-            if (index == 0) {
-              // First item can navigate back to FAB button
-              Modifier.onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown &&
-                  (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
-                ) {
-                  focusRequester.requestFocus()
-                  true
-                } else {
-                  false
-                }
+        modifier =
+          Modifier
+            .semantics {
+              isTraversalGroup = true
+              // Add close action for the last item
+              if (index == menuItems.lastIndex) {
+                customActions =
+                  listOf(
+                    CustomAccessibilityAction("Close menu") {
+                      onExpandedChange(false)
+                      true
+                    },
+                  )
               }
-            } else {
-              Modifier
-            },
-          ),
+            }.then(
+              if (index == 0) {
+                // First item can navigate back to FAB button
+                Modifier.onKeyEvent { event ->
+                  if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
+                  ) {
+                    focusRequester.requestFocus()
+                    true
+                  } else {
+                    false
+                  }
+                }
+              } else {
+                Modifier
+              },
+            ),
         onClick = {
           onExpandedChange(false)
           item.onClick()
@@ -170,17 +172,16 @@ private fun ToggleFabButton(
   focusRequester: FocusRequester,
 ) {
   ToggleFloatingActionButton(
-    modifier = Modifier
-      .semantics {
-        traversalIndex = -1f
-        stateDescription = if (expanded) "Expanded" else "Collapsed"
-        contentDescription = "Toggle menu"
-      }
-      .animateFloatingActionButton(
-        visible = true,
-        alignment = Alignment.BottomEnd,
-      )
-      .focusRequester(focusRequester),
+    modifier =
+      Modifier
+        .semantics {
+          traversalIndex = -1f
+          stateDescription = if (expanded) "Expanded" else "Collapsed"
+          contentDescription = "Toggle menu"
+        }.animateFloatingActionButton(
+          visible = true,
+          alignment = Alignment.BottomEnd,
+        ).focusRequester(focusRequester),
     checked = expanded,
     onCheckedChange = { onToggle() },
     containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
@@ -193,13 +194,15 @@ private fun ToggleFabButton(
     Icon(
       painter = rememberVectorPainter(icon),
       contentDescription = null,
-      modifier = Modifier.animateIcon(
-        checkedProgress = { checkedProgress },
-        size = ToggleFloatingActionButtonDefaults.iconSize(
-          initialSize = 40.dp,
-          finalSize = 24.dp,
+      modifier =
+        Modifier.animateIcon(
+          checkedProgress = { checkedProgress },
+          size =
+            ToggleFloatingActionButtonDefaults.iconSize(
+              initialSize = 40.dp,
+              finalSize = 24.dp,
+            ),
         ),
-      ),
     )
   }
 }

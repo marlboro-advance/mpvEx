@@ -8,10 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,8 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -98,38 +98,40 @@ object SubtitlesPreferencesScreen : Screen {
         var fontLoadTrigger by remember { mutableIntStateOf(0) }
         var isLoadingFonts by remember { mutableStateOf(false) }
 
-        val locationPicker = rememberLauncherForActivityResult(
-          ActivityResultContracts.OpenDocumentTree(),
-        ) { uri ->
-          if (uri == null) return@rememberLauncherForActivityResult
+        val locationPicker =
+          rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocumentTree(),
+          ) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
 
-          val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-          context.contentResolver.takePersistableUriPermission(uri, flags)
-          preferences.fontsFolder.set(uri.toString())
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+            preferences.fontsFolder.set(uri.toString())
 
-          // Copy fonts immediately in background
-          kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-            isLoadingFonts = true
-            copyFontsFromDirectory(context, fileManager, uri.toString())
-            withContext(Dispatchers.Main) {
-              fontLoadTrigger++
-              isLoadingFonts = false
+            // Copy fonts immediately in background
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+              isLoadingFonts = true
+              copyFontsFromDirectory(context, fileManager, uri.toString())
+              withContext(Dispatchers.Main) {
+                fontLoadTrigger++
+                isLoadingFonts = false
+              }
             }
           }
-        }
 
         // Load fonts when folder changes or trigger is fired
         LaunchedEffect(fontsFolder, fontLoadTrigger) {
           val customFonts = loadAvailableFonts(context, fileManager)
 
           // Add default Android system fonts
-          val defaultFonts = listOf(
-            "Sans Serif (Default)",
-            "Serif",
-            "Monospace",
-            "Casual",
-            "Cursive",
-          )
+          val defaultFonts =
+            listOf(
+              "Sans Serif (Default)",
+              "Serif",
+              "Monospace",
+              "Casual",
+              "Cursive",
+            )
 
           // Combine default fonts with custom fonts
           availableFonts = defaultFonts + customFonts
@@ -148,10 +150,11 @@ object SubtitlesPreferencesScreen : Screen {
         }
 
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           // === GENERAL SECTION ===
           PreferenceCategory(
@@ -193,10 +196,11 @@ object SubtitlesPreferencesScreen : Screen {
 
           // Directory picker preference with reload and clear icons on the right
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clickable { locationPicker.launch(null) }
-              .padding(vertical = 16.dp, horizontal = 16.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .clickable { locationPicker.launch(null) }
+                .padding(vertical = 16.dp, horizontal = 16.dp),
           ) {
             Row(
               modifier = Modifier.fillMaxWidth(),
@@ -292,16 +296,18 @@ object SubtitlesPreferencesScreen : Screen {
             var showFontPicker by remember { mutableStateOf(false) }
 
             // Check if selected font is actually available and not default
-            val isCustomFontSelected = selectedFont.isNotBlank() &&
-              availableFonts.contains(selectedFont) &&
-              selectedFont != "Sans Serif (Default)"
+            val isCustomFontSelected =
+              selectedFont.isNotBlank() &&
+                availableFonts.contains(selectedFont) &&
+                selectedFont != "Sans Serif (Default)"
 
             // Font selection with clear icon
             Box(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showFontPicker = true }
-                .padding(vertical = 16.dp, horizontal = 16.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clickable { showFontPicker = true }
+                  .padding(vertical = 16.dp, horizontal = 16.dp),
             ) {
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -353,34 +359,40 @@ object SubtitlesPreferencesScreen : Screen {
                       val font = availableFonts[index]
 
                       // Try to load and render the font
-                      val fontFamily = remember(font) {
-                        // Check if it's a default system font
-                        when (font) {
-                          "Sans Serif (Default)" -> androidx.compose.ui.text.font.FontFamily.SansSerif
-                          "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
-                          "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
-                          "Casual" -> androidx.compose.ui.text.font.FontFamily.Cursive
-                          "Cursive" -> androidx.compose.ui.text.font.FontFamily.Cursive
-                          else -> {
-                            // Try to load custom font from file
-                            runCatching {
-                              val fontsDir = File(context.filesDir.path + "/fonts")
-                              val fontFile = fontsDir.listFiles()?.firstOrNull { file ->
-                                file.name.lowercase().matches(".*\\.[ot]tf$".toRegex()) &&
-                                  runCatching {
-                                    TTFFile.open(file.inputStream()).families.values.first() == font
-                                  }.getOrDefault(false)
-                              }
+                      val fontFamily =
+                        remember(font) {
+                          // Check if it's a default system font
+                          when (font) {
+                            "Sans Serif (Default)" -> androidx.compose.ui.text.font.FontFamily.SansSerif
+                            "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif
+                            "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace
+                            "Casual" -> androidx.compose.ui.text.font.FontFamily.Cursive
+                            "Cursive" -> androidx.compose.ui.text.font.FontFamily.Cursive
+                            else -> {
+                              // Try to load custom font from file
+                              runCatching {
+                                val fontsDir = File(context.filesDir.path + "/fonts")
+                                val fontFile =
+                                  fontsDir.listFiles()?.firstOrNull { file ->
+                                    file.name.lowercase().matches(".*\\.[ot]tf$".toRegex()) &&
+                                      runCatching {
+                                        TTFFile
+                                          .open(file.inputStream())
+                                          .families.values
+                                          .first() == font
+                                      }.getOrDefault(false)
+                                  }
 
-                              fontFile?.let {
-                                androidx.compose.ui.text.font.FontFamily(
-                                  androidx.compose.ui.text.font.Font(it),
-                                )
-                              }
-                            }.getOrNull()
+                                fontFile?.let {
+                                  androidx.compose.ui.text.font.FontFamily(
+                                    androidx.compose.ui.text.font
+                                      .Font(it),
+                                  )
+                                }
+                              }.getOrNull()
+                            }
                           }
                         }
-                      }
 
                       androidx.compose.material3.TextButton(
                         onClick = {
@@ -393,14 +405,15 @@ object SubtitlesPreferencesScreen : Screen {
                           font,
                           modifier = Modifier.fillMaxWidth(),
                           color = MaterialTheme.colorScheme.onSurface,
-                          fontFamily = fontFamily,  // Render in actual font
-                          style = if (font == selectedFont) {
-                            MaterialTheme.typography.bodyLarge.copy(
-                              fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            )
-                          } else {
-                            MaterialTheme.typography.bodyLarge
-                          },
+                          fontFamily = fontFamily, // Render in actual font
+                          style =
+                            if (font == selectedFont) {
+                              MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                              )
+                            } else {
+                              MaterialTheme.typography.bodyLarge
+                            },
                         )
                       }
                     }
@@ -460,7 +473,10 @@ object SubtitlesPreferencesScreen : Screen {
             value = justification,
             onValueChange = { preferences.justification.set(it) },
             title = { Text("Text Alignment") },
-            valueToText = { androidx.compose.ui.text.AnnotatedString(it.name) },
+            valueToText = {
+              androidx.compose.ui.text
+                .AnnotatedString(it.name)
+            },
             values = SubtitleJustification.entries,
             type = ListPreferenceType.DROPDOWN_MENU,
             summary = { Text(justification.name) },
@@ -471,7 +487,10 @@ object SubtitlesPreferencesScreen : Screen {
             value = borderStyle,
             onValueChange = { preferences.borderStyle.set(it) },
             title = { Text("Border Style") },
-            valueToText = { androidx.compose.ui.text.AnnotatedString(it.name.replace("And", " & ")) },
+            valueToText = {
+              androidx.compose.ui.text
+                .AnnotatedString(it.name.replace("And", " & "))
+            },
             values = SubtitlesBorderStyle.entries,
             type = ListPreferenceType.DROPDOWN_MENU,
             summary = { Text(borderStyle.name.replace("And", " & ")) },
@@ -499,24 +518,27 @@ object SubtitlesPreferencesScreen : Screen {
   private suspend fun loadAvailableFonts(
     context: android.content.Context,
     fileManager: FileManager,
-  ): List<String> = withContext(Dispatchers.IO) {
-    val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
-    if (fileManager.exists(fontsDir)) {
-      fileManager.listFiles(fontsDir)
-        .filter { file ->
-          fileManager.isFile(file) && fileManager.getName(file).lowercase().matches(".*\\.[ot]tf$".toRegex())
-        }
-        .mapNotNull { file ->
-          runCatching {
-            TTFFile.open(fileManager.getInputStream(file)!!).families.values.first()
-          }.getOrNull()
-        }
-        .distinct()
-        .sorted()
-    } else {
-      emptyList()
+  ): List<String> =
+    withContext(Dispatchers.IO) {
+      val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
+      if (fileManager.exists(fontsDir)) {
+        fileManager
+          .listFiles(fontsDir)
+          .filter { file ->
+            fileManager.isFile(file) && fileManager.getName(file).lowercase().matches(".*\\.[ot]tf$".toRegex())
+          }.mapNotNull { file ->
+            runCatching {
+              TTFFile
+                .open(fileManager.getInputStream(file)!!)
+                .families.values
+                .first()
+            }.getOrNull()
+          }.distinct()
+          .sorted()
+      } else {
+        emptyList()
+      }
     }
-  }
 
   /**
    * Copies font files from the selected directory to app's internal storage

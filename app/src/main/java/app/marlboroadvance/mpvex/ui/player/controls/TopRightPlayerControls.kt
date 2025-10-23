@@ -33,12 +33,11 @@ fun TopRightPlayerControls(
   // more
   onMoreClick: () -> Unit,
   onMoreLongClick: () -> Unit,
-
   modifier: Modifier = Modifier,
 ) {
   Row(
     modifier,
-    verticalAlignment = Alignment.CenterVertically
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     ControlsButton(
       Icons.Default.Camera,

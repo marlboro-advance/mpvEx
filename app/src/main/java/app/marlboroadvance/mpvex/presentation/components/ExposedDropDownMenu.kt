@@ -19,7 +19,7 @@ private fun ExposedDropDownMenu() {
     DropdownMenu(true, {}) {
       DropdownMenuItem(
         { Text("") },
-        {}
+        {},
       )
     }
   }

@@ -25,9 +25,10 @@ fun EmptyState(
   modifier: Modifier = Modifier,
 ) {
   Column(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(64.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(64.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {

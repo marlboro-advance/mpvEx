@@ -4,8 +4,11 @@ import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 import kotlinx.coroutines.flow.Flow
 
 interface RecentlyPlayedRepository {
-
-  suspend fun addRecentlyPlayed(filePath: String, fileName: String, launchSource: String? = null)
+  suspend fun addRecentlyPlayed(
+    filePath: String,
+    fileName: String,
+    launchSource: String? = null,
+  )
 
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 

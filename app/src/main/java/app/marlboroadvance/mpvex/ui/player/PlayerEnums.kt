@@ -5,7 +5,9 @@ import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.preference.Preference
 
-enum class PlayerOrientation(@StringRes val titleRes: Int) {
+enum class PlayerOrientation(
+  @StringRes val titleRes: Int,
+) {
   Free(R.string.pref_player_orientation_free),
   Video(R.string.pref_player_orientation_video),
   Portrait(R.string.pref_player_orientation_portrait),
@@ -16,20 +18,26 @@ enum class PlayerOrientation(@StringRes val titleRes: Int) {
   SensorLandscape(R.string.pref_player_orientation_sensor_landscape),
 }
 
-enum class VideoAspect(@StringRes val titleRes: Int) {
+enum class VideoAspect(
+  @StringRes val titleRes: Int,
+) {
   Crop(R.string.player_aspect_crop),
   Fit(R.string.player_aspect_fit),
   Stretch(R.string.player_aspect_stretch),
 }
 
-enum class SingleActionGesture(@StringRes val titleRes: Int) {
+enum class SingleActionGesture(
+  @StringRes val titleRes: Int,
+) {
   None(R.string.pref_gesture_double_tap_none),
   Seek(R.string.pref_gesture_double_tap_seek),
   PlayPause(R.string.pref_gesture_double_tap_play),
   Custom(R.string.pref_gesture_double_tap_custom),
 }
 
-enum class CustomKeyCodes(val keyCode: String) {
+enum class CustomKeyCodes(
+  val keyCode: String,
+) {
   DoubleTapLeft("0x10001"),
   DoubleTapCenter("0x10002"),
   DoubleTapRight("0x10003"),
@@ -38,7 +46,10 @@ enum class CustomKeyCodes(val keyCode: String) {
   MediaNext("0x10006"),
 }
 
-enum class Decoder(val title: String, val value: String) {
+enum class Decoder(
+  val title: String,
+  val value: String,
+) {
   AutoCopy("Auto", "auto-copy"),
   Auto("Auto", "auto"),
   SW("SW", "no"),
@@ -47,13 +58,13 @@ enum class Decoder(val title: String, val value: String) {
   ;
 
   companion object {
-    fun getDecoderFromValue(value: String): Decoder {
-      return Decoder.entries.first { it.value == value }
-    }
+    fun getDecoderFromValue(value: String): Decoder = Decoder.entries.first { it.value == value }
   }
 }
 
-enum class Debanding(@StringRes val titleRes: Int) {
+enum class Debanding(
+  @StringRes val titleRes: Int,
+) {
   None(R.string.player_sheets_deband_none),
   CPU(R.string.player_sheets_deband_cpu),
   GPU(R.string.player_sheets_deband_gpu),
@@ -81,9 +92,14 @@ enum class Panels {
 
 sealed class PlayerUpdates {
   data object None : PlayerUpdates()
+
   data object MultipleSpeed : PlayerUpdates()
+
   data object AspectRatio : PlayerUpdates()
-  data class ShowText(val value: String) : PlayerUpdates()
+
+  data class ShowText(
+    val value: String,
+  ) : PlayerUpdates()
 }
 
 enum class VideoFilters(
@@ -152,5 +168,5 @@ enum class DebandSettings(
     "deband-grain",
     0,
     200,
-  )
+  ),
 }

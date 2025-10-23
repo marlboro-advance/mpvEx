@@ -1,18 +1,35 @@
 package app.marlboroadvance.mpvex.preferences.preference
 
 interface PreferenceStore {
+  fun getString(
+    key: String,
+    defaultValue: String = "",
+  ): Preference<String>
 
-  fun getString(key: String, defaultValue: String = ""): Preference<String>
+  fun getLong(
+    key: String,
+    defaultValue: Long = 0,
+  ): Preference<Long>
 
-  fun getLong(key: String, defaultValue: Long = 0): Preference<Long>
+  fun getInt(
+    key: String,
+    defaultValue: Int = 0,
+  ): Preference<Int>
 
-  fun getInt(key: String, defaultValue: Int = 0): Preference<Int>
+  fun getFloat(
+    key: String,
+    defaultValue: Float = 0f,
+  ): Preference<Float>
 
-  fun getFloat(key: String, defaultValue: Float = 0f): Preference<Float>
+  fun getBoolean(
+    key: String,
+    defaultValue: Boolean = false,
+  ): Preference<Boolean>
 
-  fun getBoolean(key: String, defaultValue: Boolean = false): Preference<Boolean>
-
-  fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Preference<Set<String>>
+  fun getStringSet(
+    key: String,
+    defaultValue: Set<String> = emptySet(),
+  ): Preference<Set<String>>
 
   fun <T> getObject(
     key: String,
@@ -27,8 +44,8 @@ interface PreferenceStore {
 inline fun <reified T : Enum<T>> PreferenceStore.getEnum(
   key: String,
   defaultValue: T,
-): Preference<T> {
-  return getObject(
+): Preference<T> =
+  getObject(
     key = key,
     defaultValue = defaultValue,
     serializer = { it.name },
@@ -40,4 +57,3 @@ inline fun <reified T : Enum<T>> PreferenceStore.getEnum(
       }
     },
   )
-}

@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
 import androidx.compose.foundation.layout.Arrangement
@@ -35,9 +37,10 @@ fun AudioDelayPanel(
   val preferences = koinInject<AudioPreferences>()
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val delayControlCard = createRef()
 
@@ -49,10 +52,11 @@ fun AudioDelayPanel(
       onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
       title = { AudioDelayCardTitle(onClose = onDismissRequest) },
       delayType = DelayType.Audio,
-      modifier = Modifier.constrainAs(delayControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.8f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(delayControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }

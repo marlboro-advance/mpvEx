@@ -23,7 +23,8 @@ class BrowserPreferences(
  */
 enum class SortOrder {
   Ascending,
-  Descending;
+  Descending,
+  ;
 
   val isAscending: Boolean
     get() = this == Ascending
@@ -36,15 +37,17 @@ enum class FolderSortType {
   Title,
   Date,
   Size,
-  VideoCount;
+  VideoCount,
+  ;
 
   val displayName: String
-    get() = when (this) {
-      Title -> "Title"
-      Date -> "Date"
-      Size -> "Size"
-      VideoCount -> "Count"
-    }
+    get() =
+      when (this) {
+        Title -> "Title"
+        Date -> "Date"
+        Size -> "Size"
+        VideoCount -> "Count"
+      }
 }
 
 /**
@@ -54,13 +57,15 @@ enum class VideoSortType {
   Title,
   Duration,
   Date,
-  Size;
+  Size,
+  ;
 
   val displayName: String
-    get() = when (this) {
-      Title -> "Title"
-      Duration -> "Duration"
-      Date -> "Date"
-      Size -> "Size"
-    }
+    get() =
+      when (this) {
+        Title -> "Title"
+        Duration -> "Duration"
+        Date -> "Date"
+        Size -> "Size"
+      }
 }

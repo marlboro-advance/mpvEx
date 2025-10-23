@@ -57,10 +57,11 @@ object PlayerPreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           val orientation by preferences.orientation.collectAsState()
           ListPreference(
@@ -95,10 +96,10 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = rememberBrightness,
             onValueChange = preferences.rememberBrightness::set,
-            title = { Text(text = stringResource(R.string.pref_player_remember_brightness)) }
+            title = { Text(text = stringResource(R.string.pref_player_remember_brightness)) },
           )
           PreferenceCategory(
-            title = { Text(stringResource(R.string.pref_player_seeking_title)) }
+            title = { Text(stringResource(R.string.pref_player_seeking_title)) },
           )
           val horizontalSeekGesture by preferences.horizontalSeekGesture.collectAsState()
           SwitchPreference(
@@ -110,7 +111,7 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = showSeekbarWhenSeeking,
             onValueChange = preferences.showSeekBarWhenSeeking::set,
-            title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) }
+            title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) },
           )
           val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
           SwitchPreference(
@@ -182,7 +183,7 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = showLoadingCircle,
             onValueChange = preferences.showLoadingCircle::set,
-            title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) }
+            title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
           )
           val showChaptersButton by preferences.showChaptersButton.collectAsState()
           SwitchPreference(
@@ -232,10 +233,11 @@ object PlayerPreferencesScreen : Screen {
             valueRange = 0f..1f,
             summary = {
               Text(
-                text = stringResource(
-                  id = R.string.pref_player_display_panel_transparency_summary,
-                  panelTransparency.times(100).toInt(),
-                ),
+                text =
+                  stringResource(
+                    id = R.string.pref_player_display_panel_transparency_summary,
+                    panelTransparency.times(100).toInt(),
+                  ),
               )
             },
             onSliderValueChange = { preferences.panelTransparency.set(it) },

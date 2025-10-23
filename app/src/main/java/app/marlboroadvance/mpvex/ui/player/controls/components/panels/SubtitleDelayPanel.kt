@@ -61,9 +61,10 @@ fun SubtitleDelayPanel(
   val preferences = koinInject<SubtitlesPreferences>()
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val delayControlCard = createRef()
 
@@ -100,10 +101,11 @@ fun SubtitleDelayPanel(
         MPVLib.setPropertyFloat("sub-speed", preferences.defaultSubSpeed.get())
       },
       onClose = onDismissRequest,
-      modifier = Modifier.constrainAs(delayControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.8f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(delayControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }
@@ -175,9 +177,10 @@ fun DelayCard(
   extraSettings: @Composable ColumnScope.() -> Unit = {},
 ) {
   Card(
-    modifier = modifier
-      .widthIn(max = CARDS_MAX_WIDTH)
-      .animateContentSize(),
+    modifier =
+      modifier
+        .widthIn(max = CARDS_MAX_WIDTH)
+        .animateContentSize(),
     colors = panelCardsColors(),
   ) {
     Column(
@@ -331,5 +334,6 @@ fun SubtitleDelayTitle(
 }
 
 enum class DelayType {
-  Audio, Subtitle
+  Audio,
+  Subtitle,
 }

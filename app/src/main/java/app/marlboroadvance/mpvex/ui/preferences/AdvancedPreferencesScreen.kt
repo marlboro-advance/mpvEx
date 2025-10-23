@@ -85,15 +85,16 @@ object AdvancedPreferencesScreen : Screen {
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        val locationPicker = rememberLauncherForActivityResult(
-          ActivityResultContracts.OpenDocumentTree(),
-        ) { uri ->
-          if (uri == null) return@rememberLauncherForActivityResult
+        val locationPicker =
+          rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocumentTree(),
+          ) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
 
-          val flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
-          context.contentResolver.takePersistableUriPermission(uri, flags)
-          preferences.mpvConfStorageUri.set(uri.toString())
-        }
+            val flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+            preferences.mpvConfStorageUri.set(uri.toString())
+          }
         val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
         Column(
           Modifier
@@ -119,10 +120,11 @@ object AdvancedPreferencesScreen : Screen {
             withContext(Dispatchers.IO) {
               val tempFile = kotlin.io.path.createTempFile()
               runCatching {
-                val tree = DocumentFile.fromTreeUri(
-                  context,
-                  mpvConfStorageLocation.toUri(),
-                )
+                val tree =
+                  DocumentFile.fromTreeUri(
+                    context,
+                    mpvConfStorageLocation.toUri(),
+                  )
                 val mpvConfFile = tree?.findFile("mpv.conf")
                 if (mpvConfFile != null && mpvConfFile.exists()) {
                   context.contentResolver.openInputStream(mpvConfFile.uri)?.copyTo(tempFile.outputStream())
@@ -154,13 +156,14 @@ object AdvancedPreferencesScreen : Screen {
               File(context.filesDir, "mpv.conf").writeText(it)
               if (mpvConfStorageLocation.isNotBlank()) {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val uri = if (tree.findFile("mpv.conf") == null) {
-                  val conf = tree.createFile("text/plain", "mpv.conf")!!
-                  conf.renameTo("mpv.conf")
-                  conf.uri
-                } else {
-                  tree.findFile("mpv.conf")!!.uri
-                }
+                val uri =
+                  if (tree.findFile("mpv.conf") == null) {
+                    val conf = tree.createFile("text/plain", "mpv.conf")!!
+                    conf.renameTo("mpv.conf")
+                    conf.uri
+                  } else {
+                    tree.findFile("mpv.conf")!!.uri
+                  }
                 val out = context.contentResolver.openOutputStream(uri, "wt")
                 out!!.write(it.toByteArray())
                 out.flush()
@@ -176,10 +179,11 @@ object AdvancedPreferencesScreen : Screen {
             withContext(Dispatchers.IO) {
               val tempFile = kotlin.io.path.createTempFile()
               runCatching {
-                val tree = DocumentFile.fromTreeUri(
-                  context,
-                  mpvConfStorageLocation.toUri(),
-                )
+                val tree =
+                  DocumentFile.fromTreeUri(
+                    context,
+                    mpvConfStorageLocation.toUri(),
+                  )
                 val inputConfFile = tree?.findFile("input.conf")
                 if (inputConfFile != null && inputConfFile.exists()) {
                   context.contentResolver.openInputStream(inputConfFile.uri)?.copyTo(tempFile.outputStream())
@@ -211,13 +215,14 @@ object AdvancedPreferencesScreen : Screen {
               File(context.filesDir, "input.conf").writeText(it)
               if (mpvConfStorageLocation.isNotBlank()) {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val uri = if (tree.findFile("input.conf") == null) {
-                  val conf = tree.createFile("text/plain", "input.conf")!!
-                  conf.renameTo("input.conf")
-                  conf.uri
-                } else {
-                  tree.findFile("input.conf")!!.uri
-                }
+                val uri =
+                  if (tree.findFile("input.conf") == null) {
+                    val conf = tree.createFile("text/plain", "input.conf")!!
+                    conf.renameTo("input.conf")
+                    conf.uri
+                  } else {
+                    tree.findFile("input.conf")!!.uri
+                  }
                 val out = context.contentResolver.openOutputStream(uri, "wt")
                 out!!.write(it.toByteArray())
                 out.flush()
@@ -267,20 +272,22 @@ object AdvancedPreferencesScreen : Screen {
                   }.onSuccess {
                     withContext(Dispatchers.Main) {
                       isConfirmDialogShown = false
-                      Toast.makeText(
-                        context,
-                        context.getString(R.string.pref_advanced_cleared_playback_history),
-                        Toast.LENGTH_SHORT,
-                      ).show()
+                      Toast
+                        .makeText(
+                          context,
+                          context.getString(R.string.pref_advanced_cleared_playback_history),
+                          Toast.LENGTH_SHORT,
+                        ).show()
                     }
                   }.onFailure { error ->
                     withContext(Dispatchers.Main) {
                       isConfirmDialogShown = false
-                      Toast.makeText(
-                        context,
-                        "Failed to clear: ${error.message}",
-                        Toast.LENGTH_LONG,
-                      ).show()
+                      Toast
+                        .makeText(
+                          context,
+                          "Failed to clear: ${error.message}",
+                          Toast.LENGTH_LONG,
+                        ).show()
                     }
                   }
                 }
@@ -305,11 +312,12 @@ object AdvancedPreferencesScreen : Screen {
                 withContext(Dispatchers.Main) {
                   mpvConf = ""
                   inputConf = ""
-                  Toast.makeText(
-                    context,
-                    "Config cache cleared",
-                    Toast.LENGTH_SHORT,
-                  ).show()
+                  Toast
+                    .makeText(
+                      context,
+                      "Config cache cleared",
+                      Toast.LENGTH_SHORT,
+                    ).show()
                 }
               }
             },
@@ -322,7 +330,9 @@ object AdvancedPreferencesScreen : Screen {
                 if (fontsDir.exists()) {
                   fontsDir.listFiles()?.forEach { file ->
                     // Delete all font files but keep the default subfont.ttf
-                    if (file.isFile && file.name.lowercase()
+                    if (file.isFile &&
+                      file.name
+                        .lowercase()
                         .matches(".*\\.[ot]tf$".toRegex()) && file.name != "subfont.ttf"
                     ) {
                       file.delete()
@@ -330,11 +340,12 @@ object AdvancedPreferencesScreen : Screen {
                   }
                 }
                 withContext(Dispatchers.Main) {
-                  Toast.makeText(
-                    context,
-                    context.getString(R.string.pref_advanced_cleared_fonts_cache),
-                    Toast.LENGTH_SHORT,
-                  ).show()
+                  Toast
+                    .makeText(
+                      context,
+                      context.getString(R.string.pref_advanced_cleared_fonts_cache),
+                      Toast.LENGTH_SHORT,
+                    ).show()
                 }
               }
             },
@@ -345,6 +356,5 @@ object AdvancedPreferencesScreen : Screen {
   }
 }
 
-fun getSimplifiedPathFromUri(uri: String): String {
-  return Environment.getExternalStorageDirectory().canonicalPath + "/" + Uri.decode(uri).substringAfterLast(":")
-}
+fun getSimplifiedPathFromUri(uri: String): String =
+  Environment.getExternalStorageDirectory().canonicalPath + "/" + Uri.decode(uri).substringAfterLast(":")

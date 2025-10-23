@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecentlyPlayedDao {
-
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insert(recentlyPlayed: RecentlyPlayedEntity)
 

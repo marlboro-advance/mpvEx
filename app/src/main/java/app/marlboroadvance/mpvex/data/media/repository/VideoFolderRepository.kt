@@ -11,7 +11,6 @@ import java.io.File
 import java.util.Locale
 
 object VideoFolderRepository {
-
   private const val Tag = "VideoFolderRepository"
 
   // Cache the external storage path to avoid repeated calls
@@ -24,13 +23,14 @@ object VideoFolderRepository {
     val folders = mutableMapOf<String, VideoFolderInfo>()
 
     val projection = getProjection()
-    val cursor: Cursor? = context.contentResolver.query(
-      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-      projection,
-      null,
-      null,
-      "${MediaStore.Video.Media.DATE_MODIFIED} DESC",
-    )
+    val cursor: Cursor? =
+      context.contentResolver.query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        projection,
+        null,
+        null,
+        "${MediaStore.Video.Media.DATE_MODIFIED} DESC",
+      )
 
     cursor?.use { c ->
       processFolderCursor(c, folders)
@@ -59,17 +59,18 @@ object VideoFolderRepository {
     if (path.isBlank()) return path
 
     // Pre-process common symlinks before canonical path resolution
-    val preprocessedPath = when {
-      // /sdcard is typically a symlink to /storage/emulated/0
-      path.startsWith("/sdcard/") || path == "/sdcard" ->
-        path.replaceFirst("/sdcard", externalStoragePath)
+    val preprocessedPath =
+      when {
+        // /sdcard is typically a symlink to /storage/emulated/0
+        path.startsWith("/sdcard/") || path == "/sdcard" ->
+          path.replaceFirst("/sdcard", externalStoragePath)
 
-      // Handle other potential symlinks
-      path.startsWith("/mnt/sdcard/") || path == "/mnt/sdcard" ->
-        path.replaceFirst("/mnt/sdcard", externalStoragePath)
+        // Handle other potential symlinks
+        path.startsWith("/mnt/sdcard/") || path == "/mnt/sdcard" ->
+          path.replaceFirst("/mnt/sdcard", externalStoragePath)
 
-      else -> path
-    }
+        else -> path
+      }
 
     return try {
       // Resolve to canonical path to handle:
@@ -95,8 +96,8 @@ object VideoFolderRepository {
     }
   }
 
-  private fun getProjection(): Array<String> {
-    return arrayOf(
+  private fun getProjection(): Array<String> =
+    arrayOf(
       MediaStore.Video.Media.BUCKET_ID,
       MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
       MediaStore.Video.Media.DATA,
@@ -104,7 +105,6 @@ object VideoFolderRepository {
       MediaStore.Video.Media.SIZE,
       MediaStore.Video.Media.DURATION,
     )
-  }
 
   private fun processFolderCursor(
     cursor: Cursor,
@@ -155,14 +155,15 @@ object VideoFolderRepository {
   ): Pair<String, String> {
     // Use normalized folder path for consistent bucket ID
     val finalBucketId = bucketId?.takeIf { it.isNotBlank() } ?: folderPath.hashCode().toString()
-    val finalBucketName = when {
-      !bucketName.isNullOrBlank() -> bucketName
-      folderPath.contains(externalStoragePath) &&
-        folderPath == externalStoragePath -> "Internal Storage"
+    val finalBucketName =
+      when {
+        !bucketName.isNullOrBlank() -> bucketName
+        folderPath.contains(externalStoragePath) &&
+          folderPath == externalStoragePath -> "Internal Storage"
 
-      folderPath.contains(externalStoragePath) -> File(folderPath).name
-      else -> "Unknown Folder"
-    }
+        folderPath.contains(externalStoragePath) -> File(folderPath).name
+        else -> "Unknown Folder"
+      }
     return Pair(finalBucketId, finalBucketName)
   }
 
@@ -180,36 +181,36 @@ object VideoFolderRepository {
     // Normalize the file path to handle duplicates from different sources
     val normalizedFilePath = normalizePath(filePath)
 
-    val folderInfo = folders[bucketId] ?: VideoFolderInfo(
-      bucketId = bucketId,
-      name = bucketName,
-      path = folderPath,
-      videoCount = 0,
-      totalSize = 0L,
-      totalDuration = 0L,
-      lastModified = 0L,
-      processedVideos = mutableSetOf(),
-    )
+    val folderInfo =
+      folders[bucketId] ?: VideoFolderInfo(
+        bucketId = bucketId,
+        name = bucketName,
+        path = folderPath,
+        videoCount = 0,
+        totalSize = 0L,
+        totalDuration = 0L,
+        lastModified = 0L,
+        processedVideos = mutableSetOf(),
+      )
 
     // Only count this video if we haven't seen it before
     if (folderInfo.processedVideos.add(normalizedFilePath)) {
-      folders[bucketId] = folderInfo.copy(
-        videoCount = folderInfo.videoCount + 1,
-        totalSize = folderInfo.totalSize + size,
-        totalDuration = folderInfo.totalDuration + duration,
-        lastModified = maxOf(folderInfo.lastModified, dateModified),
-        processedVideos = folderInfo.processedVideos, // Keep the same set reference
-      )
+      folders[bucketId] =
+        folderInfo.copy(
+          videoCount = folderInfo.videoCount + 1,
+          totalSize = folderInfo.totalSize + size,
+          totalDuration = folderInfo.totalDuration + duration,
+          lastModified = maxOf(folderInfo.lastModified, dateModified),
+          processedVideos = folderInfo.processedVideos, // Keep the same set reference
+        )
       Log.d(Tag, "Counted video: $normalizedFilePath in folder $bucketName (total: ${folderInfo.videoCount + 1})")
     } else {
       Log.d(Tag, "Skipping duplicate video: $normalizedFilePath in folder $bucketName")
     }
   }
 
-  private fun convertToVideoFolderList(
-    folders: Map<String, VideoFolderInfo>,
-  ): List<VideoFolder> {
-    return folders.values
+  private fun convertToVideoFolderList(folders: Map<String, VideoFolderInfo>): List<VideoFolder> =
+    folders.values
       .map { info ->
         VideoFolder(
           bucketId = info.bucketId,
@@ -220,9 +221,7 @@ object VideoFolderRepository {
           totalDuration = info.totalDuration,
           lastModified = info.lastModified,
         )
-      }
-      .sortedBy { it.name.lowercase(Locale.getDefault()) }
-  }
+      }.sortedBy { it.name.lowercase(Locale.getDefault()) }
 
   private data class VideoFolderInfo(
     val bucketId: String,

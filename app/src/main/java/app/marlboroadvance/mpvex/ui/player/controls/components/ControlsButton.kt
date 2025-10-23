@@ -40,22 +40,21 @@ fun ControlsButton(
 
   val clickEvent = LocalPlayerButtonsClickEvent.current
   Box(
-    modifier = modifier
-      .combinedClickable(
-        onClick = {
-          clickEvent()
-          onClick()
-        },
-        onLongClick = onLongClick,
-        interactionSource = interactionSource,
-        indication = null,
-      )
-      .clip(CircleShape)
-      .indication(
-        interactionSource,
-        ripple()
-      )
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .combinedClickable(
+          onClick = {
+            clickEvent()
+            onClick()
+          },
+          onLongClick = onLongClick,
+          interactionSource = interactionSource,
+          indication = null,
+        ).clip(CircleShape)
+        .indication(
+          interactionSource,
+          ripple(),
+        ).padding(MaterialTheme.spacing.medium),
   ) {
     Icon(
       icon,
@@ -80,23 +79,21 @@ fun ControlsButton(
 
   val clickEvent = LocalPlayerButtonsClickEvent.current
   Box(
-    modifier = modifier
-      .combinedClickable(
-        onClick = {
-          clickEvent()
-          onClick()
-        },
-        onLongClick = onLongClick,
-        interactionSource = interactionSource,
-        indication = null,
-
-      )
-      .clip(CircleShape)
-      .indication(
-        interactionSource,
-        ripple()
-      )
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .combinedClickable(
+          onClick = {
+            clickEvent()
+            onClick()
+          },
+          onLongClick = onLongClick,
+          interactionSource = interactionSource,
+          indication = null,
+        ).clip(CircleShape)
+        .indication(
+          interactionSource,
+          ripple(),
+        ).padding(MaterialTheme.spacing.medium),
   ) {
     Text(
       text,

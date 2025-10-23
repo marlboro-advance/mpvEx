@@ -12,7 +12,9 @@ import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.SubtitlesBorderStyle
 
-class SubtitlesPreferences(preferenceStore: PreferenceStore) {
+class SubtitlesPreferences(
+  preferenceStore: PreferenceStore,
+) {
   val autoLoadExternal = preferenceStore.getBoolean("sub_autoload", true)
   val preferredLanguages = preferenceStore.getString("sub_preferred_languages")
 
@@ -41,10 +43,10 @@ class SubtitlesPreferences(preferenceStore: PreferenceStore) {
 
 enum class SubtitleJustification(
   val value: String,
-  val icon: ImageVector
+  val icon: ImageVector,
 ) {
   Left("left", Icons.AutoMirrored.Default.FormatAlignLeft),
   Center("center", Icons.Default.FormatAlignCenter),
   Right("right", Icons.AutoMirrored.Default.FormatAlignRight),
-  Auto("auto", Icons.Default.FormatAlignJustify)
+  Auto("auto", Icons.Default.FormatAlignJustify),
 }

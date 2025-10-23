@@ -57,17 +57,18 @@ object GesturePreferencesScreen : Screen {
             }
           },
         )
-      }
+      },
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           PreferenceCategory(
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_title)) }
+            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_title)) },
           )
           val doubleTapSeekDuration by preferences.doubleTapToSeekDuration.collectAsState()
           ListPreference(
@@ -93,11 +94,12 @@ object GesturePreferencesScreen : Screen {
           ListPreference(
             value = centerDoubleTap,
             onValueChange = { preferences.centerSingleActionGesture.set(it) },
-            values = listOf(
-              SingleActionGesture.None,
-              SingleActionGesture.PlayPause,
-              SingleActionGesture.Custom,
-            ),
+            values =
+              listOf(
+                SingleActionGesture.None,
+                SingleActionGesture.PlayPause,
+                SingleActionGesture.Custom,
+              ),
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_double_tap_center_title)) },
             summary = { Text(text = stringResource(centerDoubleTap.titleRes)) },
@@ -113,32 +115,35 @@ object GesturePreferencesScreen : Screen {
             summary = { Text(text = stringResource(rightDoubleTap.titleRes)) },
           )
 
-          val doubleTapKeyCodes = listOf(
-            CustomKeyCodes.DoubleTapLeft,
-            CustomKeyCodes.DoubleTapCenter,
-            CustomKeyCodes.DoubleTapRight,
-          ).map { it.keyCode }.toImmutableList()
+          val doubleTapKeyCodes =
+            listOf(
+              CustomKeyCodes.DoubleTapLeft,
+              CustomKeyCodes.DoubleTapCenter,
+              CustomKeyCodes.DoubleTapRight,
+            ).map { it.keyCode }.toImmutableList()
           FooterPreference(
             summary = {
-              var annotatedString = buildAnnotatedString {
-                append(stringResource(R.string.pref_gesture_double_tap_custom_info))
-              }
+              var annotatedString =
+                buildAnnotatedString {
+                  append(stringResource(R.string.pref_gesture_double_tap_custom_info))
+                }
 
               doubleTapKeyCodes.forEach { keyCode ->
-                annotatedString = buildAnnotatedString {
-                  val startIndex = annotatedString.indexOf(keyCode)
-                  val endIndex = startIndex + keyCode.length
-                  append(annotatedString)
-                  addStyle(style = SpanStyle(fontWeight = FontWeight.Bold), start = startIndex, end = endIndex)
-                }
+                annotatedString =
+                  buildAnnotatedString {
+                    val startIndex = annotatedString.indexOf(keyCode)
+                    val endIndex = startIndex + keyCode.length
+                    append(annotatedString)
+                    addStyle(style = SpanStyle(fontWeight = FontWeight.Bold), start = startIndex, end = endIndex)
+                  }
               }
 
               Text(text = annotatedString)
-            }
+            },
           )
 
           PreferenceCategory(
-            title = { Text(text = stringResource(R.string.pref_gesture_media_title)) }
+            title = { Text(text = stringResource(R.string.pref_gesture_media_title)) },
           )
 
           val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
@@ -154,11 +159,12 @@ object GesturePreferencesScreen : Screen {
           ListPreference(
             value = mediaPlayGesture,
             onValueChange = { preferences.mediaPlayGesture.set(it) },
-            values = listOf(
-              SingleActionGesture.None,
-              SingleActionGesture.PlayPause,
-              SingleActionGesture.Custom,
-            ),
+            values =
+              listOf(
+                SingleActionGesture.None,
+                SingleActionGesture.PlayPause,
+                SingleActionGesture.Custom,
+              ),
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
             summary = { Text(text = stringResource(mediaPlayGesture.titleRes)) },
@@ -173,28 +179,31 @@ object GesturePreferencesScreen : Screen {
             summary = { Text(text = stringResource(mediaNextGesture.titleRes)) },
           )
 
-          val mediaKeyCodes = listOf(
-            CustomKeyCodes.MediaPrevious,
-            CustomKeyCodes.MediaPlay,
-            CustomKeyCodes.MediaNext,
-          ).map { it.keyCode }.toImmutableList()
+          val mediaKeyCodes =
+            listOf(
+              CustomKeyCodes.MediaPrevious,
+              CustomKeyCodes.MediaPlay,
+              CustomKeyCodes.MediaNext,
+            ).map { it.keyCode }.toImmutableList()
           FooterPreference(
             summary = {
-              var annotatedString = buildAnnotatedString {
-                append(stringResource(R.string.pref_gesture_media_custom_info))
-              }
+              var annotatedString =
+                buildAnnotatedString {
+                  append(stringResource(R.string.pref_gesture_media_custom_info))
+                }
 
               mediaKeyCodes.forEach { keyCode ->
-                annotatedString = buildAnnotatedString {
-                  val startIndex = annotatedString.indexOf(keyCode)
-                  val endIndex = startIndex + keyCode.length
-                  append(annotatedString)
-                  addStyle(style = SpanStyle(fontWeight = FontWeight.Bold), start = startIndex, end = endIndex)
-                }
+                annotatedString =
+                  buildAnnotatedString {
+                    val startIndex = annotatedString.indexOf(keyCode)
+                    val endIndex = startIndex + keyCode.length
+                    append(annotatedString)
+                    addStyle(style = SpanStyle(fontWeight = FontWeight.Bold), start = startIndex, end = endIndex)
+                  }
               }
 
               Text(text = annotatedString)
-            }
+            },
           )
         }
       }

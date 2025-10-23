@@ -25,9 +25,10 @@ fun PermissionDeniedState(
   modifier: Modifier = Modifier,
 ) {
   Column(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(16.dp),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(16.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {

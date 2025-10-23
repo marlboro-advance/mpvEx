@@ -56,10 +56,11 @@ object AppearancePreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           PreferenceCategory(
             title = { Text(text = stringResource(id = R.string.pref_appearance_category_theme)) },
@@ -78,13 +79,14 @@ object AppearancePreferencesScreen : Screen {
             title = { Text(text = stringResource(id = R.string.pref_appearance_material_you_title)) },
             summary = {
               Text(
-                text = stringResource(
-                  if (isMaterialYouAvailable) {
-                    R.string.pref_appearance_material_you_summary
-                  } else {
-                    R.string.pref_appearance_material_you_summary_disabled
-                  },
-                ),
+                text =
+                  stringResource(
+                    if (isMaterialYouAvailable) {
+                      R.string.pref_appearance_material_you_summary
+                    } else {
+                      R.string.pref_appearance_material_you_summary_disabled
+                    },
+                  ),
               )
             },
             enabled = isMaterialYouAvailable,

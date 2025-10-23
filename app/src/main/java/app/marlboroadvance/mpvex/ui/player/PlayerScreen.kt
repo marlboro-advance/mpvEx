@@ -16,10 +16,11 @@ import java.io.File
  */
 @Deprecated(
   message = "Use MediaUtils.playFile() instead",
-  replaceWith = ReplaceWith(
-    "MediaUtils.playFile(source, context, launchSource)",
-    "app.marlboroadvance.mpvex.utils.media.MediaUtils",
-  ),
+  replaceWith =
+    ReplaceWith(
+      "MediaUtils.playFile(source, context, launchSource)",
+      "app.marlboroadvance.mpvex.utils.media.MediaUtils",
+    ),
 )
 @Serializable
 data class PlayerScreen(
@@ -33,13 +34,14 @@ data class PlayerScreen(
 
     LaunchedEffect(source) {
       val uri = resolveToUri(source)
-      val intent = Intent(Intent.ACTION_VIEW).apply {
-        data = uri
-        setClass(context, PlayerActivity::class.java)
-        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        launchSource?.let { putExtra("launch_source", it) }
-      }
+      val intent =
+        Intent(Intent.ACTION_VIEW).apply {
+          data = uri
+          setClass(context, PlayerActivity::class.java)
+          addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+          launchSource?.let { putExtra("launch_source", it) }
+        }
       context.startActivity(intent)
       // Remove this trampoline screen from backstack
       backstack.removeLastOrNull()
@@ -51,5 +53,7 @@ private fun resolveToUri(source: String): Uri {
   val parsed = Uri.parse(source)
   return if (parsed.scheme.isNullOrEmpty()) {
     Uri.fromFile(File(source))
-  } else parsed
+  } else {
+    parsed
+  }
 }

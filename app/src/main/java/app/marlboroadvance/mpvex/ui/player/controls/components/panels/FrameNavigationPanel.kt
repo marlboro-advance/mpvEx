@@ -97,13 +97,14 @@ fun FrameNavigationPanel(
   val dur = duration ?: 0
 
   // Format timestamp based on current position
-  val timestamp = remember(pos) {
-    val currentPos = pos
-    val hours = currentPos / 3600
-    val minutes = (currentPos % 3600) / 60
-    val seconds = currentPos % 60
-    String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
-  }
+  val timestamp =
+    remember(pos) {
+      val currentPos = pos
+      val hours = currentPos / 3600
+      val minutes = (currentPos % 3600) / 60
+      val seconds = currentPos % 60
+      String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+    }
 
   // Pause playback when the panel opens
   LaunchedEffect(Unit) {
@@ -126,9 +127,10 @@ fun FrameNavigationPanel(
   }
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val frameControlCard = createRef()
 
@@ -187,10 +189,11 @@ fun FrameNavigationPanel(
       pos = pos.toFloat(),
       onSeekTo = onSeekTo,
       title = { FrameNavigationCardTitle(onClose = onDismissRequest) },
-      modifier = Modifier.constrainAs(frameControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.0f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(frameControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.0f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }
@@ -229,11 +232,12 @@ private fun FrameNavigationCard(
   var isSeeking by remember { mutableStateOf(false) }
   val videoProgress = if (duration > 0) pos / duration else 0f
 
-  val seekbarProgress = if (isSeeking) {
-    userSliderPosition
-  } else {
-    videoProgress
-  }
+  val seekbarProgress =
+    if (isSeeking) {
+      userSliderPosition
+    } else {
+      videoProgress
+    }
   val animatedProgress by animateFloatAsState(
     targetValue = seekbarProgress,
     label = "seekbar",
@@ -241,9 +245,10 @@ private fun FrameNavigationCard(
   // -------------------------------------------------------
 
   Card(
-    modifier = modifier
-      .widthIn(max = 520.dp)
-      .animateContentSize(),
+    modifier =
+      modifier
+        .widthIn(max = 520.dp)
+        .animateContentSize(),
     colors = panelCardsColors(),
   ) {
     Column(
@@ -281,12 +286,13 @@ private fun FrameNavigationCard(
       }
 
       // Define button colors to make disabled buttons look the same as enabled
-      val buttonColors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        disabledContainerColor = MaterialTheme.colorScheme.primary,
-        disabledContentColor = MaterialTheme.colorScheme.onPrimary,
-      )
+      val buttonColors =
+        ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          contentColor = MaterialTheme.colorScheme.onPrimary,
+          disabledContainerColor = MaterialTheme.colorScheme.primary,
+          disabledContentColor = MaterialTheme.colorScheme.onPrimary,
+        )
 
       // Frame info, timestamp and navigation buttons
       if (isLandscape) {
@@ -413,11 +419,12 @@ private fun FrameInfoDisplay(
         color = MaterialTheme.colorScheme.tertiary,
       )
       Text(
-        text = if (totalFrames > 0) {
-          "$currentFrame / $totalFrames"
-        } else {
-          "$currentFrame"
-        },
+        text =
+          if (totalFrames > 0) {
+            "$currentFrame / $totalFrames"
+          } else {
+            "$currentFrame"
+          },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurface,
       )
@@ -570,21 +577,23 @@ private suspend fun takeSnapshot(context: Context) {
       }
 
       // Use MediaStore to save the image properly (works on all Android versions)
-      val contentValues = android.content.ContentValues().apply {
-        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-        put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(
-          android.provider.MediaStore.Images.Media.RELATIVE_PATH,
-          "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
-        )
-        put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
-      }
+      val contentValues =
+        android.content.ContentValues().apply {
+          put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+          put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+          put(
+            android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+            "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+          )
+          put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+        }
 
       val resolver = context.contentResolver
-      val imageUri = resolver.insert(
-        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        contentValues,
-      )
+      val imageUri =
+        resolver.insert(
+          android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+          contentValues,
+        )
 
       if (imageUri != null) {
         // Copy temp file to MediaStore
@@ -604,11 +613,12 @@ private suspend fun takeSnapshot(context: Context) {
 
         // Show success toast
         withContext(Dispatchers.Main) {
-          Toast.makeText(
-            context,
-            context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
-            Toast.LENGTH_SHORT,
-          ).show()
+          Toast
+            .makeText(
+              context,
+              context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+              Toast.LENGTH_SHORT,
+            ).show()
         }
       } else {
         // Fallback for Android 10 and below if MediaStore fails
@@ -624,11 +634,12 @@ private suspend fun takeSnapshot(context: Context) {
         tempFile.delete()
 
         withContext(Dispatchers.Main) {
-          Toast.makeText(
-            context,
-            "Snapshot saved to ${destFile.absolutePath}",
-            Toast.LENGTH_LONG,
-          ).show()
+          Toast
+            .makeText(
+              context,
+              "Snapshot saved to ${destFile.absolutePath}",
+              Toast.LENGTH_LONG,
+            ).show()
         }
       }
     } catch (e: Exception) {

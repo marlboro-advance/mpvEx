@@ -81,20 +81,22 @@ private fun ZoomVideoSheet(
   val isZero = zoom == 0f
 
   Column(
-    modifier = modifier
-      .fillMaxWidth()
-      .verticalScroll(rememberScrollState())
-      .padding(vertical = MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())
+        .padding(vertical = MaterialTheme.spacing.medium),
   ) {
     SliderItem(
       label = stringResource(id = R.string.player_sheets_zoom_slider_label),
       value = zoom,
-      valueText = when {
-        isZero && isDefault -> "%.2fx (default)".format(zoom)
-        isDefault -> "%.2fx (default)".format(zoom)
-        isZero -> "%.2fx".format(zoom)
-        else -> "%.2fx".format(zoom)
-      },
+      valueText =
+        when {
+          isZero && isDefault -> "%.2fx (default)".format(zoom)
+          isDefault -> "%.2fx (default)".format(zoom)
+          isZero -> "%.2fx".format(zoom)
+          else -> "%.2fx".format(zoom)
+        },
       onChange = onZoomChange,
       max = 3f,
       min = -2f,
@@ -102,9 +104,10 @@ private fun ZoomVideoSheet(
     )
 
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = MaterialTheme.spacing.medium),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = MaterialTheme.spacing.medium),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller, Alignment.End),
     ) {

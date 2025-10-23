@@ -20,7 +20,7 @@ fun TopLeftPlayerControls(
 ) {
   Row(
     modifier = modifier,
-    verticalAlignment = Alignment.CenterVertically
+    verticalAlignment = Alignment.CenterVertically,
   ) {
     ControlsButton(
       icon = Icons.AutoMirrored.Default.ArrowBack,

@@ -4,7 +4,9 @@ import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.Debanding
 
-class DecoderPreferences(preferenceStore: PreferenceStore) {
+class DecoderPreferences(
+  preferenceStore: PreferenceStore,
+) {
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
   val gpuNext = preferenceStore.getBoolean("gpu_next")
   val useYUV420P = preferenceStore.getBoolean("use_yuv420p", false)

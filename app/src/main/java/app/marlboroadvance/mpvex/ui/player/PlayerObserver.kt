@@ -6,7 +6,7 @@ import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 
 class PlayerObserver(
-  private val callbacks: PlayerObserverCallbacks
+  private val callbacks: PlayerObserverCallbacks,
 ) : MPVLib.EventObserver {
   private val handler = Handler(Looper.getMainLooper())
 
@@ -14,24 +14,39 @@ class PlayerObserver(
     handler.post { callbacks.onObserverEvent() }
   }
 
-  override fun eventProperty(property: String, value: Long) {
+  override fun eventProperty(
+    property: String,
+    value: Long,
+  ) {
     handler.post { callbacks.onObserverEvent() }
   }
 
-  override fun eventProperty(property: String, value: Boolean) {
+  override fun eventProperty(
+    property: String,
+    value: Boolean,
+  ) {
     handler.post { callbacks.onObserverEvent(property, value) }
   }
 
-  override fun eventProperty(property: String, value: String) {
+  override fun eventProperty(
+    property: String,
+    value: String,
+  ) {
     handler.post { callbacks.onObserverEvent(property, value) }
   }
 
-  override fun eventProperty(property: String, value: Double) {
+  override fun eventProperty(
+    property: String,
+    value: Double,
+  ) {
     handler.post { callbacks.onObserverEvent(property) }
   }
 
   @Suppress("EmptyFunctionBlock")
-  override fun eventProperty(property: String, value: MPVNode) {
+  override fun eventProperty(
+    property: String,
+    value: MPVNode,
+  ) {
     handler.post { callbacks.onObserverEvent(property) }
   }
 

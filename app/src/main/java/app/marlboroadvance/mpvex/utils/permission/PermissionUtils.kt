@@ -12,19 +12,17 @@ import com.google.accompanist.permissions.rememberPermissionState
  * Utility object for managing storage permissions across different Android versions.
  */
 object PermissionUtils {
-
   /**
    * Returns the appropriate storage permission string based on Android version.
    * - Android 13+ (API 33+): READ_MEDIA_VIDEO
    * - Android 12 and below: READ_EXTERNAL_STORAGE
    */
-  fun getStoragePermission(): String {
-    return if (Build.VERSION.SDK_INT >= 33) {
+  fun getStoragePermission(): String =
+    if (Build.VERSION.SDK_INT >= 33) {
       android.Manifest.permission.READ_MEDIA_VIDEO
     } else {
       android.Manifest.permission.READ_EXTERNAL_STORAGE
     }
-  }
 
   /**
    * Composable that provides a permission state for storage access.
@@ -32,9 +30,7 @@ object PermissionUtils {
    */
   @OptIn(ExperimentalPermissionsApi::class)
   @Composable
-  fun rememberStoragePermissionState(): PermissionState {
-    return rememberPermissionState(getStoragePermission())
-  }
+  fun rememberStoragePermissionState(): PermissionState = rememberPermissionState(getStoragePermission())
 
   /**
    * Composable that handles storage permission with an automatic refresh callback
@@ -44,9 +40,7 @@ object PermissionUtils {
    */
   @OptIn(ExperimentalPermissionsApi::class)
   @Composable
-  fun handleStoragePermission(
-    onPermissionGranted: () -> Unit,
-  ): PermissionState {
+  fun handleStoragePermission(onPermissionGranted: () -> Unit): PermissionState {
     val permissionState = rememberStoragePermissionState()
 
     LaunchedEffect(permissionState.status) {

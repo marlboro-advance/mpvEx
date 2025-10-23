@@ -13,25 +13,27 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val MIGRATION_1_2 = object : Migration(1, 2) {
-  override fun migrate(db: SupportSQLiteDatabase) {
-    // Add launchSource column to RecentlyPlayedEntity table
-    db.execSQL("ALTER TABLE RecentlyPlayedEntity ADD COLUMN launchSource TEXT DEFAULT NULL")
-  }
-}
-
-val DatabaseModule = module {
-  single<MpvExDatabase> {
-    Room
-      .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
-      .addMigrations(MIGRATION_1_2)
-      .fallbackToDestructiveMigrationOnDowngrade(false)
-      .build()
+val MIGRATION_1_2 =
+  object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      // Add launchSource column to RecentlyPlayedEntity table
+      db.execSQL("ALTER TABLE RecentlyPlayedEntity ADD COLUMN launchSource TEXT DEFAULT NULL")
+    }
   }
 
-  singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
+val DatabaseModule =
+  module {
+    single<MpvExDatabase> {
+      Room
+        .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
+        .addMigrations(MIGRATION_1_2)
+        .fallbackToDestructiveMigrationOnDowngrade(false)
+        .build()
+    }
 
-  single<RecentlyPlayedRepository> {
-    RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
+    singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
+
+    single<RecentlyPlayedRepository> {
+      RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
+    }
   }
-}

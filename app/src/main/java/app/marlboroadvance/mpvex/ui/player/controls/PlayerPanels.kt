@@ -41,11 +41,15 @@ fun PlayerPanels(
     transitionSpec = {
       fadeIn() + slideInHorizontally { it / 3 } togetherWith fadeOut() + slideOutHorizontally { it / 2 }
     },
-    modifier = modifier
+    modifier = modifier,
   ) { currentPanel ->
     when (currentPanel) {
-      Panels.None -> { Box(Modifier.fillMaxHeight()) }
-      Panels.SubtitleSettings -> { SubtitleSettingsPanel(onDismissRequest) }
+      Panels.None -> {
+        Box(Modifier.fillMaxHeight())
+      }
+      Panels.SubtitleSettings -> {
+        SubtitleSettingsPanel(onDismissRequest)
+      }
       Panels.SubtitleDelay -> {
         SubtitleDelayPanel(onDismissRequest)
       }

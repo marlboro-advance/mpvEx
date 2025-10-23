@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
+import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,7 +21,6 @@ class VideoListViewModel(
   private val application: Application,
   private val bucketId: String,
 ) : ViewModel() {
-
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
 
@@ -72,12 +71,12 @@ class VideoListViewModel(
   }
 
   companion object {
-    fun factory(application: Application, bucketId: String) =
-      object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-          return VideoListViewModel(application, bucketId) as T
-        }
-      }
+    fun factory(
+      application: Application,
+      bucketId: String,
+    ) = object : ViewModelProvider.Factory {
+      @Suppress("UNCHECKED_CAST")
+      override fun <T : ViewModel> create(modelClass: Class<T>): T = VideoListViewModel(application, bucketId) as T
+    }
   }
 }

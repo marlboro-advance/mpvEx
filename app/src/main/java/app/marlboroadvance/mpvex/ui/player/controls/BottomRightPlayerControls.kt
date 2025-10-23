@@ -55,18 +55,20 @@ fun BottomRightPlayerControls(
       Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-        modifier = Modifier
-          .clip(RoundedCornerShape(25.dp))
-          .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
-          .clickable { viewModel.sheetShown.update { Sheets.VideoZoom } }
-          .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+        modifier =
+          Modifier
+            .clip(RoundedCornerShape(25.dp))
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
+            .clickable { viewModel.sheetShown.update { Sheets.VideoZoom } }
+            .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
       ) {
         Icon(
           imageVector = Icons.Default.ZoomIn,
           contentDescription = null,
-          modifier = Modifier
-            .padding(end = MaterialTheme.spacing.extraSmall)
-            .size(16.dp),
+          modifier =
+            Modifier
+              .padding(end = MaterialTheme.spacing.extraSmall)
+              .size(16.dp),
           tint = MaterialTheme.colorScheme.onBackground,
         )
         Text(

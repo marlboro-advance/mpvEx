@@ -45,19 +45,20 @@ fun PullRefreshBox(
 ) {
   val coroutineScope = rememberCoroutineScope()
 
-  val pullRefreshState = rememberPullRefreshState(
-    refreshing = isRefreshing.value,
-    onRefresh = {
-      isRefreshing.value = true
-      coroutineScope.launch {
-        onRefresh()
-        delay(delayAfterRefresh)
-        isRefreshing.value = false
-      }
-    },
-    refreshingOffset = refreshingOffset,
-    refreshThreshold = refreshThreshold,
-  )
+  val pullRefreshState =
+    rememberPullRefreshState(
+      refreshing = isRefreshing.value,
+      onRefresh = {
+        isRefreshing.value = true
+        coroutineScope.launch {
+          onRefresh()
+          delay(delayAfterRefresh)
+          isRefreshing.value = false
+        }
+      },
+      refreshingOffset = refreshingOffset,
+      refreshThreshold = refreshThreshold,
+    )
 
   Box(
     modifier = modifier.pullRefresh(pullRefreshState),

@@ -49,9 +49,10 @@ object PreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         LazyColumn(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .padding(padding),
         ) {
           preference(
             key = "appearance",
@@ -100,7 +101,7 @@ object PreferencesScreen : Screen {
             title = { Text(text = stringResource(R.string.pref_advanced)) },
             summary = { Text(text = stringResource(id = R.string.pref_advanced_summary)) },
             icon = { Icon(Icons.Outlined.Code, null) },
-            onClick = { backstack.add(AdvancedPreferencesScreen) }
+            onClick = { backstack.add(AdvancedPreferencesScreen) },
           )
           preference(
             key = "about",
