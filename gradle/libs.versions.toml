@@ -35,7 +35,7 @@ mpv-lib = "io.github.abdallahmehiz:mpv-android-lib:0.1.9"
 seeker = "com.github.abdallahmehiz:seeker:2.0.1"
 
 material = "com.google.android.material:material:1.14.0-alpha05"
-mwdiainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0"
+mwdiainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }

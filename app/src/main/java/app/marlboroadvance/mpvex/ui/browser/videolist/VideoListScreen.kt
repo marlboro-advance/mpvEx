@@ -1,5 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.videolist
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,6 +58,10 @@ import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Serializable
 data class VideoListScreen(
@@ -163,6 +169,50 @@ data class VideoListScreen(
         mediaInfo = mediaInfoData.value,
         isLoading = mediaInfoLoading.value,
         error = mediaInfoError.value,
+        onDownload = {
+          val video = selectedVideo.value
+          if (video != null) {
+            coroutineScope.launch {
+              try {
+                // Generate text output with header/footer for saving
+                val result = MediaInfoHelper.generateTextOutput(context, video.uri, video.displayName)
+
+                result.onSuccess { textContent ->
+                  val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                  val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}_$timestamp.txt"
+
+                  // Create temp file in cache directory
+                  val cacheDir = context.cacheDir
+                  val file = File(cacheDir, fileName)
+                  file.writeText(textContent)
+
+                  // Share the file
+                  val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(
+                      Intent.EXTRA_STREAM,
+                      androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        file,
+                      ),
+                    )
+                    putExtra(Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                  }
+
+                  context.startActivity(Intent.createChooser(shareIntent, "Save Media Info"))
+                }.onFailure { e ->
+                  e.printStackTrace()
+                  Toast.makeText(context, "Failed to generate: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+              } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
+              }
+            }
+          }
+        },
       )
     }
   }

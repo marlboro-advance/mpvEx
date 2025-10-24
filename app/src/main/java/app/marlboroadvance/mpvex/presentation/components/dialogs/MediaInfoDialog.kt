@@ -11,14 +11,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +44,7 @@ fun MediaInfoDialog(
   mediaInfo: MediaInfoData?,
   isLoading: Boolean,
   error: String?,
+  onDownload: () -> Unit = {},
 ) {
   if (!isOpen) return
 
@@ -52,67 +53,42 @@ fun MediaInfoDialog(
     properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
     Card(
-      modifier =
-        Modifier
-          .fillMaxWidth(0.95f)
-          .padding(16.dp),
-      colors =
-        CardDefaults.cardColors(
-          containerColor = MaterialTheme.colorScheme.surface,
-        ),
+      modifier = Modifier.fillMaxWidth(0.95f).padding(16.dp),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-      Column(
-        modifier = Modifier.padding(16.dp),
-      ) {
+      Column(modifier = Modifier.padding(16.dp)) {
         // Header
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
+          horizontalArrangement = Arrangement.Start,
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Icon(
-              Icons.Filled.Info,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              "Media Info",
-              style = MaterialTheme.typography.headlineSmall,
-              color = MaterialTheme.colorScheme.onSurface,
-            )
-          }
-          IconButton(onClick = onDismiss) {
-            Icon(
-              Icons.Filled.Close,
-              contentDescription = "Close",
-              tint = MaterialTheme.colorScheme.onSurface,
-            )
-          }
+          Icon(
+            Icons.Filled.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+          )
+          Spacer(modifier = Modifier.width(8.dp))
+          Text(
+            "Media Info",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+          )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // File name
         Text(
           fileName,
           style = MaterialTheme.typography.titleSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         // Content
         when {
           isLoading -> {
             Column(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .padding(32.dp),
+              modifier = Modifier.fillMaxWidth().padding(32.dp),
               horizontalAlignment = Alignment.CenterHorizontally,
             ) {
               CircularProgressIndicator()
@@ -124,7 +100,6 @@ fun MediaInfoDialog(
               )
             }
           }
-
           error != null -> {
             Text(
               "Error: $error",
@@ -132,21 +107,28 @@ fun MediaInfoDialog(
               color = MaterialTheme.colorScheme.error,
             )
           }
-
-          mediaInfo != null -> {
-            MediaInfoContent(mediaInfo = mediaInfo)
-          }
+          mediaInfo != null -> MediaInfoContent(mediaInfo)
         }
 
         // Footer
         Spacer(modifier = Modifier.height(16.dp))
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.End,
+          horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-          TextButton(onClick = onDismiss) {
-            Text("Close")
+          if (mediaInfo != null && !isLoading) {
+            TextButton(onClick = onDownload) {
+              Icon(
+                Icons.Filled.Download,
+                contentDescription = "Download",
+                modifier = Modifier.padding(end = 4.dp),
+              )
+              Text("Save")
+            }
+          } else {
+            Spacer(modifier = Modifier.width(1.dp))
           }
+          TextButton(onClick = onDismiss) { Text("Close") }
         }
       }
     }
@@ -156,110 +138,91 @@ fun MediaInfoDialog(
 @Composable
 private fun MediaInfoContent(mediaInfo: MediaInfoData) {
   Column(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .height(400.dp)
-        .verticalScroll(rememberScrollState()),
+    modifier = Modifier.fillMaxWidth().height(500.dp).verticalScroll(rememberScrollState()).padding(4.dp),
   ) {
-    // General Information
-    InfoSection(title = "General") {
-      GeneralInfoContent(mediaInfo.general)
-    }
+    SectionHeader("General")
+    GeneralInfoContent(mediaInfo.general)
 
-    // Video Streams
     mediaInfo.videoStreams.forEachIndexed { index, stream ->
       Spacer(modifier = Modifier.height(16.dp))
-      InfoSection(title = "Video Stream ${index + 1}") {
-        VideoStreamContent(stream)
-      }
+      SectionHeader("Video Stream ${index + 1}")
+      VideoStreamContent(stream)
     }
 
-    // Audio Streams
     mediaInfo.audioStreams.forEachIndexed { index, stream ->
       Spacer(modifier = Modifier.height(16.dp))
-      InfoSection(title = "Audio Stream ${index + 1}") {
-        AudioStreamContent(stream)
-      }
+      SectionHeader("Audio Stream ${index + 1}")
+      AudioStreamContent(stream)
     }
 
-    // Text/Subtitle Streams
     mediaInfo.textStreams.forEachIndexed { index, stream ->
       Spacer(modifier = Modifier.height(16.dp))
-      InfoSection(title = "Subtitle Stream ${index + 1}") {
-        TextStreamContent(stream)
-      }
+      SectionHeader("Subtitle Stream ${index + 1}")
+      TextStreamContent(stream)
     }
   }
 }
 
 @Composable
-private fun InfoSection(
-  title: String,
-  content: @Composable () -> Unit,
-) {
+private fun SectionHeader(title: String) {
   Column {
     Text(
-      title,
+      title.uppercase(),
       style = MaterialTheme.typography.titleMedium,
       color = MaterialTheme.colorScheme.primary,
       fontWeight = FontWeight.Bold,
+      modifier = Modifier.padding(vertical = 8.dp),
     )
+    HorizontalDivider(thickness = 2.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
     Spacer(modifier = Modifier.height(8.dp))
-    content()
   }
 }
 
 @Composable
 private fun GeneralInfoContent(general: GeneralInfo) {
   Column {
+    InfoRow("Complete name", general.completeName)
     InfoRow("Format", general.format)
-    if (general.formatProfile.isNotEmpty()) {
-      InfoRow("Format Profile", general.formatProfile)
-    }
-    if (general.codecId.isNotEmpty()) {
-      InfoRow("Codec ID", general.codecId)
-    }
-    InfoRow("File Size", general.fileSize)
+    InfoRow("Format version", general.formatVersion)
+    InfoRow("File size", general.fileSize)
     InfoRow("Duration", general.duration)
-    if (general.overallBitRate.isNotEmpty()) {
-      InfoRow("Overall Bit Rate", general.overallBitRate)
-    }
-    if (general.writingApplication.isNotEmpty()) {
-      InfoRow("Writing Application", general.writingApplication)
-    }
+    InfoRow("Overall bit rate", general.overallBitRate)
+    InfoRow("Frame rate", general.frameRate)
+    InfoRow("Title", general.title)
+    InfoRow("Encoded date", general.encodedDate)
+    InfoRow("Writing application", general.writingApplication)
+    InfoRow("Writing library", general.writingLibrary)
   }
 }
 
 @Composable
 private fun VideoStreamContent(stream: VideoStreamInfo) {
   Column {
+    InfoRow("ID", stream.id)
     InfoRow("Format", stream.format)
-    if (stream.formatProfile.isNotEmpty()) {
-      InfoRow("Format Profile", stream.formatProfile)
-    }
-    if (stream.codecId.isNotEmpty()) {
-      InfoRow("Codec ID", stream.codecId)
-    }
-    InfoRow("Resolution", "${stream.width} × ${stream.height}")
-    if (stream.displayAspectRatio.isNotEmpty()) {
-      InfoRow("Aspect Ratio", stream.displayAspectRatio)
-    }
-    InfoRow("Frame Rate", "${stream.frameRate} fps")
-    if (stream.bitRate.isNotEmpty()) {
-      InfoRow("Bit Rate", stream.bitRate)
-    }
-    if (stream.colorSpace.isNotEmpty()) {
-      InfoRow("Color Space", stream.colorSpace)
-    }
-    if (stream.chromaSubsampling.isNotEmpty()) {
-      InfoRow("Chroma Subsampling", stream.chromaSubsampling)
-    }
-    if (stream.bitDepth.isNotEmpty()) {
-      InfoRow("Bit Depth", "${stream.bitDepth} bits")
-    }
-    if (stream.scanType.isNotEmpty()) {
-      InfoRow("Scan Type", stream.scanType)
+    InfoRow("Format/Info", stream.formatInfo)
+    InfoRow("Format profile", stream.formatProfile)
+    InfoRow("Codec ID", stream.codecId)
+    InfoRow("Duration", stream.duration)
+    InfoRow("Bit rate", stream.bitRate)
+    InfoRow("Width", stream.width)
+    InfoRow("Height", stream.height)
+    InfoRow("Display aspect ratio", stream.displayAspectRatio)
+    InfoRow("Frame rate mode", stream.frameRateMode)
+    InfoRow("Frame rate", stream.frameRate)
+    InfoRow("Color space", stream.colorSpace)
+    InfoRow("Chroma subsampling", stream.chromaSubsampling)
+    InfoRow("Bit depth", stream.bitDepth)
+    InfoRow("Bits/(Pixel*Frame)", stream.bitsPixelFrame)
+    InfoRow("Stream size", stream.streamSize)
+    InfoRow("Writing library", stream.encodingLibrary)
+    InfoRow("Default", stream.defaultStream)
+    InfoRow("Forced", stream.forcedStream)
+
+    if (stream.hdrFormat.isNotEmpty()) {
+      InfoRow("HDR Format", stream.hdrFormat)
+      InfoRow("Max CLL", stream.maxCLL)
+      InfoRow("Max FALL", stream.maxFALL)
     }
   }
 }
@@ -267,68 +230,58 @@ private fun VideoStreamContent(stream: VideoStreamInfo) {
 @Composable
 private fun AudioStreamContent(stream: AudioStreamInfo) {
   Column {
+    InfoRow("ID", stream.id)
     InfoRow("Format", stream.format)
-    if (stream.formatProfile.isNotEmpty()) {
-      InfoRow("Format Profile", stream.formatProfile)
-    }
-    if (stream.codecId.isNotEmpty()) {
-      InfoRow("Codec ID", stream.codecId)
-    }
-    if (stream.title.isNotEmpty()) {
-      InfoRow("Title", stream.title)
-    }
-    if (stream.language.isNotEmpty()) {
-      InfoRow("Language", stream.language)
-    }
-    InfoRow("Channels", stream.channels)
-    if (stream.channelLayout.isNotEmpty()) {
-      InfoRow("Channel Layout", stream.channelLayout)
-    }
-    InfoRow("Sampling Rate", stream.samplingRate)
-    if (stream.bitRate.isNotEmpty()) {
-      InfoRow("Bit Rate", stream.bitRate)
-    }
-    if (stream.bitDepth.isNotEmpty()) {
-      InfoRow("Bit Depth", "${stream.bitDepth} bits")
-    }
+    InfoRow("Format/Info", stream.formatInfo)
+    InfoRow("Codec ID", stream.codecId)
+    InfoRow("Duration", stream.duration)
+    InfoRow("Bit rate", stream.bitRate)
+    InfoRow("Channel(s)", stream.channels)
+    InfoRow("Channel layout", stream.channelLayout)
+    InfoRow("Sampling rate", stream.samplingRate)
+    InfoRow("Frame rate", stream.frameRate)
+    InfoRow("Compression mode", stream.compressionMode)
+    InfoRow("Delay relative to video", stream.delay)
+    InfoRow("Stream size", stream.streamSize)
+    InfoRow("Title", stream.title)
+    InfoRow("Language", stream.language)
+    InfoRow("Default", stream.defaultStream)
+    InfoRow("Forced", stream.forcedStream)
   }
 }
 
 @Composable
 private fun TextStreamContent(stream: TextStreamInfo) {
   Column {
+    InfoRow("ID", stream.id)
     InfoRow("Format", stream.format)
-    if (stream.codecId.isNotEmpty()) {
-      InfoRow("Codec ID", stream.codecId)
-    }
-    if (stream.title.isNotEmpty()) {
-      InfoRow("Title", stream.title)
-    }
-    if (stream.language.isNotEmpty()) {
-      InfoRow("Language", stream.language)
-    }
+    InfoRow("Muxing mode", stream.muxingMode)
+    InfoRow("Codec ID", stream.codecId)
+    InfoRow("Codec ID/Info", stream.codecIdInfo)
+    InfoRow("Duration", stream.duration)
+    InfoRow("Bit rate", stream.bitRate)
+    InfoRow("Frame rate", stream.frameRate)
+    InfoRow("Count of elements", stream.countOfElements)
+    InfoRow("Stream size", stream.streamSize)
+    InfoRow("Title", stream.title)
+    InfoRow("Language", stream.language)
+    InfoRow("Default", stream.defaultStream)
+    InfoRow("Forced", stream.forcedStream)
   }
 }
 
 @Composable
-private fun InfoRow(
-  label: String,
-  value: String,
-) {
+private fun InfoRow(label: String, value: String) {
   if (value.isEmpty()) return
 
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(vertical = 4.dp),
-  ) {
+  Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
     Text(
       "$label:",
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.width(140.dp),
+      modifier = Modifier.width(160.dp),
     )
+    Spacer(modifier = Modifier.width(8.dp))
     Text(
       value,
       style = MaterialTheme.typography.bodyMedium,
