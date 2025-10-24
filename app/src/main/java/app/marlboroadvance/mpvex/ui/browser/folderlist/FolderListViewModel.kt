@@ -8,9 +8,12 @@ import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.data.media.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 
@@ -20,10 +23,13 @@ class FolderListViewModel(
   private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
 
-  private val _recentlyPlayedFilePath = MutableStateFlow<String?>(null)
-  val recentlyPlayedFilePath: StateFlow<String?> = _recentlyPlayedFilePath.asStateFlow()
-
   private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+
+  // Use Flow to observe recently played changes instead of querying
+  val recentlyPlayedFilePath: StateFlow<String?> =
+    recentlyPlayedRepository.observeLastPlayedForHighlight()
+      .map { it?.filePath }
+      .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), null)
 
   companion object {
     private const val TAG = "FolderListViewModel"
@@ -37,34 +43,20 @@ class FolderListViewModel(
 
   init {
     loadVideoFolders()
-    loadRecentlyPlayed()
   }
 
   fun refresh() {
     loadVideoFolders()
-    loadRecentlyPlayed()
   }
 
   private fun loadVideoFolders() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       try {
         val folders = VideoFolderRepository.getVideoFolders(application)
         _videoFolders.value = folders
       } catch (e: Exception) {
         Log.e(TAG, "Error loading video folders", e)
         _videoFolders.value = emptyList()
-      }
-    }
-  }
-
-  private fun loadRecentlyPlayed() {
-    viewModelScope.launch {
-      try {
-        val recentlyPlayed = recentlyPlayedRepository.getLastPlayedForHighlight()
-        _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
-      } catch (e: Exception) {
-        Log.e(TAG, "Error loading recently played", e)
-        _recentlyPlayedFilePath.value = null
       }
     }
   }

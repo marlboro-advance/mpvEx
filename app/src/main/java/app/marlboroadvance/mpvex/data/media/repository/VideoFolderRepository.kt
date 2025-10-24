@@ -7,6 +7,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -18,7 +20,7 @@ object VideoFolderRepository {
     Environment.getExternalStorageDirectory().path
   }
 
-  fun getVideoFolders(context: Context): List<VideoFolder> {
+  suspend fun getVideoFolders(context: Context): List<VideoFolder> = withContext(Dispatchers.IO) {
     Log.d(Tag, "Starting video folder scan")
     val folders = mutableMapOf<String, VideoFolderInfo>()
 
@@ -39,7 +41,7 @@ object VideoFolderRepository {
     Log.d(Tag, "Finished video folder scan")
     val result = convertToVideoFolderList(folders)
     Log.d(Tag, "Found ${result.size} folders")
-    return result
+    result
   }
 
   /**

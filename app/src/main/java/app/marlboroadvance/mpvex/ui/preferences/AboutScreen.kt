@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -142,28 +141,20 @@ object AboutScreen : Screen {
                         ),
                     )
                   }
-                }.padding(20.dp),
+                }
+                .padding(20.dp),
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                  shape = CircleShape,
-                  color = cs.onPrimaryContainer.copy(alpha = 0.12f),
-                  modifier = Modifier.size(64.dp),
-                  shadowElevation = 0.dp,
-                ) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Box(modifier = Modifier.size(64.dp)) {
-                      AndroidView(
-                        modifier = Modifier.matchParentSize(),
-                        factory = { ctx ->
-                          ImageView(ctx).apply {
-                            setImageResource(R.mipmap.ic_launcher)
-                          }
-                        },
-                      )
-                    }
-                  }
+                Box(modifier = Modifier.size(64.dp)) {
+                  AndroidView(
+                    modifier = Modifier.matchParentSize(),
+                    factory = { ctx ->
+                      ImageView(ctx).apply {
+                        setImageResource(R.mipmap.ic_launcher)
+                      }
+                    },
+                  )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))

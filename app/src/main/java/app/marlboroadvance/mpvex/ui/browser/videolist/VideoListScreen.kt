@@ -36,8 +36,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -77,7 +75,6 @@ data class VideoListScreen(
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
     val isRefreshing = remember { mutableStateOf(false) }
@@ -92,13 +89,6 @@ data class VideoListScreen(
       }
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
-
-    // Refresh recently played when returning to this screen
-    LaunchedEffect(lifecycleOwner) {
-      lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-        viewModel.refresh()
-      }
-    }
 
     Scaffold(
       topBar = {

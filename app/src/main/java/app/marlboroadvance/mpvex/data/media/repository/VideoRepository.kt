@@ -7,6 +7,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 import kotlin.math.log10
@@ -57,10 +59,10 @@ object VideoRepository {
   @SuppressLint("SdCardPath")
   private fun normalizePath(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(path)
 
-  fun getVideosInFolder(
+  suspend fun getVideosInFolder(
     context: Context,
     bucketId: String,
-  ): List<Video> {
+  ): List<Video> = withContext(Dispatchers.IO) {
     Log.d(TAG, "Starting to query videos for bucket: $bucketId")
     val videos = mutableListOf<Video>()
     val processedPaths = mutableSetOf<String>()
@@ -79,7 +81,7 @@ object VideoRepository {
     }
 
     Log.d(TAG, "Returning ${videos.size} videos (${processedPaths.size} unique paths)")
-    return videos
+    videos
   }
 
   private fun queryMediaStoreBucket(

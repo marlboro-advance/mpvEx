@@ -8,9 +8,13 @@ import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 
@@ -24,24 +28,26 @@ class VideoListViewModel(
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-  private val _recentlyPlayedFilePath = MutableStateFlow<String?>(null)
-  val recentlyPlayedFilePath: StateFlow<String?> = _recentlyPlayedFilePath.asStateFlow()
-
   private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+
+  // Use Flow to observe recently played changes instead of querying
+  val recentlyPlayedFilePath: StateFlow<String?> =
+    recentlyPlayedRepository.observeLastPlayedForHighlight()
+      .map { it?.filePath }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
   private val tag = "VideoListViewModel"
 
   init {
     loadVideos()
-    loadRecentlyPlayed()
   }
 
   fun refresh() {
     loadVideos()
-    loadRecentlyPlayed()
   }
 
   private fun loadVideos() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       try {
         _isLoading.value = true
         val videoList = VideoRepository.getVideosInFolder(application, bucketId)
@@ -51,18 +57,6 @@ class VideoListViewModel(
         _videos.value = emptyList()
       } finally {
         _isLoading.value = false
-      }
-    }
-  }
-
-  private fun loadRecentlyPlayed() {
-    viewModelScope.launch {
-      try {
-        val recentlyPlayed = recentlyPlayedRepository.getLastPlayedForHighlight()
-        _recentlyPlayedFilePath.value = recentlyPlayed?.filePath
-      } catch (e: Exception) {
-        Log.e(tag, "Error loading recently played", e)
-        _recentlyPlayedFilePath.value = null
       }
     }
   }

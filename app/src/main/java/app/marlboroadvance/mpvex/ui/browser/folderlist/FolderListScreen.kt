@@ -41,8 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -86,7 +84,6 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // UI State
     val listState = rememberLazyListState()
@@ -131,13 +128,6 @@ object FolderListScreen : Screen {
     // Effects
     LaunchedEffect(Unit) {
       hasRecentlyPlayed = MediaUtils.hasRecentlyPlayedFile()
-    }
-
-    // Refresh when returning to the screen (STARTED state)
-    LaunchedEffect(lifecycleOwner) {
-      lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-        viewModel.refresh()
-      }
     }
 
     LaunchedEffect(fabMenuExpanded) {
