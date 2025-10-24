@@ -27,7 +27,6 @@ androidx-material3-icons-extended = { group = "androidx.compose.material", name 
 androidx-compose-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version = "1.1.1" }
 androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics-android" }
 androidx-preferences-ktx = { group = "androidx.preference", name = "preference-ktx", version = "1.2.1" }
-mediasession = "androidx.media:media:1.7.1"
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
@@ -36,6 +35,7 @@ mpv-lib = "io.github.abdallahmehiz:mpv-android-lib:0.1.9"
 seeker = "com.github.abdallahmehiz:seeker:2.0.1"
 
 material = "com.google.android.material:material:1.14.0-alpha05"
+mwdiainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0"
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }
@@ -50,7 +50,6 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 
-detekt-gradle-plugin = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt" }
 detekt-formatter = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
 detekt-rules-compose = { module = "io.nlopez.compose.rules:detekt", version = "0.4.27" }
 

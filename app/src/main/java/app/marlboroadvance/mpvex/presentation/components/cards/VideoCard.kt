@@ -1,7 +1,7 @@
 package app.marlboroadvance.mpvex.presentation.components.cards
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +38,7 @@ fun VideoCard(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   isRecentlyPlayed: Boolean = false,
+  onLongClick: (() -> Unit)? = null,
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -47,7 +48,10 @@ fun VideoCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable(onClick = onClick),
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = onLongClick,
+        ),
     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
   ) {
     Row(
@@ -93,7 +97,8 @@ fun VideoCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                ).padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
           Spacer(modifier = Modifier.width(4.dp))
@@ -105,7 +110,8 @@ fun VideoCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                ).padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
         }

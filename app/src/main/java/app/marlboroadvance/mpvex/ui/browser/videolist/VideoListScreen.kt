@@ -30,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,11 +45,15 @@ import app.marlboroadvance.mpvex.preferences.VideoSortType
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.cards.VideoCard
+import app.marlboroadvance.mpvex.presentation.components.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.media.MediaInfoData
+import app.marlboroadvance.mpvex.utils.media.MediaInfoHelper
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -61,6 +66,7 @@ data class VideoListScreen(
   @Composable
   override fun Content() {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val viewModel: VideoListViewModel =
       viewModel(
         key = "VideoListViewModel_$bucketId",
@@ -79,6 +85,13 @@ data class VideoListScreen(
     // UI State
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = remember { mutableStateOf(false) }
+
+    // MediaInfo State
+    val mediaInfoDialogOpen = remember { mutableStateOf(false) }
+    val selectedVideo = remember { mutableStateOf<Video?>(null) }
+    val mediaInfoData = remember { mutableStateOf<MediaInfoData?>(null) }
+    val mediaInfoLoading = remember { mutableStateOf(false) }
+    val mediaInfoError = remember { mutableStateOf<String?>(null) }
 
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
@@ -106,6 +119,25 @@ data class VideoListScreen(
         recentlyPlayedFilePath = recentlyPlayedFilePath,
         onRefresh = { viewModel.refresh() },
         onVideoClick = { video -> MediaUtils.playFile(video, context) },
+        onVideoLongClick = { video ->
+          selectedVideo.value = video
+          mediaInfoDialogOpen.value = true
+          mediaInfoLoading.value = true
+          mediaInfoError.value = null
+          mediaInfoData.value = null
+
+          coroutineScope.launch {
+            MediaInfoHelper.getMediaInfo(context, video.uri, video.displayName)
+              .onSuccess { info ->
+                mediaInfoData.value = info
+                mediaInfoLoading.value = false
+              }
+              .onFailure { error ->
+                mediaInfoError.value = error.message ?: "Unknown error"
+                mediaInfoLoading.value = false
+              }
+          }
+        },
         modifier = Modifier.padding(padding),
       )
 
@@ -117,6 +149,20 @@ data class VideoListScreen(
         sortOrder = videoSortOrder,
         onSortTypeChange = { browserPreferences.videoSortType.set(it) },
         onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
+      )
+
+      MediaInfoDialog(
+        isOpen = mediaInfoDialogOpen.value,
+        onDismiss = {
+          mediaInfoDialogOpen.value = false
+          selectedVideo.value = null
+          mediaInfoData.value = null
+          mediaInfoError.value = null
+        },
+        fileName = selectedVideo.value?.displayName ?: "",
+        mediaInfo = mediaInfoData.value,
+        isLoading = mediaInfoLoading.value,
+        error = mediaInfoError.value,
       )
     }
   }
@@ -180,6 +226,7 @@ private fun VideoListContent(
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
   onVideoClick: (Video) -> Unit,
+  onVideoLongClick: (Video) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   PullRefreshBox(
@@ -230,6 +277,7 @@ private fun VideoListContent(
               video = video,
               isRecentlyPlayed = isRecentlyPlayed,
               onClick = { onVideoClick(video) },
+              onLongClick = { onVideoLongClick(video) },
             )
           }
         }
