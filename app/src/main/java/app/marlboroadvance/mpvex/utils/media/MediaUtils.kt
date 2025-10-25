@@ -4,10 +4,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import `is`.xyz.mpv.Utils
-import org.koin.java.KoinJavaComponent.inject
 
 /**
  * Utility object for media playback operations.
@@ -42,8 +41,6 @@ import org.koin.java.KoinJavaComponent.inject
  * - **ACTION_VIEW Intent**: External apps launching player, skips MediaUtils
  */
 object MediaUtils {
-  private val recentlyPlayedRepository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
-
   /**
    * Play a video from the video list
    */
@@ -101,10 +98,35 @@ object MediaUtils {
     context.startActivity(intent)
   }
 
-  suspend fun getRecentlyPlayedFile(): String? = recentlyPlayedRepository.getLastPlayed()?.filePath
+  /**
+   * Get the most recently played file path
+   * @deprecated Use RecentlyPlayedOps.getLastPlayed() directly
+   */
+  @Deprecated(
+    message = "Use RecentlyPlayedOps.getLastPlayed() directly",
+    replaceWith = ReplaceWith(
+      "RecentlyPlayedOps.getLastPlayed()",
+      "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
+    ),
+  )
+  suspend fun getRecentlyPlayedFile(): String? = RecentlyPlayedOps.getLastPlayed()
 
-  suspend fun hasRecentlyPlayedFile(): Boolean = recentlyPlayedRepository.getLastPlayed() != null
+  /**
+   * Check if there's a recently played file
+   * @deprecated Use RecentlyPlayedOps.hasRecentlyPlayed() directly
+   */
+  @Deprecated(
+    message = "Use RecentlyPlayedOps.hasRecentlyPlayed() directly",
+    replaceWith = ReplaceWith(
+      "RecentlyPlayedOps.hasRecentlyPlayed()",
+      "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
+    ),
+  )
+  suspend fun hasRecentlyPlayedFile(): Boolean = RecentlyPlayedOps.hasRecentlyPlayed()
 
+  /**
+   * Validate URL for supported protocols
+   */
   fun isURLValid(url: String): Boolean {
     val uri = url.toUri()
 
@@ -116,5 +138,45 @@ object MediaUtils {
     val hasValidProtocol = Utils.PROTOCOLS.contains(uri.scheme)
 
     return isValidStructure && hasValidProtocol
+  }
+
+  /**
+   * Share one or more videos via ACTION_SEND / ACTION_SEND_MULTIPLE
+   */
+  fun shareVideos(context: Context, videos: List<Video>) {
+    if (videos.isEmpty()) return
+
+    val intent =
+      if (videos.size == 1) {
+        val video = videos.first()
+        Intent(Intent.ACTION_SEND).apply {
+          type = "video/*"
+          putExtra(Intent.EXTRA_STREAM, video.uri)
+          putExtra(Intent.EXTRA_SUBJECT, video.displayName)
+          putExtra(Intent.EXTRA_TITLE, video.displayName)
+          clipData = android.content.ClipData.newRawUri(video.displayName, video.uri)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+      } else {
+        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+          type = "video/*"
+          val uris = ArrayList(videos.map { it.uri })
+          putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+          putExtra(Intent.EXTRA_SUBJECT, "Sharing ${videos.size} videos")
+          val clipData = android.content.ClipData.newRawUri(videos.first().displayName, videos.first().uri)
+          videos.drop(1).forEach { video ->
+            clipData.addItem(android.content.ClipData.Item(video.uri))
+          }
+          setClipData(clipData)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+      }
+
+    context.startActivity(
+      Intent.createChooser(
+        intent,
+        if (videos.size == 1) "Share video" else "Share ${videos.size} videos",
+      ),
+    )
   }
 }

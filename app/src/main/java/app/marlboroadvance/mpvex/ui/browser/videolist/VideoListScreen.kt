@@ -1,7 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.videolist
 
-import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,34 +10,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
@@ -46,58 +37,45 @@ import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.VideoSortType
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.presentation.components.cards.VideoCard
-import app.marlboroadvance.mpvex.presentation.components.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
+import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
+import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
+import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import app.marlboroadvance.mpvex.utils.media.MediaInfoData
-import app.marlboroadvance.mpvex.utils.media.MediaInfoHelper
+import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Serializable
 data class VideoListScreen(
   private val bucketId: String,
   private val folderName: String,
 ) : Screen {
-  @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val backstack = LocalBackStack.current
+    val browserPreferences = koinInject<BrowserPreferences>()
+
+    // ViewModel
     val viewModel: VideoListViewModel =
       viewModel(
         key = "VideoListViewModel_$bucketId",
-        factory =
-          VideoListViewModel.factory(
-            context.applicationContext as android.app.Application,
-            bucketId,
-          ),
+        factory = VideoListViewModel.factory(context.applicationContext as android.app.Application, bucketId),
       )
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
-    val backstack = LocalBackStack.current
-    val browserPreferences = koinInject<BrowserPreferences>()
-
-    // UI State
-    val isRefreshing = remember { mutableStateOf(false) }
-    val sortDialogOpen = remember { mutableStateOf(false) }
-
-    // MediaInfo State
-    val mediaInfoDialogOpen = remember { mutableStateOf(false) }
-    val selectedVideo = remember { mutableStateOf<Video?>(null) }
-    val mediaInfoData = remember { mutableStateOf<MediaInfoData?>(null) }
-    val mediaInfoLoading = remember { mutableStateOf(false) }
-    val mediaInfoError = remember { mutableStateOf<String?>(null) }
 
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
@@ -107,14 +85,113 @@ data class VideoListScreen(
         SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
       }
 
+    // Holder for selection manager (to be set below)
+    val selectionManagerHolder =
+      remember { mutableStateOf<SelectionManager<Video, Long>?>(null) }
+
+    // Storage operation launchers
+    val launchers =
+      PermissionUtils.rememberStorageOperationLaunchers(
+        onDeleteSuccess = {
+          selectionManagerHolder.value?.executePendingDelete()
+          viewModel.refresh()
+        },
+        onWriteSuccess = {
+          selectionManagerHolder.value?.executePendingRename()
+          viewModel.refresh()
+        },
+      )
+    val permissionHandler = PermissionUtils.rememberStoragePermissionHandler(launchers)
+
+    // Selection manager
+    val selectionManager =
+      rememberSelectionManager(
+        items = sortedVideos,
+        getId = { it.id },
+        permissionHandler = permissionHandler,
+        onDeleteItems = { viewModel.deleteVideos(it) },
+        onRenameItem = { video, newName -> viewModel.renameVideo(video, newName) },
+        onOperationComplete = { viewModel.refresh() },
+      )
+
+    // Store selection manager in holder
+    selectionManagerHolder.value = selectionManager
+
+    // UI State
+    val isRefreshing = remember { mutableStateOf(false) }
+    val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val mediaInfoDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val selectedVideo = remember { mutableStateOf<Video?>(null) }
+    val mediaInfoData = remember { mutableStateOf<MediaInfoOps.MediaInfoData?>(null) }
+    val mediaInfoLoading = remember { mutableStateOf(false) }
+    val mediaInfoError = remember { mutableStateOf<String?>(null) }
+    val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
+
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
+
+    // Predictive back: Only intercept when in selection mode
+    BackHandler(enabled = selectionManager.isInSelectionMode) {
+      selectionManager.clear()
+    }
+
+    androidx.compose.runtime.LaunchedEffect(
+      deleteDialogOpen.value,
+      renameDialogOpen.value,
+    ) {
+      if (!deleteDialogOpen.value && !renameDialogOpen.value) {
+        kotlinx.coroutines.delay(100)
+        viewModel.refresh()
+      }
+    }
 
     Scaffold(
       topBar = {
-        VideoListTopBar(
+        BrowserTopBar(
           title = displayFolderName,
-          onBackClick = backstack::removeLastOrNull,
+          isInSelectionMode = selectionManager.isInSelectionMode,
+          selectedCount = selectionManager.selectedCount,
+          totalCount = sortedVideos.size,
+          onBackClick = {
+            if (selectionManager.isInSelectionMode) {
+              selectionManager.clear()
+            } else {
+              backstack.removeLastOrNull()
+            }
+          },
+          onCancelSelection = { selectionManager.clear() },
           onSortClick = { sortDialogOpen.value = true },
+          onDeleteClick = { deleteDialogOpen.value = true },
+          onRenameClick = { renameDialogOpen.value = true },
+          isSingleSelection = selectionManager.isSingleSelection,
+          onInfoClick = {
+            if (selectionManager.isSingleSelection) {
+              val video = selectionManager.getSelectedItems().firstOrNull()
+              if (video != null) {
+                selectedVideo.value = video
+                mediaInfoDialogOpen.value = true
+                mediaInfoLoading.value = true
+                mediaInfoError.value = null
+                mediaInfoData.value = null
+
+                coroutineScope.launch {
+                  MediaInfoOps.getMediaInfo(context, video.uri, video.displayName)
+                    .onSuccess { info ->
+                      mediaInfoData.value = info
+                      mediaInfoLoading.value = false
+                    }
+                    .onFailure { error ->
+                      mediaInfoError.value = error.message ?: "Unknown error"
+                      mediaInfoLoading.value = false
+                    }
+                }
+              }
+            }
+          },
+          onShareClick = { selectionManager.shareSelected() },
+          onSelectAll = { selectionManager.selectAll() },
+          onInvertSelection = { selectionManager.invertSelection() },
+          onDeselectAll = { selectionManager.clear() },
         )
       },
     ) { padding ->
@@ -124,30 +201,19 @@ data class VideoListScreen(
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
         onRefresh = { viewModel.refresh() },
-        onVideoClick = { video -> MediaUtils.playFile(video, context) },
-        onVideoLongClick = { video ->
-          selectedVideo.value = video
-          mediaInfoDialogOpen.value = true
-          mediaInfoLoading.value = true
-          mediaInfoError.value = null
-          mediaInfoData.value = null
-
-          coroutineScope.launch {
-            MediaInfoHelper.getMediaInfo(context, video.uri, video.displayName)
-              .onSuccess { info ->
-                mediaInfoData.value = info
-                mediaInfoLoading.value = false
-              }
-              .onFailure { error ->
-                mediaInfoError.value = error.message ?: "Unknown error"
-                mediaInfoLoading.value = false
-              }
+        selectionManager = selectionManager,
+        onVideoClick = { video ->
+          if (selectionManager.isInSelectionMode) {
+            selectionManager.toggle(video)
+          } else {
+            MediaUtils.playFile(video, context)
           }
         },
+        onVideoLongClick = { video -> selectionManager.toggle(video) },
         modifier = Modifier.padding(padding),
       )
 
-      // Dialogs
+      // Sort Dialog
       VideoSortDialog(
         isOpen = sortDialogOpen.value,
         onDismiss = { sortDialogOpen.value = false },
@@ -157,6 +223,7 @@ data class VideoListScreen(
         onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
       )
 
+      // Media Info Dialog
       MediaInfoDialog(
         isOpen = mediaInfoDialogOpen.value,
         onDismiss = {
@@ -169,112 +236,46 @@ data class VideoListScreen(
         mediaInfo = mediaInfoData.value,
         isLoading = mediaInfoLoading.value,
         error = mediaInfoError.value,
-        onDownload = {
-          val video = selectedVideo.value
-          if (video != null) {
-            coroutineScope.launch {
-              try {
-                // Generate text output with header/footer for saving
-                val result = MediaInfoHelper.generateTextOutput(context, video.uri, video.displayName)
-
-                result.onSuccess { textContent ->
-                  val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                  val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}_$timestamp.txt"
-
-                  // Create temp file in cache directory
-                  val cacheDir = context.cacheDir
-                  val file = File(cacheDir, fileName)
-                  file.writeText(textContent)
-
-                  // Share the file
-                  val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(
-                      Intent.EXTRA_STREAM,
-                      androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider",
-                        file,
-                      ),
-                    )
-                    putExtra(Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                  }
-
-                  context.startActivity(Intent.createChooser(shareIntent, "Save Media Info"))
-                }.onFailure { e ->
-                  e.printStackTrace()
-                  Toast.makeText(context, "Failed to generate: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-              } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
-              }
-            }
-          }
-        },
+        videoForShare = selectedVideo.value,
       )
+
+      // Delete Dialog
+      DeleteConfirmationDialog(
+        isOpen = deleteDialogOpen.value,
+        onDismiss = { deleteDialogOpen.value = false },
+        onConfirm = { selectionManager.deleteSelected() },
+        itemType = "video",
+        itemCount = selectionManager.selectedCount,
+      )
+
+      // Rename Dialog
+      if (renameDialogOpen.value && selectionManager.isSingleSelection) {
+        val video = selectionManager.getSelectedItems().firstOrNull()
+        if (video != null) {
+          val baseName = video.displayName.substringBeforeLast('.')
+          val extension = "." + video.displayName.substringAfterLast('.', "")
+          RenameDialog(
+            isOpen = true,
+            onDismiss = { renameDialogOpen.value = false },
+            onConfirm = { newName -> selectionManager.renameSelected(newName) },
+            currentName = baseName,
+            itemType = "file",
+            extension = if (extension != ".") extension else null,
+          )
+        }
+      }
     }
   }
 }
 
-/**
- * Top app bar for the video list screen
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun VideoListTopBar(
-  title: String,
-  onBackClick: () -> Unit,
-  onSortClick: () -> Unit,
-) {
-  TopAppBar(
-    title = {
-      Text(
-        title,
-        style = MaterialTheme.typography.headlineSmallEmphasized,
-        color = MaterialTheme.colorScheme.primary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    },
-    navigationIcon = {
-      IconButton(
-        onClick = onBackClick,
-        modifier = Modifier.padding(horizontal = 4.dp),
-      ) {
-        Icon(
-          Icons.AutoMirrored.Filled.ArrowBack,
-          contentDescription = "Back",
-          modifier = Modifier.size(28.dp),
-        )
-      }
-    },
-    actions = {
-      IconButton(
-        onClick = onSortClick,
-        modifier = Modifier.padding(horizontal = 4.dp),
-      ) {
-        Icon(
-          Icons.AutoMirrored.Filled.Sort,
-          contentDescription = "Sort",
-          modifier = Modifier.size(28.dp),
-        )
-      }
-    },
-  )
-}
-
-/**
- * Main content showing the list of videos
- */
 @Composable
 private fun VideoListContent(
   videos: List<Video>,
   isLoading: Boolean,
-  isRefreshing: MutableState<Boolean>,
+  isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
+  selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
   onVideoLongClick: (Video) -> Unit,
   modifier: Modifier = Modifier,
@@ -318,14 +319,12 @@ private fun VideoListContent(
         ) {
           items(videos.size) { index ->
             val video = videos[index]
-            val isRecentlyPlayed =
-              recentlyPlayedFilePath?.let { filePath ->
-                video.path == filePath
-              } ?: false
+            val isRecentlyPlayed = recentlyPlayedFilePath?.let { video.path == it } ?: false
 
             VideoCard(
               video = video,
               isRecentlyPlayed = isRecentlyPlayed,
+              isSelected = selectionManager.isSelected(video),
               onClick = { onVideoClick(video) },
               onLongClick = { onVideoLongClick(video) },
             )
@@ -336,9 +335,6 @@ private fun VideoListContent(
   }
 }
 
-/**
- * Simplified sort dialog for videos
- */
 @Composable
 private fun VideoSortDialog(
   isOpen: Boolean,

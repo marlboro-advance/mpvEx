@@ -46,6 +46,7 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -268,7 +269,7 @@ object AdvancedPreferencesScreen : Screen {
                 scope.launch(Dispatchers.IO) {
                   runCatching {
                     mpvexDatabase.videoDataDao().clearAllPlaybackStates()
-                    mpvexDatabase.recentlyPlayedDao().clearAll()
+                    RecentlyPlayedOps.clearAll()
                   }.onSuccess {
                     withContext(Dispatchers.Main) {
                       isConfirmDialogShown = false

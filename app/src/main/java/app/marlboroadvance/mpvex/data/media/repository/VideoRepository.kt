@@ -288,4 +288,19 @@ object VideoRepository {
       units[digitGroups],
     )
   }
+
+  /**
+   * Convenience API to fetch all videos across multiple folder bucket IDs.
+   * Used by folder-level batch operations (delete/share, etc.).
+   */
+  suspend fun getVideosForBuckets(
+    context: Context,
+    bucketIds: Set<String>,
+  ): List<Video> = withContext(Dispatchers.IO) {
+    val result = mutableListOf<Video>()
+    for (id in bucketIds) {
+      runCatching { result += getVideosInFolder(context, id) }
+    }
+    result
+  }
 }

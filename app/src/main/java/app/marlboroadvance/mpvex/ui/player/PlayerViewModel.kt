@@ -328,12 +328,33 @@ class PlayerViewModel(
   }
 
   fun seekBy(offset: Int) {
-    MPVLib.command("seek", offset.toString(), "relative")
+    coalesceSeek(offset)
   }
 
   fun seekTo(position: Int) {
     if (position !in 0..(MPVLib.getPropertyInt("duration") ?: 0)) return
-    MPVLib.command("seek", position.toString(), "absolute+keyframes")
+    // Cancel any pending relative coalesced seek before absolute seek
+    seekCoalesceJob?.cancel()
+    pendingSeekOffset = 0
+    MPVLib.command("seek", position.toString(), "absolute+exact")
+  }
+
+  // --- Seek coalescing for ultra-smooth user experience ---
+  private var pendingSeekOffset: Int = 0
+  private var seekCoalesceJob: Job? = null
+  private val seekCoalesceDelayMs: Long = 60
+
+  private fun coalesceSeek(offset: Int) {
+    pendingSeekOffset += offset
+    seekCoalesceJob?.cancel()
+    seekCoalesceJob = viewModelScope.launch {
+      delay(seekCoalesceDelayMs)
+      val toApply = pendingSeekOffset
+      pendingSeekOffset = 0
+      if (toApply != 0) {
+        MPVLib.command("seek", toApply.toString(), "relative+exact")
+      }
+    }
   }
 
   fun changeBrightnessTo(brightness: Float) {

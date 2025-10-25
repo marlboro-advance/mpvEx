@@ -6,26 +6,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -39,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
@@ -48,18 +37,22 @@ import app.marlboroadvance.mpvex.preferences.FolderSortType
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.presentation.components.cards.FolderCard
-import app.marlboroadvance.mpvex.presentation.components.dialogs.PlayLinkDialog
-import app.marlboroadvance.mpvex.presentation.components.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.PlayLinkDialog
+import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
-import app.marlboroadvance.mpvex.presentation.components.states.EmptyState
-import app.marlboroadvance.mpvex.presentation.components.states.PermissionDeniedState
+import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
+import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
-import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
@@ -70,17 +63,14 @@ import java.io.File
 
 @Serializable
 object FolderListScreen : Screen {
-  @OptIn(
-    ExperimentalPermissionsApi::class,
-    ExperimentalMaterial3Api::class,
-    ExperimentalMaterial3ExpressiveApi::class,
-  )
+  @OptIn(ExperimentalPermissionsApi::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
     val videoFolders by viewModel.videoFolders.collectAsState()
+    val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
@@ -89,10 +79,10 @@ object FolderListScreen : Screen {
     val listState = rememberLazyListState()
     val isRefreshing = remember { mutableStateOf(false) }
     val showLinkDialog = remember { mutableStateOf(false) }
-    val sortDialogOpen = remember { mutableStateOf(false) }
+    val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var hasRecentlyPlayed by remember { mutableStateOf(false) }
-    val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
+    val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
 
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
@@ -101,6 +91,28 @@ object FolderListScreen : Screen {
       remember(videoFolders, folderSortType, folderSortOrder) {
         SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
       }
+
+    // Storage operation launchers
+    val launchers =
+      PermissionUtils.rememberStorageOperationLaunchers(
+        onDeleteSuccess = { viewModel.refresh() },
+        onWriteSuccess = { viewModel.refresh() },
+      )
+
+    // Selection manager (no permission handler for folders as they use different logic)
+    val selectionManager =
+      rememberSelectionManager<VideoFolder, String>(
+        items = sortedFolders,
+        getId = { it.bucketId },
+        permissionHandler = null, // Folders handle deletion through videos
+        onDeleteItems = { folders ->
+          // Delete all videos in selected folders via ViewModel
+          val ids = folders.map { it.bucketId }.toSet()
+          val videos = VideoRepository.getVideosForBuckets(context, ids)
+          viewModel.deleteVideos(videos)
+        },
+        onOperationComplete = { viewModel.refresh() },
+      )
 
     // Permissions
     val permissionState =
@@ -114,7 +126,6 @@ object FolderListScreen : Screen {
         contract = ActivityResultContracts.OpenDocument(),
       ) { uri ->
         uri?.let {
-          // Persist read permission so we can reopen later (e.g., recently played)
           runCatching {
             context.contentResolver.takePersistableUriPermission(
               it,
@@ -127,20 +138,56 @@ object FolderListScreen : Screen {
 
     // Effects
     LaunchedEffect(Unit) {
-      hasRecentlyPlayed = MediaUtils.hasRecentlyPlayedFile()
+      app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.pruneIfMissing()
+      hasRecentlyPlayed = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.hasRecentlyPlayed()
     }
 
     LaunchedEffect(fabMenuExpanded) {
       if (fabMenuExpanded) {
-        hasRecentlyPlayed = MediaUtils.hasRecentlyPlayedFile()
+        hasRecentlyPlayed = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.hasRecentlyPlayed()
       }
+    }
+
+    LaunchedEffect(deleteDialogOpen.value) {
+      if (!deleteDialogOpen.value) {
+        kotlinx.coroutines.delay(100)
+        viewModel.refresh()
+      }
+    }
+
+    // Predictive back: Only intercept when in selection mode
+    androidx.activity.compose.BackHandler(enabled = selectionManager.isInSelectionMode) {
+      selectionManager.clear()
     }
 
     Scaffold(
       topBar = {
-        FolderListTopBar(
+        BrowserTopBar(
+          title = stringResource(app.marlboroadvance.mpvex.R.string.app_name),
+          isInSelectionMode = selectionManager.isInSelectionMode,
+          selectedCount = selectionManager.selectedCount,
+          totalCount = videoFolders.size,
+          onBackClick = null, // No back button for folder list (root screen)
+          onCancelSelection = { selectionManager.clear() },
           onSortClick = { sortDialogOpen.value = true },
           onSettingsClick = { backstack.add(PreferencesScreen) },
+          onDeleteClick = { deleteDialogOpen.value = true },
+          onRenameClick = null,
+          isSingleSelection = selectionManager.isSingleSelection,
+          onInfoClick = null,
+          onShareClick = {
+            // Share all videos across selected folders with a single chooser
+            coroutineScope.launch {
+              val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
+              val allVideos = VideoRepository.getVideosForBuckets(context, selectedIds)
+              if (allVideos.isNotEmpty()) {
+                MediaUtils.shareVideos(context, allVideos)
+              }
+            }
+          },
+          onSelectAll = { selectionManager.selectAll() },
+          onInvertSelection = { selectionManager.invertSelection() },
+          onDeselectAll = { selectionManager.clear() },
         )
       },
       floatingActionButton = {
@@ -150,8 +197,7 @@ object FolderListScreen : Screen {
           onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
-              MediaUtils
-                .getRecentlyPlayedFile()
+              app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayed()
                 ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
             }
           },
@@ -169,10 +215,16 @@ object FolderListScreen : Screen {
             isRefreshing = isRefreshing,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
             onRefresh = { viewModel.refresh() },
+            selectionManager = selectionManager,
             onFolderClick = { folder ->
-              fabMenuExpanded = false
-              backstack.add(VideoListScreen(folder.bucketId, folder.name))
+              if (selectionManager.isInSelectionMode) {
+                selectionManager.toggle(folder)
+              } else {
+                fabMenuExpanded = false
+                backstack.add(VideoListScreen(folder.bucketId, folder.name))
+              }
             },
+            onFolderLongClick = { folder -> selectionManager.toggle(folder) },
             modifier = Modifier.padding(padding),
           )
         }
@@ -199,57 +251,18 @@ object FolderListScreen : Screen {
         onSortTypeChange = { browserPreferences.folderSortType.set(it) },
         onSortOrderChange = { browserPreferences.folderSortOrder.set(it) },
       )
+
+      DeleteConfirmationDialog(
+        isOpen = deleteDialogOpen.value,
+        onDismiss = { deleteDialogOpen.value = false },
+        onConfirm = { selectionManager.deleteSelected() },
+        itemType = "folder",
+        itemCount = selectionManager.selectedCount,
+      )
     }
   }
 }
 
-/**
- * Top app bar for the folder list screen
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun FolderListTopBar(
-  onSortClick: () -> Unit,
-  onSettingsClick: () -> Unit,
-) {
-  TopAppBar(
-    title = {
-      Text(
-        stringResource(app.marlboroadvance.mpvex.R.string.app_name),
-        style = MaterialTheme.typography.headlineMediumEmphasized,
-        fontWeight = FontWeight.ExtraBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 8.dp),
-      )
-    },
-    actions = {
-      IconButton(
-        onClick = onSortClick,
-        modifier = Modifier.padding(horizontal = 4.dp),
-      ) {
-        Icon(
-          Icons.AutoMirrored.Filled.Sort,
-          contentDescription = "Sort",
-          modifier = Modifier.size(28.dp),
-        )
-      }
-      IconButton(
-        onClick = onSettingsClick,
-        modifier = Modifier.padding(horizontal = 4.dp),
-      ) {
-        Icon(
-          Icons.Filled.Settings,
-          contentDescription = "Preferences",
-          modifier = Modifier.size(28.dp),
-        )
-      }
-    },
-  )
-}
-
-/**
- * Main content showing the list of folders
- */
 @Composable
 private fun FolderListContent(
   folders: List<VideoFolder>,
@@ -257,7 +270,9 @@ private fun FolderListContent(
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
+  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<VideoFolder, String>,
   onFolderClick: (VideoFolder) -> Unit,
+  onFolderLongClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   PullRefreshBox(
@@ -271,7 +286,6 @@ private fun FolderListContent(
       contentPadding = PaddingValues(8.dp),
     ) {
       items(folders) { folder ->
-        // Check if this folder contains the recently played video
         val isRecentlyPlayed =
           recentlyPlayedFilePath?.let { filePath ->
             val file = File(filePath)
@@ -280,8 +294,10 @@ private fun FolderListContent(
 
         FolderCard(
           folder = folder,
+          isSelected = selectionManager.isSelected(folder),
           isRecentlyPlayed = isRecentlyPlayed,
           onClick = { onFolderClick(folder) },
+          onLongClick = { onFolderLongClick(folder) },
         )
       }
 
@@ -298,9 +314,6 @@ private fun FolderListContent(
   }
 }
 
-/**
- * Simplified sort dialog for folders
- */
 @Composable
 private fun FolderSortDialog(
   isOpen: Boolean,

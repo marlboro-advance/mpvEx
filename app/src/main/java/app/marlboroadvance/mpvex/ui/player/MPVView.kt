@@ -106,6 +106,14 @@ class MPVView(
     // workaround for <https://github.com/mpv-player/mpv/issues/14651>
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
 
+    // Improve seek responsiveness/smoothness on mobile
+    MPVLib.setOptionString("hr-seek", "yes")
+    MPVLib.setOptionString("hr-seek-framedrop", "yes")
+    MPVLib.setOptionString("demuxer-readahead-secs", "8")
+    MPVLib.setOptionString("demuxer-seekable-cache", "yes")
+    MPVLib.setOptionString("cache", "yes")
+    MPVLib.setOptionString("cache-secs", "8")
+
     setupSubtitlesOptions()
     setupAudioOptions()
   }

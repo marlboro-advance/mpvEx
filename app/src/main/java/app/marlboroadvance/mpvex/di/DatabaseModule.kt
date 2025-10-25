@@ -9,6 +9,7 @@ import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImp
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
+import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -43,6 +44,14 @@ val MIGRATION_2_3 =
 
 val DatabaseModule =
   module {
+    // Provide kotlinx.serialization Json as a singleton (used by PlayerViewModel)
+    single<Json> {
+      Json {
+        isLenient = true
+        ignoreUnknownKeys = true
+      }
+    }
+
     single<MpvExDatabase> {
       Room
         .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")

@@ -6,8 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mediaarea.mediainfo.lib.MediaInfo
 
-object MediaInfoHelper {
-
+object MediaInfoOps {
   /**
    * Extract detailed media information from a video file
    */
@@ -89,9 +88,7 @@ object MediaInfoHelper {
   ): String = Get(stream, index, parameter)
 
   private fun extractGeneralInfo(mi: MediaInfo): GeneralInfo {
-
     return GeneralInfo(
-      // Basic info
       completeName = mi.getInfo(MediaInfo.Stream.General, 0, "CompleteName"),
       format = mi.getInfo(MediaInfo.Stream.General, 0, "Format"),
       formatVersion = mi.getInfo(MediaInfo.Stream.General, 0, "Format_Version"),
@@ -186,101 +183,100 @@ object MediaInfoHelper {
       )
     }
   }
-}
 
-data class MediaInfoData(
-  val general: GeneralInfo,
-  val videoStreams: List<VideoStreamInfo>,
-  val audioStreams: List<AudioStreamInfo>,
-  val textStreams: List<TextStreamInfo>,
-) {
-  companion object {
-    fun empty() = MediaInfoData(
-      general = GeneralInfo(),
-      videoStreams = emptyList(),
-      audioStreams = emptyList(),
-      textStreams = emptyList(),
-    )
+  data class MediaInfoData(
+    val general: GeneralInfo,
+    val videoStreams: List<VideoStreamInfo>,
+    val audioStreams: List<AudioStreamInfo>,
+    val textStreams: List<TextStreamInfo>,
+  ) {
+    companion object {
+      fun empty() = MediaInfoData(
+        general = GeneralInfo(),
+        videoStreams = emptyList(),
+        audioStreams = emptyList(),
+        textStreams = emptyList(),
+      )
+    }
   }
+
+  data class GeneralInfo(
+    val completeName: String = "",
+    val format: String = "",
+    val formatVersion: String = "",
+    val fileSize: String = "",
+    val duration: String = "",
+    val overallBitRate: String = "",
+    val frameRate: String = "",
+    val title: String = "",
+    val encodedDate: String = "",
+    val writingApplication: String = "",
+    val writingLibrary: String = "",
+  )
+
+  data class VideoStreamInfo(
+    val streamIndex: Int,
+    val id: String = "",
+    val format: String = "",
+    val formatInfo: String = "",
+    val formatProfile: String = "",
+    val codecId: String = "",
+    val duration: String = "",
+    val bitRate: String = "",
+    val width: String = "",
+    val height: String = "",
+    val displayAspectRatio: String = "",
+    val frameRate: String = "",
+    val frameRateMode: String = "",
+    val colorSpace: String = "",
+    val chromaSubsampling: String = "",
+    val bitDepth: String = "",
+    val bitsPixelFrame: String = "",
+    val streamSize: String = "",
+    val encodingLibrary: String = "",
+    val defaultStream: String = "",
+    val forcedStream: String = "",
+    val hdrFormat: String = "",
+    val maxCLL: String = "",
+    val maxFALL: String = "",
+  )
+
+  data class AudioStreamInfo(
+    val streamIndex: Int,
+    val id: String = "",
+    val format: String = "",
+    val formatInfo: String = "",
+    val codecId: String = "",
+    val duration: String = "",
+    val bitRate: String = "",
+    val channels: String = "",
+    val channelLayout: String = "",
+    val samplingRate: String = "",
+    val frameRate: String = "",
+    val compressionMode: String = "",
+    val delay: String = "",
+    val streamSize: String = "",
+    val title: String = "",
+    val language: String = "",
+    val defaultStream: String = "",
+    val forcedStream: String = "",
+  )
+
+  data class TextStreamInfo(
+    val streamIndex: Int,
+    val id: String = "",
+    val format: String = "",
+    val muxingMode: String = "",
+    val codecId: String = "",
+    val codecIdInfo: String = "",
+    val duration: String = "",
+    val bitRate: String = "",
+    val frameRate: String = "",
+    val countOfElements: String = "",
+    val streamSize: String = "",
+    val title: String = "",
+    val language: String = "",
+    val defaultStream: String = "",
+    val forcedStream: String = "",
+  )
 }
-
-data class GeneralInfo(
-  // Basic info
-  val completeName: String = "",
-  val format: String = "",
-  val formatVersion: String = "",
-  val fileSize: String = "",
-  val duration: String = "",
-  val overallBitRate: String = "",
-  val frameRate: String = "",
-  val title: String = "",
-  val encodedDate: String = "",
-  val writingApplication: String = "",
-  val writingLibrary: String = "",
-)
-
-data class VideoStreamInfo(
-  val streamIndex: Int,
-  val id: String = "",
-  val format: String = "",
-  val formatInfo: String = "",
-  val formatProfile: String = "",
-  val codecId: String = "",
-  val duration: String = "",
-  val bitRate: String = "",
-  val width: String = "",
-  val height: String = "",
-  val displayAspectRatio: String = "",
-  val frameRate: String = "",
-  val frameRateMode: String = "",
-  val colorSpace: String = "",
-  val chromaSubsampling: String = "",
-  val bitDepth: String = "",
-  val bitsPixelFrame: String = "",
-  val streamSize: String = "",
-  val encodingLibrary: String = "",
-  val defaultStream: String = "",
-  val forcedStream: String = "",
-  val hdrFormat: String = "",
-  val maxCLL: String = "",
-  val maxFALL: String = "",
-)
-
-data class AudioStreamInfo(
-  val streamIndex: Int,
-  val id: String = "",
-  val format: String = "",
-  val formatInfo: String = "",
-  val codecId: String = "",
-  val duration: String = "",
-  val bitRate: String = "",
-  val channels: String = "",
-  val channelLayout: String = "",
-  val samplingRate: String = "",
-  val frameRate: String = "",
-  val compressionMode: String = "",
-  val delay: String = "",
-  val streamSize: String = "",
-  val title: String = "",
-  val language: String = "",
-  val defaultStream: String = "",
-  val forcedStream: String = "",
-)
-
-data class TextStreamInfo(
-  val streamIndex: Int,
-  val id: String = "",
-  val format: String = "",
-  val muxingMode: String = "",
-  val codecId: String = "",
-  val codecIdInfo: String = "",
-  val duration: String = "",
-  val bitRate: String = "",
-  val frameRate: String = "",
-  val countOfElements: String = "",
-  val streamSize: String = "",
-  val title: String = "",
-  val language: String = "",
-  val defaultStream: String = "",
-  val forcedStream: String = "",
-)

@@ -39,4 +39,12 @@ class RecentlyPlayedRepositoryImpl(
   override suspend fun clearAll() {
     recentlyPlayedDao.clearAll()
   }
+
+  override suspend fun deleteByFilePath(filePath: String) {
+    recentlyPlayedDao.deleteByFilePath(filePath)
+  }
+
+  override suspend fun updateFilePath(oldPath: String, newPath: String, newFileName: String) {
+    recentlyPlayedDao.updateFilePath(oldPath, newPath, newFileName)
+  }
 }

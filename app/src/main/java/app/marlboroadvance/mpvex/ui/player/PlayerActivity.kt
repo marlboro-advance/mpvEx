@@ -38,6 +38,7 @@ import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
@@ -67,7 +68,6 @@ class PlayerActivity :
 
   // Repositories
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val recentlyPlayedRepository: RecentlyPlayedRepository by inject()
 
   // Views and Controllers
   val player by lazy { binding.player }
@@ -1045,7 +1045,7 @@ class PlayerActivity :
           }
         }
 
-      recentlyPlayedRepository.addRecentlyPlayed(
+      RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
         fileName = fileName,
         launchSource = launchSource,

@@ -1,12 +1,9 @@
 package app.marlboroadvance.mpvex
 
 import android.app.Application
-import app.marlboroadvance.mpvex.di.AppModule
 import app.marlboroadvance.mpvex.di.DatabaseModule
 import app.marlboroadvance.mpvex.di.FileManagerModule
-import app.marlboroadvance.mpvex.di.MediaModule
 import app.marlboroadvance.mpvex.di.PreferencesModule
-import app.marlboroadvance.mpvex.di.ViewModelModule
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
 import app.marlboroadvance.mpvex.presentation.crash.GlobalExceptionHandler
 import org.koin.android.ext.koin.androidContext
@@ -27,12 +24,9 @@ class App :
     koinConfiguration {
       androidContext(this@App)
       modules(
-        AppModule,
         PreferencesModule,
         DatabaseModule,
         FileManagerModule,
-        MediaModule,
-        ViewModelModule,
       )
     }
 }

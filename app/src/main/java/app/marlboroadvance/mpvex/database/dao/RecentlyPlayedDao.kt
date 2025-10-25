@@ -46,4 +46,10 @@ interface RecentlyPlayedDao {
 
   @Query("DELETE FROM RecentlyPlayedEntity WHERE timestamp < :cutoffTime")
   suspend fun deleteOlderThan(cutoffTime: Long)
+
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
+  suspend fun deleteByFilePath(filePath: String)
+
+  @Query("UPDATE RecentlyPlayedEntity SET filePath = :newPath, fileName = :newFileName WHERE filePath = :oldPath")
+  suspend fun updateFilePath(oldPath: String, newPath: String, newFileName: String)
 }

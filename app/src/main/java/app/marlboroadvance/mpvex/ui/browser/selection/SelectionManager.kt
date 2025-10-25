@@ -1,0 +1,254 @@
+package app.marlboroadvance.mpvex.ui.browser.selection
+
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import app.marlboroadvance.mpvex.domain.media.model.Video
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils.StoragePermissionHandler
+import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+/**
+ * Manager for handling item selection and operations in browser screens
+ */
+@Stable
+class SelectionManager<T, ID>(
+  private val items: () -> List<T>,
+  private val getId: (T) -> ID,
+  private val context: Context,
+  private val scope: CoroutineScope,
+  private val permissionHandler: StoragePermissionHandler?,
+  private val onDeleteItems: suspend (List<T>) -> Pair<Int, Int>,
+  private val onRenameItem: (suspend (T, String) -> Result<Unit>)?,
+  private val onOperationComplete: () -> Unit,
+) {
+  var state by mutableStateOf(SelectionState<ID>())
+    private set
+
+  // Pending operations to execute after permission is granted
+  private var pendingRename: Pair<T, String>? = null
+  private var pendingDelete: List<T>? = null
+
+  val isInSelectionMode: Boolean
+    get() = state.isInSelectionMode
+
+  val selectedCount: Int
+    get() = state.selectedCount
+
+  val isSingleSelection: Boolean
+    get() = state.isSingleSelection
+
+  /**
+   * Toggle selection of an item
+   */
+  fun toggle(item: T) {
+    state = state.toggle(getId(item))
+  }
+
+  /**
+   * Clear all selections
+   */
+  fun clear() {
+    state = state.clear()
+  }
+
+  /**
+   * Select all items
+   */
+  fun selectAll() {
+    state = state.selectAll(items().map(getId))
+  }
+
+  /**
+   * Invert selection
+   */
+  fun invertSelection() {
+    state = state.invertSelection(items().map(getId))
+  }
+
+  /**
+   * Check if an item is selected
+   */
+  fun isSelected(item: T): Boolean = state.isSelected(getId(item))
+
+  /**
+   * Get currently selected items
+   */
+  fun getSelectedItems(): List<T> = state.getSelected(items(), getId)
+
+  /**
+   * Delete selected items with automatic permission handling
+   */
+  fun deleteSelected() {
+    val selected = getSelectedItems()
+    if (selected.isEmpty()) return
+
+    scope.launch {
+      if (permissionHandler != null && selected.first() is Video) {
+        @Suppress("UNCHECKED_CAST")
+        val videos = selected as List<Video>
+        val handled = permissionHandler.handleDelete(videos) {
+          performDelete(selected)
+        }
+
+        // If permission request was launched, store the pending operation
+        if (!handled) {
+          pendingDelete = selected
+        }
+      } else {
+        performDelete(selected)
+      }
+    }
+  }
+
+  private suspend fun performDelete(selected: List<T>) {
+    // Execute delete and always report success for a simpler UX
+    runCatching { onDeleteItems(selected) }
+    Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+    clear()
+    onOperationComplete()
+  }
+
+  /**
+   * Rename the selected item (only works with single selection)
+   */
+  fun renameSelected(newName: String) {
+    if (!isSingleSelection || onRenameItem == null) return
+
+    val item = getSelectedItems().firstOrNull() ?: return
+
+    scope.launch {
+      if (permissionHandler != null && item is Video) {
+        @Suppress("UNCHECKED_CAST")
+        val handled = permissionHandler.handleRename(
+          video = item as Video,
+          newName = newName,
+          onDirectRename = {
+            onRenameItem(item, newName)
+          },
+        )
+
+        // If permission request was launched, store the pending operation
+        if (!handled) {
+          pendingRename = Pair(item, newName)
+        } else {
+          Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+          clear()
+          onOperationComplete()
+        }
+      } else {
+        runCatching { onRenameItem(item, newName) }
+        Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+        clear()
+        onOperationComplete()
+      }
+    }
+  }
+
+  /**
+   * Execute pending rename operation after permission is granted
+   * Should be called from the All Files Access or write permission success callback
+   */
+  fun executePendingRename() {
+    val (item, newName) = pendingRename ?: return
+    pendingRename = null
+
+    if (onRenameItem == null) return
+
+    scope.launch {
+      // After permission is granted, try the operation again
+      if (permissionHandler != null && item is Video) {
+        @Suppress("UNCHECKED_CAST")
+
+        // Store the result from the rename operation
+        val handled = permissionHandler.handleRename(
+          video = item as Video,
+          newName = newName,
+          onDirectRename = {
+            onRenameItem(item, newName)
+          },
+        )
+
+        // If handled directly, show appropriate message
+        if (handled) {
+          Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+        }
+      } else {
+        // For non-video items, just do direct rename
+        runCatching { onRenameItem(item, newName) }
+        Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+      }
+      clear()
+      onOperationComplete()
+    }
+  }
+
+  /**
+   * Execute pending delete operation after permission is granted
+   * Should be called from the All Files Access or write permission success callback
+   */
+  fun executePendingDelete() {
+    val selected = pendingDelete ?: return
+    pendingDelete = null
+
+    scope.launch {
+      performDelete(selected)
+    }
+  }
+
+  /**
+   * Share selected items (only for videos)
+   */
+  fun shareSelected() {
+    val selected = getSelectedItems()
+    if (selected.isEmpty() || selected.first() !is Video) return
+
+    @Suppress("UNCHECKED_CAST")
+    val videos = selected as List<Video>
+    MediaUtils.shareVideos(context, videos)
+  }
+}
+
+/**
+ * Composable function to remember a SelectionManager
+ *
+ * @param items List of items to manage selection for
+ * @param getId Function to extract ID from an item
+ * @param permissionHandler Optional storage permission handler for videos
+ * @param onDeleteItems Callback to delete items
+ * @param onRenameItem Optional callback to rename an item
+ * @param onOperationComplete Callback when an operation completes (to refresh list)
+ */
+@Composable
+fun <T, ID> rememberSelectionManager(
+  items: List<T>,
+  getId: (T) -> ID,
+  permissionHandler: StoragePermissionHandler? = null,
+  onDeleteItems: suspend (List<T>) -> Pair<Int, Int>,
+  onRenameItem: (suspend (T, String) -> Result<Unit>)? = null,
+  onOperationComplete: () -> Unit = {},
+): SelectionManager<T, ID> {
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
+
+  return remember(items, getId, permissionHandler, onDeleteItems, onRenameItem) {
+    SelectionManager(
+      items = { items },
+      getId = getId,
+      context = context,
+      scope = scope,
+      permissionHandler = permissionHandler,
+      onDeleteItems = onDeleteItems,
+      onRenameItem = onRenameItem,
+      onOperationComplete = onOperationComplete,
+    )
+  }
+}

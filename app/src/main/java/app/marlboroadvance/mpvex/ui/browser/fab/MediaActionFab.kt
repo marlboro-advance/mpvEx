@@ -1,4 +1,4 @@
-package app.marlboroadvance.mpvex.presentation.components.fab
+package app.marlboroadvance.mpvex.ui.browser.fab
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.LazyListState

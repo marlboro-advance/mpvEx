@@ -1,4 +1,4 @@
-package app.marlboroadvance.mpvex.presentation.components.states
+package app.marlboroadvance.mpvex.ui.browser.states
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
