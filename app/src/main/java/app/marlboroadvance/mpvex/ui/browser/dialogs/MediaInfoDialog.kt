@@ -78,9 +78,10 @@ fun MediaInfoDialog(
     properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
     Card(
-      modifier = Modifier
-        .fillMaxWidth(0.95f)
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth(0.95f)
+          .padding(16.dp),
       colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
       Column(modifier = Modifier.padding(16.dp)) {
@@ -106,50 +107,55 @@ fun MediaInfoDialog(
             scope.launch {
               // Generate text output
               val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
-              result.onSuccess { textContent ->
-                val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}.txt"
-                val file = File(context.cacheDir, fileName)
-                runCatching { file.writeText(textContent) }
-                  .onSuccess {
-                    val fileUri = FileProvider.getUriForFile(
-                      context,
-                      "${context.packageName}.provider",
-                      file,
-                    )
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                      type = "text/plain"
-                      putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
-                      putExtra(android.content.Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
-                      addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+              result
+                .onSuccess { textContent ->
+                  val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}.txt"
+                  val file = File(context.cacheDir, fileName)
+                  runCatching { file.writeText(textContent) }
+                    .onSuccess {
+                      val fileUri =
+                        FileProvider.getUriForFile(
+                          context,
+                          "${context.packageName}.provider",
+                          file,
+                        )
+                      val intent =
+                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                          type = "text/plain"
+                          putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
+                          putExtra(android.content.Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
+                          addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                      context.startActivity(
+                        android.content.Intent.createChooser(
+                          intent,
+                          "Media Info - ${video.displayName}",
+                        ),
+                      )
+                    }.onFailure { e ->
+                      Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
                     }
-                    context.startActivity(
-                      android.content.Intent.createChooser(
-                        intent,
-                        "Media Info - ${video.displayName}",
-                      ),
-                    )
-                  }
-                  .onFailure { e ->
-                    Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
-                  }
-              }.onFailure { e ->
-                Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
-              }
+                }.onFailure { e ->
+                  Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
+                }
             }
           },
           onCopy = {
             val video = videoForShare ?: return@DialogFooter
             scope.launch {
               val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
-              result.onSuccess { textContent ->
-                val clipboard =
-                  context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("Media Info - ${video.displayName}", textContent)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-              }.onFailure { e ->
-                Toast.makeText(context, e.message ?: "Failed to copy", Toast.LENGTH_SHORT).show()
-              }
+              result
+                .onSuccess { textContent ->
+                  val clipboard =
+                    context.getSystemService(
+                      android.content.Context.CLIPBOARD_SERVICE,
+                    ) as android.content.ClipboardManager
+                  val clip = android.content.ClipData.newPlainText("Media Info - ${video.displayName}", textContent)
+                  clipboard.setPrimaryClip(clip)
+                  Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                }.onFailure { e ->
+                  Toast.makeText(context, e.message ?: "Failed to copy", Toast.LENGTH_SHORT).show()
+                }
             }
           },
           onDismiss = onDismiss,
@@ -203,9 +209,10 @@ private fun DialogContent(
 @Composable
 private fun LoadingState() {
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(32.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(32.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     CircularProgressIndicator()
@@ -236,9 +243,10 @@ private fun DialogFooter(
   onDismiss: () -> Unit,
 ) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 8.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -269,11 +277,12 @@ private fun DialogFooter(
 @Composable
 private fun MediaInfoContent(mediaInfo: MediaInfoOps.MediaInfoData) {
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .height(500.dp)
-      .verticalScroll(rememberScrollState())
-      .padding(4.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .height(500.dp)
+        .verticalScroll(rememberScrollState())
+        .padding(4.dp),
   ) {
     StreamInfoSection(
       title = "General",
@@ -433,9 +442,10 @@ private fun InfoRow(
   if (value.isEmpty()) return
 
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(vertical = 3.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(vertical = 3.dp),
   ) {
     Text(
       "$label:",

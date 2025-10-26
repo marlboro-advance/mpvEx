@@ -10,12 +10,17 @@ object MediaInfoOps {
   /**
    * Extract detailed media information from a video file
    */
-  suspend fun getMediaInfo(context: Context, uri: Uri, fileName: String): Result<MediaInfoData> =
+  suspend fun getMediaInfo(
+    context: Context,
+    uri: Uri,
+    fileName: String,
+  ): Result<MediaInfoData> =
     withContext(Dispatchers.IO) {
       runCatching {
         val contentResolver = context.contentResolver
-        val pfd = contentResolver.openFileDescriptor(uri, "r")
-          ?: return@runCatching MediaInfoData.empty()
+        val pfd =
+          contentResolver.openFileDescriptor(uri, "r")
+            ?: return@runCatching MediaInfoData.empty()
 
         val fd = pfd.detachFd()
         val mi = MediaInfo()
@@ -44,12 +49,17 @@ object MediaInfoOps {
   /**
    * Generate formatted text output from MediaInfoData using native MediaInfo Text format
    */
-  suspend fun generateTextOutput(context: Context, uri: Uri, fileName: String): Result<String> =
+  suspend fun generateTextOutput(
+    context: Context,
+    uri: Uri,
+    fileName: String,
+  ): Result<String> =
     withContext(Dispatchers.IO) {
       runCatching {
         val contentResolver = context.contentResolver
-        val pfd = contentResolver.openFileDescriptor(uri, "r")
-          ?: return@runCatching "Error: Could not open file"
+        val pfd =
+          contentResolver.openFileDescriptor(uri, "r")
+            ?: return@runCatching "Error: Could not open file"
 
         val fd = pfd.detachFd()
         val mi = MediaInfo()
@@ -87,8 +97,8 @@ object MediaInfoOps {
     parameter: String,
   ): String = Get(stream, index, parameter)
 
-  private fun extractGeneralInfo(mi: MediaInfo): GeneralInfo {
-    return GeneralInfo(
+  private fun extractGeneralInfo(mi: MediaInfo): GeneralInfo =
+    GeneralInfo(
       completeName = mi.getInfo(MediaInfo.Stream.General, 0, "CompleteName"),
       format = mi.getInfo(MediaInfo.Stream.General, 0, "Format"),
       formatVersion = mi.getInfo(MediaInfo.Stream.General, 0, "Format_Version"),
@@ -101,7 +111,6 @@ object MediaInfoOps {
       writingApplication = mi.getInfo(MediaInfo.Stream.General, 0, "Encoded_Application/String"),
       writingLibrary = mi.getInfo(MediaInfo.Stream.General, 0, "Encoded_Library/String"),
     )
-  }
 
   private fun extractVideoStreams(mi: MediaInfo): List<VideoStreamInfo> {
     val count = mi.Count_Get(MediaInfo.Stream.Video)
@@ -191,12 +200,13 @@ object MediaInfoOps {
     val textStreams: List<TextStreamInfo>,
   ) {
     companion object {
-      fun empty() = MediaInfoData(
-        general = GeneralInfo(),
-        videoStreams = emptyList(),
-        audioStreams = emptyList(),
-        textStreams = emptyList(),
-      )
+      fun empty() =
+        MediaInfoData(
+          general = GeneralInfo(),
+          videoStreams = emptyList(),
+          audioStreams = emptyList(),
+          textStreams = emptyList(),
+        )
     }
   }
 

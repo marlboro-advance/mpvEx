@@ -346,14 +346,15 @@ class PlayerViewModel(
   private fun coalesceSeek(offset: Int) {
     pendingSeekOffset += offset
     seekCoalesceJob?.cancel()
-    seekCoalesceJob = viewModelScope.launch {
-      delay(seekCoalesceDelayMs)
-      val toApply = pendingSeekOffset
-      pendingSeekOffset = 0
-      if (toApply != 0) {
-        MPVLib.command("seek", toApply.toString(), "relative+exact")
+    seekCoalesceJob =
+      viewModelScope.launch {
+        delay(seekCoalesceDelayMs)
+        val toApply = pendingSeekOffset
+        pendingSeekOffset = 0
+        if (toApply != 0) {
+          MPVLib.command("seek", toApply.toString(), "relative+exact")
+        }
       }
-    }
   }
 
   fun changeBrightnessTo(brightness: Float) {
@@ -443,9 +444,7 @@ class PlayerViewModel(
     playerUpdate.update { PlayerUpdates.AspectRatio }
   }
 
-  fun getCurrentAspectRatio(): Double? {
-    return MPVLib.getPropertyDouble("video-aspect-override")
-  }
+  fun getCurrentAspectRatio(): Double? = MPVLib.getPropertyDouble("video-aspect-override")
 
   fun restoreCustomAspectRatio() {
     val savedRatio = playerPreferences.currentAspectRatio.get()

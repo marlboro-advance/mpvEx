@@ -175,12 +175,12 @@ data class VideoListScreen(
                 mediaInfoData.value = null
 
                 coroutineScope.launch {
-                  MediaInfoOps.getMediaInfo(context, video.uri, video.displayName)
+                  MediaInfoOps
+                    .getMediaInfo(context, video.uri, video.displayName)
                     .onSuccess { info ->
                       mediaInfoData.value = info
                       mediaInfoLoading.value = false
-                    }
-                    .onFailure { error ->
+                    }.onFailure { error ->
                       mediaInfoError.value = error.message ?: "Unknown error"
                       mediaInfoLoading.value = false
                     }

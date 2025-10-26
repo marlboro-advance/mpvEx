@@ -64,8 +64,7 @@ fun FolderCard(
           .fillMaxWidth()
           .background(
             if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f) else Color.Transparent,
-          )
-          .padding(16.dp),
+          ).padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
@@ -111,8 +110,7 @@ fun FolderCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
           if (folder.totalDuration > 0) {
@@ -125,8 +123,7 @@ fun FolderCard(
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                     RoundedCornerShape(8.dp),
-                  )
-                  .padding(horizontal = 8.dp, vertical = 4.dp),
+                  ).padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
           }

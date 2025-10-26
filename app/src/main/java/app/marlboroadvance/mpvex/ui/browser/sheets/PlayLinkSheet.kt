@@ -89,10 +89,11 @@ fun PlayLinkSheet(
     modifier = modifier,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 24.dp, vertical = 16.dp)
-        .verticalScroll(rememberScrollState()),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 24.dp, vertical = 16.dp)
+          .verticalScroll(rememberScrollState()),
     ) {
       Text(
         text = "Play Link",

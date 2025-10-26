@@ -141,8 +141,7 @@ object AboutScreen : Screen {
                         ),
                     )
                   }
-                }
-                .padding(20.dp),
+                }.padding(20.dp),
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {

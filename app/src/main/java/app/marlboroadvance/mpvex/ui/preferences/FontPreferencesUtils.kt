@@ -80,9 +80,7 @@ data class CustomFontEntry(
  * Loads custom fonts (family name + file) from the app's internal fonts directory for previews.
  * Returns one entry per family name (first match kept if duplicates exist).
  */
-suspend fun loadCustomFontEntries(
-  context: Context,
-): List<CustomFontEntry> =
+suspend fun loadCustomFontEntries(context: Context): List<CustomFontEntry> =
   withContext(Dispatchers.IO) {
     val fontsDir = File(context.filesDir, "fonts")
     if (!fontsDir.exists()) return@withContext emptyList()

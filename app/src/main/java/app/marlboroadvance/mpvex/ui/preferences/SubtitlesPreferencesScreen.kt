@@ -400,4 +400,3 @@ object SubtitlesPreferencesScreen : Screen {
     }
   }
 }
-

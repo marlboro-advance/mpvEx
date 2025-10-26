@@ -39,8 +39,7 @@ class RecentlyPlayedRepositoryImpl(
   override suspend fun getRecentlyPlayedBySource(
     launchSource: String,
     limit: Int,
-  ): List<RecentlyPlayedEntity> =
-    recentlyPlayedDao.getRecentlyPlayedBySource(launchSource, limit)
+  ): List<RecentlyPlayedEntity> = recentlyPlayedDao.getRecentlyPlayedBySource(launchSource, limit)
 
   override suspend fun clearAll() {
     recentlyPlayedDao.clearAll()
@@ -50,7 +49,11 @@ class RecentlyPlayedRepositoryImpl(
     recentlyPlayedDao.deleteByFilePath(filePath)
   }
 
-  override suspend fun updateFilePath(oldPath: String, newPath: String, newFileName: String) {
+  override suspend fun updateFilePath(
+    oldPath: String,
+    newPath: String,
+    newFileName: String,
+  ) {
     recentlyPlayedDao.updateFilePath(oldPath, newPath, newFileName)
   }
 }

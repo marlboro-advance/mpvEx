@@ -31,28 +31,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
-import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
-import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
-import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
+import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
-import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
-import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
-import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
@@ -138,12 +138,16 @@ object FolderListScreen : Screen {
 
     // Effects
     LaunchedEffect(Unit) {
-      hasRecentlyPlayed = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.hasRecentlyPlayed()
+      hasRecentlyPlayed =
+        app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+          .hasRecentlyPlayed()
     }
 
     LaunchedEffect(fabMenuExpanded) {
       if (fabMenuExpanded) {
-        hasRecentlyPlayed = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.hasRecentlyPlayed()
+        hasRecentlyPlayed =
+          app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+            .hasRecentlyPlayed()
       }
     }
 
@@ -196,7 +200,8 @@ object FolderListScreen : Screen {
           onOpenFile = { filePicker.launch(arrayOf("video/*")) },
           onPlayRecentlyPlayed = {
             coroutineScope.launch {
-              app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayed()
+              app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+                .getLastPlayed()
                 ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
             }
           },

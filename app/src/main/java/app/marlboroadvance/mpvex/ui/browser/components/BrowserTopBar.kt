@@ -270,11 +270,12 @@ private fun SelectionTopBar(
             Icons.Filled.DriveFileRenameOutline,
             contentDescription = "Rename",
             modifier = Modifier.size(24.dp),
-            tint = if (isSingleSelection) {
-              MaterialTheme.colorScheme.secondary
-            } else {
-              MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            },
+            tint =
+              if (isSingleSelection) {
+                MaterialTheme.colorScheme.secondary
+              } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+              },
           )
         }
       }
@@ -290,11 +291,12 @@ private fun SelectionTopBar(
             Icons.Filled.Info,
             contentDescription = "Info",
             modifier = Modifier.size(24.dp),
-            tint = if (isSingleSelection) {
-              MaterialTheme.colorScheme.secondary
-            } else {
-              MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            },
+            tint =
+              if (isSingleSelection) {
+                MaterialTheme.colorScheme.secondary
+              } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+              },
           )
         }
       }

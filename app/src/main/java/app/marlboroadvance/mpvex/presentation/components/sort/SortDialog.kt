@@ -55,9 +55,10 @@ fun SortDialog(
           onSortTypeChange = onSortTypeChange,
           types = types,
           icons = icons,
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(top = 8.dp),
         )
         Spacer(modifier = Modifier.height(12.dp))
         SortOrderSelector(
@@ -104,22 +105,24 @@ private fun SortTypeSelector(
             Modifier
               .size(56.dp)
               .background(
-                color = if (selected) {
-                  MaterialTheme.colorScheme.primaryContainer
-                } else {
-                  MaterialTheme.colorScheme.surfaceContainer
-                },
+                color =
+                  if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                  } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                  },
                 shape = RoundedCornerShape(28.dp),
               ),
         ) {
           Icon(
             imageVector = icons[index],
             contentDescription = type,
-            tint = if (selected) {
-              MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            tint =
+              if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
             modifier = Modifier.size(24.dp),
           )
         }
@@ -127,11 +130,12 @@ private fun SortTypeSelector(
         Text(
           text = type,
           style = MaterialTheme.typography.bodySmall,
-          color = if (selected) {
-            MaterialTheme.colorScheme.onSurface
-          } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-          },
+          color =
+            if (selected) {
+              MaterialTheme.colorScheme.onSurface
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
         )
       }
     }

@@ -11,8 +11,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.utils.permission.PermissionUtils.StoragePermissionHandler
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils.StoragePermissionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -95,9 +95,10 @@ class SelectionManager<T, ID>(
       if (permissionHandler != null && selected.first() is Video) {
         @Suppress("UNCHECKED_CAST")
         val videos = selected as List<Video>
-        val handled = permissionHandler.handleDelete(videos) {
-          performDelete(selected)
-        }
+        val handled =
+          permissionHandler.handleDelete(videos) {
+            performDelete(selected)
+          }
 
         // If permission request was launched, store the pending operation
         if (!handled) {
@@ -128,13 +129,14 @@ class SelectionManager<T, ID>(
     scope.launch {
       if (permissionHandler != null && item is Video) {
         @Suppress("UNCHECKED_CAST")
-        val handled = permissionHandler.handleRename(
-          video = item as Video,
-          newName = newName,
-          onDirectRename = {
-            onRenameItem(item, newName)
-          },
-        )
+        val handled =
+          permissionHandler.handleRename(
+            video = item as Video,
+            newName = newName,
+            onDirectRename = {
+              onRenameItem(item, newName)
+            },
+          )
 
         // If permission request was launched, store the pending operation
         if (!handled) {
@@ -166,16 +168,16 @@ class SelectionManager<T, ID>(
     scope.launch {
       // After permission is granted, try the operation again
       if (permissionHandler != null && item is Video) {
-        @Suppress("UNCHECKED_CAST")
-
         // Store the result from the rename operation
-        val handled = permissionHandler.handleRename(
-          video = item as Video,
-          newName = newName,
-          onDirectRename = {
-            onRenameItem(item, newName)
-          },
-        )
+        @Suppress("UNCHECKED_CAST")
+        val handled =
+          permissionHandler.handleRename(
+            video = item as Video,
+            newName = newName,
+            onDirectRename = {
+              onRenameItem(item, newName)
+            },
+          )
 
         // If handled directly, show appropriate message
         if (handled) {

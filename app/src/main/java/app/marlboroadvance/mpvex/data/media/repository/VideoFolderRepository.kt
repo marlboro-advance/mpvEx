@@ -20,29 +20,30 @@ object VideoFolderRepository {
     Environment.getExternalStorageDirectory().path
   }
 
-  suspend fun getVideoFolders(context: Context): List<VideoFolder> = withContext(Dispatchers.IO) {
-    Log.d(Tag, "Starting video folder scan")
-    val folders = mutableMapOf<String, VideoFolderInfo>()
+  suspend fun getVideoFolders(context: Context): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      Log.d(Tag, "Starting video folder scan")
+      val folders = mutableMapOf<String, VideoFolderInfo>()
 
-    val projection = getProjection()
-    val cursor: Cursor? =
-      context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        null,
-        null,
-        "${MediaStore.Video.Media.DATE_MODIFIED} DESC",
-      )
+      val projection = getProjection()
+      val cursor: Cursor? =
+        context.contentResolver.query(
+          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          null,
+          null,
+          "${MediaStore.Video.Media.DATE_MODIFIED} DESC",
+        )
 
-    cursor?.use { c ->
-      processFolderCursor(c, folders)
+      cursor?.use { c ->
+        processFolderCursor(c, folders)
+      }
+
+      Log.d(Tag, "Finished video folder scan")
+      val result = convertToVideoFolderList(folders)
+      Log.d(Tag, "Found ${result.size} folders")
+      result
     }
-
-    Log.d(Tag, "Finished video folder scan")
-    val result = convertToVideoFolderList(folders)
-    Log.d(Tag, "Found ${result.size} folders")
-    result
-  }
 
   /**
    * Normalizes file system paths to ensure consistency and avoid duplicates.

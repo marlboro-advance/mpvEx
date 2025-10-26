@@ -62,27 +62,28 @@ object VideoRepository {
   suspend fun getVideosInFolder(
     context: Context,
     bucketId: String,
-  ): List<Video> = withContext(Dispatchers.IO) {
-    Log.d(TAG, "Starting to query videos for bucket: $bucketId")
-    val videos = mutableListOf<Video>()
-    val processedPaths = mutableSetOf<String>()
+  ): List<Video> =
+    withContext(Dispatchers.IO) {
+      Log.d(TAG, "Starting to query videos for bucket: $bucketId")
+      val videos = mutableListOf<Video>()
+      val processedPaths = mutableSetOf<String>()
 
-    try {
-      // Try MediaStore bucket ID query
-      queryMediaStoreBucket(context, bucketId, videos, processedPaths)
+      try {
+        // Try MediaStore bucket ID query
+        queryMediaStoreBucket(context, bucketId, videos, processedPaths)
 
-      // If no results, try folder path hash matching
-      if (videos.isEmpty()) {
-        Log.d(TAG, "No videos with bucket ID, trying to match by folder path hash")
-        queryAllVideosWithBucketFilter(context, bucketId, videos, processedPaths)
+        // If no results, try folder path hash matching
+        if (videos.isEmpty()) {
+          Log.d(TAG, "No videos with bucket ID, trying to match by folder path hash")
+          queryAllVideosWithBucketFilter(context, bucketId, videos, processedPaths)
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error querying videos for bucket $bucketId", e)
       }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error querying videos for bucket $bucketId", e)
-    }
 
-    Log.d(TAG, "Returning ${videos.size} videos (${processedPaths.size} unique paths)")
-    videos
-  }
+      Log.d(TAG, "Returning ${videos.size} videos (${processedPaths.size} unique paths)")
+      videos
+    }
 
   private fun queryMediaStoreBucket(
     context: Context,
@@ -296,11 +297,12 @@ object VideoRepository {
   suspend fun getVideosForBuckets(
     context: Context,
     bucketIds: Set<String>,
-  ): List<Video> = withContext(Dispatchers.IO) {
-    val result = mutableListOf<Video>()
-    for (id in bucketIds) {
-      runCatching { result += getVideosInFolder(context, id) }
+  ): List<Video> =
+    withContext(Dispatchers.IO) {
+      val result = mutableListOf<Video>()
+      for (id in bucketIds) {
+        runCatching { result += getVideosInFolder(context, id) }
+      }
+      result
     }
-    result
-  }
 }

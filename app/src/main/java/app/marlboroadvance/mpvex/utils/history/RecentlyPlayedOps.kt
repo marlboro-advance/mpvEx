@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.utils.history
 
+import android.net.Uri
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -9,7 +10,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
-import android.net.Uri
 
 /**
  * Single source of truth for all recently played operations.
@@ -83,9 +83,7 @@ object RecentlyPlayedOps {
    *
    * @return True if there's a recently played file that exists
    */
-  suspend fun hasRecentlyPlayed(): Boolean {
-    return withContext(Dispatchers.IO) { getLastPlayed() != null }
-  }
+  suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) { getLastPlayed() != null }
 
   // ========== FLOW OPERATIONS (for UI observing) ==========
 
@@ -101,9 +99,14 @@ object RecentlyPlayedOps {
       .observeLastPlayedForHighlight()
       .mapLatest { entity ->
         val path = entity?.filePath
-        if (path.isNullOrEmpty()) null else if (fileExists(path)) path else null
-      }
-      .distinctUntilChanged()
+        if (path.isNullOrEmpty()) {
+          null
+        } else if (fileExists(path)) {
+          path
+        } else {
+          null
+        }
+      }.distinctUntilChanged()
       .flowOn(Dispatchers.IO)
 
   // ========== MAINTENANCE OPERATIONS ==========
@@ -122,7 +125,9 @@ object RecentlyPlayedOps {
       } else if (!fileExists(path)) {
         kotlin.runCatching { repository.deleteByFilePath(last.filePath) }
         true
-      } else false
+      } else {
+        false
+      }
     }
   }
 
@@ -146,7 +151,10 @@ object RecentlyPlayedOps {
    * @param oldPath The original file path
    * @param newPath The new file path after renaming
    */
-  suspend fun onVideoRenamed(oldPath: String, newPath: String) {
+  suspend fun onVideoRenamed(
+    oldPath: String,
+    newPath: String,
+  ) {
     // Extract the new filename from the new path
     val newFileName = java.io.File(newPath).name
     kotlin.runCatching {
@@ -160,21 +168,23 @@ object RecentlyPlayedOps {
    * Check if a file exists on the filesystem
    */
   private fun fileExists(path: String): Boolean =
-    kotlin.runCatching {
-      val uri = Uri.parse(path)
-      val scheme = uri.scheme
-      // Treat non-file schemes (http, https, rtsp, rtmp, content, etc.) as valid and non-prunable
-      if (scheme == null || scheme.equals("file", ignoreCase = true)) {
-        java.io.File(path).exists()
-      } else {
-        // Non-file schemes are not checked against filesystem
-        true
-      }
-    }.getOrDefault(false)
+    kotlin
+      .runCatching {
+        val uri = Uri.parse(path)
+        val scheme = uri.scheme
+        // Treat non-file schemes (http, https, rtsp, rtmp, content, etc.) as valid and non-prunable
+        if (scheme == null || scheme.equals("file", ignoreCase = true)) {
+          java.io.File(path).exists()
+        } else {
+          // Non-file schemes are not checked against filesystem
+          true
+        }
+      }.getOrDefault(false)
 
   private fun isNonFileUri(path: String): Boolean =
-    kotlin.runCatching {
-      val scheme = Uri.parse(path).scheme
-      scheme != null && !scheme.equals("file", ignoreCase = true)
-    }.getOrDefault(false)
+    kotlin
+      .runCatching {
+        val scheme = Uri.parse(path).scheme
+        scheme != null && !scheme.equals("file", ignoreCase = true)
+      }.getOrDefault(false)
 }

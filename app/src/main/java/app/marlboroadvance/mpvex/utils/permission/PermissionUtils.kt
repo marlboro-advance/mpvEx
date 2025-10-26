@@ -2,17 +2,17 @@ package app.marlboroadvance.mpvex.utils.permission
 
 import android.app.Activity
 import android.app.RecoverableSecurityException
-import android.content.Context
 import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Context
 import android.content.IntentSender
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -178,7 +178,9 @@ object PermissionUtils {
               // Keep recently played clean when an item is deleted
               withContext(Dispatchers.IO) { RecentlyPlayedOps.onVideoDeleted(video.path) }
             }
-          } else failed++
+          } else {
+            failed++
+          }
         } catch (t: Throwable) {
           Log.e(TAG, "Failed to delete ${video.displayName}", t)
           try {
@@ -188,7 +190,9 @@ object PermissionUtils {
               kotlin.runCatching {
                 withContext(Dispatchers.IO) { RecentlyPlayedOps.onVideoDeleted(video.path) }
               }
-            } else failed++
+            } else {
+              failed++
+            }
           } catch (_: Throwable) {
             failed++
           }
@@ -229,8 +233,8 @@ object PermissionUtils {
       context: Context,
       video: Video,
       newDisplayName: String,
-    ): Result<Unit> {
-      return try {
+    ): Result<Unit> =
+      try {
         val values = ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, newDisplayName) }
         val rows = context.contentResolver.update(video.uri, values, null, null)
         if (rows > 0) {
@@ -244,17 +248,19 @@ object PermissionUtils {
           if (oldFile.exists() && oldFile.renameTo(target)) {
             RecentlyPlayedOps.onVideoRenamed(oldFile.absolutePath, target.absolutePath)
             Result.success(Unit)
-          } else Result.failure(IllegalStateException("Rename failed"))
+          } else {
+            Result.failure(IllegalStateException("Rename failed"))
+          }
         }
       } catch (t: Throwable) {
         Result.failure(t)
       }
-    }
   }
 
   // --------------------------------------------------------------------------
   // Scoped permission handler (delete/rename flows)
   // --------------------------------------------------------------------------
+
   /**
    * Scoped-storage aware handler for delete/rename flows.
    * Ensures operations remain Play-compliant by using MediaStore APIs on Q+.
@@ -273,27 +279,31 @@ object PermissionUtils {
     suspend fun handleDelete(
       videos: List<Video>,
       onDirectDelete: suspend () -> Unit,
-    ): Boolean = withContext(Dispatchers.Main) {
-      when {
-        // Android Q+ - use MediaStore delete request
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-          val deleteRequest = StorageOps.createDeleteRequest(
-            context.contentResolver,
-            videos.map { it.uri },
-          )
-          if (deleteRequest != null) {
-            launchers.deleteLauncher(IntentSenderRequest.Builder(deleteRequest).build())
-            false
-          } else {
-            onDirectDelete(); true
+    ): Boolean =
+      withContext(Dispatchers.Main) {
+        when {
+          // Android Q+ - use MediaStore delete request
+          Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+            val deleteRequest =
+              StorageOps.createDeleteRequest(
+                context.contentResolver,
+                videos.map { it.uri },
+              )
+            if (deleteRequest != null) {
+              launchers.deleteLauncher(IntentSenderRequest.Builder(deleteRequest).build())
+              false
+            } else {
+              onDirectDelete()
+              true
+            }
+          }
+
+          else -> {
+            onDirectDelete()
+            true
           }
         }
-
-        else -> {
-          onDirectDelete(); true
-        }
       }
-    }
 
     /**
      * Attempts to rename a single [video] to [newName]. On Android Q+ this will surface a
@@ -307,11 +317,12 @@ object PermissionUtils {
       newName: String,
       onDirectRename: suspend () -> Result<Unit>,
       onRecoverableSecurity: (RecoverableSecurityException) -> Unit = {},
-    ): Boolean = withContext(Dispatchers.Main) {
-      // Always try direct rename first. If a RecoverableSecurityException occurs, we
-      // will surface the system sheet inside handleDirectRename and return false.
-      handleDirectRename(onDirectRename, onRecoverableSecurity)
-    }
+    ): Boolean =
+      withContext(Dispatchers.Main) {
+        // Always try direct rename first. If a RecoverableSecurityException occurs, we
+        // will surface the system sheet inside handleDirectRename and return false.
+        handleDirectRename(onDirectRename, onRecoverableSecurity)
+      }
 
     /**
      * Tries the provided [onDirectRename] and maps RecoverableSecurityException into a

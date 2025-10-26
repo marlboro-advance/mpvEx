@@ -42,7 +42,10 @@ interface RecentlyPlayedDao {
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 
   @Query("SELECT * FROM RecentlyPlayedEntity WHERE launchSource = :launchSource ORDER BY timestamp DESC LIMIT :limit")
-  suspend fun getRecentlyPlayedBySource(launchSource: String, limit: Int = 10): List<RecentlyPlayedEntity>
+  suspend fun getRecentlyPlayedBySource(
+    launchSource: String,
+    limit: Int = 10,
+  ): List<RecentlyPlayedEntity>
 
   @Query("DELETE FROM RecentlyPlayedEntity")
   suspend fun clearAll()
@@ -54,5 +57,9 @@ interface RecentlyPlayedDao {
   suspend fun deleteByFilePath(filePath: String)
 
   @Query("UPDATE RecentlyPlayedEntity SET filePath = :newPath, fileName = :newFileName WHERE filePath = :oldPath")
-  suspend fun updateFilePath(oldPath: String, newPath: String, newFileName: String)
+  suspend fun updateFilePath(
+    oldPath: String,
+    newPath: String,
+    newFileName: String,
+  )
 }

@@ -60,11 +60,12 @@ fun VideoCard(
         Modifier
           .fillMaxWidth()
           .background(
-            if (isSelected)
+            if (isSelected) {
               MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
-            else Color.Transparent,
-          )
-          .padding(12.dp),
+            } else {
+              Color.Transparent
+            },
+          ).padding(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
@@ -103,8 +104,7 @@ fun VideoCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
           Spacer(modifier = Modifier.width(4.dp))
@@ -116,8 +116,7 @@ fun VideoCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                )
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
         }

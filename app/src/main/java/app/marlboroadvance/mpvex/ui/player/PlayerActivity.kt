@@ -1427,7 +1427,9 @@ class PlayerActivity :
               if (cursor.moveToFirst()) {
                 val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
                 if (columnIndex != -1) cursor.getString(columnIndex) else null
-              } else null
+              } else {
+                null
+              }
             }
         }
 
@@ -1442,9 +1444,10 @@ class PlayerActivity :
     val dir = videoFile.parentFile ?: return
 
     val validExtensions = setOf("srt", "ass", "ssa", "vtt", "sub", "idx")
-    val matchingSubs = dir.listFiles()?.filter { f ->
-      f.isFile && f.extension.lowercase() in validExtensions && f.nameWithoutExtension == baseName
-    } ?: emptyList()
+    val matchingSubs =
+      dir.listFiles()?.filter { f ->
+        f.isFile && f.extension.lowercase() in validExtensions && f.nameWithoutExtension == baseName
+      } ?: emptyList()
 
     if (matchingSubs.isEmpty()) return
 

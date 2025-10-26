@@ -180,10 +180,11 @@ object MediaUtils {
    */
   @Deprecated(
     message = "Use RecentlyPlayedOps.getLastPlayed() directly",
-    replaceWith = ReplaceWith(
-      "RecentlyPlayedOps.getLastPlayed()",
-      "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
-    ),
+    replaceWith =
+      ReplaceWith(
+        "RecentlyPlayedOps.getLastPlayed()",
+        "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
+      ),
   )
   suspend fun getRecentlyPlayedFile(): String? = RecentlyPlayedOps.getLastPlayed()
 
@@ -195,10 +196,11 @@ object MediaUtils {
    */
   @Deprecated(
     message = "Use RecentlyPlayedOps.hasRecentlyPlayed() directly",
-    replaceWith = ReplaceWith(
-      "RecentlyPlayedOps.hasRecentlyPlayed()",
-      "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
-    ),
+    replaceWith =
+      ReplaceWith(
+        "RecentlyPlayedOps.hasRecentlyPlayed()",
+        "app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps",
+      ),
   )
   suspend fun hasRecentlyPlayedFile(): Boolean = RecentlyPlayedOps.hasRecentlyPlayed()
 
@@ -243,7 +245,10 @@ object MediaUtils {
    * @param context Android context for launching the share intent
    * @param videos List of Video objects to share (must not be empty)
    */
-  fun shareVideos(context: Context, videos: List<Video>) {
+  fun shareVideos(
+    context: Context,
+    videos: List<Video>,
+  ) {
     if (videos.isEmpty()) return
 
     val intent =
