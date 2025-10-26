@@ -93,11 +93,10 @@ object FolderListScreen : Screen {
       }
 
     // Storage operation launchers
-    val launchers =
-      PermissionUtils.rememberStorageOperationLaunchers(
-        onDeleteSuccess = { viewModel.refresh() },
-        onWriteSuccess = { viewModel.refresh() },
-      )
+    PermissionUtils.rememberStorageOperationLaunchers(
+      onDeleteSuccess = { viewModel.refresh() },
+      onWriteSuccess = { viewModel.refresh() },
+    )
 
     // Selection manager (no permission handler for folders as they use different logic)
     val selectionManager =

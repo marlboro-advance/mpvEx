@@ -563,7 +563,7 @@ private suspend fun takeSnapshot(context: Context) {
           ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
         if (!hasPermission) {
-          withContext(kotlinx.coroutines.Dispatchers.Main) {
+          withContext(Dispatchers.Main) {
             Toast
               .makeText(
                 context,
@@ -590,7 +590,7 @@ private suspend fun takeSnapshot(context: Context) {
 
       // Check if file was created
       if (!tempFile.exists() || tempFile.length() == 0L) {
-        withContext(kotlinx.coroutines.Dispatchers.Main) {
+        withContext(Dispatchers.Main) {
           Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
         }
         return@withContext
@@ -634,7 +634,7 @@ private suspend fun takeSnapshot(context: Context) {
           tempFile.delete()
 
           // Show success toast
-          withContext(kotlinx.coroutines.Dispatchers.Main) {
+          withContext(Dispatchers.Main) {
             Toast
               .makeText(
                 context,
@@ -670,7 +670,7 @@ private suspend fun takeSnapshot(context: Context) {
         mediaScanIntent.data = android.net.Uri.fromFile(destFile)
         context.sendBroadcast(mediaScanIntent)
 
-        withContext(kotlinx.coroutines.Dispatchers.Main) {
+        withContext(Dispatchers.Main) {
           Toast
             .makeText(
               context,
@@ -680,7 +680,7 @@ private suspend fun takeSnapshot(context: Context) {
         }
       }
     } catch (e: Exception) {
-      withContext(kotlinx.coroutines.Dispatchers.Main) {
+      withContext(Dispatchers.Main) {
         Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
       }
     }

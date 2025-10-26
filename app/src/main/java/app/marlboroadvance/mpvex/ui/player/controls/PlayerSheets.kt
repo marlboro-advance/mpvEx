@@ -180,26 +180,26 @@ fun PlayerSheets(
           }
         }
 
-      app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AspectRatioSheet(
-        currentRatio = currentRatio.toDouble(),
-        customRatios = customRatios,
-        onSelectRatio = { ratio ->
-          viewModel.setCustomAspectRatio(ratio)
-        },
-        onAddCustomRatio = { label, ratio ->
-          playerPreferences.customAspectRatios.set(customRatiosSet + "$label|$ratio")
-          viewModel.setCustomAspectRatio(ratio)
-        },
-        onDeleteCustomRatio = { ratio ->
-          val toRemove = "${ratio.label}|${ratio.ratio}"
-          playerPreferences.customAspectRatios.set(customRatiosSet - toRemove)
-          // If the deleted ratio is currently active, reset to default
-          if (kotlin.math.abs(currentRatio - ratio.ratio) < 0.01) {
-            viewModel.setCustomAspectRatio(-1.0)
-          }
-        },
-        onDismissRequest = onDismissRequest,
-      )
+        AspectRatioSheet(
+          currentRatio = currentRatio.toDouble(),
+          customRatios = customRatios,
+          onSelectRatio = { ratio ->
+            viewModel.setCustomAspectRatio(ratio)
+          },
+          onAddCustomRatio = { label, ratio ->
+            playerPreferences.customAspectRatios.set(customRatiosSet + "$label|$ratio")
+            viewModel.setCustomAspectRatio(ratio)
+          },
+          onDeleteCustomRatio = { ratio ->
+            val toRemove = "${ratio.label}|${ratio.ratio}"
+            playerPreferences.customAspectRatios.set(customRatiosSet - toRemove)
+            // If the deleted ratio is currently active, reset to default
+            if (kotlin.math.abs(currentRatio - ratio.ratio) < 0.01) {
+              viewModel.setCustomAspectRatio(-1.0)
+            }
+          },
+          onDismissRequest = onDismissRequest,
+        )
     }
   }
 }

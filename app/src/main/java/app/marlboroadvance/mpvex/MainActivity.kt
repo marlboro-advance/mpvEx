@@ -41,7 +41,6 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
-      val highContrast by appearancePreferences.highContrastMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
       val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
       enableEdgeToEdge(
