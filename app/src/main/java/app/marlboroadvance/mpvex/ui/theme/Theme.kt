@@ -176,45 +176,6 @@ private val highContrastLightColorScheme =
     surfaceContainerHighest = surfaceContainerHighestLightHighContrast,
   )
 
-private val mediumContrastDarkColorScheme =
-  darkColorScheme(
-    primary = primaryDarkMediumContrast,
-    onPrimary = onPrimaryDarkMediumContrast,
-    primaryContainer = primaryContainerDarkMediumContrast,
-    onPrimaryContainer = onPrimaryContainerDarkMediumContrast,
-    secondary = secondaryDarkMediumContrast,
-    onSecondary = onSecondaryDarkMediumContrast,
-    secondaryContainer = secondaryContainerDarkMediumContrast,
-    onSecondaryContainer = onSecondaryContainerDarkMediumContrast,
-    tertiary = tertiaryDarkMediumContrast,
-    onTertiary = onTertiaryDarkMediumContrast,
-    tertiaryContainer = tertiaryContainerDarkMediumContrast,
-    onTertiaryContainer = onTertiaryContainerDarkMediumContrast,
-    error = errorDarkMediumContrast,
-    onError = onErrorDarkMediumContrast,
-    errorContainer = errorContainerDarkMediumContrast,
-    onErrorContainer = onErrorContainerDarkMediumContrast,
-    background = backgroundDarkMediumContrast,
-    onBackground = onBackgroundDarkMediumContrast,
-    surface = surfaceDarkMediumContrast,
-    onSurface = onSurfaceDarkMediumContrast,
-    surfaceVariant = surfaceVariantDarkMediumContrast,
-    onSurfaceVariant = onSurfaceVariantDarkMediumContrast,
-    outline = outlineDarkMediumContrast,
-    outlineVariant = outlineVariantDarkMediumContrast,
-    scrim = scrimDarkMediumContrast,
-    inverseSurface = inverseSurfaceDarkMediumContrast,
-    inverseOnSurface = inverseOnSurfaceDarkMediumContrast,
-    inversePrimary = inversePrimaryDarkMediumContrast,
-    surfaceDim = surfaceDimDarkMediumContrast,
-    surfaceBright = surfaceBrightDarkMediumContrast,
-    surfaceContainerLowest = surfaceContainerLowestDarkMediumContrast,
-    surfaceContainerLow = surfaceContainerLowDarkMediumContrast,
-    surfaceContainer = surfaceContainerDarkMediumContrast,
-    surfaceContainerHigh = surfaceContainerHighDarkMediumContrast,
-    surfaceContainerHighest = surfaceContainerHighestDarkMediumContrast,
-  )
-
 private val highContrastDarkColorScheme =
   darkColorScheme(
     primary = primaryDarkHighContrast,
@@ -254,10 +215,89 @@ private val highContrastDarkColorScheme =
     surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
   )
 
+private val mediumContrastDarkColorScheme =
+  darkColorScheme(
+    primary = primaryDarkMediumContrast,
+    onPrimary = onPrimaryDarkMediumContrast,
+    primaryContainer = primaryContainerDarkMediumContrast,
+    onPrimaryContainer = onPrimaryContainerDarkMediumContrast,
+    secondary = secondaryDarkMediumContrast,
+    onSecondary = onSecondaryDarkMediumContrast,
+    secondaryContainer = secondaryContainerDarkMediumContrast,
+    onSecondaryContainer = onSecondaryContainerDarkMediumContrast,
+    tertiary = tertiaryDarkMediumContrast,
+    onTertiary = onTertiaryDarkMediumContrast,
+    tertiaryContainer = tertiaryContainerDarkMediumContrast,
+    onTertiaryContainer = onTertiaryContainerDarkMediumContrast,
+    error = errorDarkMediumContrast,
+    onError = onErrorDarkMediumContrast,
+    errorContainer = errorContainerDarkMediumContrast,
+    onErrorContainer = onErrorContainerDarkMediumContrast,
+    background = backgroundDarkMediumContrast,
+    onBackground = onBackgroundDarkMediumContrast,
+    surface = surfaceDarkMediumContrast,
+    onSurface = onSurfaceDarkMediumContrast,
+    surfaceVariant = surfaceVariantDarkMediumContrast,
+    onSurfaceVariant = onSurfaceVariantDarkMediumContrast,
+    outline = outlineDarkMediumContrast,
+    outlineVariant = outlineVariantDarkMediumContrast,
+    scrim = scrimDarkMediumContrast,
+    inverseSurface = inverseSurfaceDarkMediumContrast,
+    inverseOnSurface = inverseOnSurfaceDarkMediumContrast,
+    inversePrimary = inversePrimaryDarkMediumContrast,
+    surfaceDim = surfaceDimDarkMediumContrast,
+    surfaceBright = surfaceBrightDarkMediumContrast,
+    surfaceContainerLowest = surfaceContainerLowestDarkMediumContrast,
+    surfaceContainerLow = surfaceContainerLowDarkMediumContrast,
+    surfaceContainer = surfaceContainerDarkMediumContrast,
+    surfaceContainerHigh = surfaceContainerHighDarkMediumContrast,
+    surfaceContainerHighest = surfaceContainerHighestDarkMediumContrast,
+  )
+
+private val pureBlackColorScheme =
+  darkColorScheme(
+    primary = primaryPureBlack,
+    onPrimary = onPrimaryPureBlack,
+    primaryContainer = primaryContainerPureBlack,
+    onPrimaryContainer = onPrimaryContainerPureBlack,
+    secondary = secondaryPureBlack,
+    onSecondary = onSecondaryPureBlack,
+    secondaryContainer = secondaryContainerPureBlack,
+    onSecondaryContainer = onSecondaryContainerPureBlack,
+    tertiary = tertiaryPureBlack,
+    onTertiary = onTertiaryPureBlack,
+    tertiaryContainer = tertiaryContainerPureBlack,
+    onTertiaryContainer = onTertiaryContainerPureBlack,
+    error = errorPureBlack,
+    onError = onErrorPureBlack,
+    errorContainer = errorContainerPureBlack,
+    onErrorContainer = onErrorContainerPureBlack,
+    background = backgroundPureBlack,
+    onBackground = onBackgroundPureBlack,
+    surface = surfacePureBlack,
+    onSurface = onSurfacePureBlack,
+    surfaceVariant = surfaceVariantPureBlack,
+    onSurfaceVariant = onSurfaceVariantPureBlack,
+    outline = outlinePureBlack,
+    outlineVariant = outlineVariantPureBlack,
+    scrim = scrimPureBlack,
+    inverseSurface = inverseSurfacePureBlack,
+    inverseOnSurface = inverseOnSurfacePureBlack,
+    inversePrimary = inversePrimaryPureBlack,
+    surfaceDim = surfaceDimPureBlack,
+    surfaceBright = surfaceBrightPureBlack,
+    surfaceContainerLowest = surfaceContainerLowestPureBlack,
+    surfaceContainerLow = surfaceContainerLowPureBlack,
+    surfaceContainer = surfaceContainerPureBlack,
+    surfaceContainerHigh = surfaceContainerHighPureBlack,
+    surfaceContainerHighest = surfaceContainerHighestPureBlack,
+  )
+
 @Composable
 fun MpvexTheme(content: @Composable () -> Unit) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
+  val highContrastMode by preferences.highContrastMode.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val dynamicColor by preferences.materialYou.collectAsState()
   val context = LocalContext.current
@@ -266,15 +306,57 @@ fun MpvexTheme(content: @Composable () -> Unit) {
     when {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         when (darkMode) {
-          DarkMode.Dark -> dynamicDarkColorScheme(context)
+          DarkMode.Dark -> {
+            if (highContrastMode) {
+              dynamicDarkColorScheme(context).copy(
+                background = backgroundPureBlack,
+                surface = surfacePureBlack,
+                surfaceDim = surfaceDimPureBlack,
+                surfaceBright = surfaceBrightPureBlack,
+                surfaceContainerLowest = surfaceContainerLowestPureBlack,
+                surfaceContainerLow = surfaceContainerLowPureBlack,
+                surfaceContainer = surfaceContainerPureBlack,
+                surfaceContainerHigh = surfaceContainerHighPureBlack,
+                surfaceContainerHighest = surfaceContainerHighestPureBlack,
+              )
+            } else {
+              dynamicDarkColorScheme(context)
+            }
+          }
           DarkMode.Light -> dynamicLightColorScheme(context)
-          else -> if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+          DarkMode.System -> {
+            if (darkTheme) {
+              if (highContrastMode) {
+                dynamicDarkColorScheme(context).copy(
+                  background = backgroundPureBlack,
+                  surface = surfacePureBlack,
+                  surfaceDim = surfaceDimPureBlack,
+                  surfaceBright = surfaceBrightPureBlack,
+                  surfaceContainerLowest = surfaceContainerLowestPureBlack,
+                  surfaceContainerLow = surfaceContainerLowPureBlack,
+                  surfaceContainer = surfaceContainerPureBlack,
+                  surfaceContainerHigh = surfaceContainerHighPureBlack,
+                  surfaceContainerHighest = surfaceContainerHighestPureBlack,
+                )
+              } else {
+                dynamicDarkColorScheme(context)
+              }
+            } else {
+              dynamicLightColorScheme(context)
+            }
+          }
         }
       }
 
-      darkMode == DarkMode.Dark -> darkScheme
+      darkMode == DarkMode.Dark -> if (highContrastMode) pureBlackColorScheme else darkScheme
       darkMode == DarkMode.Light -> lightScheme
-      else -> if (darkTheme) darkScheme else lightScheme
+      else -> {
+        if (darkTheme) {
+          if (highContrastMode) pureBlackColorScheme else darkScheme
+        } else {
+          lightScheme
+        }
+      }
     }
 
   CompositionLocalProvider(

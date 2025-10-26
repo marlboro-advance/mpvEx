@@ -84,11 +84,12 @@ class CrashActivity : ComponentActivity() {
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
+      val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
       enableEdgeToEdge(
         SystemBarStyle.auto(
           lightScrim = Color.White.toArgb(),
-          darkScrim = Color.White.toArgb(),
-        ) { dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme) },
+          darkScrim = Color.Transparent.toArgb(),
+        ) { isDarkMode },
       )
       MpvexTheme {
         CrashScreen(intent.getStringExtra("exception") ?: "")
@@ -188,7 +189,8 @@ class CrashActivity : ComponentActivity() {
                 Offset(size.width, 0f),
                 strokeWidth = Dp.Hairline.value,
               )
-            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+            }
+            .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
           Row(

@@ -903,6 +903,13 @@ class PlayerActivity :
       durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
     )
     updateMediaSessionPlaybackState(isPlaying = true)
+
+    // Autoload external subtitles with same filename when enabled and using local files
+    runCatching {
+      if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
+        autoloadMatchingSubtitles()
+      }
+    }.onFailure { e -> Log.e(TAG, "Error auto-loading subtitles", e) }
   }
 
   @OptIn(DelicateCoroutinesApi::class)
@@ -1401,6 +1408,51 @@ class PlayerActivity :
     set(value) {
       requestedOrientation = value
     }
+
+  private fun autoloadMatchingSubtitles() {
+    val uri = extractUriFromIntent(intent) ?: return
+    val path: String? =
+      when (uri.scheme) {
+        "file" -> uri.path
+        "content" -> {
+          // Try to resolve to an actual file path for content URIs
+          contentResolver
+            .query(
+              uri,
+              arrayOf(MediaStore.MediaColumns.DATA),
+              null,
+              null,
+              null,
+            )?.use { cursor ->
+              if (cursor.moveToFirst()) {
+                val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                if (columnIndex != -1) cursor.getString(columnIndex) else null
+              } else null
+            }
+        }
+
+        else -> null
+      }
+    if (path.isNullOrBlank()) return
+
+    val videoFile = File(path)
+    if (!videoFile.exists()) return
+
+    val baseName = videoFile.nameWithoutExtension
+    val dir = videoFile.parentFile ?: return
+
+    val validExtensions = setOf("srt", "ass", "ssa", "vtt", "sub", "idx")
+    val matchingSubs = dir.listFiles()?.filter { f ->
+      f.isFile && f.extension.lowercase() in validExtensions && f.nameWithoutExtension == baseName
+    } ?: emptyList()
+
+    if (matchingSubs.isEmpty()) return
+
+    matchingSubs.sortedBy { it.name }.forEachIndexed { index, sub ->
+      val flag = if (index == 0) "select" else "auto"
+      MPVLib.command("sub-add", sub.absolutePath, flag)
+    }
+  }
 
   companion object {
     private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"

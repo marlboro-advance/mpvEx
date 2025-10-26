@@ -41,12 +41,14 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
+      val highContrast by appearancePreferences.highContrastMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
+      val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
       enableEdgeToEdge(
         SystemBarStyle.auto(
           lightScrim = Color.White.toArgb(),
-          darkScrim = Color.White.toArgb(),
-        ) { dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme) },
+          darkScrim = Color.Transparent.toArgb(),
+        ) { isDarkMode },
       )
       MpvexTheme { Surface { Navigator() } }
     }

@@ -71,6 +71,14 @@ object AppearancePreferencesScreen : Screen {
             selectedIndices = persistentListOf(DarkMode.entries.indexOf(darkMode)),
             onClick = { preferences.darkMode.set(DarkMode.entries[it]) },
           )
+          val highContrastMode by preferences.highContrastMode.collectAsState()
+          SwitchPreference(
+            value = highContrastMode,
+            onValueChange = { preferences.highContrastMode.set(it) },
+            title = { Text(text = stringResource(id = R.string.pref_appearance_high_contrast_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_appearance_high_contrast_summary)) },
+            enabled = darkMode != DarkMode.Light,
+          )
           val materialYou by preferences.materialYou.collectAsState()
           val isMaterialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
           SwitchPreference(

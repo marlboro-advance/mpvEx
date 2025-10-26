@@ -23,6 +23,8 @@
     <string name="pref_appearance_darkmode_system">System</string>
     <string name="pref_appearance_darkmode_light">Light</string>
     <string name="pref_appearance_darkmode_dark">Dark</string>
+    <string name="pref_appearance_high_contrast_title">High Contrast Mode</string>
+    <string name="pref_appearance_high_contrast_summary">Use pure black background for dark themes</string>
     <string name="pref_appearance_material_you_title">Material You</string>
     <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
     <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
@@ -102,7 +104,7 @@
     <string name="pref_subtitles_fonts_dir">Fonts directory</string>
     <string name="pref_subtitles_preferred_language">Subtitle language(s) to be selected by default on a video with multiple subtitles, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
     <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
-    <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name. When there are multiple files, the first one is enabled by default. (Only valid when using the file picker)</string>
+    <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
 
     <string name="pref_audio">Audio</string>
     <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
