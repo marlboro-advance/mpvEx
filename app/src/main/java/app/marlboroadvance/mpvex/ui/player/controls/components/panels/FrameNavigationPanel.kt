@@ -554,6 +554,27 @@ private fun FrameNavigationCardTitle(
 private suspend fun takeSnapshot(context: Context) {
   withContext(Dispatchers.IO) {
     try {
+      // Check write permission on Android 9 and below
+      if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P) {
+        val hasPermission =
+          androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+          ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) {
+          withContext(kotlinx.coroutines.Dispatchers.Main) {
+            Toast
+              .makeText(
+                context,
+                "Storage permission required to save snapshots",
+                Toast.LENGTH_LONG,
+              ).show()
+          }
+          return@withContext
+        }
+      }
+
       // Generate filename with timestamp
       val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
       val filename = "mpv_snapshot_$timestamp.png"
@@ -569,49 +590,87 @@ private suspend fun takeSnapshot(context: Context) {
 
       // Check if file was created
       if (!tempFile.exists() || tempFile.length() == 0L) {
-        withContext(Dispatchers.Main) {
+        withContext(kotlinx.coroutines.Dispatchers.Main) {
           Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
         }
         return@withContext
       }
 
-      // Use MediaStore to save the image properly (works on all Android versions)
-      val contentValues =
-        android.content.ContentValues().apply {
-          put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
-          put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
-          put(
-            android.provider.MediaStore.Images.Media.RELATIVE_PATH,
-            "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+      // Use different methods based on Android version
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        // Android 10+ - Use MediaStore with RELATIVE_PATH
+        val contentValues =
+          android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(
+              android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+              "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+            )
+            put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+          }
+
+        val resolver = context.contentResolver
+        val imageUri =
+          resolver.insert(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues,
           )
-          put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+
+        if (imageUri != null) {
+          // Copy temp file to MediaStore
+          resolver.openOutputStream(imageUri)?.use { outputStream ->
+            tempFile.inputStream().use { inputStream ->
+              inputStream.copyTo(outputStream)
+            }
+          }
+
+          // Mark as finished
+          contentValues.clear()
+          contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+          resolver.update(imageUri, contentValues, null, null)
+
+          // Delete temp file
+          tempFile.delete()
+
+          // Show success toast
+          withContext(kotlinx.coroutines.Dispatchers.Main) {
+            Toast
+              .makeText(
+                context,
+                context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+                Toast.LENGTH_SHORT,
+              ).show()
+          }
+        } else {
+          throw Exception("Failed to create MediaStore entry")
         }
+      } else {
+        // Android 9 and below - Use legacy external storage
+        val picturesDir =
+          android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_PICTURES,
+          )
+        val snapshotsDir = File(picturesDir, "mpvSnaps")
 
-      val resolver = context.contentResolver
-      val imageUri =
-        resolver.insert(
-          android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-          contentValues,
-        )
-
-      if (imageUri != null) {
-        // Copy temp file to MediaStore
-        resolver.openOutputStream(imageUri)?.use { outputStream ->
-          tempFile.inputStream().use { inputStream ->
-            inputStream.copyTo(outputStream)
+        // Create directory if it doesn't exist
+        if (!snapshotsDir.exists()) {
+          val created = snapshotsDir.mkdirs()
+          if (!created && !snapshotsDir.exists()) {
+            throw Exception("Failed to create mpvSnaps directory")
           }
         }
 
-        // Mark as finished
-        contentValues.clear()
-        contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
-        resolver.update(imageUri, contentValues, null, null)
-
-        // Delete temp file
+        val destFile = File(snapshotsDir, filename)
+        tempFile.copyTo(destFile, overwrite = true)
         tempFile.delete()
 
-        // Show success toast
-        withContext(Dispatchers.Main) {
+        // Notify media scanner about the new file
+        val mediaScanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+        mediaScanIntent.data = android.net.Uri.fromFile(destFile)
+        context.sendBroadcast(mediaScanIntent)
+
+        withContext(kotlinx.coroutines.Dispatchers.Main) {
           Toast
             .makeText(
               context,
@@ -619,30 +678,9 @@ private suspend fun takeSnapshot(context: Context) {
               Toast.LENGTH_SHORT,
             ).show()
         }
-      } else {
-        // Fallback for Android 10 and below if MediaStore fails
-        // Try saving directly to app-specific external directory
-        val picturesDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-        val snapshotsDir = File(picturesDir, "mpvSnaps")
-        if (!snapshotsDir.exists()) {
-          snapshotsDir.mkdirs()
-        }
-
-        val destFile = File(snapshotsDir, filename)
-        tempFile.copyTo(destFile, overwrite = true)
-        tempFile.delete()
-
-        withContext(Dispatchers.Main) {
-          Toast
-            .makeText(
-              context,
-              "Snapshot saved to ${destFile.absolutePath}",
-              Toast.LENGTH_LONG,
-            ).show()
-        }
       }
     } catch (e: Exception) {
-      withContext(Dispatchers.Main) {
+      withContext(kotlinx.coroutines.Dispatchers.Main) {
         Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
       }
     }
