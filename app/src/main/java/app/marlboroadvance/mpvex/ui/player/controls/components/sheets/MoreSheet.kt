@@ -59,205 +59,205 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MoreSheet(
-  remainingTime: Int,
-  onStartTimer: (Int) -> Unit,
-  onDismissRequest: () -> Unit,
-  onEnterFiltersPanel: () -> Unit,
-  modifier: Modifier = Modifier,
+    remainingTime: Int,
+    onStartTimer: (Int) -> Unit,
+    onDismissRequest: () -> Unit,
+    onEnterFiltersPanel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  val advancedPreferences = koinInject<AdvancedPreferences>()
-  val audioPreferences = koinInject<AudioPreferences>()
-  val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
+    val advancedPreferences = koinInject<AdvancedPreferences>()
+    val audioPreferences = koinInject<AudioPreferences>()
+    val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
 
-  PlayerSheet(
-    onDismissRequest,
-    modifier,
-  ) {
-    Column(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .padding(MaterialTheme.spacing.medium)
-          .verticalScroll(rememberScrollState()),
-      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    PlayerSheet(
+        onDismissRequest,
+        modifier,
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(
-          text = stringResource(id = R.string.player_sheets_more_title),
-          style = MaterialTheme.typography.headlineMedium,
-        )
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.medium)
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
-          var isSleepTimerDialogShown by remember { mutableStateOf(false) }
-          TextButton(onClick = { isSleepTimerDialogShown = true }) {
             Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-              Icon(imageVector = Icons.Outlined.Timer, contentDescription = null)
-              Text(
-                text =
-                  if (remainingTime == 0) {
-                    stringResource(R.string.timer_title)
-                  } else {
-                    stringResource(
-                      R.string.timer_remaining,
-                      DateUtils.formatElapsedTime(remainingTime.toLong()),
-                    )
-                  },
-              )
-              if (isSleepTimerDialogShown) {
-                TimePickerDialog(
-                  remainingTime = remainingTime,
-                  onDismissRequest = { isSleepTimerDialogShown = false },
-                  onTimeSelect = onStartTimer,
+                Text(
+                    text = stringResource(id = R.string.player_sheets_more_title),
+                    style = MaterialTheme.typography.headlineMedium,
                 )
-              }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    var isSleepTimerDialogShown by remember { mutableStateOf(false) }
+                    TextButton(onClick = { isSleepTimerDialogShown = true }) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                        ) {
+                            Icon(imageVector = Icons.Outlined.Timer, contentDescription = null)
+                            Text(
+                                text =
+                                    if (remainingTime == 0) {
+                                        stringResource(R.string.timer_title)
+                                    } else {
+                                        stringResource(
+                                            R.string.timer_remaining,
+                                            DateUtils.formatElapsedTime(remainingTime.toLong()),
+                                        )
+                                    },
+                            )
+                            if (isSleepTimerDialogShown) {
+                                TimePickerDialog(
+                                    remainingTime = remainingTime,
+                                    onDismissRequest = { isSleepTimerDialogShown = false },
+                                    onTimeSelect = onStartTimer,
+                                )
+                            }
+                        }
+                    }
+                    TextButton(onClick = onEnterFiltersPanel) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                        ) {
+                            Icon(imageVector = Icons.Default.Tune, contentDescription = null)
+                            Text(text = stringResource(id = R.string.player_sheets_filters_title))
+                        }
+                    }
+                }
             }
-          }
-          TextButton(onClick = onEnterFiltersPanel) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            Text(stringResource(R.string.player_sheets_stats_page_title))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
             ) {
-              Icon(imageVector = Icons.Default.Tune, contentDescription = null)
-              Text(text = stringResource(id = R.string.player_sheets_filters_title))
+                items(6) { page ->
+                    FilterChip(
+                        label = {
+                            Text(
+                                stringResource(
+                                    if (page == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip,
+                                    page,
+                                ),
+                            )
+                        },
+                        onClick = {
+                            if ((page == 0) xor (statisticsPage == 0)) MPVLib.command("script-binding", "stats/display-stats-toggle")
+                            if (page != 0) MPVLib.command("script-binding", "stats/display-page-$page")
+                            advancedPreferences.enabledStatisticsPage.set(page)
+                        },
+                        selected = statisticsPage == page,
+                    )
+                }
             }
-          }
+            Text(text = stringResource(id = R.string.pref_audio_channels))
+            val audioChannels by audioPreferences.audioChannels.collectAsState()
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+                items(AudioChannels.entries) {
+                    FilterChip(
+                        selected = audioChannels == it,
+                        onClick = {
+                            audioPreferences.audioChannels.set(it)
+                            if (it == AudioChannels.ReverseStereo) {
+                                MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+                            } else {
+                                MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
+                            }
+                            MPVLib.setPropertyString(it.property, it.value)
+                        },
+                        label = { Text(text = stringResource(id = it.title)) },
+                    )
+                }
+            }
         }
-      }
-      Text(stringResource(R.string.player_sheets_stats_page_title))
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        items(6) { page ->
-          FilterChip(
-            label = {
-              Text(
-                stringResource(
-                  if (page == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip,
-                  page,
-                ),
-              )
-            },
-            onClick = {
-              if ((page == 0) xor (statisticsPage == 0)) MPVLib.command("script-binding", "stats/display-stats-toggle")
-              if (page != 0) MPVLib.command("script-binding", "stats/display-page-$page")
-              advancedPreferences.enabledStatisticsPage.set(page)
-            },
-            selected = statisticsPage == page,
-          )
-        }
-      }
-      Text(text = stringResource(id = R.string.pref_audio_channels))
-      val audioChannels by audioPreferences.audioChannels.collectAsState()
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        items(AudioChannels.entries) {
-          FilterChip(
-            selected = audioChannels == it,
-            onClick = {
-              audioPreferences.audioChannels.set(it)
-              if (it == AudioChannels.ReverseStereo) {
-                MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-              } else {
-                MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
-              }
-              MPVLib.setPropertyString(it.property, it.value)
-            },
-            label = { Text(text = stringResource(id = it.title)) },
-          )
-        }
-      }
     }
-  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
-  onDismissRequest: () -> Unit,
-  onTimeSelect: (Int) -> Unit,
-  modifier: Modifier = Modifier,
-  remainingTime: Int = 0,
+    onDismissRequest: () -> Unit,
+    onTimeSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    remainingTime: Int = 0,
 ) {
-  Dialog(
-    onDismissRequest = onDismissRequest,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Surface(
-      shape = MaterialTheme.shapes.medium,
-      color = MaterialTheme.colorScheme.surface,
-      modifier = modifier.padding(MaterialTheme.spacing.medium),
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-      Column(
-        modifier =
-          Modifier
-            .verticalScroll(rememberScrollState())
-            .width(IntrinsicSize.Max)
-            .animateContentSize()
-            .padding(MaterialTheme.spacing.medium),
-      ) {
-        var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
-        Text(
-          text =
-            stringResource(
-              id =
-                if (currentLayoutType == 1) {
-                  R.string.timer_picker_pick_time
-                } else {
-                  R.string.timer_picker_enter_timer
-                },
-            ),
-        )
-
-        val state =
-          rememberTimePickerState(
-            remainingTime / 3600,
-            (remainingTime % 3600) / 60,
-            is24Hour = true,
-          )
-        Box(
-          contentAlignment = Alignment.Center,
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = modifier.padding(MaterialTheme.spacing.medium),
         ) {
-          if (currentLayoutType == 1) {
-            TimePicker(state = state)
-          } else {
-            TimeInput(state = state)
-          }
-        }
-        Row(
-          horizontalArrangement = Arrangement.SpaceBetween,
-          modifier = Modifier.fillMaxWidth(),
-        ) {
-          IconButton(onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 }) {
-            Icon(
-              imageVector = if (currentLayoutType == 0) Icons.Outlined.Schedule else Icons.Default.KeyboardAlt,
-              contentDescription = null,
-            )
-          }
-          Row {
-            TextButton(onClick = onDismissRequest) {
-              Text(stringResource(id = R.string.generic_cancel))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            TextButton(
-              onClick = {
-                onTimeSelect(state.hour * 3600 + state.minute * 60)
-                onDismissRequest()
-              },
+            Column(
+                modifier =
+                    Modifier
+                        .verticalScroll(rememberScrollState())
+                        .width(IntrinsicSize.Max)
+                        .animateContentSize()
+                        .padding(MaterialTheme.spacing.medium),
             ) {
-              Text(stringResource(id = R.string.generic_ok))
+                var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
+                Text(
+                    text =
+                        stringResource(
+                            id =
+                                if (currentLayoutType == 1) {
+                                    R.string.timer_picker_pick_time
+                                } else {
+                                    R.string.timer_picker_enter_timer
+                                },
+                        ),
+                )
+
+                val state =
+                    rememberTimePickerState(
+                        remainingTime / 3600,
+                        (remainingTime % 3600) / 60,
+                        is24Hour = true,
+                    )
+                Box(
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (currentLayoutType == 1) {
+                        TimePicker(state = state)
+                    } else {
+                        TimeInput(state = state)
+                    }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    IconButton(onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 }) {
+                        Icon(
+                            imageVector = if (currentLayoutType == 0) Icons.Outlined.Schedule else Icons.Default.KeyboardAlt,
+                            contentDescription = null,
+                        )
+                    }
+                    Row {
+                        TextButton(onClick = onDismissRequest) {
+                            Text(stringResource(id = R.string.generic_cancel))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(
+                            onClick = {
+                                onTimeSelect(state.hour * 3600 + state.minute * 60)
+                                onDismissRequest()
+                            },
+                        ) {
+                            Text(stringResource(id = R.string.generic_ok))
+                        }
+                    }
+                }
             }
-          }
         }
-      }
     }
-  }
 }

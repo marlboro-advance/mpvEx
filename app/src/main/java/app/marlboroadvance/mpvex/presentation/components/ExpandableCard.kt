@@ -34,55 +34,55 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun ExpandableCard(
-  isExpanded: Boolean,
-  title: @Composable (Boolean) -> Unit,
-  onExpand: (Boolean) -> Unit,
-  modifier: Modifier = Modifier,
-  colors: CardColors = CardDefaults.cardColors(),
-  shape: Shape = CardDefaults.shape,
-  border: BorderStroke? = null,
-  elevation: CardElevation = CardDefaults.cardElevation(),
-  content: @Composable () -> Unit,
+    isExpanded: Boolean,
+    title: @Composable (Boolean) -> Unit,
+    onExpand: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    colors: CardColors = CardDefaults.cardColors(),
+    shape: Shape = CardDefaults.shape,
+    border: BorderStroke? = null,
+    elevation: CardElevation = CardDefaults.cardElevation(),
+    content: @Composable () -> Unit,
 ) {
-  val rotationState by animateFloatAsState(if (isExpanded) 0f else 180f, label = "card_rotation")
-  Card(
-    modifier = modifier.animateContentSize(),
-    colors = colors,
-    shape = shape,
-    border = border,
-    elevation = elevation,
-  ) {
-    Row(
-      modifier =
-        Modifier
-          .clickable(onClick = { onExpand(!isExpanded) })
-          .padding(start = MaterialTheme.spacing.medium),
-      verticalAlignment = Alignment.CenterVertically,
+    val rotationState by animateFloatAsState(if (isExpanded) 0f else 180f, label = "card_rotation")
+    Card(
+        modifier = modifier.animateContentSize(),
+        colors = colors,
+        shape = shape,
+        border = border,
+        elevation = elevation,
     ) {
-      title(isExpanded)
-      Spacer(Modifier.weight(1f))
-      IconButton(
-        modifier = Modifier.rotate(rotationState),
-        onClick = { onExpand(!isExpanded) },
-      ) {
-        Icon(Icons.Default.ArrowDropDown, null)
-      }
+        Row(
+            modifier =
+                Modifier
+                    .clickable(onClick = { onExpand(!isExpanded) })
+                    .padding(start = MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            title(isExpanded)
+            Spacer(Modifier.weight(1f))
+            IconButton(
+                modifier = Modifier.rotate(rotationState),
+                onClick = { onExpand(!isExpanded) },
+            ) {
+                Icon(Icons.Default.ArrowDropDown, null)
+            }
+        }
+        Box(Modifier.animateContentSize()) {
+            if (isExpanded) content()
+        }
     }
-    Box(Modifier.animateContentSize()) {
-      if (isExpanded) content()
-    }
-  }
 }
 
 @Composable
 @Preview
 private fun PreviewExpandableCard() {
-  var isExpanded by remember { mutableStateOf(true) }
+    var isExpanded by remember { mutableStateOf(true) }
 
-  ExpandableCard(
-    isExpanded,
-    title = { Text("Hello World") },
-    content = { Text("SPOjao;sjd") },
-    onExpand = { isExpanded = it },
-  )
+    ExpandableCard(
+        isExpanded,
+        title = { Text("Hello World") },
+        content = { Text("SPOjao;sjd") },
+        onExpand = { isExpanded = it },
+    )
 }

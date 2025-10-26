@@ -41,104 +41,104 @@ import kotlin.math.roundToInt
 
 @Composable
 fun PlaybackSpeedSheet(
-  speed: Float,
-  speedPresets: List<Float>,
-  onSpeedChange: (Float) -> Unit,
-  onAddSpeedPreset: (Float) -> Unit,
-  onRemoveSpeedPreset: (Float) -> Unit,
-  onResetPresets: () -> Unit,
-  onMakeDefault: (Float) -> Unit,
-  onResetDefault: () -> Unit,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
+    speed: Float,
+    speedPresets: List<Float>,
+    onSpeedChange: (Float) -> Unit,
+    onAddSpeedPreset: (Float) -> Unit,
+    onRemoveSpeedPreset: (Float) -> Unit,
+    onResetPresets: () -> Unit,
+    onMakeDefault: (Float) -> Unit,
+    onResetDefault: () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  PlayerSheet(onDismissRequest = onDismissRequest) {
-    Column(
-      modifier
-        .verticalScroll(rememberScrollState())
-        .padding(vertical = MaterialTheme.spacing.medium),
-    ) {
-      SliderItem(
-        label = stringResource(id = R.string.player_sheets_speed_slider_label),
-        value = speed,
-        valueText = stringResource(id = R.string.player_speed, speed),
-        onChange = onSpeedChange,
-        max = 6f,
-        min = 0.01f,
-      )
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-      ) {
-        FilledTonalIconButton(onClick = onResetPresets) {
-          Icon(Icons.Default.RestartAlt, null)
-        }
-        LazyRow(
-          modifier =
-            Modifier
-              .weight(1f),
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+    PlayerSheet(onDismissRequest = onDismissRequest) {
+        Column(
+            modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = MaterialTheme.spacing.medium),
         ) {
-          items(speedPresets, key = { it }) {
-            InputChip(
-              selected = speed == it,
-              onClick = { onSpeedChange(it) },
-              label = { Text(stringResource(R.string.player_speed, it)) },
-              modifier =
-                Modifier
-                  .animateItem(),
-              trailingIcon = {
-                Icon(
-                  Icons.Default.Close,
-                  null,
-                  modifier = Modifier.clickable { onRemoveSpeedPreset(it.toFixed(2)) },
-                )
-              },
+            SliderItem(
+                label = stringResource(id = R.string.player_sheets_speed_slider_label),
+                value = speed,
+                valueText = stringResource(id = R.string.player_speed, speed),
+                onChange = onSpeedChange,
+                max = 6f,
+                min = 0.01f,
             )
-          }
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            ) {
+                FilledTonalIconButton(onClick = onResetPresets) {
+                    Icon(Icons.Default.RestartAlt, null)
+                }
+                LazyRow(
+                    modifier =
+                        Modifier
+                            .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                ) {
+                    items(speedPresets, key = { it }) {
+                        InputChip(
+                            selected = speed == it,
+                            onClick = { onSpeedChange(it) },
+                            label = { Text(stringResource(R.string.player_speed, it)) },
+                            modifier =
+                                Modifier
+                                    .animateItem(),
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Close,
+                                    null,
+                                    modifier = Modifier.clickable { onRemoveSpeedPreset(it.toFixed(2)) },
+                                )
+                            },
+                        )
+                    }
+                }
+                FilledTonalIconButton(onClick = { onAddSpeedPreset(speed.toFixed(2)) }) {
+                    Icon(Icons.Default.Add, null)
+                }
+            }
+            ProvidePreferenceLocals {
+                val audioPreferences = koinInject<AudioPreferences>()
+                val pitchCorrection by audioPreferences.audioPitchCorrection.collectAsState()
+                SwitchPreference(
+                    value = pitchCorrection,
+                    onValueChange = {
+                        audioPreferences.audioPitchCorrection.set(it)
+                        MPVLib.setPropertyBoolean("audio-pitch-correction", it)
+                    },
+                    title = { Text(text = stringResource(id = R.string.pref_audio_pitch_correction_title)) },
+                    summary = { Text(text = stringResource(id = R.string.pref_audio_pitch_correction_summary)) },
+                )
+            }
+            Row(
+                modifier =
+                    Modifier
+                        .padding(horizontal = MaterialTheme.spacing.medium),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { onMakeDefault(speed) },
+                ) {
+                    Text(text = stringResource(id = R.string.player_sheets_speed_make_default))
+                }
+                FilledIconButton(onClick = onResetDefault) {
+                    Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null)
+                }
+            }
         }
-        FilledTonalIconButton(onClick = { onAddSpeedPreset(speed.toFixed(2)) }) {
-          Icon(Icons.Default.Add, null)
-        }
-      }
-      ProvidePreferenceLocals {
-        val audioPreferences = koinInject<AudioPreferences>()
-        val pitchCorrection by audioPreferences.audioPitchCorrection.collectAsState()
-        SwitchPreference(
-          value = pitchCorrection,
-          onValueChange = {
-            audioPreferences.audioPitchCorrection.set(it)
-            MPVLib.setPropertyBoolean("audio-pitch-correction", it)
-          },
-          title = { Text(text = stringResource(id = R.string.pref_audio_pitch_correction_title)) },
-          summary = { Text(text = stringResource(id = R.string.pref_audio_pitch_correction_summary)) },
-        )
-      }
-      Row(
-        modifier =
-          Modifier
-            .padding(horizontal = MaterialTheme.spacing.medium),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        Button(
-          modifier = Modifier.weight(1f),
-          onClick = { onMakeDefault(speed) },
-        ) {
-          Text(text = stringResource(id = R.string.player_sheets_speed_make_default))
-        }
-        FilledIconButton(onClick = onResetDefault) {
-          Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null)
-        }
-      }
     }
-  }
 }
 
 fun Float.toFixed(precision: Int = 1): Float {
-  val factor = 10.0f.pow(precision)
-  return (this * factor).roundToInt() / factor
+    val factor = 10.0f.pow(precision)
+    return (this * factor).roundToInt() / factor
 }

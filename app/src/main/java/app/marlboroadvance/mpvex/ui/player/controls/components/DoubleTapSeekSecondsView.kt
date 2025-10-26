@@ -24,46 +24,46 @@ import app.marlboroadvance.mpvex.R
  */
 @Composable
 fun DoubleTapSeekTriangles(
-  isForward: Boolean,
-  modifier: Modifier = Modifier,
+    isForward: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-  val animationDuration = 750L
+    val animationDuration = 750L
 
-  val alpha1 = remember { Animatable(0f) }
-  val alpha2 = remember { Animatable(0f) }
-  val alpha3 = remember { Animatable(0f) }
+    val alpha1 = remember { Animatable(0f) }
+    val alpha2 = remember { Animatable(0f) }
+    val alpha3 = remember { Animatable(0f) }
 
-  LaunchedEffect(animationDuration) {
-    while (true) {
-      alpha1.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
-      alpha2.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
-      alpha3.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
-      alpha1.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
-      alpha2.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
-      alpha3.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
+    LaunchedEffect(animationDuration) {
+        while (true) {
+            alpha1.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
+            alpha2.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
+            alpha3.animateTo(1f, animationSpec = tween((animationDuration / 5).toInt()))
+            alpha1.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
+            alpha2.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
+            alpha3.animateTo(0f, animationSpec = tween((animationDuration / 5).toInt()))
+        }
     }
-  }
 
-  val rotation = if (isForward) 0f else 180f
-  Row(
-    verticalAlignment = Alignment.CenterVertically,
-    modifier = modifier.rotate(rotation),
-  ) {
-    DoubleTapArrow(alpha1.value)
-    DoubleTapArrow(alpha2.value)
-    DoubleTapArrow(alpha3.value)
-  }
+    val rotation = if (isForward) 0f else 180f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.rotate(rotation),
+    ) {
+        DoubleTapArrow(alpha1.value)
+        DoubleTapArrow(alpha2.value)
+        DoubleTapArrow(alpha3.value)
+    }
 }
 
 @Composable
 private fun DoubleTapArrow(alpha: Float) {
-  Icon(
-    painter = painterResource(R.drawable.ic_play_seek_triangle),
-    contentDescription = null,
-    modifier =
-      Modifier
-        .size(width = 16.dp, height = 20.dp)
-        .alpha(alpha = alpha),
-    tint = Color.White,
-  )
+    Icon(
+        painter = painterResource(R.drawable.ic_play_seek_triangle),
+        contentDescription = null,
+        modifier =
+            Modifier
+                .size(width = 16.dp, height = 20.dp)
+                .alpha(alpha = alpha),
+        tint = Color.White,
+    )
 }

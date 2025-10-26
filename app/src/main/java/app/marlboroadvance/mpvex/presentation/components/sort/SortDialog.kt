@@ -29,52 +29,52 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SortDialog(
-  isOpen: Boolean,
-  onDismiss: () -> Unit,
-  title: String,
-  sortType: String,
-  onSortTypeChange: (String) -> Unit,
-  sortOrderAsc: Boolean,
-  onSortOrderChange: (Boolean) -> Unit,
-  types: List<String>,
-  icons: List<ImageVector>,
-  getLabelForType: (String, Boolean) -> Pair<String, String>,
-  modifier: Modifier = Modifier,
+    isOpen: Boolean,
+    onDismiss: () -> Unit,
+    title: String,
+    sortType: String,
+    onSortTypeChange: (String) -> Unit,
+    sortOrderAsc: Boolean,
+    onSortOrderChange: (Boolean) -> Unit,
+    types: List<String>,
+    icons: List<ImageVector>,
+    getLabelForType: (String, Boolean) -> Pair<String, String>,
+    modifier: Modifier = Modifier,
 ) {
-  if (!isOpen) return
+    if (!isOpen) return
 
-  val (ascLabel, descLabel) = getLabelForType(sortType, sortOrderAsc)
+    val (ascLabel, descLabel) = getLabelForType(sortType, sortOrderAsc)
 
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text(title) },
-    text = {
-      Column(modifier = Modifier.fillMaxWidth()) {
-        SortTypeSelector(
-          sortType = sortType,
-          onSortTypeChange = onSortTypeChange,
-          types = types,
-          icons = icons,
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(top = 8.dp),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        SortOrderSelector(
-          sortOrderAsc = sortOrderAsc,
-          onSortOrderChange = onSortOrderChange,
-          ascLabel = ascLabel,
-          descLabel = descLabel,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-    },
-    confirmButton = {},
-    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-    shape = RoundedCornerShape(28.dp),
-    modifier = modifier,
-  )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SortTypeSelector(
+                    sortType = sortType,
+                    onSortTypeChange = onSortTypeChange,
+                    types = types,
+                    icons = icons,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                SortOrderSelector(
+                    sortOrderAsc = sortOrderAsc,
+                    onSortOrderChange = onSortOrderChange,
+                    ascLabel = ascLabel,
+                    descLabel = descLabel,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {},
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(28.dp),
+        modifier = modifier,
+    )
 }
 
 // -----------------------------------------------------------------------------
@@ -83,101 +83,101 @@ fun SortDialog(
 
 @Composable
 private fun SortTypeSelector(
-  sortType: String,
-  onSortTypeChange: (String) -> Unit,
-  types: List<String>,
-  icons: List<ImageVector>,
-  modifier: Modifier = Modifier,
+    sortType: String,
+    onSortTypeChange: (String) -> Unit,
+    types: List<String>,
+    icons: List<ImageVector>,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier
-      .fillMaxWidth()
-      .padding(vertical = 8.dp),
-    horizontalArrangement = Arrangement.SpaceEvenly,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    types.forEachIndexed { index, type ->
-      val selected = sortType == type
-      Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(
-          onClick = { onSortTypeChange(type) },
-          modifier =
-            Modifier
-              .size(56.dp)
-              .background(
-                color =
-                  if (selected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                  } else {
-                    MaterialTheme.colorScheme.surfaceContainer
-                  },
-                shape = RoundedCornerShape(28.dp),
-              ),
-        ) {
-          Icon(
-            imageVector = icons[index],
-            contentDescription = type,
-            tint =
-              if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-              } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-              },
-            modifier = Modifier.size(24.dp),
-          )
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        types.forEachIndexed { index, type ->
+            val selected = sortType == type
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(
+                    onClick = { onSortTypeChange(type) },
+                    modifier =
+                        Modifier
+                            .size(56.dp)
+                            .background(
+                                color =
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainer
+                                    },
+                                shape = RoundedCornerShape(28.dp),
+                            ),
+                ) {
+                    Icon(
+                        imageVector = icons[index],
+                        contentDescription = type,
+                        tint =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = type,
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                        if (selected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-          text = type,
-          style = MaterialTheme.typography.bodySmall,
-          color =
-            if (selected) {
-              MaterialTheme.colorScheme.onSurface
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
-      }
     }
-  }
 }
 
 @Composable
 private fun SortOrderSelector(
-  sortOrderAsc: Boolean,
-  onSortOrderChange: (Boolean) -> Unit,
-  ascLabel: String,
-  descLabel: String,
-  modifier: Modifier = Modifier,
+    sortOrderAsc: Boolean,
+    onSortOrderChange: (Boolean) -> Unit,
+    ascLabel: String,
+    descLabel: String,
+    modifier: Modifier = Modifier,
 ) {
-  val options = listOf(ascLabel, descLabel)
-  val selectedIndex = if (sortOrderAsc) 0 else 1
+    val options = listOf(ascLabel, descLabel)
+    val selectedIndex = if (sortOrderAsc) 0 else 1
 
-  SingleChoiceSegmentedButtonRow(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .padding(vertical = 8.dp),
-  ) {
-    options.forEachIndexed { index, label ->
-      SegmentedButton(
-        shape =
-          SegmentedButtonDefaults.itemShape(
-            index = index,
-            count = options.size,
-          ),
-        onClick = { onSortOrderChange(index == 0) },
-        selected = index == selectedIndex,
-        icon = {
-          Icon(
-            if (index == 0) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-          )
-        },
-      ) {
-        Text(label)
-      }
+    SingleChoiceSegmentedButtonRow(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+    ) {
+        options.forEachIndexed { index, label ->
+            SegmentedButton(
+                shape =
+                    SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = options.size,
+                    ),
+                onClick = { onSortOrderChange(index == 0) },
+                selected = index == selectedIndex,
+                icon = {
+                    Icon(
+                        if (index == 0) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
+            ) {
+                Text(label)
+            }
+        }
     }
-  }
 }

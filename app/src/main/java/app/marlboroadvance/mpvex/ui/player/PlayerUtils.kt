@@ -10,30 +10,30 @@ import `is`.xyz.mpv.Utils
 import kotlinx.serialization.json.Json
 
 internal fun Uri.openContentFd(context: Context): String? =
-  context.contentResolver.openFileDescriptor(this, "r")?.detachFd()?.let {
-    Utils.findRealPath(it)?.also { _ ->
-      ParcelFileDescriptor.adoptFd(it).close()
-    } ?: "fd://$it"
-  }
-
-internal fun Uri.resolveUri(context: Context): String? {
-  // Handle null scheme case first
-  if (scheme == null) {
-    Log.e(TAG, "URI has null scheme, cannot resolve: $this")
-    return null
-  }
-
-  val filepath =
-    when (scheme) {
-      "file" -> path
-      "content" -> openContentFd(context)
-      "data" -> "data://$schemeSpecificPart"
-      in Utils.PROTOCOLS -> toString()
-      else -> null
+    context.contentResolver.openFileDescriptor(this, "r")?.detachFd()?.let {
+        Utils.findRealPath(it)?.also { _ ->
+            ParcelFileDescriptor.adoptFd(it).close()
+        } ?: "fd://$it"
     }
 
-  if (filepath == null) Log.e(TAG, "unknown scheme: $scheme")
-  return filepath
+internal fun Uri.resolveUri(context: Context): String? {
+    // Handle null scheme case first
+    if (scheme == null) {
+        Log.e(TAG, "URI has null scheme, cannot resolve: $this")
+        return null
+    }
+
+    val filepath =
+        when (scheme) {
+            "file" -> path
+            "content" -> openContentFd(context)
+            "data" -> "data://$schemeSpecificPart"
+            in Utils.PROTOCOLS -> toString()
+            else -> null
+        }
+
+    if (filepath == null) Log.e(TAG, "unknown scheme: $scheme")
+    return filepath
 }
 
 inline fun <reified T> MPVNode.toObject(json: Json): T = json.decodeFromString<T>(toJson())

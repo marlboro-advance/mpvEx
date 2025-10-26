@@ -14,24 +14,24 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 
 @Composable
 fun TopLeftPlayerControls(
-  mediaTitle: String,
-  onBackClick: () -> Unit,
-  modifier: Modifier = Modifier,
+    mediaTitle: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier = modifier,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    ControlsButton(
-      icon = Icons.AutoMirrored.Default.ArrowBack,
-      onClick = onBackClick,
-    )
-    Text(
-      mediaTitle,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
-      color = Color.White,
-      style = MaterialTheme.typography.bodyLarge,
-    )
-  }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ControlsButton(
+            icon = Icons.AutoMirrored.Default.ArrowBack,
+            onClick = onBackClick,
+        )
+        Text(
+            mediaTitle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
 }

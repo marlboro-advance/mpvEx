@@ -25,54 +25,54 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 
 @Composable
 fun PlayerUpdate(
-  modifier: Modifier = Modifier,
-  content: @Composable () -> Unit = {},
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit = {},
 ) {
-  Box(
-    modifier =
-      modifier
-        .clip(RoundedCornerShape(16.dp))
-        .background(Color.Black.copy(0.4f))
-        .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium)
-        .animateContentSize(),
-    contentAlignment = Alignment.Center,
-  ) { content() }
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(0.4f))
+                .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium)
+                .animateContentSize(),
+        contentAlignment = Alignment.Center,
+    ) { content() }
 }
 
 @Composable
 fun TextPlayerUpdate(
-  text: String,
-  modifier: Modifier = Modifier,
+    text: String,
+    modifier: Modifier = Modifier,
 ) {
-  PlayerUpdate(modifier) {
-    Text(text)
-  }
+    PlayerUpdate(modifier) {
+        Text(text)
+    }
 }
 
 @Composable
 fun MultipleSpeedPlayerUpdate(
-  currentSpeed: Float,
-  modifier: Modifier = Modifier,
+    currentSpeed: Float,
+    modifier: Modifier = Modifier,
 ) {
-  PlayerUpdate(modifier) {
-    Row(
-      verticalAlignment = Alignment.Bottom,
-    ) {
-      Text(
-        stringResource(R.string.player_speed, currentSpeed),
-        fontWeight = FontWeight.Bold,
-        style = MaterialTheme.typography.bodyLarge,
-      )
-      Icon(
-        Icons.Filled.DoubleArrow,
-        null,
-      )
+    PlayerUpdate(modifier) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                stringResource(R.string.player_speed, currentSpeed),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Icon(
+                Icons.Filled.DoubleArrow,
+                null,
+            )
+        }
     }
-  }
 }
 
 @Composable
 @Preview
 private fun PreviewMultipleSpeedPlayerUpdate() {
-  MultipleSpeedPlayerUpdate(currentSpeed = 2f)
+    MultipleSpeedPlayerUpdate(currentSpeed = 2f)
 }

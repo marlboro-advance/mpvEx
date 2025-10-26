@@ -41,50 +41,50 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BrowserTopBar(
-  title: String,
-  isInSelectionMode: Boolean,
-  selectedCount: Int,
-  totalCount: Int,
-  onCancelSelection: () -> Unit,
-  modifier: Modifier = Modifier,
-  onBackClick: (() -> Unit)? = null,
-  onSortClick: (() -> Unit)? = null,
-  onSettingsClick: (() -> Unit)? = null,
-  onDeleteClick: (() -> Unit)? = null,
-  onRenameClick: (() -> Unit)? = null,
-  isSingleSelection: Boolean = false,
-  onInfoClick: (() -> Unit)? = null,
-  onShareClick: (() -> Unit)? = null,
-  onSelectAll: (() -> Unit)? = null,
-  onInvertSelection: (() -> Unit)? = null,
-  onDeselectAll: (() -> Unit)? = null,
-  additionalActions: @Composable RowScope.() -> Unit = { },
+    title: String,
+    isInSelectionMode: Boolean,
+    selectedCount: Int,
+    totalCount: Int,
+    onCancelSelection: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBackClick: (() -> Unit)? = null,
+    onSortClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null,
+    onDeleteClick: (() -> Unit)? = null,
+    onRenameClick: (() -> Unit)? = null,
+    isSingleSelection: Boolean = false,
+    onInfoClick: (() -> Unit)? = null,
+    onShareClick: (() -> Unit)? = null,
+    onSelectAll: (() -> Unit)? = null,
+    onInvertSelection: (() -> Unit)? = null,
+    onDeselectAll: (() -> Unit)? = null,
+    additionalActions: @Composable RowScope.() -> Unit = { },
 ) {
-  if (isInSelectionMode) {
-    SelectionTopBar(
-      selectedCount = selectedCount,
-      totalCount = totalCount,
-      onCancel = onCancelSelection,
-      onDelete = onDeleteClick,
-      onRename = onRenameClick,
-      isSingleSelection = isSingleSelection,
-      onInfo = onInfoClick,
-      onShare = onShareClick,
-      onSelectAll = onSelectAll,
-      onInvertSelection = onInvertSelection,
-      onDeselectAll = onDeselectAll,
-      modifier = modifier,
-    )
-  } else {
-    NormalTopBar(
-      title = title,
-      onBackClick = onBackClick,
-      onSortClick = onSortClick,
-      onSettingsClick = onSettingsClick,
-      additionalActions = additionalActions,
-      modifier = modifier,
-    )
-  }
+    if (isInSelectionMode) {
+        SelectionTopBar(
+            selectedCount = selectedCount,
+            totalCount = totalCount,
+            onCancel = onCancelSelection,
+            onDelete = onDeleteClick,
+            onRename = onRenameClick,
+            isSingleSelection = isSingleSelection,
+            onInfo = onInfoClick,
+            onShare = onShareClick,
+            onSelectAll = onSelectAll,
+            onInvertSelection = onInvertSelection,
+            onDeselectAll = onDeselectAll,
+            modifier = modifier,
+        )
+    } else {
+        NormalTopBar(
+            title = title,
+            onBackClick = onBackClick,
+            onSortClick = onSortClick,
+            onSettingsClick = onSettingsClick,
+            additionalActions = additionalActions,
+            modifier = modifier,
+        )
+    }
 }
 
 /**
@@ -93,81 +93,81 @@ fun BrowserTopBar(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NormalTopBar(
-  title: String,
-  onBackClick: (() -> Unit)?,
-  onSortClick: (() -> Unit)?,
-  onSettingsClick: (() -> Unit)?,
-  additionalActions: @Composable RowScope.() -> Unit,
-  modifier: Modifier = Modifier,
+    title: String,
+    onBackClick: (() -> Unit)?,
+    onSortClick: (() -> Unit)?,
+    onSettingsClick: (() -> Unit)?,
+    additionalActions: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  TopAppBar(
-    title = {
-      Text(
-        title,
-        style =
-          if (onBackClick == null) {
-            MaterialTheme.typography.headlineMediumEmphasized
-          } else {
-            MaterialTheme.typography.headlineSmall
-          },
-        fontWeight = FontWeight.ExtraBold,
-        color = MaterialTheme.colorScheme.primary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier =
-          if (onBackClick == null) {
-            Modifier.padding(start = 8.dp)
-          } else {
-            Modifier
-          },
-      )
-    },
-    navigationIcon = {
-      if (onBackClick != null) {
-        IconButton(
-          onClick = onBackClick,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
-    },
-    actions = {
-      additionalActions()
-      if (onSortClick != null) {
-        IconButton(
-          onClick = onSortClick,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.AutoMirrored.Filled.Sort,
-            contentDescription = "Sort",
-            modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
-      if (onSettingsClick != null) {
-        IconButton(
-          onClick = onSettingsClick,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.Filled.Settings,
-            contentDescription = "Settings",
-            modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
-    },
-    modifier = modifier,
-  )
+    TopAppBar(
+        title = {
+            Text(
+                title,
+                style =
+                    if (onBackClick == null) {
+                        MaterialTheme.typography.headlineMediumEmphasized
+                    } else {
+                        MaterialTheme.typography.headlineSmall
+                    },
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    if (onBackClick == null) {
+                        Modifier.padding(start = 8.dp)
+                    } else {
+                        Modifier
+                    },
+            )
+        },
+        navigationIcon = {
+            if (onBackClick != null) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+        },
+        actions = {
+            additionalActions()
+            if (onSortClick != null) {
+                IconButton(
+                    onClick = onSortClick,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = "Sort",
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+            if (onSettingsClick != null) {
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+        },
+        modifier = modifier,
+    )
 }
 
 /**
@@ -176,161 +176,161 @@ private fun NormalTopBar(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SelectionTopBar(
-  selectedCount: Int,
-  totalCount: Int,
-  onCancel: () -> Unit,
-  onDelete: (() -> Unit)?,
-  onRename: (() -> Unit)?,
-  isSingleSelection: Boolean,
-  onInfo: (() -> Unit)?,
-  onShare: (() -> Unit)?,
-  onSelectAll: (() -> Unit)?,
-  onInvertSelection: (() -> Unit)?,
-  onDeselectAll: (() -> Unit)?,
-  modifier: Modifier = Modifier,
+    selectedCount: Int,
+    totalCount: Int,
+    onCancel: () -> Unit,
+    onDelete: (() -> Unit)?,
+    onRename: (() -> Unit)?,
+    isSingleSelection: Boolean,
+    onInfo: (() -> Unit)?,
+    onShare: (() -> Unit)?,
+    onSelectAll: (() -> Unit)?,
+    onInvertSelection: (() -> Unit)?,
+    onDeselectAll: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-  var showDropdown by remember { mutableStateOf(false) }
+    var showDropdown by remember { mutableStateOf(false) }
 
-  TopAppBar(
-    title = {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { showDropdown = true },
-      ) {
-        Text(
-          "$selectedCount / $totalCount Selected",
-          style = MaterialTheme.typography.titleMedium,
-          color = MaterialTheme.colorScheme.primary,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Icon(
-          Icons.Filled.ArrowDropDown,
-          contentDescription = "Selection options",
-          modifier = Modifier.size(24.dp),
-          tint = MaterialTheme.colorScheme.primary,
-        )
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { showDropdown = true },
+            ) {
+                Text(
+                    "$selectedCount / $totalCount Selected",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = "Selection options",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
 
-        DropdownMenu(
-          expanded = showDropdown,
-          onDismissRequest = { showDropdown = false },
-        ) {
-          if (onSelectAll != null) {
-            DropdownMenuItem(
-              text = { Text("Select All") },
-              onClick = {
-                onSelectAll()
-                showDropdown = false
-              },
-            )
-          }
-          if (onInvertSelection != null) {
-            DropdownMenuItem(
-              text = { Text("Invert Selection") },
-              onClick = {
-                onInvertSelection()
-                showDropdown = false
-              },
-            )
-          }
-          if (onDeselectAll != null) {
-            DropdownMenuItem(
-              text = { Text("Deselect All") },
-              onClick = {
-                onDeselectAll()
-                showDropdown = false
-              },
-            )
-          }
-        }
-      }
-    },
-    navigationIcon = {
-      IconButton(
-        onClick = onCancel,
-        modifier = Modifier.padding(horizontal = 2.dp),
-      ) {
-        Icon(
-          Icons.Filled.Close,
-          contentDescription = "Cancel",
-          modifier = Modifier.size(24.dp),
-          tint = MaterialTheme.colorScheme.secondary,
-        )
-      }
-    },
-    actions = {
-      // Rename icon
-      if (onRename != null) {
-        IconButton(
-          onClick = onRename,
-          enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.Filled.DriveFileRenameOutline,
-            contentDescription = "Rename",
-            modifier = Modifier.size(24.dp),
-            tint =
-              if (isSingleSelection) {
-                MaterialTheme.colorScheme.secondary
-              } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-              },
-          )
-        }
-      }
+                DropdownMenu(
+                    expanded = showDropdown,
+                    onDismissRequest = { showDropdown = false },
+                ) {
+                    if (onSelectAll != null) {
+                        DropdownMenuItem(
+                            text = { Text("Select All") },
+                            onClick = {
+                                onSelectAll()
+                                showDropdown = false
+                            },
+                        )
+                    }
+                    if (onInvertSelection != null) {
+                        DropdownMenuItem(
+                            text = { Text("Invert Selection") },
+                            onClick = {
+                                onInvertSelection()
+                                showDropdown = false
+                            },
+                        )
+                    }
+                    if (onDeselectAll != null) {
+                        DropdownMenuItem(
+                            text = { Text("Deselect All") },
+                            onClick = {
+                                onDeselectAll()
+                                showDropdown = false
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.padding(horizontal = 2.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Cancel",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        },
+        actions = {
+            // Rename icon
+            if (onRename != null) {
+                IconButton(
+                    onClick = onRename,
+                    enabled = isSingleSelection,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.DriveFileRenameOutline,
+                        contentDescription = "Rename",
+                        modifier = Modifier.size(24.dp),
+                        tint =
+                            if (isSingleSelection) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                    )
+                }
+            }
 
-      // Info icon
-      if (onInfo != null) {
-        IconButton(
-          onClick = onInfo,
-          enabled = isSingleSelection,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.Filled.Info,
-            contentDescription = "Info",
-            modifier = Modifier.size(24.dp),
-            tint =
-              if (isSingleSelection) {
-                MaterialTheme.colorScheme.secondary
-              } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-              },
-          )
-        }
-      }
+            // Info icon
+            if (onInfo != null) {
+                IconButton(
+                    onClick = onInfo,
+                    enabled = isSingleSelection,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = "Info",
+                        modifier = Modifier.size(24.dp),
+                        tint =
+                            if (isSingleSelection) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                    )
+                }
+            }
 
-      // Share icon
-      if (onShare != null) {
-        IconButton(
-          onClick = onShare,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.Filled.Share,
-            contentDescription = "Share",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
+            // Share icon
+            if (onShare != null) {
+                IconButton(
+                    onClick = onShare,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = "Share",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
 
-      // Delete icon
-      if (onDelete != null) {
-        IconButton(
-          onClick = onDelete,
-          modifier = Modifier.padding(horizontal = 2.dp),
-        ) {
-          Icon(
-            Icons.Filled.Delete,
-            contentDescription = "Delete",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.error,
-          )
-        }
-      }
-    },
-    modifier = modifier,
-  )
+            // Delete icon
+            if (onDelete != null) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Delete",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        modifier = modifier,
+    )
 }

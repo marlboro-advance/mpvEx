@@ -38,80 +38,80 @@ import org.koin.compose.koinInject
 
 @Composable
 fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
-  val preferences = koinInject<SubtitlesPreferences>()
-  var isExpanded by remember { mutableStateOf(true) }
-  ExpandableCard(
-    isExpanded,
-    title = {
-      Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-        Icon(Icons.Default.Tune, null)
-        Text(stringResource(R.string.player_sheets_sub_misc_card_title))
-      }
-    },
-    onExpand = { isExpanded = !isExpanded },
-    modifier.widthIn(max = CARDS_MAX_WIDTH),
-    colors = panelCardsColors(),
-  ) {
-    ProvidePreferenceLocals {
-      Column {
-        val subScale by MPVLib.propFloat["sub-scale"].collectAsState()
-        val subPos by MPVLib.propInt["sub-pos"].collectAsState()
-        SliderItem(
-          label = stringResource(R.string.player_sheets_sub_scale),
-          value = subScale!!,
-          valueText = subScale!!.toFixed(2).toString(),
-          onChange = {
-            preferences.subScale.set(it)
-            MPVLib.setPropertyFloat("sub-scale", it)
-          },
-          max = 5f,
-          icon = {
-            Icon(
-              Icons.Default.FormatSize,
-              null,
-            )
-          },
-        )
-        SliderItem(
-          label = stringResource(R.string.player_sheets_sub_position),
-          value = subPos ?: preferences.subPos.get(),
-          valueText = subPos.toString(),
-          onChange = {
-            preferences.subPos.set(it)
-            MPVLib.setPropertyInt("sub-pos", it)
-          },
-          max = 150,
-          icon = {
-            Icon(
-              Icons.Default.AlignVerticalCenter,
-              null,
-            )
-          },
-        )
-        Row(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium),
-          horizontalArrangement = Arrangement.End,
-        ) {
-          TextButton(
-            onClick = {
-              preferences.subPos.deleteAndGet().let {
-                MPVLib.setPropertyInt("sub-pos", it)
-              }
-              preferences.subScale.deleteAndGet().let {
-                MPVLib.setPropertyFloat("sub-scale", it)
-              }
-            },
-          ) {
-            Row {
-              Icon(Icons.Default.EditOff, null)
-              Text(stringResource(R.string.generic_reset))
+    val preferences = koinInject<SubtitlesPreferences>()
+    var isExpanded by remember { mutableStateOf(true) }
+    ExpandableCard(
+        isExpanded,
+        title = {
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                Icon(Icons.Default.Tune, null)
+                Text(stringResource(R.string.player_sheets_sub_misc_card_title))
             }
-          }
+        },
+        onExpand = { isExpanded = !isExpanded },
+        modifier.widthIn(max = CARDS_MAX_WIDTH),
+        colors = panelCardsColors(),
+    ) {
+        ProvidePreferenceLocals {
+            Column {
+                val subScale by MPVLib.propFloat["sub-scale"].collectAsState()
+                val subPos by MPVLib.propInt["sub-pos"].collectAsState()
+                SliderItem(
+                    label = stringResource(R.string.player_sheets_sub_scale),
+                    value = subScale!!,
+                    valueText = subScale!!.toFixed(2).toString(),
+                    onChange = {
+                        preferences.subScale.set(it)
+                        MPVLib.setPropertyFloat("sub-scale", it)
+                    },
+                    max = 5f,
+                    icon = {
+                        Icon(
+                            Icons.Default.FormatSize,
+                            null,
+                        )
+                    },
+                )
+                SliderItem(
+                    label = stringResource(R.string.player_sheets_sub_position),
+                    value = subPos ?: preferences.subPos.get(),
+                    valueText = subPos.toString(),
+                    onChange = {
+                        preferences.subPos.set(it)
+                        MPVLib.setPropertyInt("sub-pos", it)
+                    },
+                    max = 150,
+                    icon = {
+                        Icon(
+                            Icons.Default.AlignVerticalCenter,
+                            null,
+                        )
+                    },
+                )
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(end = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.medium),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = {
+                            preferences.subPos.deleteAndGet().let {
+                                MPVLib.setPropertyInt("sub-pos", it)
+                            }
+                            preferences.subScale.deleteAndGet().let {
+                                MPVLib.setPropertyFloat("sub-scale", it)
+                            }
+                        },
+                    ) {
+                        Row {
+                            Icon(Icons.Default.EditOff, null)
+                            Text(stringResource(R.string.generic_reset))
+                        }
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }

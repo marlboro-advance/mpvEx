@@ -26,82 +26,82 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun SubtitlesSheet(
-  tracks: ImmutableList<TrackNode>,
-  onSelect: (Int) -> Unit,
-  onAddSubtitle: () -> Unit,
-  onOpenSubtitleSettings: () -> Unit,
-  onOpenSubtitleDelay: () -> Unit,
-  onRemoveSubtitle: (Int) -> Unit,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
-  externalSubtitleMetadata: Map<String, String> = emptyMap(),
+    tracks: ImmutableList<TrackNode>,
+    onSelect: (Int) -> Unit,
+    onAddSubtitle: () -> Unit,
+    onOpenSubtitleSettings: () -> Unit,
+    onOpenSubtitleDelay: () -> Unit,
+    onRemoveSubtitle: (Int) -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    externalSubtitleMetadata: Map<String, String> = emptyMap(),
 ) {
-  GenericTracksSheet(
-    tracks,
-    onDismissRequest = onDismissRequest,
-    header = {
-      AddTrackRow(
-        stringResource(R.string.player_sheets_add_ext_sub),
-        onAddSubtitle,
-        actions = {
-          IconButton(onClick = onOpenSubtitleSettings) {
-            Icon(Icons.Default.Palette, null)
-          }
-          IconButton(onClick = onOpenSubtitleDelay) {
-            Icon(Icons.Default.MoreTime, null)
-          }
+    GenericTracksSheet(
+        tracks,
+        onDismissRequest = onDismissRequest,
+        header = {
+            AddTrackRow(
+                stringResource(R.string.player_sheets_add_ext_sub),
+                onAddSubtitle,
+                actions = {
+                    IconButton(onClick = onOpenSubtitleSettings) {
+                        Icon(Icons.Default.Palette, null)
+                    }
+                    IconButton(onClick = onOpenSubtitleDelay) {
+                        Icon(Icons.Default.MoreTime, null)
+                    }
+                },
+            )
         },
-      )
-    },
-    track = { track ->
-      SubtitleTrackRow(
-        title = getTrackTitle(track, externalSubtitleMetadata),
-        selected = track.mainSelection?.toInt() ?: -1,
-        isExternal = track.external == true,
-        trackId = track.id,
-        onClick = { onSelect(track.id) },
-        onRemove = { onRemoveSubtitle(track.id) },
-      )
-    },
-    modifier = modifier,
-  )
+        track = { track ->
+            SubtitleTrackRow(
+                title = getTrackTitle(track, externalSubtitleMetadata),
+                selected = track.mainSelection?.toInt() ?: -1,
+                isExternal = track.external == true,
+                trackId = track.id,
+                onClick = { onSelect(track.id) },
+                onRemove = { onRemoveSubtitle(track.id) },
+            )
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable
 fun SubtitleTrackRow(
-  title: String,
-  selected: Int,
-  isExternal: Boolean,
-  trackId: Int,
-  onClick: () -> Unit,
-  onRemove: () -> Unit,
-  modifier: Modifier = Modifier,
+    title: String,
+    selected: Int,
+    isExternal: Boolean,
+    trackId: Int,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
-        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Checkbox(
-      selected > -1,
-      onCheckedChange = { _ -> onClick() },
-    )
-    Text(
-      title,
-      fontStyle = if (selected > -1) FontStyle.Italic else FontStyle.Normal,
-      fontWeight = if (selected > -1) FontWeight.ExtraBold else FontWeight.Normal,
-      modifier =
-        Modifier
-          .weight(1f)
-          .padding(horizontal = MaterialTheme.spacing.smaller),
-    )
-    if (isExternal) {
-      IconButton(onClick = onRemove) {
-        Icon(Icons.Default.Delete, contentDescription = null)
-      }
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            selected > -1,
+            onCheckedChange = { _ -> onClick() },
+        )
+        Text(
+            title,
+            fontStyle = if (selected > -1) FontStyle.Italic else FontStyle.Normal,
+            fontWeight = if (selected > -1) FontWeight.ExtraBold else FontWeight.Normal,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = MaterialTheme.spacing.smaller),
+        )
+        if (isExternal) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = null)
+            }
+        }
     }
-  }
 }

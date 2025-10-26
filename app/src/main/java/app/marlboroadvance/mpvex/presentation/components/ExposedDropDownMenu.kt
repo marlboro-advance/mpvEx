@@ -12,15 +12,15 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 private fun ExposedDropDownMenu() {
-  ExposedDropdownMenuBox(
-    true,
-    {},
-  ) {
-    DropdownMenu(true, {}) {
-      DropdownMenuItem(
-        { Text("") },
+    ExposedDropdownMenuBox(
+        true,
         {},
-      )
+    ) {
+        DropdownMenu(true, {}) {
+            DropdownMenuItem(
+                { Text("") },
+                {},
+            )
+        }
     }
-  }
 }

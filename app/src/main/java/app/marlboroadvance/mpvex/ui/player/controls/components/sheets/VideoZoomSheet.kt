@@ -31,99 +31,99 @@ import org.koin.compose.koinInject
 
 @Composable
 fun VideoZoomSheet(
-  videoZoom: Float,
-  onSetVideoZoom: (Float) -> Unit,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
+    videoZoom: Float,
+    onSetVideoZoom: (Float) -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  val playerPreferences = koinInject<PlayerPreferences>()
-  val defaultZoom by playerPreferences.defaultVideoZoom.collectAsState()
-  var zoom by remember { mutableFloatStateOf(videoZoom) }
+    val playerPreferences = koinInject<PlayerPreferences>()
+    val defaultZoom by playerPreferences.defaultVideoZoom.collectAsState()
+    var zoom by remember { mutableFloatStateOf(videoZoom) }
 
-  val currentOnSetVideoZoom by rememberUpdatedState(onSetVideoZoom)
+    val currentOnSetVideoZoom by rememberUpdatedState(onSetVideoZoom)
 
-  LaunchedEffect(Unit) {
-    val mpvZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: videoZoom
-    zoom = mpvZoom
-  }
+    LaunchedEffect(Unit) {
+        val mpvZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: videoZoom
+        zoom = mpvZoom
+    }
 
-  LaunchedEffect(zoom) {
-    currentOnSetVideoZoom(zoom)
-  }
+    LaunchedEffect(zoom) {
+        currentOnSetVideoZoom(zoom)
+    }
 
-  PlayerSheet(onDismissRequest = onDismissRequest) {
-    ZoomVideoSheet(
-      zoom = zoom,
-      defaultZoom = defaultZoom,
-      onZoomChange = { newZoom -> zoom = newZoom },
-      onSetAsDefault = {
-        playerPreferences.defaultVideoZoom.set(zoom)
-      },
-      onReset = {
-        zoom = 0f
-        playerPreferences.defaultVideoZoom.set(0f)
-      },
-      modifier = modifier,
-    )
-  }
+    PlayerSheet(onDismissRequest = onDismissRequest) {
+        ZoomVideoSheet(
+            zoom = zoom,
+            defaultZoom = defaultZoom,
+            onZoomChange = { newZoom -> zoom = newZoom },
+            onSetAsDefault = {
+                playerPreferences.defaultVideoZoom.set(zoom)
+            },
+            onReset = {
+                zoom = 0f
+                playerPreferences.defaultVideoZoom.set(0f)
+            },
+            modifier = modifier,
+        )
+    }
 }
 
 @Composable
 private fun ZoomVideoSheet(
-  zoom: Float,
-  defaultZoom: Float,
-  onZoomChange: (Float) -> Unit,
-  onSetAsDefault: () -> Unit,
-  onReset: () -> Unit,
-  modifier: Modifier = Modifier,
+    zoom: Float,
+    defaultZoom: Float,
+    onZoomChange: (Float) -> Unit,
+    onSetAsDefault: () -> Unit,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  val isDefault = zoom == defaultZoom
-  val isZero = zoom == 0f
+    val isDefault = zoom == defaultZoom
+    val isZero = zoom == 0f
 
-  Column(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .verticalScroll(rememberScrollState())
-        .padding(vertical = MaterialTheme.spacing.medium),
-  ) {
-    SliderItem(
-      label = stringResource(id = R.string.player_sheets_zoom_slider_label),
-      value = zoom,
-      valueText =
-        when {
-          isZero && isDefault -> "%.2fx (default)".format(zoom)
-          isDefault -> "%.2fx (default)".format(zoom)
-          isZero -> "%.2fx".format(zoom)
-          else -> "%.2fx".format(zoom)
-        },
-      onChange = onZoomChange,
-      max = 3f,
-      min = -2f,
-      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-    )
-
-    Row(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MaterialTheme.spacing.medium),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller, Alignment.End),
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = MaterialTheme.spacing.medium),
     ) {
-      Button(
-        onClick = onSetAsDefault,
-        enabled = !isDefault,
-      ) {
-        Text("Set as default")
-      }
+        SliderItem(
+            label = stringResource(id = R.string.player_sheets_zoom_slider_label),
+            value = zoom,
+            valueText =
+                when {
+                    isZero && isDefault -> "%.2fx (default)".format(zoom)
+                    isDefault -> "%.2fx (default)".format(zoom)
+                    isZero -> "%.2fx".format(zoom)
+                    else -> "%.2fx".format(zoom)
+                },
+            onChange = onZoomChange,
+            max = 3f,
+            min = -2f,
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+        )
 
-      Button(
-        onClick = onReset,
-        enabled = !isZero,
-      ) {
-        Text("Reset")
-      }
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller, Alignment.End),
+        ) {
+            Button(
+                onClick = onSetAsDefault,
+                enabled = !isDefault,
+            ) {
+                Text("Set as default")
+            }
+
+            Button(
+                onClick = onReset,
+                enabled = !isZero,
+            ) {
+                Text("Reset")
+            }
+        }
     }
-  }
 }

@@ -59,344 +59,344 @@ import org.koin.compose.koinInject
 
 @Serializable
 object SubtitlesPreferencesScreen : Screen {
-  @OptIn(ExperimentalMaterial3Api::class)
-  @Composable
-  override fun Content() {
-    val context = LocalContext.current
-    val backstack = LocalBackStack.current
-    val preferences = koinInject<SubtitlesPreferences>()
-    val fileManager = koinInject<FileManager>()
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    override fun Content() {
+        val context = LocalContext.current
+        val backstack = LocalBackStack.current
+        val preferences = koinInject<SubtitlesPreferences>()
+        val fileManager = koinInject<FileManager>()
 
-    Scaffold(
-      topBar = {
-        TopAppBar(
-          title = { Text(stringResource(R.string.pref_subtitles)) },
-          navigationIcon = {
-            IconButton(onClick = backstack::removeLastOrNull) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, null) }
-          },
-        )
-      },
-    ) { padding ->
-      ProvidePreferenceLocals {
-        val fontsFolder by preferences.fontsFolder.collectAsState()
-        val selectedFont by preferences.font.collectAsState()
-        var availableFonts by remember { mutableStateOf<List<String>>(emptyList()) }
-        var customFontEntries by remember { mutableStateOf<List<CustomFontEntry>>(emptyList()) }
-        var fontLoadTrigger by remember { mutableIntStateOf(0) }
-        var isLoadingFonts by remember { mutableStateOf(false) }
-
-        val locationPicker =
-          rememberLauncherForActivityResult(
-            ActivityResultContracts.OpenDocumentTree(),
-          ) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(uri, flags)
-            preferences.fontsFolder.set(uri.toString())
-
-            // Copy fonts immediately in background
-            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-              isLoadingFonts = true
-              copyFontsFromDirectory(context, fileManager, uri.toString())
-              withContext(Dispatchers.Main) {
-                fontLoadTrigger++
-                isLoadingFonts = false
-              }
-            }
-          }
-
-        // Load fonts when folder changes or trigger is fired
-        LaunchedEffect(fontsFolder, fontLoadTrigger) {
-          val customEntries = loadCustomFontEntries(context)
-          customFontEntries = customEntries
-          val customFonts = customEntries.map { it.familyName }
-
-          // Add default Android system fonts
-          val defaultFonts =
-            listOf(
-              "Sans Serif (Default)",
-              "Serif",
-              "Monospace",
-              "Casual",
-              "Cursive",
-            )
-
-          // Combine default fonts with custom fonts
-          availableFonts = defaultFonts + customFonts
-        }
-
-        // Auto-refresh fonts on app restart if directory is set
-        LaunchedEffect(Unit) {
-          if (fontsFolder.isNotBlank()) {
-            isLoadingFonts = true
-            withContext(Dispatchers.IO) {
-              copyFontsFromDirectory(context, fileManager, fontsFolder)
-            }
-            fontLoadTrigger++
-            isLoadingFonts = false
-          }
-        }
-
-        Column(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .verticalScroll(rememberScrollState())
-              .padding(padding),
-        ) {
-          // === GENERAL SECTION ===
-          PreferenceCategory(
-            title = { Text("General", style = MaterialTheme.typography.titleMedium) },
-          )
-
-          val preferredLanguages by preferences.preferredLanguages.collectAsState()
-          TextFieldPreference(
-            value = preferredLanguages,
-            onValueChange = preferences.preferredLanguages::set,
-            textToValue = { it },
-            title = { Text(stringResource(R.string.pref_preferred_languages)) },
-            summary = {
-              if (preferredLanguages.isNotBlank()) {
-                Text(preferredLanguages)
-              } else {
-                Text("Not set (will use video default)")
-              }
-            },
-            textField = { value, onValueChange, _ ->
-              Column {
-                Text("Enter language codes separated by commas (e.g., eng,jpn,spa)")
-                TextField(
-                  value,
-                  onValueChange,
-                  modifier = Modifier.fillMaxWidth(),
-                  placeholder = { Text("eng,jpn,spa") },
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.pref_subtitles)) },
+                    navigationIcon = {
+                        IconButton(onClick = backstack::removeLastOrNull) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, null) }
+                    },
                 )
-              }
             },
-          )
+        ) { padding ->
+            ProvidePreferenceLocals {
+                val fontsFolder by preferences.fontsFolder.collectAsState()
+                val selectedFont by preferences.font.collectAsState()
+                var availableFonts by remember { mutableStateOf<List<String>>(emptyList()) }
+                var customFontEntries by remember { mutableStateOf<List<CustomFontEntry>>(emptyList()) }
+                var fontLoadTrigger by remember { mutableIntStateOf(0) }
+                var isLoadingFonts by remember { mutableStateOf(false) }
 
-          val autoload by preferences.autoloadMatchingSubtitles.collectAsState()
-          SwitchPreference(
-            value = autoload,
-            onValueChange = { preferences.autoloadMatchingSubtitles.set(it) },
-            title = { Text(stringResource(R.string.pref_subtitles_autoload_title)) },
-            summary = { Text(stringResource(R.string.pref_subtitles_autoload_summary)) },
-          )
+                val locationPicker =
+                    rememberLauncherForActivityResult(
+                        ActivityResultContracts.OpenDocumentTree(),
+                    ) { uri ->
+                        if (uri == null) return@rememberLauncherForActivityResult
 
-          // Directory picker preference with reload and clear icons on the right
-          Box(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .clickable { locationPicker.launch(null) }
-                .padding(vertical = 16.dp, horizontal = 16.dp),
-          ) {
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-              // Left side: Title + summary
-              Column(
-                modifier = Modifier.weight(1f),
-              ) {
-                Text(
-                  stringResource(R.string.pref_subtitles_fonts_dir),
-                  style = MaterialTheme.typography.titleMedium,
-                )
-                if (fontsFolder.isBlank()) {
-                  Text(
-                    "Not set (using system fonts)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  )
-                } else {
-                  Text(
-                    getSimplifiedPathFromUri(fontsFolder),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  )
-                  if (availableFonts.isNotEmpty()) {
-                    Text(
-                      "${availableFonts.size} fonts loaded",
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    )
-                  }
-                }
-              }
+                        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        context.contentResolver.takePersistableUriPermission(uri, flags)
+                        preferences.fontsFolder.set(uri.toString())
 
-              // Right side: Action icons
-              if (fontsFolder.isNotBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                  // Refresh icon or loading spinner
-                  if (isLoadingFonts) {
-                    Box(
-                      modifier = Modifier.size(48.dp),
-                      contentAlignment = Alignment.Center,
-                    ) {
-                      CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                      )
-                    }
-                  } else {
-                    IconButton(
-                      onClick = {
+                        // Copy fonts immediately in background
                         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                          isLoadingFonts = true
-                          copyFontsFromDirectory(context, fileManager, fontsFolder)
-                          withContext(Dispatchers.Main) {
-                            fontLoadTrigger++
-                            isLoadingFonts = false
-                          }
+                            isLoadingFonts = true
+                            copyFontsFromDirectory(context, fileManager, uri.toString())
+                            withContext(Dispatchers.Main) {
+                                fontLoadTrigger++
+                                isLoadingFonts = false
+                            }
                         }
-                      },
-                    ) {
-                      Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Reload fonts",
-                        tint = MaterialTheme.colorScheme.primary,
-                      )
                     }
-                  }
 
-                  // Clear icon (always visible when directory is set)
-                  IconButton(
-                    onClick = {
-                      preferences.fontsFolder.set("")
-                      fontLoadTrigger++
-                    },
-                  ) {
-                    Icon(
-                      Icons.Default.Clear,
-                      contentDescription = "Clear font directory",
-                      tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                  }
-                }
-              }
-            }
-          }
+                // Load fonts when folder changes or trigger is fired
+                LaunchedEffect(fontsFolder, fontLoadTrigger) {
+                    val customEntries = loadCustomFontEntries(context)
+                    customFontEntries = customEntries
+                    val customFonts = customEntries.map { it.familyName }
 
-          if (availableFonts.isNotEmpty()) {
-            // Font picker dialog state
-            var showFontPicker by remember { mutableStateOf(false) }
-
-            // Check if selected font is actually available and not default
-            val isCustomFontSelected =
-              selectedFont.isNotBlank() &&
-                availableFonts.contains(selectedFont) &&
-                selectedFont != "Sans Serif (Default)"
-
-            // Font selection with clear icon
-            Box(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .clickable { showFontPicker = true }
-                  .padding(vertical = 16.dp, horizontal = 16.dp),
-            ) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-              ) {
-                // Left side: Title + selected font
-                Column(
-                  modifier = Modifier.weight(1f),
-                ) {
-                  Text(
-                    stringResource(R.string.player_sheets_sub_typography_font),
-                    style = MaterialTheme.typography.titleMedium,
-                  )
-                  Text(
-                    if (isCustomFontSelected) selectedFont else "Default (Sans Serif)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  )
-                }
-
-                // Right side: Clear icon (only shown if custom font is actually selected and available)
-                if (isCustomFontSelected) {
-                  IconButton(
-                    onClick = {
-                      preferences.font.set("")
-                    },
-                  ) {
-                    Icon(
-                      Icons.Default.Clear,
-                      contentDescription = "Reset to default font",
-                      tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                  }
-                }
-              }
-            }
-
-            // Font picker dialog
-            if (showFontPicker) {
-              androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showFontPicker = false },
-                title = { Text(stringResource(R.string.player_sheets_sub_typography_font)) },
-                text = {
-                  androidx.compose.foundation.lazy.LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                  ) {
-                    items(availableFonts.size) { index ->
-                      val font = availableFonts[index]
-                      val typeface: Typeface? =
-                        when (font) {
-                          "Sans Serif (Default)" -> Typeface.SANS_SERIF
-                          "Serif" -> Typeface.SERIF
-                          "Monospace" -> Typeface.MONOSPACE
-                          "Casual" -> Typeface.create("casual", Typeface.NORMAL)
-                          "Cursive" -> Typeface.create("cursive", Typeface.NORMAL)
-                          else -> {
-                            val entry = customFontEntries.firstOrNull { it.familyName == font }
-                            entry?.let { runCatching { Typeface.createFromFile(it.file) }.getOrNull() }
-                          }
-                        }
-
-                      androidx.compose.material3.TextButton(
-                        onClick = {
-                          preferences.font.set(font)
-                          showFontPicker = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                      ) {
-                        Text(
-                          font,
-                          modifier = Modifier.fillMaxWidth(),
-                          color = MaterialTheme.colorScheme.onSurface,
-                          style =
-                            if (font == selectedFont) {
-                              MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                fontFamily = typeface?.let { FontFamily(it) },
-                              )
-                            } else {
-                              MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = typeface?.let { FontFamily(it) },
-                              )
-                            },
+                    // Add default Android system fonts
+                    val defaultFonts =
+                        listOf(
+                            "Sans Serif (Default)",
+                            "Serif",
+                            "Monospace",
+                            "Casual",
+                            "Cursive",
                         )
-                      }
+
+                    // Combine default fonts with custom fonts
+                    availableFonts = defaultFonts + customFonts
+                }
+
+                // Auto-refresh fonts on app restart if directory is set
+                LaunchedEffect(Unit) {
+                    if (fontsFolder.isNotBlank()) {
+                        isLoadingFonts = true
+                        withContext(Dispatchers.IO) {
+                            copyFontsFromDirectory(context, fileManager, fontsFolder)
+                        }
+                        fontLoadTrigger++
+                        isLoadingFonts = false
                     }
-                  }
-                },
-                confirmButton = {
-                  androidx.compose.material3.TextButton(onClick = { showFontPicker = false }) {
-                    Text("Cancel")
-                  }
-                },
-              )
+                }
+
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(padding),
+                ) {
+                    // === GENERAL SECTION ===
+                    PreferenceCategory(
+                        title = { Text("General", style = MaterialTheme.typography.titleMedium) },
+                    )
+
+                    val preferredLanguages by preferences.preferredLanguages.collectAsState()
+                    TextFieldPreference(
+                        value = preferredLanguages,
+                        onValueChange = preferences.preferredLanguages::set,
+                        textToValue = { it },
+                        title = { Text(stringResource(R.string.pref_preferred_languages)) },
+                        summary = {
+                            if (preferredLanguages.isNotBlank()) {
+                                Text(preferredLanguages)
+                            } else {
+                                Text("Not set (will use video default)")
+                            }
+                        },
+                        textField = { value, onValueChange, _ ->
+                            Column {
+                                Text("Enter language codes separated by commas (e.g., eng,jpn,spa)")
+                                TextField(
+                                    value,
+                                    onValueChange,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("eng,jpn,spa") },
+                                )
+                            }
+                        },
+                    )
+
+                    val autoload by preferences.autoloadMatchingSubtitles.collectAsState()
+                    SwitchPreference(
+                        value = autoload,
+                        onValueChange = { preferences.autoloadMatchingSubtitles.set(it) },
+                        title = { Text(stringResource(R.string.pref_subtitles_autoload_title)) },
+                        summary = { Text(stringResource(R.string.pref_subtitles_autoload_summary)) },
+                    )
+
+                    // Directory picker preference with reload and clear icons on the right
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { locationPicker.launch(null) }
+                                .padding(vertical = 16.dp, horizontal = 16.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            // Left side: Title + summary
+                            Column(
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    stringResource(R.string.pref_subtitles_fonts_dir),
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                if (fontsFolder.isBlank()) {
+                                    Text(
+                                        "Not set (using system fonts)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                } else {
+                                    Text(
+                                        getSimplifiedPathFromUri(fontsFolder),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (availableFonts.isNotEmpty()) {
+                                        Text(
+                                            "${availableFonts.size} fonts loaded",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Right side: Action icons
+                            if (fontsFolder.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Refresh icon or loading spinner
+                                    if (isLoadingFonts) {
+                                        Box(
+                                            modifier = Modifier.size(48.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    } else {
+                                        IconButton(
+                                            onClick = {
+                                                kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                                                    isLoadingFonts = true
+                                                    copyFontsFromDirectory(context, fileManager, fontsFolder)
+                                                    withContext(Dispatchers.Main) {
+                                                        fontLoadTrigger++
+                                                        isLoadingFonts = false
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Refresh,
+                                                contentDescription = "Reload fonts",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    }
+
+                                    // Clear icon (always visible when directory is set)
+                                    IconButton(
+                                        onClick = {
+                                            preferences.fontsFolder.set("")
+                                            fontLoadTrigger++
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear font directory",
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (availableFonts.isNotEmpty()) {
+                        // Font picker dialog state
+                        var showFontPicker by remember { mutableStateOf(false) }
+
+                        // Check if selected font is actually available and not default
+                        val isCustomFontSelected =
+                            selectedFont.isNotBlank() &&
+                                availableFonts.contains(selectedFont) &&
+                                selectedFont != "Sans Serif (Default)"
+
+                        // Font selection with clear icon
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showFontPicker = true }
+                                    .padding(vertical = 16.dp, horizontal = 16.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                // Left side: Title + selected font
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.player_sheets_sub_typography_font),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        if (isCustomFontSelected) selectedFont else "Default (Sans Serif)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+
+                                // Right side: Clear icon (only shown if custom font is actually selected and available)
+                                if (isCustomFontSelected) {
+                                    IconButton(
+                                        onClick = {
+                                            preferences.font.set("")
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Reset to default font",
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Font picker dialog
+                        if (showFontPicker) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = { showFontPicker = false },
+                                title = { Text(stringResource(R.string.player_sheets_sub_typography_font)) },
+                                text = {
+                                    androidx.compose.foundation.lazy.LazyColumn(
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        items(availableFonts.size) { index ->
+                                            val font = availableFonts[index]
+                                            val typeface: Typeface? =
+                                                when (font) {
+                                                    "Sans Serif (Default)" -> Typeface.SANS_SERIF
+                                                    "Serif" -> Typeface.SERIF
+                                                    "Monospace" -> Typeface.MONOSPACE
+                                                    "Casual" -> Typeface.create("casual", Typeface.NORMAL)
+                                                    "Cursive" -> Typeface.create("cursive", Typeface.NORMAL)
+                                                    else -> {
+                                                        val entry = customFontEntries.firstOrNull { it.familyName == font }
+                                                        entry?.let { runCatching { Typeface.createFromFile(it.file) }.getOrNull() }
+                                                    }
+                                                }
+
+                                            androidx.compose.material3.TextButton(
+                                                onClick = {
+                                                    preferences.font.set(font)
+                                                    showFontPicker = false
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            ) {
+                                                Text(
+                                                    font,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    style =
+                                                        if (font == selectedFont) {
+                                                            MaterialTheme.typography.bodyLarge.copy(
+                                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                                fontFamily = typeface?.let { FontFamily(it) },
+                                                            )
+                                                        } else {
+                                                            MaterialTheme.typography.bodyLarge.copy(
+                                                                fontFamily = typeface?.let { FontFamily(it) },
+                                                            )
+                                                        },
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    androidx.compose.material3.TextButton(onClick = { showFontPicker = false }) {
+                                        Text("Cancel")
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
             }
-          }
         }
-      }
     }
-  }
 }

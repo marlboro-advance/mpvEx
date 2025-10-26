@@ -39,74 +39,74 @@ import org.koin.compose.koinInject
 @SuppressLint("NewApi")
 @Composable
 fun BottomRightPlayerControls(
-  viewModel: PlayerViewModel,
-  modifier: Modifier = Modifier,
+    viewModel: PlayerViewModel,
+    modifier: Modifier = Modifier,
 ) {
-  val playerPreferences = koinInject<PlayerPreferences>()
-  val aspect by playerPreferences.videoAspect.collectAsState()
-  val currentZoom by viewModel.videoZoom.collectAsState()
+    val playerPreferences = koinInject<PlayerPreferences>()
+    val aspect by playerPreferences.videoAspect.collectAsState()
+    val currentZoom by viewModel.videoZoom.collectAsState()
 
-  Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-    val activity = LocalActivity.current as PlayerActivity
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        val activity = LocalActivity.current as PlayerActivity
 
-    if (currentZoom != 0f) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-        modifier =
-          Modifier
-            .clip(RoundedCornerShape(25.dp))
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
-            .clickable { viewModel.sheetShown.update { Sheets.VideoZoom } }
-            .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
-      ) {
-        Icon(
-          imageVector = Icons.Default.ZoomIn,
-          contentDescription = null,
-          modifier =
-            Modifier
-              .padding(end = MaterialTheme.spacing.extraSmall)
-              .size(16.dp),
-          tint = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-          text = "%.2fx".format(currentZoom),
-          fontWeight = FontWeight.Bold,
-          style = MaterialTheme.typography.bodyMedium,
-          maxLines = 1,
-          overflow = TextOverflow.Clip,
-          color = MaterialTheme.colorScheme.onBackground,
-        )
-      }
-    } else {
-      ControlsButton(
-        Icons.Default.ZoomIn,
-        onClick = {
-          viewModel.sheetShown.update { Sheets.VideoZoom }
-        },
-      )
-    }
-
-    if (activity.isPipSupported) {
-      ControlsButton(
-        Icons.Default.PictureInPictureAlt,
-        onClick = {
-          activity.enterPipModeHidingOverlay()
-        },
-      )
-    }
-    ControlsButton(
-      Icons.Default.AspectRatio,
-      onClick = {
-        when (aspect) {
-          VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Stretch)
-          VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Crop)
-          VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Fit)
+        if (currentZoom != 0f) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(25.dp))
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
+                        .clickable { viewModel.sheetShown.update { Sheets.VideoZoom } }
+                        .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ZoomIn,
+                    contentDescription = null,
+                    modifier =
+                        Modifier
+                            .padding(end = MaterialTheme.spacing.extraSmall)
+                            .size(16.dp),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = "%.2fx".format(currentZoom),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+        } else {
+            ControlsButton(
+                Icons.Default.ZoomIn,
+                onClick = {
+                    viewModel.sheetShown.update { Sheets.VideoZoom }
+                },
+            )
         }
-      },
-      onLongClick = {
-        viewModel.sheetShown.update { Sheets.AspectRatios }
-      },
-    )
-  }
+
+        if (activity.isPipSupported) {
+            ControlsButton(
+                Icons.Default.PictureInPictureAlt,
+                onClick = {
+                    activity.enterPipModeHidingOverlay()
+                },
+            )
+        }
+        ControlsButton(
+            Icons.Default.AspectRatio,
+            onClick = {
+                when (aspect) {
+                    VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Stretch)
+                    VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Crop)
+                    VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Fit)
+                }
+            },
+            onLongClick = {
+                viewModel.sheetShown.update { Sheets.AspectRatios }
+            },
+        )
+    }
 }

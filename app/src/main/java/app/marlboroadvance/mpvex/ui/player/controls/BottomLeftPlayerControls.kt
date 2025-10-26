@@ -20,43 +20,43 @@ import dev.vivvvek.seeker.Segment
 
 @Composable
 fun BottomLeftPlayerControls(
-  playbackSpeed: Float,
-  currentChapter: Segment?,
-  showChapterIndicator: Boolean,
-  onLockControls: () -> Unit,
-  onCycleRotation: () -> Unit,
-  onPlaybackSpeedChange: (Float) -> Unit,
-  onOpenSheet: (Sheets) -> Unit,
-  modifier: Modifier = Modifier,
+    playbackSpeed: Float,
+    currentChapter: Segment?,
+    showChapterIndicator: Boolean,
+    onLockControls: () -> Unit,
+    onCycleRotation: () -> Unit,
+    onPlaybackSpeedChange: (Float) -> Unit,
+    onOpenSheet: (Sheets) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    ControlsButton(
-      Icons.Default.LockOpen,
-      onClick = onLockControls,
-    )
-    ControlsButton(
-      icon = Icons.Default.ScreenRotation,
-      onClick = onCycleRotation,
-    )
-    ControlsButton(
-      text = stringResource(R.string.player_speed, playbackSpeed),
-      onClick = { onPlaybackSpeedChange(if (playbackSpeed >= 2) 0.25f else playbackSpeed + 0.25f) },
-      onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-    )
-    AnimatedVisibility(
-      showChapterIndicator && currentChapter != null,
-      enter = fadeIn(),
-      exit = fadeOut(),
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-      currentChapter?.let { chapter ->
-        CurrentChapter(
-          chapter = chapter,
-          onClick = { onOpenSheet(Sheets.Chapters) },
+        ControlsButton(
+            Icons.Default.LockOpen,
+            onClick = onLockControls,
         )
-      }
+        ControlsButton(
+            icon = Icons.Default.ScreenRotation,
+            onClick = onCycleRotation,
+        )
+        ControlsButton(
+            text = stringResource(R.string.player_speed, playbackSpeed),
+            onClick = { onPlaybackSpeedChange(if (playbackSpeed >= 2) 0.25f else playbackSpeed + 0.25f) },
+            onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+        )
+        AnimatedVisibility(
+            showChapterIndicator && currentChapter != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            currentChapter?.let { chapter ->
+                CurrentChapter(
+                    chapter = chapter,
+                    onClick = { onOpenSheet(Sheets.Chapters) },
+                )
+            }
+        }
     }
-  }
 }

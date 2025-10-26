@@ -33,118 +33,118 @@ import org.koin.compose.koinInject
 
 @Serializable
 object GesturePreferencesScreen : Screen {
-  @OptIn(ExperimentalMaterial3Api::class)
-  @Composable
-  override fun Content() {
-    val preferences = koinInject<GesturePreferences>()
-    val context = LocalContext.current
-    val backstack = LocalBackStack.current
-    Scaffold(
-      topBar = {
-        TopAppBar(
-          title = {
-            Text(stringResource(R.string.pref_gesture))
-          },
-          navigationIcon = {
-            IconButton(onClick = backstack::removeLastOrNull) {
-              Icon(Icons.AutoMirrored.Default.ArrowBack, null)
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    override fun Content() {
+        val preferences = koinInject<GesturePreferences>()
+        val context = LocalContext.current
+        val backstack = LocalBackStack.current
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(stringResource(R.string.pref_gesture))
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = backstack::removeLastOrNull) {
+                            Icon(Icons.AutoMirrored.Default.ArrowBack, null)
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            ProvidePreferenceLocals {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(padding),
+                ) {
+                    PreferenceCategory(
+                        title = { Text(text = stringResource(R.string.pref_gesture_double_tap_title)) },
+                    )
+                    val doubleTapSeekDuration by preferences.doubleTapToSeekDuration.collectAsState()
+                    ListPreference(
+                        value = doubleTapSeekDuration,
+                        onValueChange = preferences.doubleTapToSeekDuration::set,
+                        values = listOf(3, 5, 10, 15, 20, 25, 30),
+                        valueToText = { AnnotatedString("${it}s") },
+                        title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
+                        summary = { Text(text = "${doubleTapSeekDuration}s") },
+                    )
+
+                    val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
+                    ListPreference(
+                        value = leftDoubleTap,
+                        onValueChange = { preferences.leftSingleActionGesture.set(it) },
+                        values = SingleActionGesture.entries,
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_double_tap_left_title)) },
+                        summary = { Text(text = stringResource(leftDoubleTap.titleRes)) },
+                    )
+
+                    val centerDoubleTap by preferences.centerSingleActionGesture.collectAsState()
+                    ListPreference(
+                        value = centerDoubleTap,
+                        onValueChange = { preferences.centerSingleActionGesture.set(it) },
+                        values =
+                            listOf(
+                                SingleActionGesture.None,
+                                SingleActionGesture.PlayPause,
+                            ),
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_double_tap_center_title)) },
+                        summary = { Text(text = stringResource(centerDoubleTap.titleRes)) },
+                    )
+
+                    val rightDoubleTap by preferences.rightSingleActionGesture.collectAsState()
+                    ListPreference(
+                        value = rightDoubleTap,
+                        onValueChange = { preferences.rightSingleActionGesture.set(it) },
+                        values = SingleActionGesture.entries,
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_double_tap_right_title)) },
+                        summary = { Text(text = stringResource(rightDoubleTap.titleRes)) },
+                    )
+
+                    PreferenceCategory(
+                        title = { Text(text = stringResource(R.string.pref_gesture_media_title)) },
+                    )
+
+                    val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
+                    ListPreference(
+                        value = mediaPreviousGesture,
+                        onValueChange = { preferences.mediaPreviousGesture.set(it) },
+                        values = SingleActionGesture.entries,
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_media_previous)) },
+                        summary = { Text(text = stringResource(mediaPreviousGesture.titleRes)) },
+                    )
+                    val mediaPlayGesture by preferences.mediaPlayGesture.collectAsState()
+                    ListPreference(
+                        value = mediaPlayGesture,
+                        onValueChange = { preferences.mediaPlayGesture.set(it) },
+                        values =
+                            listOf(
+                                SingleActionGesture.None,
+                                SingleActionGesture.PlayPause,
+                            ),
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
+                        summary = { Text(text = stringResource(mediaPlayGesture.titleRes)) },
+                    )
+                    val mediaNextGesture by preferences.mediaNextGesture.collectAsState()
+                    ListPreference(
+                        value = mediaNextGesture,
+                        onValueChange = { preferences.mediaNextGesture.set(it) },
+                        values = SingleActionGesture.entries,
+                        valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                        title = { Text(text = stringResource(R.string.pref_gesture_media_next)) },
+                        summary = { Text(text = stringResource(mediaNextGesture.titleRes)) },
+                    )
+                }
             }
-          },
-        )
-      },
-    ) { padding ->
-      ProvidePreferenceLocals {
-        Column(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .verticalScroll(rememberScrollState())
-              .padding(padding),
-        ) {
-          PreferenceCategory(
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_title)) },
-          )
-          val doubleTapSeekDuration by preferences.doubleTapToSeekDuration.collectAsState()
-          ListPreference(
-            value = doubleTapSeekDuration,
-            onValueChange = preferences.doubleTapToSeekDuration::set,
-            values = listOf(3, 5, 10, 15, 20, 25, 30),
-            valueToText = { AnnotatedString("${it}s") },
-            title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
-            summary = { Text(text = "${doubleTapSeekDuration}s") },
-          )
-
-          val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
-          ListPreference(
-            value = leftDoubleTap,
-            onValueChange = { preferences.leftSingleActionGesture.set(it) },
-            values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_left_title)) },
-            summary = { Text(text = stringResource(leftDoubleTap.titleRes)) },
-          )
-
-          val centerDoubleTap by preferences.centerSingleActionGesture.collectAsState()
-          ListPreference(
-            value = centerDoubleTap,
-            onValueChange = { preferences.centerSingleActionGesture.set(it) },
-            values =
-              listOf(
-                SingleActionGesture.None,
-                SingleActionGesture.PlayPause,
-              ),
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_center_title)) },
-            summary = { Text(text = stringResource(centerDoubleTap.titleRes)) },
-          )
-
-          val rightDoubleTap by preferences.rightSingleActionGesture.collectAsState()
-          ListPreference(
-            value = rightDoubleTap,
-            onValueChange = { preferences.rightSingleActionGesture.set(it) },
-            values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_right_title)) },
-            summary = { Text(text = stringResource(rightDoubleTap.titleRes)) },
-          )
-
-          PreferenceCategory(
-            title = { Text(text = stringResource(R.string.pref_gesture_media_title)) },
-          )
-
-          val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
-          ListPreference(
-            value = mediaPreviousGesture,
-            onValueChange = { preferences.mediaPreviousGesture.set(it) },
-            values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_media_previous)) },
-            summary = { Text(text = stringResource(mediaPreviousGesture.titleRes)) },
-          )
-          val mediaPlayGesture by preferences.mediaPlayGesture.collectAsState()
-          ListPreference(
-            value = mediaPlayGesture,
-            onValueChange = { preferences.mediaPlayGesture.set(it) },
-            values =
-              listOf(
-                SingleActionGesture.None,
-                SingleActionGesture.PlayPause,
-              ),
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
-            summary = { Text(text = stringResource(mediaPlayGesture.titleRes)) },
-          )
-          val mediaNextGesture by preferences.mediaNextGesture.collectAsState()
-          ListPreference(
-            value = mediaNextGesture,
-            onValueChange = { preferences.mediaNextGesture.set(it) },
-            values = SingleActionGesture.entries,
-            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_media_next)) },
-            summary = { Text(text = stringResource(mediaNextGesture.titleRes)) },
-          )
         }
-      }
     }
-  }
 }

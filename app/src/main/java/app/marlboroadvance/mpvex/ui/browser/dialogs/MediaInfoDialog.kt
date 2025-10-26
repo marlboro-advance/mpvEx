@@ -60,405 +60,405 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MediaInfoDialog(
-  isOpen: Boolean,
-  onDismiss: () -> Unit,
-  fileName: String,
-  mediaInfo: MediaInfoOps.MediaInfoData?,
-  isLoading: Boolean,
-  error: String?,
-  videoForShare: Video? = null,
+    isOpen: Boolean,
+    onDismiss: () -> Unit,
+    fileName: String,
+    mediaInfo: MediaInfoOps.MediaInfoData?,
+    isLoading: Boolean,
+    error: String?,
+    videoForShare: Video? = null,
 ) {
-  if (!isOpen) return
+    if (!isOpen) return
 
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-  Dialog(
-    onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Card(
-      modifier =
-        Modifier
-          .fillMaxWidth(0.95f)
-          .padding(16.dp),
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-      Column(modifier = Modifier.padding(16.dp)) {
-        // Header
-        DialogHeader(fileName = fileName)
+        Card(
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.95f)
+                    .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Header
+                DialogHeader(fileName = fileName)
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-        // Content
-        DialogContent(
-          isLoading = isLoading,
-          error = error,
-          mediaInfo = mediaInfo,
-        )
+                // Content
+                DialogContent(
+                    isLoading = isLoading,
+                    error = error,
+                    mediaInfo = mediaInfo,
+                )
 
-        // Footer
-        Spacer(modifier = Modifier.height(16.dp))
-        DialogFooter(
-          showShareButton = mediaInfo != null && !isLoading && videoForShare != null,
-          showCopyButton = mediaInfo != null && !isLoading && videoForShare != null,
-          onShare = {
-            val video = videoForShare ?: return@DialogFooter
-            scope.launch {
-              // Generate text output
-              val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
-              result
-                .onSuccess { textContent ->
-                  val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}.txt"
-                  val file = File(context.cacheDir, fileName)
-                  runCatching { file.writeText(textContent) }
-                    .onSuccess {
-                      val fileUri =
-                        FileProvider.getUriForFile(
-                          context,
-                          "${context.packageName}.provider",
-                          file,
-                        )
-                      val intent =
-                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                          type = "text/plain"
-                          putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
-                          putExtra(android.content.Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
-                          addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // Footer
+                Spacer(modifier = Modifier.height(16.dp))
+                DialogFooter(
+                    showShareButton = mediaInfo != null && !isLoading && videoForShare != null,
+                    showCopyButton = mediaInfo != null && !isLoading && videoForShare != null,
+                    onShare = {
+                        val video = videoForShare ?: return@DialogFooter
+                        scope.launch {
+                            // Generate text output
+                            val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
+                            result
+                                .onSuccess { textContent ->
+                                    val fileName = "mediainfo_${video.displayName.substringBeforeLast('.')}.txt"
+                                    val file = File(context.cacheDir, fileName)
+                                    runCatching { file.writeText(textContent) }
+                                        .onSuccess {
+                                            val fileUri =
+                                                FileProvider.getUriForFile(
+                                                    context,
+                                                    "${context.packageName}.provider",
+                                                    file,
+                                                )
+                                            val intent =
+                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
+                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Media Info - ${video.displayName}")
+                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                }
+                                            context.startActivity(
+                                                android.content.Intent.createChooser(
+                                                    intent,
+                                                    "Media Info - ${video.displayName}",
+                                                ),
+                                            )
+                                        }.onFailure { e ->
+                                            Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
+                                        }
+                                }.onFailure { e ->
+                                    Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
+                                }
                         }
-                      context.startActivity(
-                        android.content.Intent.createChooser(
-                          intent,
-                          "Media Info - ${video.displayName}",
-                        ),
-                      )
-                    }.onFailure { e ->
-                      Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
-                    }
-                }.onFailure { e ->
-                  Toast.makeText(context, e.message ?: "Failed to share", Toast.LENGTH_SHORT).show()
-                }
+                    },
+                    onCopy = {
+                        val video = videoForShare ?: return@DialogFooter
+                        scope.launch {
+                            val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
+                            result
+                                .onSuccess { textContent ->
+                                    val clipboard =
+                                        context.getSystemService(
+                                            android.content.Context.CLIPBOARD_SERVICE,
+                                        ) as android.content.ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("Media Info - ${video.displayName}", textContent)
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                }.onFailure { e ->
+                                    Toast.makeText(context, e.message ?: "Failed to copy", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    },
+                    onDismiss = onDismiss,
+                )
             }
-          },
-          onCopy = {
-            val video = videoForShare ?: return@DialogFooter
-            scope.launch {
-              val result = MediaInfoOps.generateTextOutput(context, video.uri, video.displayName)
-              result
-                .onSuccess { textContent ->
-                  val clipboard =
-                    context.getSystemService(
-                      android.content.Context.CLIPBOARD_SERVICE,
-                    ) as android.content.ClipboardManager
-                  val clip = android.content.ClipData.newPlainText("Media Info - ${video.displayName}", textContent)
-                  clipboard.setPrimaryClip(clip)
-                  Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                }.onFailure { e ->
-                  Toast.makeText(context, e.message ?: "Failed to copy", Toast.LENGTH_SHORT).show()
-                }
-            }
-          },
-          onDismiss = onDismiss,
-        )
-      }
+        }
     }
-  }
 }
 
 @Composable
 private fun DialogHeader(fileName: String) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.Start,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(
-      Icons.Filled.Info,
-      contentDescription = null,
-      tint = MaterialTheme.colorScheme.primary,
-    )
-    Spacer(modifier = Modifier.width(8.dp))
-    Text(
-      "Media Info",
-      style = MaterialTheme.typography.headlineSmall,
-      color = MaterialTheme.colorScheme.onSurface,
-    )
-  }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            "Media Info",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 
-  Spacer(modifier = Modifier.height(8.dp))
-  Text(
-    fileName,
-    style = MaterialTheme.typography.titleSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-  )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        fileName,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
 private fun DialogContent(
-  isLoading: Boolean,
-  error: String?,
-  mediaInfo: MediaInfoOps.MediaInfoData?,
+    isLoading: Boolean,
+    error: String?,
+    mediaInfo: MediaInfoOps.MediaInfoData?,
 ) {
-  when {
-    isLoading -> LoadingState()
-    error != null -> ErrorState(error)
-    mediaInfo != null -> MediaInfoContent(mediaInfo)
-  }
+    when {
+        isLoading -> LoadingState()
+        error != null -> ErrorState(error)
+        mediaInfo != null -> MediaInfoContent(mediaInfo)
+    }
 }
 
 @Composable
 private fun LoadingState() {
-  Column(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(32.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    CircularProgressIndicator()
-    Spacer(modifier = Modifier.height(16.dp))
-    Text(
-      "Analyzing media...",
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-  }
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Analyzing media...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
 private fun ErrorState(error: String) {
-  Text(
-    "Error: $error",
-    style = MaterialTheme.typography.bodyMedium,
-    color = MaterialTheme.colorScheme.error,
-  )
+    Text(
+        "Error: $error",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable
 private fun DialogFooter(
-  showShareButton: Boolean,
-  showCopyButton: Boolean,
-  onShare: () -> Unit,
-  onCopy: () -> Unit,
-  onDismiss: () -> Unit,
+    showShareButton: Boolean,
+    showCopyButton: Boolean,
+    onShare: () -> Unit,
+    onCopy: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      if (showShareButton) {
-        IconButton(onClick = onShare) {
-          Icon(
-            Icons.Filled.Share,
-            contentDescription = "Share",
-            tint = MaterialTheme.colorScheme.primary,
-          )
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (showShareButton) {
+                IconButton(onClick = onShare) {
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = "Share",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            if (showCopyButton) {
+                IconButton(onClick = onCopy) {
+                    Icon(
+                        Icons.Filled.ContentCopy,
+                        contentDescription = "Copy",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
-      }
-      if (showCopyButton) {
-        IconButton(onClick = onCopy) {
-          Icon(
-            Icons.Filled.ContentCopy,
-            contentDescription = "Copy",
-            tint = MaterialTheme.colorScheme.primary,
-          )
-        }
-      }
+        Spacer(modifier = Modifier.weight(1f))
+        TextButton(onClick = onDismiss) { Text("Close") }
     }
-    Spacer(modifier = Modifier.weight(1f))
-    TextButton(onClick = onDismiss) { Text("Close") }
-  }
 }
 
 @Composable
 private fun MediaInfoContent(mediaInfo: MediaInfoOps.MediaInfoData) {
-  Column(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .height(500.dp)
-        .verticalScroll(rememberScrollState())
-        .padding(4.dp),
-  ) {
-    StreamInfoSection(
-      title = "General",
-      content = { GeneralInfoContent(mediaInfo.general) },
-    )
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(500.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(4.dp),
+    ) {
+        StreamInfoSection(
+            title = "General",
+            content = { GeneralInfoContent(mediaInfo.general) },
+        )
 
-    mediaInfo.videoStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
-      StreamInfoSection(
-        title = "Video Stream ${index + 1}",
-        content = { VideoStreamContent(stream) },
-      )
-    }
+        mediaInfo.videoStreams.forEachIndexed { index, stream ->
+            Spacer(modifier = Modifier.height(16.dp))
+            StreamInfoSection(
+                title = "Video Stream ${index + 1}",
+                content = { VideoStreamContent(stream) },
+            )
+        }
 
-    mediaInfo.audioStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
-      StreamInfoSection(
-        title = "Audio Stream ${index + 1}",
-        content = { AudioStreamContent(stream) },
-      )
-    }
+        mediaInfo.audioStreams.forEachIndexed { index, stream ->
+            Spacer(modifier = Modifier.height(16.dp))
+            StreamInfoSection(
+                title = "Audio Stream ${index + 1}",
+                content = { AudioStreamContent(stream) },
+            )
+        }
 
-    mediaInfo.textStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
-      StreamInfoSection(
-        title = "Subtitle Stream ${index + 1}",
-        content = { TextStreamContent(stream) },
-      )
+        mediaInfo.textStreams.forEachIndexed { index, stream ->
+            Spacer(modifier = Modifier.height(16.dp))
+            StreamInfoSection(
+                title = "Subtitle Stream ${index + 1}",
+                content = { TextStreamContent(stream) },
+            )
+        }
     }
-  }
 }
 
 @Composable
 private fun StreamInfoSection(
-  title: String,
-  content: @Composable () -> Unit,
+    title: String,
+    content: @Composable () -> Unit,
 ) {
-  Column {
-    Text(
-      title.uppercase(),
-      style = MaterialTheme.typography.titleMedium,
-      color = MaterialTheme.colorScheme.primary,
-      fontWeight = FontWeight.Bold,
-      modifier = Modifier.padding(vertical = 8.dp),
-    )
-    HorizontalDivider(
-      thickness = 2.dp,
-      color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    content()
-  }
+    Column {
+        Text(
+            title.uppercase(),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        HorizontalDivider(
+            thickness = 2.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        content()
+    }
 }
 
 @Composable
 private fun GeneralInfoContent(general: GeneralInfo) {
-  InfoSection {
-    InfoRow("Complete name", general.completeName)
-    InfoRow("Format", general.format)
-    InfoRow("Format version", general.formatVersion)
-    InfoRow("File size", general.fileSize)
-    InfoRow("Duration", general.duration)
-    InfoRow("Overall bit rate", general.overallBitRate)
-    InfoRow("Frame rate", general.frameRate)
-    InfoRow("Title", general.title)
-    InfoRow("Encoded date", general.encodedDate)
-    InfoRow("Writing application", general.writingApplication)
-    InfoRow("Writing library", general.writingLibrary)
-  }
+    InfoSection {
+        InfoRow("Complete name", general.completeName)
+        InfoRow("Format", general.format)
+        InfoRow("Format version", general.formatVersion)
+        InfoRow("File size", general.fileSize)
+        InfoRow("Duration", general.duration)
+        InfoRow("Overall bit rate", general.overallBitRate)
+        InfoRow("Frame rate", general.frameRate)
+        InfoRow("Title", general.title)
+        InfoRow("Encoded date", general.encodedDate)
+        InfoRow("Writing application", general.writingApplication)
+        InfoRow("Writing library", general.writingLibrary)
+    }
 }
 
 @Composable
 private fun VideoStreamContent(stream: VideoStreamInfo) {
-  InfoSection {
-    InfoRow("ID", stream.id)
-    InfoRow("Format", stream.format)
-    InfoRow("Format/Info", stream.formatInfo)
-    InfoRow("Format profile", stream.formatProfile)
-    InfoRow("Codec ID", stream.codecId)
-    InfoRow("Duration", stream.duration)
-    InfoRow("Bit rate", stream.bitRate)
-    InfoRow("Width", stream.width)
-    InfoRow("Height", stream.height)
-    InfoRow("Display aspect ratio", stream.displayAspectRatio)
-    InfoRow("Frame rate mode", stream.frameRateMode)
-    InfoRow("Frame rate", stream.frameRate)
-    InfoRow("Color space", stream.colorSpace)
-    InfoRow("Chroma subsampling", stream.chromaSubsampling)
-    InfoRow("Bit depth", stream.bitDepth)
-    InfoRow("Bits/(Pixel*Frame)", stream.bitsPixelFrame)
-    InfoRow("Stream size", stream.streamSize)
-    InfoRow("Writing library", stream.encodingLibrary)
-    InfoRow("Default", stream.defaultStream)
-    InfoRow("Forced", stream.forcedStream)
+    InfoSection {
+        InfoRow("ID", stream.id)
+        InfoRow("Format", stream.format)
+        InfoRow("Format/Info", stream.formatInfo)
+        InfoRow("Format profile", stream.formatProfile)
+        InfoRow("Codec ID", stream.codecId)
+        InfoRow("Duration", stream.duration)
+        InfoRow("Bit rate", stream.bitRate)
+        InfoRow("Width", stream.width)
+        InfoRow("Height", stream.height)
+        InfoRow("Display aspect ratio", stream.displayAspectRatio)
+        InfoRow("Frame rate mode", stream.frameRateMode)
+        InfoRow("Frame rate", stream.frameRate)
+        InfoRow("Color space", stream.colorSpace)
+        InfoRow("Chroma subsampling", stream.chromaSubsampling)
+        InfoRow("Bit depth", stream.bitDepth)
+        InfoRow("Bits/(Pixel*Frame)", stream.bitsPixelFrame)
+        InfoRow("Stream size", stream.streamSize)
+        InfoRow("Writing library", stream.encodingLibrary)
+        InfoRow("Default", stream.defaultStream)
+        InfoRow("Forced", stream.forcedStream)
 
-    if (stream.hdrFormat.isNotEmpty()) {
-      InfoRow("HDR Format", stream.hdrFormat)
-      InfoRow("Max CLL", stream.maxCLL)
-      InfoRow("Max FALL", stream.maxFALL)
+        if (stream.hdrFormat.isNotEmpty()) {
+            InfoRow("HDR Format", stream.hdrFormat)
+            InfoRow("Max CLL", stream.maxCLL)
+            InfoRow("Max FALL", stream.maxFALL)
+        }
     }
-  }
 }
 
 @Composable
 private fun AudioStreamContent(stream: AudioStreamInfo) {
-  InfoSection {
-    InfoRow("ID", stream.id)
-    InfoRow("Format", stream.format)
-    InfoRow("Format/Info", stream.formatInfo)
-    InfoRow("Codec ID", stream.codecId)
-    InfoRow("Duration", stream.duration)
-    InfoRow("Bit rate", stream.bitRate)
-    InfoRow("Channel(s)", stream.channels)
-    InfoRow("Channel layout", stream.channelLayout)
-    InfoRow("Sampling rate", stream.samplingRate)
-    InfoRow("Frame rate", stream.frameRate)
-    InfoRow("Compression mode", stream.compressionMode)
-    InfoRow("Delay relative to video", stream.delay)
-    InfoRow("Stream size", stream.streamSize)
-    InfoRow("Title", stream.title)
-    InfoRow("Language", stream.language)
-    InfoRow("Default", stream.defaultStream)
-    InfoRow("Forced", stream.forcedStream)
-  }
+    InfoSection {
+        InfoRow("ID", stream.id)
+        InfoRow("Format", stream.format)
+        InfoRow("Format/Info", stream.formatInfo)
+        InfoRow("Codec ID", stream.codecId)
+        InfoRow("Duration", stream.duration)
+        InfoRow("Bit rate", stream.bitRate)
+        InfoRow("Channel(s)", stream.channels)
+        InfoRow("Channel layout", stream.channelLayout)
+        InfoRow("Sampling rate", stream.samplingRate)
+        InfoRow("Frame rate", stream.frameRate)
+        InfoRow("Compression mode", stream.compressionMode)
+        InfoRow("Delay relative to video", stream.delay)
+        InfoRow("Stream size", stream.streamSize)
+        InfoRow("Title", stream.title)
+        InfoRow("Language", stream.language)
+        InfoRow("Default", stream.defaultStream)
+        InfoRow("Forced", stream.forcedStream)
+    }
 }
 
 @Composable
 private fun TextStreamContent(stream: TextStreamInfo) {
-  InfoSection {
-    InfoRow("ID", stream.id)
-    InfoRow("Format", stream.format)
-    InfoRow("Muxing mode", stream.muxingMode)
-    InfoRow("Codec ID", stream.codecId)
-    InfoRow("Codec ID/Info", stream.codecIdInfo)
-    InfoRow("Duration", stream.duration)
-    InfoRow("Bit rate", stream.bitRate)
-    InfoRow("Frame rate", stream.frameRate)
-    InfoRow("Count of elements", stream.countOfElements)
-    InfoRow("Stream size", stream.streamSize)
-    InfoRow("Title", stream.title)
-    InfoRow("Language", stream.language)
-    InfoRow("Default", stream.defaultStream)
-    InfoRow("Forced", stream.forcedStream)
-  }
+    InfoSection {
+        InfoRow("ID", stream.id)
+        InfoRow("Format", stream.format)
+        InfoRow("Muxing mode", stream.muxingMode)
+        InfoRow("Codec ID", stream.codecId)
+        InfoRow("Codec ID/Info", stream.codecIdInfo)
+        InfoRow("Duration", stream.duration)
+        InfoRow("Bit rate", stream.bitRate)
+        InfoRow("Frame rate", stream.frameRate)
+        InfoRow("Count of elements", stream.countOfElements)
+        InfoRow("Stream size", stream.streamSize)
+        InfoRow("Title", stream.title)
+        InfoRow("Language", stream.language)
+        InfoRow("Default", stream.defaultStream)
+        InfoRow("Forced", stream.forcedStream)
+    }
 }
 
 @Composable
 private fun InfoSection(content: @Composable () -> Unit) {
-  Column { content() }
+    Column { content() }
 }
 
 @Composable
 private fun InfoRow(
-  label: String,
-  value: String,
+    label: String,
+    value: String,
 ) {
-  if (value.isEmpty()) return
+    if (value.isEmpty()) return
 
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(vertical = 3.dp),
-  ) {
-    Text(
-      "$label:",
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.width(160.dp),
-    )
-    Spacer(modifier = Modifier.width(8.dp))
-    Text(
-      value,
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurface,
-      modifier = Modifier.weight(1f),
-    )
-  }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp),
+    ) {
+        Text(
+            "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(160.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }

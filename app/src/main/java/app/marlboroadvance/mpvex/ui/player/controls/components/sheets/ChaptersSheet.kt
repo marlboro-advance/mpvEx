@@ -21,57 +21,57 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun ChaptersSheet(
-  chapters: ImmutableList<Segment>,
-  currentChapter: Segment,
-  onClick: (Segment) -> Unit,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
+    chapters: ImmutableList<Segment>,
+    currentChapter: Segment,
+    onClick: (Segment) -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  GenericTracksSheet(
-    chapters,
-    track = {
-      ChapterTrack(
-        it,
-        index = chapters.indexOf(it),
-        selected = currentChapter == it,
-        onClick = { onClick(it) },
-      )
-    },
-    onDismissRequest = onDismissRequest,
-    modifier =
-      modifier
-        .padding(vertical = MaterialTheme.spacing.medium),
-  )
+    GenericTracksSheet(
+        chapters,
+        track = {
+            ChapterTrack(
+                it,
+                index = chapters.indexOf(it),
+                selected = currentChapter == it,
+                onClick = { onClick(it) },
+            )
+        },
+        onDismissRequest = onDismissRequest,
+        modifier =
+            modifier
+                .padding(vertical = MaterialTheme.spacing.medium),
+    )
 }
 
 @Composable
 fun ChapterTrack(
-  chapter: Segment,
-  index: Int,
-  selected: Boolean,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
+    chapter: Segment,
+    index: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
-        .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
-    horizontalArrangement = Arrangement.SpaceBetween,
-  ) {
-    Text(
-      stringResource(R.string.player_sheets_track_title_wo_lang, index + 1, chapter.name),
-      fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
-      fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
-      maxLines = 1,
-      modifier = Modifier.weight(1f),
-      overflow = TextOverflow.Ellipsis,
-    )
-    Text(
-      Utils.prettyTime(chapter.start.toInt()),
-      fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
-      fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
-    )
-  }
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            stringResource(R.string.player_sheets_track_title_wo_lang, index + 1, chapter.name),
+            fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            Utils.prettyTime(chapter.start.toInt()),
+            fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+        )
+    }
 }

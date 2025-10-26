@@ -13,20 +13,20 @@ import org.koin.dsl.koinConfiguration
 
 @OptIn(KoinExperimentalAPI::class)
 class App :
-  Application(),
-  KoinStartup {
-  override fun onCreate() {
-    super.onCreate()
-    Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
-  }
-
-  override fun onKoinStartup() =
-    koinConfiguration {
-      androidContext(this@App)
-      modules(
-        PreferencesModule,
-        DatabaseModule,
-        FileManagerModule,
-      )
+    Application(),
+    KoinStartup {
+    override fun onCreate() {
+        super.onCreate()
+        Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
     }
+
+    override fun onKoinStartup() =
+        koinConfiguration {
+            androidContext(this@App)
+            modules(
+                PreferencesModule,
+                DatabaseModule,
+                FileManagerModule,
+            )
+        }
 }

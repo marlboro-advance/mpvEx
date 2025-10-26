@@ -21,46 +21,46 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmDialog(
-  title: String,
-  subtitle: String,
-  onConfirm: () -> Unit,
-  onCancel: () -> Unit,
-  modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  BasicAlertDialog(
-    onCancel,
-    modifier = modifier,
-  ) {
-    Surface(
-      shape = AlertDialogDefaults.shape,
-      color = AlertDialogDefaults.containerColor,
-      tonalElevation = AlertDialogDefaults.TonalElevation,
+    BasicAlertDialog(
+        onCancel,
+        modifier = modifier,
     ) {
-      Column(
-        modifier = Modifier.padding(MaterialTheme.spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-      ) {
-        Text(
-          title,
-          style = MaterialTheme.typography.headlineMedium,
-          color = AlertDialogDefaults.titleContentColor,
-        )
-        Text(
-          subtitle,
-          color = AlertDialogDefaults.textContentColor,
-        )
-        Row(
-          Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.End,
+        Surface(
+            shape = AlertDialogDefaults.shape,
+            color = AlertDialogDefaults.containerColor,
+            tonalElevation = AlertDialogDefaults.TonalElevation,
         ) {
-          TextButton(onCancel) {
-            Text(stringResource(R.string.generic_cancel))
-          }
-          TextButton(onConfirm) {
-            Text(stringResource(R.string.generic_confirm))
-          }
+            Column(
+                modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = AlertDialogDefaults.titleContentColor,
+                )
+                Text(
+                    subtitle,
+                    color = AlertDialogDefaults.textContentColor,
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onCancel) {
+                        Text(stringResource(R.string.generic_cancel))
+                    }
+                    TextButton(onConfirm) {
+                        Text(stringResource(R.string.generic_confirm))
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }

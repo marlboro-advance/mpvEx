@@ -30,56 +30,56 @@ import org.koin.compose.koinInject
 
 @Composable
 fun AudioDelayPanel(
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  val preferences = koinInject<AudioPreferences>()
+    val preferences = koinInject<AudioPreferences>()
 
-  ConstraintLayout(
-    modifier =
-      modifier
-        .fillMaxSize()
-        .padding(MaterialTheme.spacing.medium),
-  ) {
-    val delayControlCard = createRef()
+    ConstraintLayout(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(MaterialTheme.spacing.medium),
+    ) {
+        val delayControlCard = createRef()
 
-    val delay by MPVLib.propDouble["audio-delay"].collectAsState()
-    DelayCard(
-      delayMs = (delay!! * 1000).toInt(),
-      onDelayChange = { MPVLib.setPropertyDouble("audio-delay", it / 1000.0) },
-      onApply = { preferences.defaultAudioDelay.set((delay!! * 1000).toInt()) },
-      onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
-      title = { AudioDelayCardTitle(onClose = onDismissRequest) },
-      delayType = DelayType.Audio,
-      modifier =
-        Modifier.constrainAs(delayControlCard) {
-          linkTo(parent.top, parent.bottom, bias = 0.8f)
-          end.linkTo(parent.end)
-        },
-    )
-  }
+        val delay by MPVLib.propDouble["audio-delay"].collectAsState()
+        DelayCard(
+            delayMs = (delay!! * 1000).toInt(),
+            onDelayChange = { MPVLib.setPropertyDouble("audio-delay", it / 1000.0) },
+            onApply = { preferences.defaultAudioDelay.set((delay!! * 1000).toInt()) },
+            onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
+            title = { AudioDelayCardTitle(onClose = onDismissRequest) },
+            delayType = DelayType.Audio,
+            modifier =
+                Modifier.constrainAs(delayControlCard) {
+                    linkTo(parent.top, parent.bottom, bias = 0.8f)
+                    end.linkTo(parent.end)
+                },
+        )
+    }
 }
 
 @Composable
 fun AudioDelayCardTitle(
-  onClose: () -> Unit,
-  modifier: Modifier = Modifier,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Text(
-      stringResource(R.string.player_sheets_audio_delay_card_title),
-      style = MaterialTheme.typography.headlineMedium,
-    )
-    IconButton(onClose) {
-      Icon(
-        Icons.Default.Close,
-        null,
-        modifier = Modifier.size(32.dp),
-      )
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.player_sheets_audio_delay_card_title),
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        IconButton(onClose) {
+            Icon(
+                Icons.Default.Close,
+                null,
+                modifier = Modifier.size(32.dp),
+            )
+        }
     }
-  }
 }

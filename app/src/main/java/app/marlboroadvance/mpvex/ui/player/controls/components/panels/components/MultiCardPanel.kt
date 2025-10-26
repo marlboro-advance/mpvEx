@@ -45,85 +45,85 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MultiCardPanel(
-  onDismissRequest: () -> Unit,
-  @StringRes titleRes: Int,
-  cardCount: Int,
-  modifier: Modifier = Modifier,
-  cards: @Composable (Int, Modifier) -> Unit,
+    onDismissRequest: () -> Unit,
+    @StringRes titleRes: Int,
+    cardCount: Int,
+    modifier: Modifier = Modifier,
+    cards: @Composable (Int, Modifier) -> Unit,
 ) {
-  BackHandler(onBack = onDismissRequest)
-  val orientation = LocalConfiguration.current.orientation
-  val cards = remember { movableContentOf { p1: Int, p2: Modifier -> cards(p1, p2) } }
+    BackHandler(onBack = onDismissRequest)
+    val orientation = LocalConfiguration.current.orientation
+    val cards = remember { movableContentOf { p1: Int, p2: Modifier -> cards(p1, p2) } }
 
-  ConstraintLayout(modifier = modifier.fillMaxSize()) {
-    val settingsCards = createRef()
+    ConstraintLayout(modifier = modifier.fillMaxSize()) {
+        val settingsCards = createRef()
 
-    val pagerState = rememberPagerState { cardCount }
-    if (orientation == ORIENTATION_PORTRAIT) {
-      Column(
-        modifier =
-          Modifier.constrainAs(settingsCards) {
-            top.linkTo(parent.top, 32.dp)
-            start.linkTo(parent.start)
-          },
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-      ) {
-        TopAppBar(
-          title = {
-            Text(
-              text = stringResource(titleRes),
-              style = MaterialTheme.typography.headlineMedium.copy(shadow = Shadow(blurRadius = 20f)),
-            )
-          },
-          navigationIcon = {
-            IconButton(onClick = onDismissRequest) {
-              Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
+        val pagerState = rememberPagerState { cardCount }
+        if (orientation == ORIENTATION_PORTRAIT) {
+            Column(
+                modifier =
+                    Modifier.constrainAs(settingsCards) {
+                        top.linkTo(parent.top, 32.dp)
+                        start.linkTo(parent.start)
+                    },
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(titleRes),
+                            style = MaterialTheme.typography.headlineMedium.copy(shadow = Shadow(blurRadius = 20f)),
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismissRequest) {
+                            Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
+                )
+                HorizontalPager(
+                    state = pagerState,
+                    pageSize = PageSize.Fixed(LocalConfiguration.current.screenWidthDp.dp * 0.9f),
+                    verticalAlignment = Alignment.Top,
+                    pageSpacing = MaterialTheme.spacing.smaller,
+                    contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.smaller),
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    cards(page, Modifier.fillMaxWidth())
+                }
             }
-          },
-          colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
-        )
-        HorizontalPager(
-          state = pagerState,
-          pageSize = PageSize.Fixed(LocalConfiguration.current.screenWidthDp.dp * 0.9f),
-          verticalAlignment = Alignment.Top,
-          pageSpacing = MaterialTheme.spacing.smaller,
-          contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.smaller),
-          beyondViewportPageCount = 1,
-        ) { page ->
-          cards(page, Modifier.fillMaxWidth())
+        } else {
+            Column(
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+                modifier =
+                    Modifier
+                        .constrainAs(settingsCards) {
+                            top.linkTo(parent.top)
+                            end.linkTo(parent.end, 32.dp)
+                        }.verticalScroll(rememberScrollState()),
+            ) {
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    Modifier
+                        .width(CARDS_MAX_WIDTH),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(titleRes),
+                        style =
+                            MaterialTheme.typography.headlineMedium.copy(
+                                shadow = Shadow(blurRadius = 20f),
+                            ),
+                    )
+                    IconButton(onDismissRequest) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                    }
+                }
+                repeat(cardCount) { cards(it, Modifier) }
+                Spacer(Modifier.height(16.dp))
+            }
         }
-      }
-    } else {
-      Column(
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-        modifier =
-          Modifier
-            .constrainAs(settingsCards) {
-              top.linkTo(parent.top)
-              end.linkTo(parent.end, 32.dp)
-            }.verticalScroll(rememberScrollState()),
-      ) {
-        Spacer(Modifier.height(16.dp))
-        Row(
-          Modifier
-            .width(CARDS_MAX_WIDTH),
-          horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-          Text(
-            text = stringResource(titleRes),
-            style =
-              MaterialTheme.typography.headlineMedium.copy(
-                shadow = Shadow(blurRadius = 20f),
-              ),
-          )
-          IconButton(onDismissRequest) {
-            Icon(imageVector = Icons.Default.Close, contentDescription = null)
-          }
-        }
-        repeat(cardCount) { cards(it, Modifier) }
-        Spacer(Modifier.height(16.dp))
-      }
     }
-  }
 }

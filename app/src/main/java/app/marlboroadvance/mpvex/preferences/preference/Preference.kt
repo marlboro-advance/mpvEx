@@ -9,38 +9,38 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 interface Preference<T> {
-  fun key(): String
+    fun key(): String
 
-  fun get(): T
+    fun get(): T
 
-  fun set(value: T)
+    fun set(value: T)
 
-  fun isSet(): Boolean
+    fun isSet(): Boolean
 
-  fun delete()
+    fun delete()
 
-  fun defaultValue(): T
+    fun defaultValue(): T
 
-  fun changes(): Flow<T>
+    fun changes(): Flow<T>
 
-  fun stateIn(scope: CoroutineScope): StateFlow<T>
+    fun stateIn(scope: CoroutineScope): StateFlow<T>
 }
 
 inline fun <reified T> Preference<T>.deleteAndGet(): T {
-  delete()
-  return get()
+    delete()
+    return get()
 }
 
 operator fun <T> Preference<Set<T>>.plusAssign(item: T) {
-  set(get() + item)
+    set(get() + item)
 }
 
 operator fun <T> Preference<Set<T>>.minusAssign(item: T) {
-  set(get() - item)
+    set(get() - item)
 }
 
 @Composable
 fun <T> Preference<T>.collectAsState(): State<T> {
-  val flow = remember(this) { changes() }
-  return flow.collectAsState(initial = get())
+    val flow = remember(this) { changes() }
+    return flow.collectAsState(initial = get())
 }

@@ -29,80 +29,80 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun <T> GenericTracksSheet(
-  tracks: ImmutableList<T>,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
-  header: @Composable () -> Unit = {},
-  track: @Composable (T) -> Unit = {},
-  footer: @Composable () -> Unit = {},
+    tracks: ImmutableList<T>,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    header: @Composable () -> Unit = {},
+    track: @Composable (T) -> Unit = {},
+    footer: @Composable () -> Unit = {},
 ) {
-  PlayerSheet(onDismissRequest) {
-    Column(modifier) {
-      header()
-      LazyColumn {
-        items(tracks) {
-          track(it)
+    PlayerSheet(onDismissRequest) {
+        Column(modifier) {
+            header()
+            LazyColumn {
+                items(tracks) {
+                    track(it)
+                }
+                item {
+                    footer()
+                }
+            }
         }
-        item {
-          footer()
-        }
-      }
     }
-  }
 }
 
 @Composable
 fun AddTrackRow(
-  title: String,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
-  actions: @Composable RowScope.() -> Unit = {},
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
-  Row(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
-        .height(56.dp)
-        .padding(horizontal = MaterialTheme.spacing.medium),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-  ) {
-    Icon(
-      Icons.Default.Add,
-      contentDescription = null,
-      modifier = Modifier.size(24.dp),
-    )
-    Text(
-      text = title,
-      style = MaterialTheme.typography.bodyLarge,
-      modifier = Modifier.weight(1f),
-    )
-    actions()
-  }
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .height(56.dp)
+                .padding(horizontal = MaterialTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    ) {
+        Icon(
+            Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        actions()
+    }
 }
 
 @Composable
 fun getTrackTitle(
-  track: TrackNode,
-  externalSubtitleMetadata: Map<String, String> = emptyMap(),
+    track: TrackNode,
+    externalSubtitleMetadata: Map<String, String> = emptyMap(),
 ): String {
-  // For external subtitles, use cached metadata for proper filename display
-  if (track.isSubtitle && track.external == true && track.externalFilename != null) {
-    externalSubtitleMetadata[track.externalFilename]?.let { cachedName ->
-      return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, cachedName)
+    // For external subtitles, use cached metadata for proper filename display
+    if (track.isSubtitle && track.external == true && track.externalFilename != null) {
+        externalSubtitleMetadata[track.externalFilename]?.let { cachedName ->
+            return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, cachedName)
+        }
     }
-  }
 
-  val hasTitle = !track.title.isNullOrBlank()
-  val hasLang = !track.lang.isNullOrBlank()
+    val hasTitle = !track.title.isNullOrBlank()
+    val hasLang = !track.lang.isNullOrBlank()
 
-  return when {
-    hasTitle && hasLang -> stringResource(R.string.player_sheets_track_title_w_lang, track.id, track.title, track.lang)
-    hasTitle -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.title)
-    hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, track.lang)
-    track.isSubtitle -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
-    track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
-    else -> ""
-  }
+    return when {
+        hasTitle && hasLang -> stringResource(R.string.player_sheets_track_title_w_lang, track.id, track.title, track.lang)
+        hasTitle -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.title)
+        hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, track.lang)
+        track.isSubtitle -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
+        track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
+        else -> ""
+    }
 }

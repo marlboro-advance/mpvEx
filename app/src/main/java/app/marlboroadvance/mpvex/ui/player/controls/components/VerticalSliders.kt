@@ -34,197 +34,197 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 fun percentage(
-  value: Float,
-  range: ClosedFloatingPointRange<Float>,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
 ): Float = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
 
 fun percentage(
-  value: Int,
-  range: ClosedRange<Int>,
+    value: Int,
+    range: ClosedRange<Int>,
 ): Float = ((value - range.start - 0f) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
 
 @Composable
 fun VerticalSlider(
-  value: Float,
-  range: ClosedFloatingPointRange<Float>,
-  modifier: Modifier = Modifier,
-  overflowValue: Float? = null,
-  overflowRange: ClosedFloatingPointRange<Float>? = null,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+    overflowValue: Float? = null,
+    overflowRange: ClosedFloatingPointRange<Float>? = null,
 ) {
-  require(range.contains(value)) { "Value must be within the provided range" }
-  Box(
-    modifier =
-      modifier
-        .height(120.dp)
-        .aspectRatio(0.2f)
-        .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.background),
-    contentAlignment = Alignment.BottomCenter,
-  ) {
-    val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+    require(range.contains(value)) { "Value must be within the provided range" }
     Box(
-      Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(targetHeight)
-        .background(MaterialTheme.colorScheme.tertiary),
-    )
-    if (overflowRange != null && overflowValue != null) {
-      val overflowHeight by animateFloatAsState(
-        percentage(overflowValue, overflowRange),
-        label = "vslideroverflowheight",
-      )
-      Box(
-        Modifier
-          .fillMaxWidth()
-          .fillMaxHeight(overflowHeight)
-          .background(MaterialTheme.colorScheme.errorContainer),
-      )
+        modifier =
+            modifier
+                .height(120.dp)
+                .aspectRatio(0.2f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(targetHeight)
+                .background(MaterialTheme.colorScheme.tertiary),
+        )
+        if (overflowRange != null && overflowValue != null) {
+            val overflowHeight by animateFloatAsState(
+                percentage(overflowValue, overflowRange),
+                label = "vslideroverflowheight",
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(overflowHeight)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+            )
+        }
     }
-  }
 }
 
 @Composable
 fun VerticalSlider(
-  value: Int,
-  range: ClosedRange<Int>,
-  modifier: Modifier = Modifier,
-  overflowValue: Int? = null,
-  overflowRange: ClosedRange<Int>? = null,
+    value: Int,
+    range: ClosedRange<Int>,
+    modifier: Modifier = Modifier,
+    overflowValue: Int? = null,
+    overflowRange: ClosedRange<Int>? = null,
 ) {
-  require(range.contains(value)) { "Value must be within the provided range" }
-  Box(
-    modifier =
-      modifier
-        .height(120.dp)
-        .aspectRatio(0.2f)
-        .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.background),
-    contentAlignment = Alignment.BottomCenter,
-  ) {
-    val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+    require(range.contains(value)) { "Value must be within the provided range" }
     Box(
-      Modifier
-        .fillMaxWidth()
-        .fillMaxHeight(targetHeight)
-        .background(MaterialTheme.colorScheme.tertiary),
-    )
-    if (overflowRange != null && overflowValue != null) {
-      val overflowHeight by animateFloatAsState(
-        percentage(overflowValue, overflowRange),
-        label = "vslideroverflowheight",
-      )
-      Box(
-        Modifier
-          .fillMaxWidth()
-          .fillMaxHeight(overflowHeight)
-          .background(MaterialTheme.colorScheme.errorContainer),
-      )
+        modifier =
+            modifier
+                .height(120.dp)
+                .aspectRatio(0.2f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(targetHeight)
+                .background(MaterialTheme.colorScheme.tertiary),
+        )
+        if (overflowRange != null && overflowValue != null) {
+            val overflowHeight by animateFloatAsState(
+                percentage(overflowValue, overflowRange),
+                label = "vslideroverflowheight",
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(overflowHeight)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+            )
+        }
     }
-  }
 }
 
 @Composable
 fun BrightnessSlider(
-  brightness: Float,
-  range: ClosedFloatingPointRange<Float>,
-  modifier: Modifier = Modifier,
+    brightness: Float,
+    range: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
 ) {
-  Column(
-    modifier = modifier,
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-  ) {
-    Text(
-      (brightness * 100).toInt().toString(),
-      style = MaterialTheme.typography.bodySmall,
-    )
-    VerticalSlider(
-      brightness,
-      range,
-    )
-    Icon(
-      when (percentage(brightness, range)) {
-        in 0f..0.3f -> Icons.Default.BrightnessLow
-        in 0.3f..0.6f -> Icons.Default.BrightnessMedium
-        in 0.6f..1f -> Icons.Default.BrightnessHigh
-        else -> Icons.Default.BrightnessMedium
-      },
-      null,
-    )
-  }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    ) {
+        Text(
+            (brightness * 100).toInt().toString(),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        VerticalSlider(
+            brightness,
+            range,
+        )
+        Icon(
+            when (percentage(brightness, range)) {
+                in 0f..0.3f -> Icons.Default.BrightnessLow
+                in 0.3f..0.6f -> Icons.Default.BrightnessMedium
+                in 0.6f..1f -> Icons.Default.BrightnessHigh
+                else -> Icons.Default.BrightnessMedium
+            },
+            null,
+        )
+    }
 }
 
 @Composable
 fun VolumeSlider(
-  volume: Int,
-  mpvVolume: Int,
-  range: ClosedRange<Int>,
-  boostRange: ClosedRange<Int>?,
-  modifier: Modifier = Modifier,
-  displayAsPercentage: Boolean = false,
+    volume: Int,
+    mpvVolume: Int,
+    range: ClosedRange<Int>,
+    boostRange: ClosedRange<Int>?,
+    modifier: Modifier = Modifier,
+    displayAsPercentage: Boolean = false,
 ) {
-  val percentage = (percentage(volume, range) * 100).roundToInt()
-  Column(
-    modifier = modifier,
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-  ) {
-    val boostVolume = mpvVolume - 100
-    Text(
-      getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage),
-      style = MaterialTheme.typography.bodySmall,
-    )
-    VerticalSlider(
-      if (displayAsPercentage) percentage else volume,
-      if (displayAsPercentage) 0..100 else range,
-      overflowValue = boostVolume,
-      overflowRange = boostRange,
-    )
-    Icon(
-      when (percentage) {
-        0 -> Icons.AutoMirrored.Default.VolumeOff
-        in 0..30 -> Icons.AutoMirrored.Default.VolumeMute
-        in 30..60 -> Icons.AutoMirrored.Default.VolumeDown
-        in 60..100 -> Icons.AutoMirrored.Default.VolumeUp
-        else -> Icons.AutoMirrored.Default.VolumeOff
-      },
-      null,
-    )
-  }
+    val percentage = (percentage(volume, range) * 100).roundToInt()
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    ) {
+        val boostVolume = mpvVolume - 100
+        Text(
+            getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        VerticalSlider(
+            if (displayAsPercentage) percentage else volume,
+            if (displayAsPercentage) 0..100 else range,
+            overflowValue = boostVolume,
+            overflowRange = boostRange,
+        )
+        Icon(
+            when (percentage) {
+                0 -> Icons.AutoMirrored.Default.VolumeOff
+                in 0..30 -> Icons.AutoMirrored.Default.VolumeMute
+                in 30..60 -> Icons.AutoMirrored.Default.VolumeDown
+                in 60..100 -> Icons.AutoMirrored.Default.VolumeUp
+                else -> Icons.AutoMirrored.Default.VolumeOff
+            },
+            null,
+        )
+    }
 }
 
 val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
-  { volume, mpvVolume, boostVolume, percentage, displayAsPercentage ->
-    when (mpvVolume - 100) {
-      0 ->
-        if (displayAsPercentage) {
-          stringResource(R.string.value_percentage_int, percentage)
-        } else {
-          "$volume"
-        }
+    { volume, mpvVolume, boostVolume, percentage, displayAsPercentage ->
+        when (mpvVolume - 100) {
+            0 ->
+                if (displayAsPercentage) {
+                    stringResource(R.string.value_percentage_int, percentage)
+                } else {
+                    "$volume"
+                }
 
-      in 0..1000 -> {
-        if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_positive_boost, percentage, boostVolume)
-        } else {
-          stringResource(R.string.volume_slider_steps_positive_boost, volume, boostVolume)
-        }
-      }
+            in 0..1000 -> {
+                if (displayAsPercentage) {
+                    stringResource(R.string.volume_slider_percentage_positive_boost, percentage, boostVolume)
+                } else {
+                    stringResource(R.string.volume_slider_steps_positive_boost, volume, boostVolume)
+                }
+            }
 
-      in -100..-1 -> {
-        if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_negative_boost, percentage, abs(boostVolume))
-        } else {
-          stringResource(R.string.volume_slider_steps_negative_boost, volume, abs(boostVolume))
-        }
-      }
+            in -100..-1 -> {
+                if (displayAsPercentage) {
+                    stringResource(R.string.volume_slider_percentage_negative_boost, percentage, abs(boostVolume))
+                } else {
+                    stringResource(R.string.volume_slider_steps_negative_boost, volume, abs(boostVolume))
+                }
+            }
 
-      else -> {
-        if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_other, percentage, boostVolume)
-        } else {
-          stringResource(R.string.volume_slider_steps_other, volume, boostVolume)
+            else -> {
+                if (displayAsPercentage) {
+                    stringResource(R.string.volume_slider_percentage_other, percentage, boostVolume)
+                } else {
+                    stringResource(R.string.volume_slider_steps_other, volume, boostVolume)
+                }
+            }
         }
-      }
     }
-  }

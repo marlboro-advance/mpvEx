@@ -28,63 +28,63 @@ import org.koin.compose.koinInject
 
 @Composable
 fun PlayerPanels(
-  panelShown: Panels,
-  viewModel: app.marlboroadvance.mpvex.ui.player.PlayerViewModel,
-  onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier,
+    panelShown: Panels,
+    viewModel: app.marlboroadvance.mpvex.ui.player.PlayerViewModel,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-  AnimatedContent(
-    targetState = panelShown,
-    label = "panels",
-    contentAlignment = Alignment.CenterEnd,
-    contentKey = { it.name },
-    transitionSpec = {
-      fadeIn() + slideInHorizontally { it / 3 } togetherWith fadeOut() + slideOutHorizontally { it / 2 }
-    },
-    modifier = modifier,
-  ) { currentPanel ->
-    when (currentPanel) {
-      Panels.None -> {
-        Box(Modifier.fillMaxHeight())
-      }
-      Panels.SubtitleSettings -> {
-        SubtitleSettingsPanel(onDismissRequest)
-      }
-      Panels.SubtitleDelay -> {
-        SubtitleDelayPanel(onDismissRequest)
-      }
-      Panels.AudioDelay -> {
-        AudioDelayPanel(onDismissRequest)
-      }
-      Panels.VideoFilters -> {
-        VideoSettingsPanel(onDismissRequest)
-      }
-      Panels.FrameNavigation -> {
-        val currentFrame by viewModel.currentFrame.collectAsState()
-        val totalFrames by viewModel.totalFrames.collectAsState()
-        FrameNavigationPanel(
-          currentFrame = currentFrame,
-          totalFrames = totalFrames,
-          onUpdateFrameInfo = viewModel::updateFrameInfo,
-          onPause = viewModel::pause,
-          onUnpause = viewModel::unpause,
-          onPauseUnpause = viewModel::pauseUnpause,
-          onSeekTo = { position, _ -> viewModel.seekTo(position) },
-          onDismissRequest = onDismissRequest,
-        )
-      }
+    AnimatedContent(
+        targetState = panelShown,
+        label = "panels",
+        contentAlignment = Alignment.CenterEnd,
+        contentKey = { it.name },
+        transitionSpec = {
+            fadeIn() + slideInHorizontally { it / 3 } togetherWith fadeOut() + slideOutHorizontally { it / 2 }
+        },
+        modifier = modifier,
+    ) { currentPanel ->
+        when (currentPanel) {
+            Panels.None -> {
+                Box(Modifier.fillMaxHeight())
+            }
+            Panels.SubtitleSettings -> {
+                SubtitleSettingsPanel(onDismissRequest)
+            }
+            Panels.SubtitleDelay -> {
+                SubtitleDelayPanel(onDismissRequest)
+            }
+            Panels.AudioDelay -> {
+                AudioDelayPanel(onDismissRequest)
+            }
+            Panels.VideoFilters -> {
+                VideoSettingsPanel(onDismissRequest)
+            }
+            Panels.FrameNavigation -> {
+                val currentFrame by viewModel.currentFrame.collectAsState()
+                val totalFrames by viewModel.totalFrames.collectAsState()
+                FrameNavigationPanel(
+                    currentFrame = currentFrame,
+                    totalFrames = totalFrames,
+                    onUpdateFrameInfo = viewModel::updateFrameInfo,
+                    onPause = viewModel::pause,
+                    onUnpause = viewModel::unpause,
+                    onPauseUnpause = viewModel::pauseUnpause,
+                    onSeekTo = { position, _ -> viewModel.seekTo(position) },
+                    onDismissRequest = onDismissRequest,
+                )
+            }
+        }
     }
-  }
 }
 
 val CARDS_MAX_WIDTH = 420.dp
 val panelCardsColors: @Composable () -> CardColors = {
-  val playerPreferences = koinInject<PlayerPreferences>()
-  val transparency = playerPreferences.panelTransparency.get()
+    val playerPreferences = koinInject<PlayerPreferences>()
+    val transparency = playerPreferences.panelTransparency.get()
 
-  val colors = CardDefaults.cardColors()
-  colors.copy(
-    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = transparency),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(alpha = transparency),
-  )
+    val colors = CardDefaults.cardColors()
+    colors.copy(
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = transparency),
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(alpha = transparency),
+    )
 }
