@@ -36,6 +36,12 @@ class RecentlyPlayedRepositoryImpl(
   override suspend fun getRecentlyPlayed(limit: Int): List<RecentlyPlayedEntity> =
     recentlyPlayedDao.getRecentlyPlayed(limit)
 
+  override suspend fun getRecentlyPlayedBySource(
+    launchSource: String,
+    limit: Int,
+  ): List<RecentlyPlayedEntity> =
+    recentlyPlayedDao.getRecentlyPlayedBySource(launchSource, limit)
+
   override suspend fun clearAll() {
     recentlyPlayedDao.clearAll()
   }

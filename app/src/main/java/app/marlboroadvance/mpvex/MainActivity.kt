@@ -55,8 +55,10 @@ class MainActivity : ComponentActivity() {
   override fun onDestroy() {
     try {
       super.onDestroy()
-    } catch (_: Exception) {
+    } catch (e: Exception) {
       // Silently handle exceptions during destruction
+      // This can happen with navigation3 lifecycle issues during configuration changes
+      android.util.Log.e("MainActivity", "Error during onDestroy", e)
     }
   }
 

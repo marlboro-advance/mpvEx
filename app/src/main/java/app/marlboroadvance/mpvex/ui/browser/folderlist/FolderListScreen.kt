@@ -39,7 +39,7 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.PlayLinkDialog
+import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
@@ -138,7 +138,6 @@ object FolderListScreen : Screen {
 
     // Effects
     LaunchedEffect(Unit) {
-      app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.pruneIfMissing()
       hasRecentlyPlayed = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.hasRecentlyPlayed()
     }
 
@@ -237,7 +236,7 @@ object FolderListScreen : Screen {
       }
 
       // Dialogs
-      PlayLinkDialog(
+      PlayLinkSheet(
         isOpen = showLinkDialog.value,
         onDismiss = { showLinkDialog.value = false },
         onPlayLink = { url -> MediaUtils.playFile(url, context, "play_link") },

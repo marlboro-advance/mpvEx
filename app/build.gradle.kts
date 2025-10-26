@@ -19,10 +19,10 @@ android {
 
   defaultConfig {
     applicationId = "app.marlboroadvance.mpvex"
-    minSdk = 28
+    minSdk = 26
     targetSdk = 36
-    versionCode = 10
-    versionName = "1.0.0"
+    versionCode = 11
+    versionName = "1.1.0"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -42,7 +42,7 @@ android {
 
   buildTypes {
     named("release") {
-      isMinifyEnabled = true
+      isMinifyEnabled = false
       isShrinkResources = false
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -156,6 +156,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mwdiainfo.lib)
+  implementation("androidx.media:media:1.6.0")
 }
 
 detekt {

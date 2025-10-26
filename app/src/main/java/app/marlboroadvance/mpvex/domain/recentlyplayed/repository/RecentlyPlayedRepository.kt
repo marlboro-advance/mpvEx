@@ -20,6 +20,8 @@ interface RecentlyPlayedRepository {
 
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 
+  suspend fun getRecentlyPlayedBySource(launchSource: String, limit: Int = 10): List<RecentlyPlayedEntity>
+
   suspend fun clearAll()
 
   suspend fun deleteByFilePath(filePath: String)

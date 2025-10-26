@@ -271,4 +271,12 @@
         <item quantity="one">%1$d second</item>
         <item quantity="other">%1$d seconds</item>
     </plurals>
+
+    <!-- Background Playback -->
+    <string name="background_playback_title">Background playback</string>
+    <string name="pref_audio_background_playback_summary">Continue playing audio in the background when app is minimized</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
 </resources>

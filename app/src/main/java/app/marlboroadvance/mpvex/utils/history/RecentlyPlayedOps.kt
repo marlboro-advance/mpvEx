@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
+import android.net.Uri
 
 /**
  * Single source of truth for all recently played operations.
@@ -58,9 +59,21 @@ object RecentlyPlayedOps {
    */
   suspend fun getLastPlayed(): String? {
     return withContext(Dispatchers.IO) {
-      val entity = repository.getLastPlayed() ?: return@withContext null
-      val path = entity.filePath
-      if (fileExists(path)) path else null
+      // Fetch a batch of recent entries to find the first playable one
+      val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
+      for (entity in recent) {
+        val path = entity.filePath
+        if (isNonFileUri(path)) {
+          return@withContext path
+        }
+        if (fileExists(path)) {
+          return@withContext path
+        } else {
+          // Prune missing local file entries as we encounter them
+          kotlin.runCatching { repository.deleteByFilePath(path) }
+        }
+      }
+      null
     }
   }
 
@@ -71,16 +84,7 @@ object RecentlyPlayedOps {
    * @return True if there's a recently played file that exists
    */
   suspend fun hasRecentlyPlayed(): Boolean {
-    return withContext(Dispatchers.IO) {
-      val last = repository.getLastPlayed() ?: return@withContext false
-      val path = last.filePath
-      val exists = fileExists(path)
-      if (!exists) {
-        // Auto-prune invalid entry
-        kotlin.runCatching { repository.deleteByFilePath(path) }
-        false
-      } else true
-    }
+    return withContext(Dispatchers.IO) { getLastPlayed() != null }
   }
 
   // ========== FLOW OPERATIONS (for UI observing) ==========
@@ -112,8 +116,10 @@ object RecentlyPlayedOps {
   suspend fun pruneIfMissing(): Boolean {
     return withContext(Dispatchers.IO) {
       val last = repository.getLastPlayed() ?: return@withContext false
-      val exists = fileExists(last.filePath)
-      if (!exists) {
+      val path = last.filePath
+      if (isNonFileUri(path)) {
+        false
+      } else if (!fileExists(path)) {
         kotlin.runCatching { repository.deleteByFilePath(last.filePath) }
         true
       } else false
@@ -154,5 +160,21 @@ object RecentlyPlayedOps {
    * Check if a file exists on the filesystem
    */
   private fun fileExists(path: String): Boolean =
-    kotlin.runCatching { java.io.File(path).exists() }.getOrDefault(false)
+    kotlin.runCatching {
+      val uri = Uri.parse(path)
+      val scheme = uri.scheme
+      // Treat non-file schemes (http, https, rtsp, rtmp, content, etc.) as valid and non-prunable
+      if (scheme == null || scheme.equals("file", ignoreCase = true)) {
+        java.io.File(path).exists()
+      } else {
+        // Non-file schemes are not checked against filesystem
+        true
+      }
+    }.getOrDefault(false)
+
+  private fun isNonFileUri(path: String): Boolean =
+    kotlin.runCatching {
+      val scheme = Uri.parse(path).scheme
+      scheme != null && !scheme.equals("file", ignoreCase = true)
+    }.getOrDefault(false)
 }
