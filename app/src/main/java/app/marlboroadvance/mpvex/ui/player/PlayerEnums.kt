@@ -32,18 +32,6 @@ enum class SingleActionGesture(
   None(R.string.pref_gesture_double_tap_none),
   Seek(R.string.pref_gesture_double_tap_seek),
   PlayPause(R.string.pref_gesture_double_tap_play),
-  Custom(R.string.pref_gesture_double_tap_custom),
-}
-
-enum class CustomKeyCodes(
-  val keyCode: String,
-) {
-  DoubleTapLeft("0x10001"),
-  DoubleTapCenter("0x10002"),
-  DoubleTapRight("0x10003"),
-  MediaPrevious("0x10004"),
-  MediaPlay("0x10005"),
-  MediaNext("0x10006"),
 }
 
 enum class Decoder(

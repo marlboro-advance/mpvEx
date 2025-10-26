@@ -13,6 +13,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -22,6 +23,7 @@ import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
@@ -32,7 +34,6 @@ import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
-import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
@@ -42,6 +43,7 @@ import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.update
@@ -137,6 +139,7 @@ class PlayerActivity :
       }
     }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
@@ -166,6 +169,7 @@ class PlayerActivity :
     onBackPressedDispatcher.addCallback(
       this,
       object : OnBackPressedCallback(true) {
+        @RequiresApi(Build.VERSION_CODES.P)
         override fun handleOnBackPressed() {
           handleBackPress()
         }
@@ -173,6 +177,7 @@ class PlayerActivity :
     )
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
     // 1) Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
@@ -206,6 +211,7 @@ class PlayerActivity :
     finish()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
       MpvexTheme {
@@ -292,6 +298,7 @@ class PlayerActivity :
     }.onFailure { e -> Log.e(TAG, "Error abandoning audio focus", e) }
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
     Log.d(TAG, "Exiting PlayerActivity")
 
@@ -360,6 +367,7 @@ class PlayerActivity :
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
@@ -380,6 +388,7 @@ class PlayerActivity :
     super.onPause()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
       // Set flag to indicate we're finishing
@@ -428,6 +437,7 @@ class PlayerActivity :
     super.onUserLeaveHint()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onStart() {
     super.onStart()
     runCatching {
@@ -454,6 +464,7 @@ class PlayerActivity :
     window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
@@ -542,11 +553,6 @@ class PlayerActivity :
       val mpvConfFile = File("$applicationPath/mpv.conf")
       if (!mpvConfFile.exists()) {
         mpvConfFile.createNewFile()
-      }
-
-      val inputConfFile = File("$applicationPath/input.conf")
-      if (!inputConfFile.exists()) {
-        inputConfFile.createNewFile()
       }
     }.onFailure { e ->
       Log.e(TAG, "Error creating default config files", e)
@@ -861,6 +867,7 @@ class PlayerActivity :
     }
   }
 
+  @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
     fileName = getFileName(intent)
     setIntentExtras(intent.extras)
@@ -898,6 +905,7 @@ class PlayerActivity :
     updateMediaSessionPlaybackState(isPlaying = true)
   }
 
+  @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
@@ -1081,6 +1089,7 @@ class PlayerActivity :
 
   // ==================== Picture-in-Picture Management ====================
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPictureInPictureModeChanged(
     isInPictureInPictureMode: Boolean,
     newConfig: Configuration,
@@ -1110,6 +1119,7 @@ class PlayerActivity :
     windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun exitPipUIMode() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
@@ -1265,6 +1275,7 @@ class PlayerActivity :
 
   // ==================== System UI Management ====================
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
     if (systemUIRestored || isFinishing || isDestroyed) {
       systemUIRestored = true
@@ -1379,7 +1390,7 @@ class PlayerActivity :
     get() = WindowCompat.getInsetsController(window, window.decorView)
   override val hostWindow: android.view.Window
     get() = window
-  override val hostWindowManager: android.view.WindowManager
+  override val hostWindowManager: WindowManager
     get() = windowManager
   override val hostContentResolver: android.content.ContentResolver
     get() = contentResolver

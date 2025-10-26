@@ -9,7 +9,6 @@ import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -608,10 +607,6 @@ class PlayerViewModel(
         pauseUnpause()
       }
 
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
-      }
-
       SingleActionGesture.None -> {}
     }
   }
@@ -620,10 +615,6 @@ class PlayerViewModel(
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> {
         pauseUnpause()
-      }
-
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
       }
 
       SingleActionGesture.Seek -> {}
@@ -639,10 +630,6 @@ class PlayerViewModel(
 
       SingleActionGesture.PlayPause -> {
         pauseUnpause()
-      }
-
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
       }
 
       SingleActionGesture.None -> {}

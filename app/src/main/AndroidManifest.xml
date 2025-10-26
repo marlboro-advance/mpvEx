@@ -7,15 +7,11 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".App"
-        android:allowBackup="false"
         android:appCategory="video"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
@@ -211,20 +207,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <!-- Background Playback Service -->
-        <service
-            android:name="app.marlboroadvance.mpvex.service.BackgroundPlaybackService"
-            android:foregroundServiceType="mediaPlayback"
-            android:exported="false" />
-
-        <!-- Notification Button Receiver -->
-        <receiver
-            android:name="app.marlboroadvance.mpvex.service.NotificationButtonReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="app.marlboroadvance.mpvex.PLAY_PAUSE" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

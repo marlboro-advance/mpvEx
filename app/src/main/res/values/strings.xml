@@ -81,13 +81,11 @@
     <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>
     <string name="pref_gesture_double_tap_center_title">Double tap (center)</string>
     <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
-    <string name="pref_gesture_double_tap_custom_info">When a tap gesture is set to "Custom", it can be bound through input.conf. The key codes are 0x10001 for left, 0x10002 for center, and 0x10003 for right.</string>
 
     <string name="pref_gesture_media_title">Media controls</string>
     <string name="pref_gesture_media_previous">Previous</string>
     <string name="pref_gesture_media_play">Play/Pause</string>
     <string name="pref_gesture_media_next">Next</string>
-    <string name="pref_gesture_media_custom_info">When a media control is set to "Custom", it can be bound through input.conf. The key codes are 0x10004 for previous, 0x10005 for play/pause, and 0x10006 for next.</string>
 
     <string name="pref_decoder">Decoder</string>
     <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
@@ -120,10 +118,9 @@
     <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
 
     <string name="pref_advanced">Advanced</string>
-    <string name="pref_advanced_summary">Configuration location, mpv.conf, input.conf</string>
+    <string name="pref_advanced_summary">Configuration location, mpv.conf</string>
     <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
     <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
-    <string name="pref_advanced_input_conf">Edit input.conf</string>
     <string name="pref_advanced_dump_logs_title">Dump logs</string>
     <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>
     <string name="pref_advanced_verbose_logging_title">Verbose logging</string>

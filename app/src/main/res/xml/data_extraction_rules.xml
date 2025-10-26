@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- Exclude all SharedPreferences so settings (e.g., input.conf) are not restored after reinstall -->
+        <!-- Exclude all SharedPreferences so settings are not restored after reinstall -->
         <exclude
             domain="sharedpref"
             path="." />
