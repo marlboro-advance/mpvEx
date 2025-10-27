@@ -8,28 +8,28 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun DeleteConfirmationDialog(
-    isOpen: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    itemType: String,
-    itemCount: Int,
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+  onConfirm: () -> Unit,
+  itemType: String,
+  itemCount: Int,
 ) {
-    if (!isOpen) return
+  if (!isOpen) return
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete $itemCount $itemType${if (itemCount == 1) "" else "s"}?") },
-        text = { Text("This action cannot be undone.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm()
-                    onDismiss()
-                },
-            ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Delete $itemCount $itemType${if (itemCount == 1) "" else "s"}?") },
+    text = { Text("This action cannot be undone.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onConfirm()
+          onDismiss()
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
+      ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) { Text("Cancel") }
+    },
+  )
 }

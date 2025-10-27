@@ -44,98 +44,98 @@ import org.koin.compose.koinInject
 
 @Composable
 fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
-    val decoderPreferences = koinInject<DecoderPreferences>()
-    val deband by decoderPreferences.debanding.collectAsState()
-    var isExpanded by remember { mutableStateOf(true) }
+  val decoderPreferences = koinInject<DecoderPreferences>()
+  val deband by decoderPreferences.debanding.collectAsState()
+  var isExpanded by remember { mutableStateOf(true) }
 
-    ExpandableCard(
-        isExpanded,
-        title = {
-            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                Icon(Icons.Default.Gradient, null)
-                Text(stringResource(R.string.player_sheets_deband_title))
-            }
-        },
-        onExpand = { isExpanded = !isExpanded },
-        modifier.widthIn(max = CARDS_MAX_WIDTH),
-        colors = panelCardsColors(),
-    ) {
-        ProvidePreferenceLocals {
-            Column {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Debanding.entries.forEach {
-                        IconToggleButton(
-                            checked = deband == it,
-                            onCheckedChange = { _ ->
-                                decoderPreferences.debanding.set(it)
-                                when (it) {
-                                    Debanding.None -> {
-                                        MPVLib.setOptionString("deband", "no")
-                                        MPVLib.command("vf", "remove", "@deband")
-                                    }
-                                    Debanding.CPU -> {
-                                        MPVLib.setOptionString("deband", "no")
-                                        MPVLib.command("vf", "add", "@deband:gradfun=radius=12")
-                                    }
-                                    Debanding.GPU -> {
-                                        MPVLib.setOptionString("deband", "yes")
-                                        MPVLib.command("vf", "remove", "@deband")
-                                    }
-                                }
-                            },
-                        ) {
-                            when (it) {
-                                Debanding.None -> Icon(Icons.Default.NotInterested, null)
-                                Debanding.CPU -> Icon(Icons.Default.Memory, null)
-                                Debanding.GPU -> Icon(painterResource(R.drawable.expansion_card), null)
-                            }
-                        }
-                    }
-
-                    Text(stringResource(deband.titleRes))
-
-                    Spacer(Modifier.weight(1f))
-                    TextButton(
-                        onClick = {
-                            decoderPreferences.debanding.set(Debanding.None)
-                            MPVLib.setOptionString("deband", "no")
-                            MPVLib.command("vf", "remove", "@deband")
-                            DebandSettings.entries.forEach {
-                                MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
-                            }
-                        },
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(painterResource(R.drawable.reset_iso_24px), null)
-                            Text(stringResource(R.string.generic_reset))
-                        }
-                    }
+  ExpandableCard(
+    isExpanded,
+    title = {
+      Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+        Icon(Icons.Default.Gradient, null)
+        Text(stringResource(R.string.player_sheets_deband_title))
+      }
+    },
+    onExpand = { isExpanded = !isExpanded },
+    modifier.widthIn(max = CARDS_MAX_WIDTH),
+    colors = panelCardsColors(),
+  ) {
+    ProvidePreferenceLocals {
+      Column {
+        Row(
+          Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Debanding.entries.forEach {
+            IconToggleButton(
+              checked = deband == it,
+              onCheckedChange = { _ ->
+                decoderPreferences.debanding.set(it)
+                when (it) {
+                  Debanding.None -> {
+                    MPVLib.setOptionString("deband", "no")
+                    MPVLib.command("vf", "remove", "@deband")
+                  }
+                  Debanding.CPU -> {
+                    MPVLib.setOptionString("deband", "no")
+                    MPVLib.command("vf", "add", "@deband:gradfun=radius=12")
+                  }
+                  Debanding.GPU -> {
+                    MPVLib.setOptionString("deband", "yes")
+                    MPVLib.command("vf", "remove", "@deband")
+                  }
                 }
-
-                DebandSettings.entries.forEach { debandSettings ->
-                    val value by debandSettings.preference(decoderPreferences).collectAsState()
-                    SliderItem(
-                        label = stringResource(debandSettings.titleRes),
-                        value = value,
-                        valueText = value.toString(),
-                        onChange = {
-                            debandSettings.preference(decoderPreferences).set(it)
-                            MPVLib.setPropertyInt(debandSettings.mpvProperty, it)
-                        },
-                        min = debandSettings.start,
-                        max = debandSettings.end,
-                    )
-                }
+              },
+            ) {
+              when (it) {
+                Debanding.None -> Icon(Icons.Default.NotInterested, null)
+                Debanding.CPU -> Icon(Icons.Default.Memory, null)
+                Debanding.GPU -> Icon(painterResource(R.drawable.expansion_card), null)
+              }
             }
+          }
+
+          Text(stringResource(deband.titleRes))
+
+          Spacer(Modifier.weight(1f))
+          TextButton(
+            onClick = {
+              decoderPreferences.debanding.set(Debanding.None)
+              MPVLib.setOptionString("deband", "no")
+              MPVLib.command("vf", "remove", "@deband")
+              DebandSettings.entries.forEach {
+                MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
+              }
+            },
+          ) {
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Icon(painterResource(R.drawable.reset_iso_24px), null)
+              Text(stringResource(R.string.generic_reset))
+            }
+          }
         }
+
+        DebandSettings.entries.forEach { debandSettings ->
+          val value by debandSettings.preference(decoderPreferences).collectAsState()
+          SliderItem(
+            label = stringResource(debandSettings.titleRes),
+            value = value,
+            valueText = value.toString(),
+            onChange = {
+              debandSettings.preference(decoderPreferences).set(it)
+              MPVLib.setPropertyInt(debandSettings.mpvProperty, it)
+            },
+            min = debandSettings.start,
+            max = debandSettings.end,
+          )
+        }
+      }
     }
+  }
 }

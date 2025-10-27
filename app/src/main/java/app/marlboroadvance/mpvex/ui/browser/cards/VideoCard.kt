@@ -34,93 +34,93 @@ import org.koin.compose.koinInject
 
 @Composable
 fun VideoCard(
-    video: Video,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isRecentlyPlayed: Boolean = false,
-    onLongClick: (() -> Unit)? = null,
-    isSelected: Boolean = false,
+  video: Video,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  isRecentlyPlayed: Boolean = false,
+  onLongClick: (() -> Unit)? = null,
+  isSelected: Boolean = false,
 ) {
-    val preferences = koinInject<AppearancePreferences>()
-    val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
-    val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
+  val preferences = koinInject<AppearancePreferences>()
+  val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
+  val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                ),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+  Card(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .combinedClickable(
+          onClick = onClick,
+          onLongClick = onLongClick,
+        ),
+    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+  ) {
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .background(
+            if (isSelected) {
+              MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+            } else {
+              Color.Transparent
+            },
+          ).padding(12.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+      Box(
+        modifier =
+          Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+          Icons.Filled.PlayArrow,
+          contentDescription = "Play",
+          modifier = Modifier.size(48.dp),
+          tint = MaterialTheme.colorScheme.secondary,
+        )
+      }
+      Spacer(modifier = Modifier.width(16.dp))
+      Column(
+        modifier = Modifier.weight(1f),
+      ) {
+        Text(
+          video.displayName,
+          style = MaterialTheme.typography.titleSmall,
+          color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+          maxLines = maxLines,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row {
+          Text(
+            video.durationFormatted,
+            style = MaterialTheme.typography.labelSmall,
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (isSelected) {
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
-                        } else {
-                            Color.Transparent
-                        },
-                    ).padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = "Play",
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    video.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = maxLines,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    Text(
-                        video.durationFormatted,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier =
-                            Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(8.dp),
-                                ).padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        video.sizeFormatted,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier =
-                            Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(8.dp),
-                                ).padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+          )
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(
+            video.sizeFormatted,
+            style = MaterialTheme.typography.labelSmall,
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  RoundedCornerShape(8.dp),
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+          )
         }
+      }
     }
+  }
 }

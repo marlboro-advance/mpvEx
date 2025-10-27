@@ -51,175 +51,175 @@ import org.koin.compose.koinInject
 
 @Composable
 fun SubtitleSettingsColorsCard(modifier: Modifier = Modifier) {
-    val preferences = koinInject<SubtitlesPreferences>()
-    var isExpanded by remember { mutableStateOf(true) }
-    ExpandableCard(
-        isExpanded = isExpanded,
-        onExpand = { isExpanded = !isExpanded },
-        title = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            ) {
-                Icon(Icons.Default.Palette, null)
-                Text(stringResource(R.string.player_sheets_sub_colors_card_title))
-            }
-        },
-        modifier = modifier.widthIn(max = CARDS_MAX_WIDTH),
-        colors = panelCardsColors(),
-    ) {
-        Column {
-            var currentColorType by remember { mutableStateOf(SubColorType.Text) }
-            var currentColor by remember { mutableIntStateOf(getCurrentMPVColor(currentColorType)) }
-            LaunchedEffect(currentColorType) {
-                currentColor = getCurrentMPVColor(currentColorType)
-            }
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
-            ) {
-                SubColorType.entries.forEach { type ->
-                    IconToggleButton(
-                        checked = currentColorType == type,
-                        onCheckedChange = { currentColorType = type },
-                    ) {
-                        Icon(
-                            when (type) {
-                                SubColorType.Text -> Icons.Default.FormatColorText
-                                SubColorType.Border -> Icons.Default.BorderColor
-                                SubColorType.Background -> Icons.Default.FormatColorFill
-                            },
-                            null,
-                        )
-                    }
-                }
-                Text(stringResource(currentColorType.titleRes))
-                Spacer(Modifier.weight(1f))
-                TextButton(
-                    onClick = {
-                        resetColors(preferences, currentColorType)
-                        currentColor = getCurrentMPVColor(currentColorType)
-                    },
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Default.FormatColorReset, null)
-                        Text(stringResource(R.string.generic_reset))
-                    }
-                }
-            }
-            SubtitlesColorPicker(
-                currentColor,
-                onColorChange = {
-                    currentColor = it
-                    currentColorType.preference(preferences).set(it)
-                    MPVLib.setPropertyString(currentColorType.property, it.toColorHexString())
-                },
+  val preferences = koinInject<SubtitlesPreferences>()
+  var isExpanded by remember { mutableStateOf(true) }
+  ExpandableCard(
+    isExpanded = isExpanded,
+    onExpand = { isExpanded = !isExpanded },
+    title = {
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+      ) {
+        Icon(Icons.Default.Palette, null)
+        Text(stringResource(R.string.player_sheets_sub_colors_card_title))
+      }
+    },
+    modifier = modifier.widthIn(max = CARDS_MAX_WIDTH),
+    colors = panelCardsColors(),
+  ) {
+    Column {
+      var currentColorType by remember { mutableStateOf(SubColorType.Text) }
+      var currentColor by remember { mutableIntStateOf(getCurrentMPVColor(currentColorType)) }
+      LaunchedEffect(currentColorType) {
+        currentColor = getCurrentMPVColor(currentColorType)
+      }
+      Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
+      ) {
+        SubColorType.entries.forEach { type ->
+          IconToggleButton(
+            checked = currentColorType == type,
+            onCheckedChange = { currentColorType = type },
+          ) {
+            Icon(
+              when (type) {
+                SubColorType.Text -> Icons.Default.FormatColorText
+                SubColorType.Border -> Icons.Default.BorderColor
+                SubColorType.Background -> Icons.Default.FormatColorFill
+              },
+              null,
             )
+          }
         }
+        Text(stringResource(currentColorType.titleRes))
+        Spacer(Modifier.weight(1f))
+        TextButton(
+          onClick = {
+            resetColors(preferences, currentColorType)
+            currentColor = getCurrentMPVColor(currentColorType)
+          },
+        ) {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(Icons.Default.FormatColorReset, null)
+            Text(stringResource(R.string.generic_reset))
+          }
+        }
+      }
+      SubtitlesColorPicker(
+        currentColor,
+        onColorChange = {
+          currentColor = it
+          currentColorType.preference(preferences).set(it)
+          MPVLib.setPropertyString(currentColorType.property, it.toColorHexString())
+        },
+      )
     }
+  }
 }
 
 fun Int.copyAsArgb(
-    alpha: Int = this.alpha,
-    red: Int = this.red,
-    green: Int = this.green,
-    blue: Int = this.blue,
+  alpha: Int = this.alpha,
+  red: Int = this.red,
+  green: Int = this.green,
+  blue: Int = this.blue,
 ) = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
 
 @OptIn(ExperimentalStdlibApi::class)
 fun Int.toColorHexString() = "#" + this.toHexString().uppercase()
 
 enum class SubColorType(
-    @StringRes val titleRes: Int,
-    val property: String,
-    val preference: (SubtitlesPreferences) -> Preference<Int>,
+  @StringRes val titleRes: Int,
+  val property: String,
+  val preference: (SubtitlesPreferences) -> Preference<Int>,
 ) {
-    Text(
-        R.string.player_sheets_subtitles_color_text,
-        "sub-color",
-        preference = SubtitlesPreferences::textColor,
-    ),
-    Border(
-        R.string.player_sheets_subtitles_color_border,
-        "sub-border-color",
-        preference = SubtitlesPreferences::borderColor,
-    ),
-    Background(
-        R.string.player_sheets_subtitles_color_background,
-        "sub-back-color",
-        preference = SubtitlesPreferences::backgroundColor,
-    ),
+  Text(
+    R.string.player_sheets_subtitles_color_text,
+    "sub-color",
+    preference = SubtitlesPreferences::textColor,
+  ),
+  Border(
+    R.string.player_sheets_subtitles_color_border,
+    "sub-border-color",
+    preference = SubtitlesPreferences::borderColor,
+  ),
+  Background(
+    R.string.player_sheets_subtitles_color_background,
+    "sub-back-color",
+    preference = SubtitlesPreferences::backgroundColor,
+  ),
 }
 
 fun resetColors(
-    preferences: SubtitlesPreferences,
-    type: SubColorType,
+  preferences: SubtitlesPreferences,
+  type: SubColorType,
 ) {
-    when (type) {
-        SubColorType.Text -> {
-            MPVLib.setPropertyString("sub-color", preferences.textColor.deleteAndGet().toColorHexString())
-        }
-
-        SubColorType.Border -> {
-            MPVLib.setPropertyString("sub-border-color", preferences.borderColor.deleteAndGet().toColorHexString())
-        }
-
-        SubColorType.Background -> {
-            MPVLib.setPropertyString("sub-back-color", preferences.backgroundColor.deleteAndGet().toColorHexString())
-        }
+  when (type) {
+    SubColorType.Text -> {
+      MPVLib.setPropertyString("sub-color", preferences.textColor.deleteAndGet().toColorHexString())
     }
+
+    SubColorType.Border -> {
+      MPVLib.setPropertyString("sub-border-color", preferences.borderColor.deleteAndGet().toColorHexString())
+    }
+
+    SubColorType.Background -> {
+      MPVLib.setPropertyString("sub-back-color", preferences.backgroundColor.deleteAndGet().toColorHexString())
+    }
+  }
 }
 
 val getCurrentMPVColor: (SubColorType) -> Int = { MPVLib.getPropertyString(it.property)!!.uppercase().toColorInt() }
 
 @Composable
 fun SubtitlesColorPicker(
-    color: Int,
-    onColorChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+  color: Int,
+  onColorChange: (Int) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    Column(modifier) {
-        TintedSliderItem(
-            stringResource(R.string.player_sheets_sub_color_red),
-            color.red,
-            color.red.toString(),
-            onChange = { onColorChange(color.copyAsArgb(red = it)) },
-            max = 255,
-            tint = Color.Red,
-        )
+  Column(modifier) {
+    TintedSliderItem(
+      stringResource(R.string.player_sheets_sub_color_red),
+      color.red,
+      color.red.toString(),
+      onChange = { onColorChange(color.copyAsArgb(red = it)) },
+      max = 255,
+      tint = Color.Red,
+    )
 
-        TintedSliderItem(
-            stringResource(R.string.player_sheets_sub_color_green),
-            color.green,
-            color.green.toString(),
-            onChange = { onColorChange(color.copyAsArgb(green = it)) },
-            max = 255,
-            tint = Color.Green,
-        )
+    TintedSliderItem(
+      stringResource(R.string.player_sheets_sub_color_green),
+      color.green,
+      color.green.toString(),
+      onChange = { onColorChange(color.copyAsArgb(green = it)) },
+      max = 255,
+      tint = Color.Green,
+    )
 
-        TintedSliderItem(
-            stringResource(R.string.player_sheets_sub_color_blue),
-            color.blue,
-            color.blue.toString(),
-            onChange = { onColorChange(color.copyAsArgb(blue = it)) },
-            max = 255,
-            tint = Color.Blue,
-        )
+    TintedSliderItem(
+      stringResource(R.string.player_sheets_sub_color_blue),
+      color.blue,
+      color.blue.toString(),
+      onChange = { onColorChange(color.copyAsArgb(blue = it)) },
+      max = 255,
+      tint = Color.Blue,
+    )
 
-        TintedSliderItem(
-            stringResource(R.string.player_sheets_sub_color_alpha),
-            color.alpha,
-            color.alpha.toString(),
-            onChange = { onColorChange(color.copyAsArgb(alpha = it)) },
-            max = 255,
-            tint = Color.White,
-        )
-    }
+    TintedSliderItem(
+      stringResource(R.string.player_sheets_sub_color_alpha),
+      color.alpha,
+      color.alpha.toString(),
+      onChange = { onColorChange(color.copyAsArgb(alpha = it)) },
+      max = 255,
+      tint = Color.White,
+    )
+  }
 }

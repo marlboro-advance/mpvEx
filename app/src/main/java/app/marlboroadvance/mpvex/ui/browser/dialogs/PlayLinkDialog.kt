@@ -33,95 +33,95 @@ import app.marlboroadvance.mpvex.utils.media.MediaUtils
  */
 @Composable
 fun PlayLinkDialog(
-    isOpen: Boolean,
-    onDismiss: () -> Unit,
-    onPlayLink: (String) -> Unit,
-    modifier: Modifier = Modifier,
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+  onPlayLink: (String) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    if (!isOpen) return
+  if (!isOpen) return
 
-    var linkInputUrl by remember { mutableStateOf("") }
-    var isLinkInputUrlValid by remember { mutableStateOf(true) }
+  var linkInputUrl by remember { mutableStateOf("") }
+  var isLinkInputUrlValid by remember { mutableStateOf(true) }
 
-    // Reset state when dialog opens
-    LaunchedEffect(isOpen) {
-        if (isOpen) {
-            linkInputUrl = ""
-            isLinkInputUrlValid = true
+  // Reset state when dialog opens
+  LaunchedEffect(isOpen) {
+    if (isOpen) {
+      linkInputUrl = ""
+      isLinkInputUrlValid = true
+    }
+  }
+
+  val handleDismiss = {
+    onDismiss()
+  }
+
+  val handleConfirm = {
+    onPlayLink(linkInputUrl)
+    onDismiss()
+  }
+
+  AlertDialog(
+    onDismissRequest = handleDismiss,
+    title = { Text("Play Link") },
+    text = {
+      Column {
+        OutlinedTextField(
+          value = linkInputUrl,
+          onValueChange = { newValue ->
+            linkInputUrl = newValue
+            isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
+          },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("Enter URL") },
+          singleLine = true,
+          isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
+          trailingIcon = {
+            if (linkInputUrl.isNotBlank()) {
+              ValidationIcon(isValid = isLinkInputUrlValid)
+            }
+          },
+        )
+
+        if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
+          Spacer(modifier = Modifier.height(4.dp))
+          Text(
+            "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+          )
         }
-    }
-
-    val handleDismiss = {
-        onDismiss()
-    }
-
-    val handleConfirm = {
-        onPlayLink(linkInputUrl)
-        onDismiss()
-    }
-
-    AlertDialog(
-        onDismissRequest = handleDismiss,
-        title = { Text("Play Link") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = linkInputUrl,
-                    onValueChange = { newValue ->
-                        linkInputUrl = newValue
-                        isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Enter URL") },
-                    singleLine = true,
-                    isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
-                    trailingIcon = {
-                        if (linkInputUrl.isNotBlank()) {
-                            ValidationIcon(isValid = isLinkInputUrlValid)
-                        }
-                    },
-                )
-
-                if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = handleConfirm,
-                enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
-            ) {
-                Text("Play")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = handleDismiss) {
-                Text("Cancel")
-            }
-        },
-        modifier = modifier,
-    )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = handleConfirm,
+        enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
+      ) {
+        Text("Play")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = handleDismiss) {
+        Text("Cancel")
+      }
+    },
+    modifier = modifier,
+  )
 }
 
 @Composable
 private fun ValidationIcon(isValid: Boolean) {
-    if (isValid) {
-        Icon(
-            Icons.Filled.CheckCircle,
-            contentDescription = "Valid URL",
-            tint = MaterialTheme.colorScheme.primary,
-        )
-    } else {
-        Icon(
-            Icons.Filled.Info,
-            contentDescription = "Invalid URL",
-            tint = MaterialTheme.colorScheme.error,
-        )
-    }
+  if (isValid) {
+    Icon(
+      Icons.Filled.CheckCircle,
+      contentDescription = "Valid URL",
+      tint = MaterialTheme.colorScheme.primary,
+    )
+  } else {
+    Icon(
+      Icons.Filled.Info,
+      contentDescription = "Invalid URL",
+      tint = MaterialTheme.colorScheme.error,
+    )
+  }
 }

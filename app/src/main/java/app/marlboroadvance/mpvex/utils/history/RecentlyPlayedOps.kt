@@ -24,167 +24,167 @@ import org.koin.java.KoinJavaComponent.inject
  * All components should use this instead of directly accessing the repository.
  */
 object RecentlyPlayedOps {
-    private val repository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+  private val repository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
 
-    // ========== WRITE OPERATIONS ==========
+  // ========== WRITE OPERATIONS ==========
 
-    /**
-     * Record a video playback
-     *
-     * @param filePath Full path to the video file
-     * @param fileName Display name of the file
-     * @param launchSource Optional source identifier (e.g., "folder_list", "open_file")
-     */
-    suspend fun addRecentlyPlayed(
-        filePath: String,
-        fileName: String,
-        launchSource: String? = null,
-    ) {
-        repository.addRecentlyPlayed(filePath, fileName, launchSource)
-    }
+  /**
+   * Record a video playback
+   *
+   * @param filePath Full path to the video file
+   * @param fileName Display name of the file
+   * @param launchSource Optional source identifier (e.g., "folder_list", "open_file")
+   */
+  suspend fun addRecentlyPlayed(
+    filePath: String,
+    fileName: String,
+    launchSource: String? = null,
+  ) {
+    repository.addRecentlyPlayed(filePath, fileName, launchSource)
+  }
 
-    /**
-     * Clear all recently played history
-     */
-    suspend fun clearAll() {
-        repository.clearAll()
-    }
+  /**
+   * Clear all recently played history
+   */
+  suspend fun clearAll() {
+    repository.clearAll()
+  }
 
-    // ========== READ OPERATIONS ==========
+  // ========== READ OPERATIONS ==========
 
-    /**
-     * Get the most recently played file path (if it still exists)
-     *
-     * @return File path string, or null if no recently played or file doesn't exist
-     */
-    suspend fun getLastPlayed(): String? {
-        return withContext(Dispatchers.IO) {
-            // Fetch a batch of recent entries to find the first playable one
-            val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
-            for (entity in recent) {
-                val path = entity.filePath
-                if (isNonFileUri(path)) {
-                    return@withContext path
-                }
-                if (fileExists(path)) {
-                    return@withContext path
-                } else {
-                    // Prune missing local file entries as we encounter them
-                    kotlin.runCatching { repository.deleteByFilePath(path) }
-                }
-            }
-            null
+  /**
+   * Get the most recently played file path (if it still exists)
+   *
+   * @return File path string, or null if no recently played or file doesn't exist
+   */
+  suspend fun getLastPlayed(): String? {
+    return withContext(Dispatchers.IO) {
+      // Fetch a batch of recent entries to find the first playable one
+      val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
+      for (entity in recent) {
+        val path = entity.filePath
+        if (isNonFileUri(path)) {
+          return@withContext path
         }
-    }
-
-    /**
-     * Check if there's a valid recently played file
-     * Automatically prunes invalid entries
-     *
-     * @return True if there's a recently played file that exists
-     */
-    suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) { getLastPlayed() != null }
-
-    // ========== FLOW OPERATIONS (for UI observing) ==========
-
-    /**
-     * Observe the most recently played file path for UI highlighting
-     * Returns null if file doesn't exist (for hiding highlights)
-     *
-     * @return Flow of file path (or null)
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun observeLastPlayedPath(): Flow<String?> =
-        repository
-            .observeLastPlayedForHighlight()
-            .mapLatest { entity ->
-                val path = entity?.filePath
-                if (path.isNullOrEmpty()) {
-                    null
-                } else if (fileExists(path)) {
-                    path
-                } else {
-                    null
-                }
-            }.distinctUntilChanged()
-            .flowOn(Dispatchers.IO)
-
-    // ========== MAINTENANCE OPERATIONS ==========
-
-    /**
-     * Prune invalid recently played entries (files that no longer exist)
-     *
-     * @return True if an entry was pruned, false if no pruning needed
-     */
-    suspend fun pruneIfMissing(): Boolean {
-        return withContext(Dispatchers.IO) {
-            val last = repository.getLastPlayed() ?: return@withContext false
-            val path = last.filePath
-            if (isNonFileUri(path)) {
-                false
-            } else if (!fileExists(path)) {
-                kotlin.runCatching { repository.deleteByFilePath(last.filePath) }
-                true
-            } else {
-                false
-            }
+        if (fileExists(path)) {
+          return@withContext path
+        } else {
+          // Prune missing local file entries as we encounter them
+          kotlin.runCatching { repository.deleteByFilePath(path) }
         }
+      }
+      null
     }
+  }
 
-    // ========== EVENT HANDLERS ==========
+  /**
+   * Check if there's a valid recently played file
+   * Automatically prunes invalid entries
+   *
+   * @return True if there's a recently played file that exists
+   */
+  suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) { getLastPlayed() != null }
 
-    /**
-     * Called when a video is deleted
-     * Removes it from recently played history
-     */
-    suspend fun onVideoDeleted(filePath: String) {
-        if (filePath.isBlank()) return
-        withContext(Dispatchers.IO) {
-            kotlin.runCatching { repository.deleteByFilePath(filePath) }
+  // ========== FLOW OPERATIONS (for UI observing) ==========
+
+  /**
+   * Observe the most recently played file path for UI highlighting
+   * Returns null if file doesn't exist (for hiding highlights)
+   *
+   * @return Flow of file path (or null)
+   */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  fun observeLastPlayedPath(): Flow<String?> =
+    repository
+      .observeLastPlayedForHighlight()
+      .mapLatest { entity ->
+        val path = entity?.filePath
+        if (path.isNullOrEmpty()) {
+          null
+        } else if (fileExists(path)) {
+          path
+        } else {
+          null
         }
-    }
+      }.distinctUntilChanged()
+      .flowOn(Dispatchers.IO)
 
-    /**
-     * Called when a video is renamed
-     * Updates the path and filename in recently played history
-     *
-     * @param oldPath The original file path
-     * @param newPath The new file path after renaming
-     */
-    suspend fun onVideoRenamed(
-        oldPath: String,
-        newPath: String,
-    ) {
-        // Extract the new filename from the new path
-        val newFileName = java.io.File(newPath).name
-        kotlin.runCatching {
-            repository.updateFilePath(oldPath, newPath, newFileName)
+  // ========== MAINTENANCE OPERATIONS ==========
+
+  /**
+   * Prune invalid recently played entries (files that no longer exist)
+   *
+   * @return True if an entry was pruned, false if no pruning needed
+   */
+  suspend fun pruneIfMissing(): Boolean {
+    return withContext(Dispatchers.IO) {
+      val last = repository.getLastPlayed() ?: return@withContext false
+      val path = last.filePath
+      if (isNonFileUri(path)) {
+        false
+      } else if (!fileExists(path)) {
+        kotlin.runCatching { repository.deleteByFilePath(last.filePath) }
+        true
+      } else {
+        false
+      }
+    }
+  }
+
+  // ========== EVENT HANDLERS ==========
+
+  /**
+   * Called when a video is deleted
+   * Removes it from recently played history
+   */
+  suspend fun onVideoDeleted(filePath: String) {
+    if (filePath.isBlank()) return
+    withContext(Dispatchers.IO) {
+      kotlin.runCatching { repository.deleteByFilePath(filePath) }
+    }
+  }
+
+  /**
+   * Called when a video is renamed
+   * Updates the path and filename in recently played history
+   *
+   * @param oldPath The original file path
+   * @param newPath The new file path after renaming
+   */
+  suspend fun onVideoRenamed(
+    oldPath: String,
+    newPath: String,
+  ) {
+    // Extract the new filename from the new path
+    val newFileName = java.io.File(newPath).name
+    kotlin.runCatching {
+      repository.updateFilePath(oldPath, newPath, newFileName)
+    }
+  }
+
+  // ========== INTERNAL HELPERS ==========
+
+  /**
+   * Check if a file exists on the filesystem
+   */
+  private fun fileExists(path: String): Boolean =
+    kotlin
+      .runCatching {
+        val uri = Uri.parse(path)
+        val scheme = uri.scheme
+        // Treat non-file schemes (http, https, rtsp, rtmp, content, etc.) as valid and non-prunable
+        if (scheme == null || scheme.equals("file", ignoreCase = true)) {
+          java.io.File(path).exists()
+        } else {
+          // Non-file schemes are not checked against filesystem
+          true
         }
-    }
+      }.getOrDefault(false)
 
-    // ========== INTERNAL HELPERS ==========
-
-    /**
-     * Check if a file exists on the filesystem
-     */
-    private fun fileExists(path: String): Boolean =
-        kotlin
-            .runCatching {
-                val uri = Uri.parse(path)
-                val scheme = uri.scheme
-                // Treat non-file schemes (http, https, rtsp, rtmp, content, etc.) as valid and non-prunable
-                if (scheme == null || scheme.equals("file", ignoreCase = true)) {
-                    java.io.File(path).exists()
-                } else {
-                    // Non-file schemes are not checked against filesystem
-                    true
-                }
-            }.getOrDefault(false)
-
-    private fun isNonFileUri(path: String): Boolean =
-        kotlin
-            .runCatching {
-                val scheme = Uri.parse(path).scheme
-                scheme != null && !scheme.equals("file", ignoreCase = true)
-            }.getOrDefault(false)
+  private fun isNonFileUri(path: String): Boolean =
+    kotlin
+      .runCatching {
+        val scheme = Uri.parse(path).scheme
+        scheme != null && !scheme.equals("file", ignoreCase = true)
+      }.getOrDefault(false)
 }

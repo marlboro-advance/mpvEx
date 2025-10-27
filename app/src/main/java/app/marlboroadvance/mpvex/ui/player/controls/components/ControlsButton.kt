@@ -29,85 +29,85 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ControlsButton(
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onLongClick: () -> Unit = {},
-    title: String? = null,
-    color: Color = Color.White,
+  icon: ImageVector,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  onLongClick: () -> Unit = {},
+  title: String? = null,
+  color: Color = Color.White,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+  val interactionSource = remember { MutableInteractionSource() }
 
-    val clickEvent = LocalPlayerButtonsClickEvent.current
-    Box(
-        modifier =
-            modifier
-                .combinedClickable(
-                    onClick = {
-                        clickEvent()
-                        onClick()
-                    },
-                    onLongClick = onLongClick,
-                    interactionSource = interactionSource,
-                    indication = null,
-                ).clip(CircleShape)
-                .indication(
-                    interactionSource,
-                    ripple(),
-                ).padding(MaterialTheme.spacing.medium),
-    ) {
-        Icon(
-            icon,
-            title,
-            tint = color,
-            modifier = Modifier.size(20.dp),
-        )
-    }
+  val clickEvent = LocalPlayerButtonsClickEvent.current
+  Box(
+    modifier =
+      modifier
+        .combinedClickable(
+          onClick = {
+            clickEvent()
+            onClick()
+          },
+          onLongClick = onLongClick,
+          interactionSource = interactionSource,
+          indication = null,
+        ).clip(CircleShape)
+        .indication(
+          interactionSource,
+          ripple(),
+        ).padding(MaterialTheme.spacing.medium),
+  ) {
+    Icon(
+      icon,
+      title,
+      tint = color,
+      modifier = Modifier.size(20.dp),
+    )
+  }
 }
 
 @Suppress("ModifierClickableOrder")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ControlsButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onLongClick: () -> Unit = {},
-    color: Color = Color.White,
+  text: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  onLongClick: () -> Unit = {},
+  color: Color = Color.White,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+  val interactionSource = remember { MutableInteractionSource() }
 
-    val clickEvent = LocalPlayerButtonsClickEvent.current
-    Box(
-        modifier =
-            modifier
-                .combinedClickable(
-                    onClick = {
-                        clickEvent()
-                        onClick()
-                    },
-                    onLongClick = onLongClick,
-                    interactionSource = interactionSource,
-                    indication = null,
-                ).clip(CircleShape)
-                .indication(
-                    interactionSource,
-                    ripple(),
-                ).padding(MaterialTheme.spacing.medium),
-    ) {
-        Text(
-            text,
-            color = color,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
+  val clickEvent = LocalPlayerButtonsClickEvent.current
+  Box(
+    modifier =
+      modifier
+        .combinedClickable(
+          onClick = {
+            clickEvent()
+            onClick()
+          },
+          onLongClick = onLongClick,
+          interactionSource = interactionSource,
+          indication = null,
+        ).clip(CircleShape)
+        .indication(
+          interactionSource,
+          ripple(),
+        ).padding(MaterialTheme.spacing.medium),
+  ) {
+    Text(
+      text,
+      color = color,
+      style = MaterialTheme.typography.bodyMedium,
+    )
+  }
 }
 
 @Preview
 @Composable
 private fun PreviewControlsButton() {
-    ControlsButton(
-        Icons.Default.CatchingPokemon,
-        onClick = {},
-    )
+  ControlsButton(
+    Icons.Default.CatchingPokemon,
+    onClick = {},
+  )
 }

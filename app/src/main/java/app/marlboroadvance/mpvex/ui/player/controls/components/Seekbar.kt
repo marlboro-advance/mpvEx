@@ -30,98 +30,101 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun SeekbarWithTimers(
-    position: Float,
-    duration: Float,
-    readAheadValue: Float,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-    timersInverted: Pair<Boolean, Boolean>,
-    positionTimerOnClick: () -> Unit,
-    durationTimerOnCLick: () -> Unit,
-    chapters: ImmutableList<Segment>,
-    modifier: Modifier = Modifier,
+  position: Float,
+  duration: Float,
+  readAheadValue: Float,
+  onValueChange: (Float) -> Unit,
+  onValueChangeFinished: () -> Unit,
+  timersInverted: Pair<Boolean, Boolean>,
+  positionTimerOnClick: () -> Unit,
+  durationTimerOnCLick: () -> Unit,
+  chapters: ImmutableList<Segment>,
+  modifier: Modifier = Modifier,
 ) {
-    val clickEvent = LocalPlayerButtonsClickEvent.current
-    Row(
-        modifier = modifier.height(48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-    ) {
-        VideoTimer(
-            value = position,
-            timersInverted.first,
-            onClick = {
-                clickEvent()
-                positionTimerOnClick()
-            },
-            modifier = Modifier.width(92.dp),
-        )
-        Seeker(
-            value = position.coerceIn(0f, duration),
-            range = 0f..duration,
-            onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
-            readAheadValue = readAheadValue,
-            segments =
-                chapters
-                    .filter { it.start in 0f..duration }
-                    .let { (if (it.isNotEmpty() && it[0].start != 0f) persistentListOf(Segment("", 0f)) + it else it) + it },
-            modifier = Modifier.weight(1f),
-            colors =
-                SeekerDefaults.seekerColors(
-                    progressColor = MaterialTheme.colorScheme.primary,
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.background,
-                    readAheadColor = MaterialTheme.colorScheme.inversePrimary,
-                ),
-        )
-        VideoTimer(
-            value = if (timersInverted.second) position - duration else duration,
-            isInverted = timersInverted.second,
-            onClick = {
-                clickEvent()
-                durationTimerOnCLick()
-            },
-            modifier = Modifier.width(92.dp),
-        )
-    }
+  val clickEvent = LocalPlayerButtonsClickEvent.current
+  Row(
+    modifier = modifier.height(48.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+  ) {
+    VideoTimer(
+      value = position,
+      timersInverted.first,
+      onClick = {
+        clickEvent()
+        positionTimerOnClick()
+      },
+      modifier = Modifier.width(92.dp),
+    )
+    Seeker(
+      value = position.coerceIn(0f, duration),
+      range = 0f..duration,
+      onValueChange = onValueChange,
+      onValueChangeFinished = onValueChangeFinished,
+      readAheadValue = readAheadValue,
+      segments =
+        chapters
+          .filter { it.start in 0f..duration }
+          .let {
+            (if (it.isNotEmpty() && it[0].start != 0f) persistentListOf(Segment("", 0f)) + it else it) +
+              it
+          },
+      modifier = Modifier.weight(1f),
+      colors =
+        SeekerDefaults.seekerColors(
+          progressColor = MaterialTheme.colorScheme.primary,
+          thumbColor = MaterialTheme.colorScheme.primary,
+          trackColor = MaterialTheme.colorScheme.background,
+          readAheadColor = MaterialTheme.colorScheme.inversePrimary,
+        ),
+    )
+    VideoTimer(
+      value = if (timersInverted.second) position - duration else duration,
+      isInverted = timersInverted.second,
+      onClick = {
+        clickEvent()
+        durationTimerOnCLick()
+      },
+      modifier = Modifier.width(92.dp),
+    )
+  }
 }
 
 @Composable
 fun VideoTimer(
-    value: Float,
-    isInverted: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
+  value: Float,
+  isInverted: Boolean,
+  modifier: Modifier = Modifier,
+  onClick: () -> Unit = {},
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Text(
-        modifier =
-            modifier
-                .fillMaxHeight()
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = ripple(),
-                    onClick = onClick,
-                ).wrapContentHeight(Alignment.CenterVertically),
-        text = Utils.prettyTime(value.toInt(), isInverted),
-        color = Color.White,
-        textAlign = TextAlign.Center,
-    )
+  val interactionSource = remember { MutableInteractionSource() }
+  Text(
+    modifier =
+      modifier
+        .fillMaxHeight()
+        .clickable(
+          interactionSource = interactionSource,
+          indication = ripple(),
+          onClick = onClick,
+        ).wrapContentHeight(Alignment.CenterVertically),
+    text = Utils.prettyTime(value.toInt(), isInverted),
+    color = Color.White,
+    textAlign = TextAlign.Center,
+  )
 }
 
 @Preview
 @Composable
 private fun PreviewSeekBar() {
-    SeekbarWithTimers(
-        5f,
-        20f,
-        4f,
-        {},
-        {},
-        Pair(false, true),
-        {},
-        {},
-        persistentListOf<Segment>(),
-    )
+  SeekbarWithTimers(
+    5f,
+    20f,
+    4f,
+    {},
+    {},
+    Pair(false, true),
+    {},
+    {},
+    persistentListOf<Segment>(),
+  )
 }

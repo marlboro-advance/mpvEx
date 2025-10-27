@@ -34,74 +34,74 @@ import `is`.xyz.mpv.Utils
 
 @Composable
 fun CurrentChapter(
-    chapter: Segment,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
+  chapter: Segment,
+  modifier: Modifier = Modifier,
+  onClick: () -> Unit = {},
 ) {
-    Box(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(25))
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6F))
-                .clickable(onClick = onClick)
-                .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
-    ) {
-        AnimatedContent(
-            targetState = chapter,
-            transitionSpec = {
-                if (targetState.start > initialState.start) {
-                    (slideInVertically { height -> height } + fadeIn())
-                        .togetherWith(slideOutVertically { height -> -height } + fadeOut())
-                } else {
-                    (slideInVertically { height -> -height } + fadeIn())
-                        .togetherWith(slideOutVertically { height -> height } + fadeOut())
-                }.using(
-                    SizeTransform(clip = false),
-                )
-            },
-            label = "Chapter",
-        ) { currentChapter ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Bookmarks,
-                    contentDescription = null,
-                    modifier =
-                        Modifier
-                            .padding(end = MaterialTheme.spacing.extraSmall)
-                            .size(16.dp),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = Utils.prettyTime(currentChapter.start.toInt()),
-                    fontWeight = FontWeight.ExtraBold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
-                currentChapter.name.let {
-                    Text(
-                        text = Typography.bullet.toString(),
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        overflow = TextOverflow.Clip,
-                    )
-                    Text(
-                        text = it,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-            }
+  Box(
+    modifier =
+      modifier
+        .clip(RoundedCornerShape(25))
+        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6F))
+        .clickable(onClick = onClick)
+        .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+  ) {
+    AnimatedContent(
+      targetState = chapter,
+      transitionSpec = {
+        if (targetState.start > initialState.start) {
+          (slideInVertically { height -> height } + fadeIn())
+            .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+        } else {
+          (slideInVertically { height -> -height } + fadeIn())
+            .togetherWith(slideOutVertically { height -> height } + fadeOut())
+        }.using(
+          SizeTransform(clip = false),
+        )
+      },
+      label = "Chapter",
+    ) { currentChapter ->
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+      ) {
+        Icon(
+          imageVector = Icons.Default.Bookmarks,
+          contentDescription = null,
+          modifier =
+            Modifier
+              .padding(end = MaterialTheme.spacing.extraSmall)
+              .size(16.dp),
+          tint = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+          text = Utils.prettyTime(currentChapter.start.toInt()),
+          fontWeight = FontWeight.ExtraBold,
+          style = MaterialTheme.typography.bodyMedium,
+          maxLines = 1,
+          overflow = TextOverflow.Clip,
+          color = MaterialTheme.colorScheme.tertiary,
+        )
+        currentChapter.name.let {
+          Text(
+            text = Typography.bullet.toString(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            color = MaterialTheme.colorScheme.onSurface,
+            overflow = TextOverflow.Clip,
+          )
+          Text(
+            text = it,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+          )
         }
+      }
     }
+  }
 }

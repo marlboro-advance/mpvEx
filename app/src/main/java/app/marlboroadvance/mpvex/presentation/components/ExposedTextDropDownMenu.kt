@@ -22,50 +22,50 @@ import kotlinx.collections.immutable.ImmutableList
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExposedTextDropDownMenu(
-    selectedValue: String,
-    options: ImmutableList<String>,
-    label: String,
-    onValueChangedEvent: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    leadingIcon: (@Composable () -> Unit)? = null,
+  selectedValue: String,
+  options: ImmutableList<String>,
+  label: String,
+  onValueChangedEvent: (String) -> Unit,
+  modifier: Modifier = Modifier,
+  leadingIcon: (@Composable () -> Unit)? = null,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+  var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = modifier,
+  ExposedDropdownMenuBox(
+    expanded = expanded,
+    onExpandedChange = { expanded = !expanded },
+    modifier = modifier,
+  ) {
+    OutlinedTextField(
+      readOnly = true,
+      value = selectedValue,
+      onValueChange = {},
+      label = { Text(text = label) },
+      trailingIcon = {
+        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+      },
+      leadingIcon = leadingIcon,
+      colors = OutlinedTextFieldDefaults.colors(),
+      modifier =
+        Modifier
+          .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+          .fillMaxWidth(),
+    )
+
+    ExposedDropdownMenu(
+      expanded = expanded,
+      onDismissRequest = { expanded = false },
+      modifier = Modifier.heightIn(max = 300.dp),
     ) {
-        OutlinedTextField(
-            readOnly = true,
-            value = selectedValue,
-            onValueChange = {},
-            label = { Text(text = label) },
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-            },
-            leadingIcon = leadingIcon,
-            colors = OutlinedTextFieldDefaults.colors(),
-            modifier =
-                Modifier
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                    .fillMaxWidth(),
+      options.forEach { option: String ->
+        DropdownMenuItem(
+          text = { Text(text = option) },
+          onClick = {
+            expanded = false
+            onValueChangedEvent(option)
+          },
         )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 300.dp),
-        ) {
-            options.forEach { option: String ->
-                DropdownMenuItem(
-                    text = { Text(text = option) },
-                    onClick = {
-                        expanded = false
-                        onValueChangedEvent(option)
-                    },
-                )
-            }
-        }
+      }
     }
+  }
 }

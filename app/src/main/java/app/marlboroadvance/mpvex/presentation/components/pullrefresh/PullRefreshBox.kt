@@ -35,42 +35,42 @@ import kotlinx.coroutines.launch
 @OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun PullRefreshBox(
-    isRefreshing: MutableState<Boolean>,
-    onRefresh: suspend () -> Unit,
-    modifier: Modifier = Modifier,
-    refreshingOffset: Dp = 80.dp,
-    refreshThreshold: Dp = 72.dp,
-    delayAfterRefresh: Long = 800L,
-    content: @Composable BoxScope.() -> Unit,
+  isRefreshing: MutableState<Boolean>,
+  onRefresh: suspend () -> Unit,
+  modifier: Modifier = Modifier,
+  refreshingOffset: Dp = 80.dp,
+  refreshThreshold: Dp = 72.dp,
+  delayAfterRefresh: Long = 800L,
+  content: @Composable BoxScope.() -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
+  val coroutineScope = rememberCoroutineScope()
 
-    val pullRefreshState =
-        rememberPullRefreshState(
-            refreshing = isRefreshing.value,
-            onRefresh = {
-                isRefreshing.value = true
-                coroutineScope.launch {
-                    onRefresh()
-                    delay(delayAfterRefresh)
-                    isRefreshing.value = false
-                }
-            },
-            refreshingOffset = refreshingOffset,
-            refreshThreshold = refreshThreshold,
-        )
+  val pullRefreshState =
+    rememberPullRefreshState(
+      refreshing = isRefreshing.value,
+      onRefresh = {
+        isRefreshing.value = true
+        coroutineScope.launch {
+          onRefresh()
+          delay(delayAfterRefresh)
+          isRefreshing.value = false
+        }
+      },
+      refreshingOffset = refreshingOffset,
+      refreshThreshold = refreshThreshold,
+    )
 
-    Box(
-        modifier = modifier.pullRefresh(pullRefreshState),
-    ) {
-        content()
+  Box(
+    modifier = modifier.pullRefresh(pullRefreshState),
+  ) {
+    content()
 
-        PullRefreshIndicator(
-            refreshing = isRefreshing.value,
-            state = pullRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter),
-            backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-            contentColor = MaterialTheme.colorScheme.primary,
-        )
-    }
+    PullRefreshIndicator(
+      refreshing = isRefreshing.value,
+      state = pullRefreshState,
+      modifier = Modifier.align(Alignment.TopCenter),
+      backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+      contentColor = MaterialTheme.colorScheme.primary,
+    )
+  }
 }

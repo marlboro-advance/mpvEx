@@ -113,15 +113,16 @@ object SubtitleOps {
   ): List<SubtitleFile> {
     if (!directory.exists() || !directory.isDirectory) return emptyList()
 
-    return directory.listFiles { file ->
-      file.isFile && isSubtitleFile(file.name) && matchesVideoFile(file.name, baseName)
-    }?.mapNotNull { file ->
-      SubtitleFile(
-        uri = Uri.fromFile(file),
-        fileName = file.name,
-        path = file.absolutePath,
-      )
-    } ?: emptyList()
+    return directory
+      .listFiles { file ->
+        file.isFile && isSubtitleFile(file.name) && matchesVideoFile(file.name, baseName)
+      }?.mapNotNull { file ->
+        SubtitleFile(
+          uri = Uri.fromFile(file),
+          fileName = file.name,
+          path = file.absolutePath,
+        )
+      } ?: emptyList()
   }
 
   /**
@@ -133,20 +134,22 @@ object SubtitleOps {
   ): List<SubtitleFile> {
     if (!directory.isDirectory) return emptyList()
 
-    return directory.listFiles().filter { documentFile ->
-      !documentFile.isDirectory &&
-        documentFile.name?.let { name ->
-          isSubtitleFile(name) && matchesVideoFile(name, baseName)
-        } ?: false
-    }.mapNotNull { documentFile ->
-      documentFile.uri?.let { uri ->
-        SubtitleFile(
-          uri = uri,
-          fileName = documentFile.name ?: "",
-          path = uri.toString(),
-        )
+    return directory
+      .listFiles()
+      .filter { documentFile ->
+        !documentFile.isDirectory &&
+          documentFile.name?.let { name ->
+            isSubtitleFile(name) && matchesVideoFile(name, baseName)
+          } ?: false
+      }.mapNotNull { documentFile ->
+        documentFile.uri?.let { uri ->
+          SubtitleFile(
+            uri = uri,
+            fileName = documentFile.name ?: "",
+            path = uri.toString(),
+          )
+        }
       }
-    }
   }
 
   /**
@@ -155,10 +158,11 @@ object SubtitleOps {
   private fun loadSubtitlesToMPV(subtitles: List<SubtitleFile>) {
     subtitles.forEach { subtitle ->
       try {
-        val subtitlePath = when (subtitle.uri.scheme) {
-          "file" -> subtitle.path
-          else -> subtitle.uri.toString()
-        }
+        val subtitlePath =
+          when (subtitle.uri.scheme) {
+            "file" -> subtitle.path
+            else -> subtitle.uri.toString()
+          }
 
         MPVLib.command("sub-add", subtitlePath, "auto")
       } catch (e: Exception) {

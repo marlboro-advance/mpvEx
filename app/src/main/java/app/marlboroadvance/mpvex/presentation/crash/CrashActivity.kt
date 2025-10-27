@@ -72,221 +72,221 @@ import java.io.File
 import java.io.InputStreamReader
 
 class CrashActivity : ComponentActivity() {
-    private val clipboardManager by lazy { getSystemService(CLIPBOARD_SERVICE) as ClipboardManager }
-    private lateinit var logcat: String
-    private val appearancePreferences: AppearancePreferences by inject()
+  private val clipboardManager by lazy { getSystemService(CLIPBOARD_SERVICE) as ClipboardManager }
+  private lateinit var logcat: String
+  private val appearancePreferences: AppearancePreferences by inject()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        lifecycle.coroutineScope.launch {
-            logcat = collectLogcat()
-        }
-        setContent {
-            val dark by appearancePreferences.darkMode.collectAsState()
-            val isSystemInDarkTheme = isSystemInDarkTheme()
-            val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
-            enableEdgeToEdge(
-                SystemBarStyle.auto(
-                    lightScrim = Color.White.toArgb(),
-                    darkScrim = Color.Transparent.toArgb(),
-                ) { isDarkMode },
-            )
-            MpvexTheme {
-                CrashScreen(intent.getStringExtra("exception") ?: "")
-            }
-        }
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    lifecycle.coroutineScope.launch {
+      logcat = collectLogcat()
     }
-
-    override fun onDestroy() {
-        try {
-            super.onDestroy()
-        } catch (_: Exception) {
-            // Silently handle exceptions during destruction
-        }
+    setContent {
+      val dark by appearancePreferences.darkMode.collectAsState()
+      val isSystemInDarkTheme = isSystemInDarkTheme()
+      val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
+      enableEdgeToEdge(
+        SystemBarStyle.auto(
+          lightScrim = Color.White.toArgb(),
+          darkScrim = Color.Transparent.toArgb(),
+        ) { isDarkMode },
+      )
+      MpvexTheme {
+        CrashScreen(intent.getStringExtra("exception") ?: "")
+      }
     }
+  }
 
-    companion object {
-        suspend fun shareLogs(
-            deviceInfo: String,
-            exceptionString: String? = null,
-            logcat: String,
-            activity: Activity,
-        ) {
-            withContext(NonCancellable) {
-                val file = File(activity.cacheDir, "mpvex_logs.txt")
-                if (file.exists()) file.delete()
-                file.createNewFile()
-                file.appendText(concatLogs(deviceInfo, exceptionString, logcat))
-                val uri = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", file)
-                val intent = Intent(Intent.ACTION_SEND)
-                intent.putExtra(Intent.EXTRA_STREAM, uri)
-                intent.clipData = ClipData.newRawUri(null, uri)
-                intent.type = "text/plain"
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                activity.startActivity(
-                    Intent.createChooser(intent, activity.getString(R.string.crash_screen_share)),
-                )
-            }
-        }
-
-        fun concatLogs(
-            deviceInfo: String,
-            crashLogs: String? = null,
-            logcat: String,
-        ): String =
-            StringBuilder()
-                .apply {
-                    appendLine(deviceInfo)
-                    appendLine()
-                    if (!crashLogs.isNullOrBlank()) {
-                        appendLine("Exception:")
-                        appendLine(crashLogs)
-                        appendLine()
-                    }
-                    appendLine("Logcat:")
-                    appendLine(logcat)
-                }.toString()
-
-        fun collectLogcat(): String {
-            val process = Runtime.getRuntime()
-            val reader = BufferedReader(InputStreamReader(process.exec("logcat -d").inputStream))
-            val logcat = StringBuilder()
-            // reader.lines() looks much nicer so why not use it on devices that support it?
-            reader.lines().forEach(logcat::appendLine)
-            return logcat.toString()
-        }
-
-        fun collectDeviceInfo(): String =
-            """
-            App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})
-            Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})
-            Device brand: ${Build.BRAND}
-            Device manufacturer: ${Build.MANUFACTURER}
-            Device model: ${Build.MODEL} (${Build.DEVICE})
-            MPV version: ${Utils.VERSIONS.mpv}
-            ffmpeg version: ${Utils.VERSIONS.ffmpeg}
-            libplacebo version: ${Utils.VERSIONS.libPlacebo}
-            """.trimIndent()
+  override fun onDestroy() {
+    try {
+      super.onDestroy()
+    } catch (_: Exception) {
+      // Silently handle exceptions during destruction
     }
+  }
 
-    @Composable
-    fun CrashScreen(
-        exceptionString: String,
-        modifier: Modifier = Modifier,
+  companion object {
+    suspend fun shareLogs(
+      deviceInfo: String,
+      exceptionString: String? = null,
+      logcat: String,
+      activity: Activity,
     ) {
-        val scope = rememberCoroutineScope()
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            bottomBar = {
-                val borderColor = MaterialTheme.colorScheme.outline
-                Column(
-                    Modifier
-                        .windowInsetsPadding(NavigationBarDefaults.windowInsets)
-                        .drawBehind {
-                            drawLine(
-                                borderColor,
-                                Offset.Zero,
-                                Offset(size.width, 0f),
-                                strokeWidth = Dp.Hairline.value,
-                            )
-                        }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-                    ) {
-                        Button(
-                            onClick = {
-                                scope.launch(Dispatchers.IO) {
-                                    shareLogs(collectDeviceInfo(), exceptionString, logcat, this@CrashActivity)
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                        ) { Text(stringResource(R.string.crash_screen_share)) }
-                        FilledIconButton(
-                            onClick = {
-                                clipboardManager.setPrimaryClip(
-                                    ClipData.newPlainText(
-                                        null,
-                                        concatLogs(collectDeviceInfo(), exceptionString, logcat),
-                                    ),
-                                )
-                            },
-                        ) {
-                            Icon(Icons.Default.ContentCopy, null)
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            finish()
-                            startActivity(Intent(this@CrashActivity, MainActivity::class.java))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.crash_screen_restart))
-                    }
+      withContext(NonCancellable) {
+        val file = File(activity.cacheDir, "mpvex_logs.txt")
+        if (file.exists()) file.delete()
+        file.createNewFile()
+        file.appendText(concatLogs(deviceInfo, exceptionString, logcat))
+        val uri = FileProvider.getUriForFile(activity, BuildConfig.APPLICATION_ID + ".provider", file)
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        intent.clipData = ClipData.newRawUri(null, uri)
+        intent.type = "text/plain"
+        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        activity.startActivity(
+          Intent.createChooser(intent, activity.getString(R.string.crash_screen_share)),
+        )
+      }
+    }
+
+    fun concatLogs(
+      deviceInfo: String,
+      crashLogs: String? = null,
+      logcat: String,
+    ): String =
+      StringBuilder()
+        .apply {
+          appendLine(deviceInfo)
+          appendLine()
+          if (!crashLogs.isNullOrBlank()) {
+            appendLine("Exception:")
+            appendLine(crashLogs)
+            appendLine()
+          }
+          appendLine("Logcat:")
+          appendLine(logcat)
+        }.toString()
+
+    fun collectLogcat(): String {
+      val process = Runtime.getRuntime()
+      val reader = BufferedReader(InputStreamReader(process.exec("logcat -d").inputStream))
+      val logcat = StringBuilder()
+      // reader.lines() looks much nicer so why not use it on devices that support it?
+      reader.lines().forEach(logcat::appendLine)
+      return logcat.toString()
+    }
+
+    fun collectDeviceInfo(): String =
+      """
+      App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})
+      Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})
+      Device brand: ${Build.BRAND}
+      Device manufacturer: ${Build.MANUFACTURER}
+      Device model: ${Build.MODEL} (${Build.DEVICE})
+      MPV version: ${Utils.VERSIONS.mpv}
+      ffmpeg version: ${Utils.VERSIONS.ffmpeg}
+      libplacebo version: ${Utils.VERSIONS.libPlacebo}
+      """.trimIndent()
+  }
+
+  @Composable
+  fun CrashScreen(
+    exceptionString: String,
+    modifier: Modifier = Modifier,
+  ) {
+    val scope = rememberCoroutineScope()
+    Scaffold(
+      modifier = modifier.fillMaxSize(),
+      bottomBar = {
+        val borderColor = MaterialTheme.colorScheme.outline
+        Column(
+          Modifier
+            .windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .drawBehind {
+              drawLine(
+                borderColor,
+                Offset.Zero,
+                Offset(size.width, 0f),
+                strokeWidth = Dp.Hairline.value,
+              )
+            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+          ) {
+            Button(
+              onClick = {
+                scope.launch(Dispatchers.IO) {
+                  shareLogs(collectDeviceInfo(), exceptionString, logcat, this@CrashActivity)
                 }
-            },
-        ) { paddingValues ->
-            Column(
-                modifier =
-                    Modifier
-                        .padding(paddingValues)
-                        .padding(horizontal = MaterialTheme.spacing.medium)
-                        .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            ) {
-                Spacer(Modifier.height(paddingValues.calculateTopPadding()))
-                Icon(
-                    Icons.Outlined.BugReport,
+              },
+              modifier = Modifier.weight(1f),
+            ) { Text(stringResource(R.string.crash_screen_share)) }
+            FilledIconButton(
+              onClick = {
+                clipboardManager.setPrimaryClip(
+                  ClipData.newPlainText(
                     null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                    concatLogs(collectDeviceInfo(), exceptionString, logcat),
+                  ),
                 )
-                Text(
-                    stringResource(R.string.crash_screen_title),
-                    style = MaterialTheme.typography.headlineLarge,
-                )
-                Text(
-                    stringResource(R.string.crash_screen_subtitle, stringResource(R.string.app_name)),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.crash_screen_logs_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                LogsContainer(exceptionString)
-                Text(
-                    "Logcat:",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                LogsContainer(logcat)
-                Spacer(Modifier.height(8.dp))
+              },
+            ) {
+              Icon(Icons.Default.ContentCopy, null)
             }
+          }
+          OutlinedButton(
+            onClick = {
+              finish()
+              startActivity(Intent(this@CrashActivity, MainActivity::class.java))
+            },
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(stringResource(R.string.crash_screen_restart))
+          }
         }
+      },
+    ) { paddingValues ->
+      Column(
+        modifier =
+          Modifier
+            .padding(paddingValues)
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+      ) {
+        Spacer(Modifier.height(paddingValues.calculateTopPadding()))
+        Icon(
+          Icons.Outlined.BugReport,
+          null,
+          modifier = Modifier.size(48.dp),
+          tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+          stringResource(R.string.crash_screen_title),
+          style = MaterialTheme.typography.headlineLarge,
+        )
+        Text(
+          stringResource(R.string.crash_screen_subtitle, stringResource(R.string.app_name)),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+          stringResource(R.string.crash_screen_logs_title),
+          style = MaterialTheme.typography.headlineSmall,
+        )
+        LogsContainer(exceptionString)
+        Text(
+          "Logcat:",
+          style = MaterialTheme.typography.headlineSmall,
+        )
+        LogsContainer(logcat)
+        Spacer(Modifier.height(8.dp))
+      }
     }
+  }
 
-    @Composable
-    fun LogsContainer(
-        logs: String,
-        modifier: Modifier = Modifier,
+  @Composable
+  fun LogsContainer(
+    logs: String,
+    modifier: Modifier = Modifier,
+  ) {
+    LazyRow(
+      modifier =
+        modifier
+          .clip(RoundedCornerShape(16.dp))
+          .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        LazyRow(
-            modifier =
-                modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            item {
-                SelectionContainer {
-                    Text(
-                        text = logs,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(MaterialTheme.spacing.smaller),
-                    )
-                }
-            }
+      item {
+        SelectionContainer {
+          Text(
+            text = logs,
+            fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(MaterialTheme.spacing.smaller),
+          )
         }
+      }
     }
+  }
 }

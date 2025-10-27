@@ -16,15 +16,15 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val PreferencesModule =
-    module {
-        single { AndroidPreferenceStore(androidContext()) }.bind(PreferenceStore::class)
+  module {
+    single { AndroidPreferenceStore(androidContext()) }.bind(PreferenceStore::class)
 
-        single { AppearancePreferences(get()) }
-        singleOf(::PlayerPreferences)
-        singleOf(::GesturePreferences)
-        singleOf(::DecoderPreferences)
-        singleOf(::SubtitlesPreferences)
-        singleOf(::AudioPreferences)
-        singleOf(::AdvancedPreferences)
-        singleOf(::BrowserPreferences)
-    }
+    single { AppearancePreferences(get()) }
+    singleOf(::PlayerPreferences)
+    singleOf(::GesturePreferences)
+    singleOf(::DecoderPreferences)
+    singleOf(::SubtitlesPreferences)
+    singleOf(::AudioPreferences)
+    singleOf(::AdvancedPreferences)
+    singleOf(::BrowserPreferences)
+  }

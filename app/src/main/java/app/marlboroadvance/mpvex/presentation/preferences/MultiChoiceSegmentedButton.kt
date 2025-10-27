@@ -14,25 +14,25 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun MultiChoiceSegmentedButton(
-    choices: ImmutableList<String>,
-    selectedIndices: ImmutableList<Int>,
-    onClick: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+  choices: ImmutableList<String>,
+  selectedIndices: ImmutableList<Int>,
+  onClick: (Int) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    MultiChoiceSegmentedButtonRow(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium),
-    ) {
-        choices.forEachIndexed { index, choice ->
-            SegmentedButton(
-                checked = selectedIndices.contains(index),
-                onCheckedChange = { onClick(index) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = choices.size),
-            ) {
-                Text(text = choice)
-            }
-        }
+  MultiChoiceSegmentedButtonRow(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(MaterialTheme.spacing.medium),
+  ) {
+    choices.forEachIndexed { index, choice ->
+      SegmentedButton(
+        checked = selectedIndices.contains(index),
+        onCheckedChange = { onClick(index) },
+        shape = SegmentedButtonDefaults.itemShape(index = index, count = choices.size),
+      ) {
+        Text(text = choice)
+      }
     }
+  }
 }

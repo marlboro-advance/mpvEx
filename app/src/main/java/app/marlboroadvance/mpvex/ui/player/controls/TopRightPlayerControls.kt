@@ -15,59 +15,59 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 
 @Composable
 fun TopRightPlayerControls(
-    // frame navigation
-    onFrameNavigationClick: () -> Unit,
-    // decoder
-    decoder: Decoder,
-    onDecoderClick: () -> Unit,
-    onDecoderLongClick: () -> Unit,
-    // chapters
-    isChaptersVisible: Boolean,
-    onChaptersClick: () -> Unit,
-    // subtitles
-    onSubtitlesClick: () -> Unit,
-    onSubtitlesLongClick: () -> Unit,
-    // audio
-    onAudioClick: () -> Unit,
-    onAudioLongClick: () -> Unit,
-    // more
-    onMoreClick: () -> Unit,
-    onMoreLongClick: () -> Unit,
-    modifier: Modifier = Modifier,
+  // frame navigation
+  onFrameNavigationClick: () -> Unit,
+  // decoder
+  decoder: Decoder,
+  onDecoderClick: () -> Unit,
+  onDecoderLongClick: () -> Unit,
+  // chapters
+  isChaptersVisible: Boolean,
+  onChaptersClick: () -> Unit,
+  // subtitles
+  onSubtitlesClick: () -> Unit,
+  onSubtitlesLongClick: () -> Unit,
+  // audio
+  onAudioClick: () -> Unit,
+  onAudioLongClick: () -> Unit,
+  // more
+  onMoreClick: () -> Unit,
+  onMoreLongClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ControlsButton(
-            Icons.Default.Camera,
-            onClick = onFrameNavigationClick,
-        )
-        ControlsButton(
-            decoder.title,
-            onClick = onDecoderClick,
-            onLongClick = onDecoderLongClick,
-        )
-        if (isChaptersVisible) {
-            ControlsButton(
-                Icons.Default.Bookmarks,
-                onClick = onChaptersClick,
-            )
-        }
-        ControlsButton(
-            Icons.Default.Subtitles,
-            onClick = onSubtitlesClick,
-            onLongClick = onSubtitlesLongClick,
-        )
-        ControlsButton(
-            Icons.Default.Audiotrack,
-            onClick = onAudioClick,
-            onLongClick = onAudioLongClick,
-        )
-        ControlsButton(
-            Icons.Default.MoreVert,
-            onClick = onMoreClick,
-            onLongClick = onMoreLongClick,
-        )
+  Row(
+    modifier,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    ControlsButton(
+      Icons.Default.Camera,
+      onClick = onFrameNavigationClick,
+    )
+    ControlsButton(
+      decoder.title,
+      onClick = onDecoderClick,
+      onLongClick = onDecoderLongClick,
+    )
+    if (isChaptersVisible) {
+      ControlsButton(
+        Icons.Default.Bookmarks,
+        onClick = onChaptersClick,
+      )
     }
+    ControlsButton(
+      Icons.Default.Subtitles,
+      onClick = onSubtitlesClick,
+      onLongClick = onSubtitlesLongClick,
+    )
+    ControlsButton(
+      Icons.Default.Audiotrack,
+      onClick = onAudioClick,
+      onLongClick = onAudioLongClick,
+    )
+    ControlsButton(
+      Icons.Default.MoreVert,
+      onClick = onMoreClick,
+      onLongClick = onMoreLongClick,
+    )
+  }
 }

@@ -55,286 +55,286 @@ import kotlin.math.roundToInt
 
 @Composable
 fun SubtitleDelayPanel(
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    val preferences = koinInject<SubtitlesPreferences>()
+  val preferences = koinInject<SubtitlesPreferences>()
 
-    ConstraintLayout(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(MaterialTheme.spacing.medium),
-    ) {
-        val delayControlCard = createRef()
+  ConstraintLayout(
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
+  ) {
+    val delayControlCard = createRef()
 
-        var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
-        val delay by MPVLib.propDouble["sub-delay"].collectAsState()
-      val delayInt by remember { derivedStateOf { (delay!! * 1000).roundToInt() } }
-        val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
-      val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).roundToInt() } }
-        val speed by MPVLib.propDouble["sub-speed"].collectAsState()
-      val speedFloat by remember { derivedStateOf { speed!!.toFloat() } }
-        SubtitleDelayCard(
-            delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
-            onDelayChange = {
-                when (affectedSubtitle) {
-                    SubtitleDelayType.Both -> {
-                        MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
-                        MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
-                    }
+    var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
+    val delay by MPVLib.propDouble["sub-delay"].collectAsState()
+    val delayInt by remember { derivedStateOf { (delay!! * 1000).roundToInt() } }
+    val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
+    val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).roundToInt() } }
+    val speed by MPVLib.propDouble["sub-speed"].collectAsState()
+    val speedFloat by remember { derivedStateOf { speed!!.toFloat() } }
+    SubtitleDelayCard(
+      delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
+      onDelayChange = {
+        when (affectedSubtitle) {
+          SubtitleDelayType.Both -> {
+            MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+            MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
+          }
 
-                    SubtitleDelayType.Primary -> MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
-                    else -> MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
-                }
-            },
-          speed = speedFloat,
-            onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
-            affectedSubtitle = affectedSubtitle,
-            onTypeChange = { affectedSubtitle = it },
-            onApply = {
-                preferences.defaultSubDelay.set(delayInt)
-              if (speed!! in 0.1..10.0) preferences.defaultSubSpeed.set(speed!!.toFloat())
-            },
-            onReset = {
-                MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
-                MPVLib.setPropertyDouble("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000.0)
-                MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
-            },
-            onClose = onDismissRequest,
-            modifier =
-                Modifier.constrainAs(delayControlCard) {
-                    linkTo(parent.top, parent.bottom, bias = 0.8f)
-                    end.linkTo(parent.end)
-                },
-        )
-    }
+          SubtitleDelayType.Primary -> MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+          else -> MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
+        }
+      },
+      speed = speedFloat,
+      onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
+      affectedSubtitle = affectedSubtitle,
+      onTypeChange = { affectedSubtitle = it },
+      onApply = {
+        preferences.defaultSubDelay.set(delayInt)
+        if (speed!! in 0.1..10.0) preferences.defaultSubSpeed.set(speed!!.toFloat())
+      },
+      onReset = {
+        MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
+        MPVLib.setPropertyDouble("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000.0)
+        MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
+      },
+      onClose = onDismissRequest,
+      modifier =
+        Modifier.constrainAs(delayControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          end.linkTo(parent.end)
+        },
+    )
+  }
 }
 
 @Composable
 fun SubtitleDelayCard(
-    delayMs: Int,
-    onDelayChange: (Int) -> Unit,
-    speed: Float,
-    onSpeedChange: (Float) -> Unit,
-    affectedSubtitle: SubtitleDelayType,
-    onTypeChange: (SubtitleDelayType) -> Unit,
-    onApply: () -> Unit,
-    onReset: () -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
+  delayMs: Int,
+  onDelayChange: (Int) -> Unit,
+  speed: Float,
+  onSpeedChange: (Float) -> Unit,
+  affectedSubtitle: SubtitleDelayType,
+  onTypeChange: (SubtitleDelayType) -> Unit,
+  onApply: () -> Unit,
+  onReset: () -> Unit,
+  onClose: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    DelayCard(
-        delayMs = delayMs,
-        onDelayChange = onDelayChange,
-        onApply = onApply,
-        onReset = onReset,
-        title = {
-            SubtitleDelayTitle(
-                affectedSubtitle = affectedSubtitle,
-                onClose = onClose,
-                onTypeChange = onTypeChange,
-            )
-        },
-        extraSettings = {
-            when (affectedSubtitle) {
-                SubtitleDelayType.Primary -> {
-                    OutlinedNumericChooser(
-                        label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
-                        value = speed,
-                        onChange = onSpeedChange,
-                      max = 10f,
-                      step = 0.01f,
-                      min = 0.1f,
-                    )
-                }
+  DelayCard(
+    delayMs = delayMs,
+    onDelayChange = onDelayChange,
+    onApply = onApply,
+    onReset = onReset,
+    title = {
+      SubtitleDelayTitle(
+        affectedSubtitle = affectedSubtitle,
+        onClose = onClose,
+        onTypeChange = onTypeChange,
+      )
+    },
+    extraSettings = {
+      when (affectedSubtitle) {
+        SubtitleDelayType.Primary -> {
+          OutlinedNumericChooser(
+            label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
+            value = speed,
+            onChange = onSpeedChange,
+            max = 10f,
+            step = 0.01f,
+            min = 0.1f,
+          )
+        }
 
-                else -> {}
-            }
-        },
-        delayType = DelayType.Subtitle,
-        modifier = modifier,
-    )
+        else -> {}
+      }
+    },
+    delayType = DelayType.Subtitle,
+    modifier = modifier,
+  )
 }
 
 enum class SubtitleDelayType(
-    @StringRes val title: Int,
+  @StringRes val title: Int,
 ) {
-    Primary(R.string.player_sheets_sub_delay_subtitle_type_primary),
-    Secondary(R.string.player_sheets_sub_delay_subtitle_type_secondary),
-    Both(R.string.player_sheets_sub_delay_subtitle_type_primary_and_secondary),
+  Primary(R.string.player_sheets_sub_delay_subtitle_type_primary),
+  Secondary(R.string.player_sheets_sub_delay_subtitle_type_secondary),
+  Both(R.string.player_sheets_sub_delay_subtitle_type_primary_and_secondary),
 }
 
 @Suppress("LambdaParameterInRestartableEffect") // Intentional
 @Composable
 fun DelayCard(
-    delayMs: Int,
-    onDelayChange: (Int) -> Unit,
-    onApply: () -> Unit,
-    onReset: () -> Unit,
-    title: @Composable () -> Unit,
-    delayType: DelayType,
-    modifier: Modifier = Modifier,
-    extraSettings: @Composable ColumnScope.() -> Unit = {},
+  delayMs: Int,
+  onDelayChange: (Int) -> Unit,
+  onApply: () -> Unit,
+  onReset: () -> Unit,
+  title: @Composable () -> Unit,
+  delayType: DelayType,
+  modifier: Modifier = Modifier,
+  extraSettings: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Card(
-        modifier =
-            modifier
-                .widthIn(max = CARDS_MAX_WIDTH)
-                .animateContentSize(),
-        colors = panelCardsColors(),
+  Card(
+    modifier =
+      modifier
+        .widthIn(max = CARDS_MAX_WIDTH)
+        .animateContentSize(),
+    colors = panelCardsColors(),
+  ) {
+    Column(
+      Modifier
+        .verticalScroll(rememberScrollState())
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.smaller,
+        ),
+      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                  horizontal = MaterialTheme.spacing.medium,
-                  vertical = MaterialTheme.spacing.smaller,
-                ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-        ) {
-            title()
-            OutlinedNumericChooser(
-                label = { Text(stringResource(R.string.player_sheets_sub_delay_card_delay)) },
-                value = delayMs,
-                onChange = onDelayChange,
-                step = 50,
-                min = Int.MIN_VALUE,
-                max = Int.MAX_VALUE,
-                suffix = { Text(stringResource(R.string.generic_unit_ms)) },
-            )
-            Column(
-                modifier = Modifier.animateContentSize(),
-            ) { extraSettings() }
-            // true (heard -> spotted), false (spotted -> heard)
-            var isDirectionPositive by remember { mutableStateOf<Boolean?>(null) }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            ) {
-                var timerStart by remember { mutableStateOf<Long?>(null) }
-                var finalDelay by remember { mutableIntStateOf(delayMs) }
-                LaunchedEffect(isDirectionPositive) {
-                    if (isDirectionPositive == null) {
-                        onDelayChange(finalDelay)
-                        return@LaunchedEffect
-                    }
-                    finalDelay = delayMs
-                    timerStart = System.currentTimeMillis()
-                    val startingDelay: Int = finalDelay
-                    while (isDirectionPositive != null && timerStart != null) {
-                        val elapsed = System.currentTimeMillis() - timerStart!!
-                        finalDelay = startingDelay + (if (isDirectionPositive!!) elapsed else -elapsed).toInt()
-                        // Arbitrary delay of 20ms
-                        delay(20)
-                    }
-                }
-                Button(
-                    onClick = {
-                        isDirectionPositive = if (isDirectionPositive == null) delayType == DelayType.Audio else null
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = isDirectionPositive != (delayType == DelayType.Audio),
-                ) {
-                    Text(
-                        stringResource(
-                            if (delayType == DelayType.Audio) {
-                                R.string.player_sheets_sub_delay_audio_sound_heard
-                            } else {
-                                R.string.player_sheets_sub_delay_subtitle_voice_heard
-                            },
-                        ),
-                    )
-                }
-                Button(
-                    onClick = {
-                        isDirectionPositive = if (isDirectionPositive == null) delayType != DelayType.Audio else null
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = isDirectionPositive != (delayType == DelayType.Subtitle),
-                ) {
-                    Text(
-                        stringResource(
-                            if (delayType == DelayType.Audio) {
-                                R.string.player_sheets_sub_delay_sound_sound_spotted
-                            } else {
-                                R.string.player_sheets_sub_delay_subtitle_text_seen
-                            },
-                        ),
-                    )
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            ) {
-                Button(
-                    onClick = onApply,
-                    modifier = Modifier.weight(1f),
-                    enabled = isDirectionPositive == null,
-                ) {
-                    Text(stringResource(R.string.player_sheets_delay_set_as_default))
-                }
-                FilledIconButton(
-                    onClick = onReset,
-                    enabled = isDirectionPositive == null,
-                ) {
-                    Icon(Icons.Default.Refresh, null)
-                }
-            }
+      title()
+      OutlinedNumericChooser(
+        label = { Text(stringResource(R.string.player_sheets_sub_delay_card_delay)) },
+        value = delayMs,
+        onChange = onDelayChange,
+        step = 50,
+        min = Int.MIN_VALUE,
+        max = Int.MAX_VALUE,
+        suffix = { Text(stringResource(R.string.generic_unit_ms)) },
+      )
+      Column(
+        modifier = Modifier.animateContentSize(),
+      ) { extraSettings() }
+      // true (heard -> spotted), false (spotted -> heard)
+      var isDirectionPositive by remember { mutableStateOf<Boolean?>(null) }
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+      ) {
+        var timerStart by remember { mutableStateOf<Long?>(null) }
+        var finalDelay by remember { mutableIntStateOf(delayMs) }
+        LaunchedEffect(isDirectionPositive) {
+          if (isDirectionPositive == null) {
+            onDelayChange(finalDelay)
+            return@LaunchedEffect
+          }
+          finalDelay = delayMs
+          timerStart = System.currentTimeMillis()
+          val startingDelay: Int = finalDelay
+          while (isDirectionPositive != null && timerStart != null) {
+            val elapsed = System.currentTimeMillis() - timerStart!!
+            finalDelay = startingDelay + (if (isDirectionPositive!!) elapsed else -elapsed).toInt()
+            // Arbitrary delay of 20ms
+            delay(20)
+          }
         }
+        Button(
+          onClick = {
+            isDirectionPositive = if (isDirectionPositive == null) delayType == DelayType.Audio else null
+          },
+          modifier = Modifier.weight(1f),
+          enabled = isDirectionPositive != (delayType == DelayType.Audio),
+        ) {
+          Text(
+            stringResource(
+              if (delayType == DelayType.Audio) {
+                R.string.player_sheets_sub_delay_audio_sound_heard
+              } else {
+                R.string.player_sheets_sub_delay_subtitle_voice_heard
+              },
+            ),
+          )
+        }
+        Button(
+          onClick = {
+            isDirectionPositive = if (isDirectionPositive == null) delayType != DelayType.Audio else null
+          },
+          modifier = Modifier.weight(1f),
+          enabled = isDirectionPositive != (delayType == DelayType.Subtitle),
+        ) {
+          Text(
+            stringResource(
+              if (delayType == DelayType.Audio) {
+                R.string.player_sheets_sub_delay_sound_sound_spotted
+              } else {
+                R.string.player_sheets_sub_delay_subtitle_text_seen
+              },
+            ),
+          )
+        }
+      }
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+      ) {
+        Button(
+          onClick = onApply,
+          modifier = Modifier.weight(1f),
+          enabled = isDirectionPositive == null,
+        ) {
+          Text(stringResource(R.string.player_sheets_delay_set_as_default))
+        }
+        FilledIconButton(
+          onClick = onReset,
+          enabled = isDirectionPositive == null,
+        ) {
+          Icon(Icons.Default.Refresh, null)
+        }
+      }
     }
+  }
 }
 
 @Composable
 fun SubtitleDelayTitle(
-    affectedSubtitle: SubtitleDelayType,
-    onClose: () -> Unit,
-    onTypeChange: (SubtitleDelayType) -> Unit,
-    modifier: Modifier = Modifier,
+  affectedSubtitle: SubtitleDelayType,
+  onClose: () -> Unit,
+  onTypeChange: (SubtitleDelayType) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    Row(
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Text(
-            stringResource(R.string.player_sheets_sub_delay_card_title),
-            style = MaterialTheme.typography.headlineMedium,
-        )
-        var showDropDownMenu by remember { mutableStateOf(false) }
-        Row(modifier = Modifier.clickable { showDropDownMenu = true }) {
-            Text(
-                stringResource(affectedSubtitle.title),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Icon(Icons.Default.ArrowDropDown, null)
-            DropdownMenu(
-                expanded = showDropDownMenu,
-                onDismissRequest = { showDropDownMenu = false },
-            ) {
-                SubtitleDelayType.entries.forEach {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(it.title)) },
-                        onClick = {
-                            onTypeChange(it)
-                            showDropDownMenu = false
-                        },
-                    )
-                }
-            }
+  Row(
+    verticalAlignment = Alignment.Bottom,
+    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+    modifier = modifier.fillMaxWidth(),
+  ) {
+    Text(
+      stringResource(R.string.player_sheets_sub_delay_card_title),
+      style = MaterialTheme.typography.headlineMedium,
+    )
+    var showDropDownMenu by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.clickable { showDropDownMenu = true }) {
+      Text(
+        stringResource(affectedSubtitle.title),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+      )
+      Icon(Icons.Default.ArrowDropDown, null)
+      DropdownMenu(
+        expanded = showDropDownMenu,
+        onDismissRequest = { showDropDownMenu = false },
+      ) {
+        SubtitleDelayType.entries.forEach {
+          DropdownMenuItem(
+            text = { Text(stringResource(it.title)) },
+            onClick = {
+              onTypeChange(it)
+              showDropDownMenu = false
+            },
+          )
         }
-        Spacer(Modifier.weight(1f))
-        IconButton(onClose) {
-            Icon(
-                Icons.Default.Close,
-                null,
-                modifier = Modifier.size(32.dp),
-            )
-        }
+      }
     }
+    Spacer(Modifier.weight(1f))
+    IconButton(onClose) {
+      Icon(
+        Icons.Default.Close,
+        null,
+        modifier = Modifier.size(32.dp),
+      )
+    }
+  }
 }
 
 enum class DelayType {
-    Audio,
-    Subtitle,
+  Audio,
+  Subtitle,
 }

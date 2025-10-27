@@ -48,10 +48,10 @@ import androidx.compose.ui.unit.dp
  * Data class representing a menu item in the MediaActionFab
  */
 data class MediaActionItem(
-    val icon: ImageVector,
-    val label: String,
-    val enabled: Boolean = true,
-    val onClick: () -> Unit,
+  val icon: ImageVector,
+  val label: String,
+  val enabled: Boolean = true,
+  val onClick: () -> Unit,
 )
 
 /**
@@ -67,98 +67,98 @@ data class MediaActionItem(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MediaActionFab(
-    listState: LazyListState,
-    hasRecentlyPlayed: Boolean,
-    onOpenFile: () -> Unit,
-    onPlayRecentlyPlayed: () -> Unit,
-    onPlayLink: () -> Unit,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
+  listState: LazyListState,
+  hasRecentlyPlayed: Boolean,
+  onOpenFile: () -> Unit,
+  onPlayRecentlyPlayed: () -> Unit,
+  onPlayLink: () -> Unit,
+  expanded: Boolean,
+  onExpandedChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    val focusRequester = remember { FocusRequester() }
+  val focusRequester = remember { FocusRequester() }
 
-    // Auto-collapse menu when scrolling
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (expanded && listState.isScrollInProgress) {
-            onExpandedChange(false)
-        }
+  // Auto-collapse menu when scrolling
+  LaunchedEffect(listState.isScrollInProgress) {
+    if (expanded && listState.isScrollInProgress) {
+      onExpandedChange(false)
+    }
+  }
+
+  // Handle back button to close menu
+  BackHandler(enabled = expanded) {
+    onExpandedChange(false)
+  }
+
+  // Build menu items based on state
+  val menuItems =
+    remember(hasRecentlyPlayed) {
+      buildList {
+        add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
+        add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
+        add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
+      }
     }
 
-    // Handle back button to close menu
-    BackHandler(enabled = expanded) {
-        onExpandedChange(false)
-    }
-
-    // Build menu items based on state
-    val menuItems =
-        remember(hasRecentlyPlayed) {
-            buildList {
-                add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
-                add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
-                add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
-            }
-        }
-
-    FloatingActionButtonMenu(
-        modifier = modifier,
+  FloatingActionButtonMenu(
+    modifier = modifier,
+    expanded = expanded,
+    button = {
+      ToggleFabButton(
         expanded = expanded,
-        button = {
-            ToggleFabButton(
-                expanded = expanded,
-                onToggle = { onExpandedChange(!expanded) },
-                focusRequester = focusRequester,
-            )
+        onToggle = { onExpandedChange(!expanded) },
+        focusRequester = focusRequester,
+      )
+    },
+  ) {
+    menuItems.forEachIndexed { index, item ->
+      FloatingActionButtonMenuItem(
+        modifier =
+          Modifier
+            .semantics {
+              isTraversalGroup = true
+              // Add close action for the last item
+              if (index == menuItems.lastIndex) {
+                customActions =
+                  listOf(
+                    CustomAccessibilityAction("Close menu") {
+                      onExpandedChange(false)
+                      true
+                    },
+                  )
+              }
+            }.then(
+              if (index == 0) {
+                // First item can navigate back to FAB button
+                Modifier.onKeyEvent { event ->
+                  if (event.type == KeyEventType.KeyDown &&
+                    (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
+                  ) {
+                    focusRequester.requestFocus()
+                    true
+                  } else {
+                    false
+                  }
+                }
+              } else {
+                Modifier
+              },
+            ),
+        onClick = {
+          onExpandedChange(false)
+          item.onClick()
         },
-    ) {
-        menuItems.forEachIndexed { index, item ->
-            FloatingActionButtonMenuItem(
-                modifier =
-                    Modifier
-                        .semantics {
-                            isTraversalGroup = true
-                            // Add close action for the last item
-                            if (index == menuItems.lastIndex) {
-                                customActions =
-                                    listOf(
-                                        CustomAccessibilityAction("Close menu") {
-                                            onExpandedChange(false)
-                                            true
-                                        },
-                                    )
-                            }
-                        }.then(
-                            if (index == 0) {
-                                // First item can navigate back to FAB button
-                                Modifier.onKeyEvent { event ->
-                                    if (event.type == KeyEventType.KeyDown &&
-                                        (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
-                                    ) {
-                                        focusRequester.requestFocus()
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                }
-                            } else {
-                                Modifier
-                            },
-                        ),
-                onClick = {
-                    onExpandedChange(false)
-                    item.onClick()
-                },
-                icon = {
-                    Icon(
-                        item.icon,
-                        contentDescription = null,
-                        modifier = if (item.enabled) Modifier else Modifier.alpha(0.5f),
-                    )
-                },
-                text = { Text(item.label) },
-            )
-        }
+        icon = {
+          Icon(
+            item.icon,
+            contentDescription = null,
+            modifier = if (item.enabled) Modifier else Modifier.alpha(0.5f),
+          )
+        },
+        text = { Text(item.label) },
+      )
     }
+  }
 }
 
 /**
@@ -167,42 +167,42 @@ fun MediaActionFab(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ToggleFabButton(
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    focusRequester: FocusRequester,
+  expanded: Boolean,
+  onToggle: () -> Unit,
+  focusRequester: FocusRequester,
 ) {
-    ToggleFloatingActionButton(
-        modifier =
-            Modifier
-                .semantics {
-                    traversalIndex = -1f
-                    stateDescription = if (expanded) "Expanded" else "Collapsed"
-                    contentDescription = "Toggle menu"
-                }.animateFloatingActionButton(
-                    visible = true,
-                    alignment = Alignment.BottomEnd,
-                ).focusRequester(focusRequester),
-        checked = expanded,
-        onCheckedChange = { onToggle() },
-        containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
-    ) {
-        val icon by remember {
-            derivedStateOf {
-                if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
-            }
-        }
-        Icon(
-            painter = rememberVectorPainter(icon),
-            contentDescription = null,
-            modifier =
-                Modifier.animateIcon(
-                    checkedProgress = { checkedProgress },
-                    size =
-                        ToggleFloatingActionButtonDefaults.iconSize(
-                            initialSize = 40.dp,
-                            finalSize = 24.dp,
-                        ),
-                ),
-        )
+  ToggleFloatingActionButton(
+    modifier =
+      Modifier
+        .semantics {
+          traversalIndex = -1f
+          stateDescription = if (expanded) "Expanded" else "Collapsed"
+          contentDescription = "Toggle menu"
+        }.animateFloatingActionButton(
+          visible = true,
+          alignment = Alignment.BottomEnd,
+        ).focusRequester(focusRequester),
+    checked = expanded,
+    onCheckedChange = { onToggle() },
+    containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
+  ) {
+    val icon by remember {
+      derivedStateOf {
+        if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+      }
     }
+    Icon(
+      painter = rememberVectorPainter(icon),
+      contentDescription = null,
+      modifier =
+        Modifier.animateIcon(
+          checkedProgress = { checkedProgress },
+          size =
+            ToggleFloatingActionButtonDefaults.iconSize(
+              initialSize = 40.dp,
+              finalSize = 24.dp,
+            ),
+        ),
+    )
+  }
 }

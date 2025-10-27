@@ -40,130 +40,130 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayLinkSheet(
-    isOpen: Boolean,
-    onDismiss: () -> Unit,
-    onPlayLink: (String) -> Unit,
-    modifier: Modifier = Modifier,
+  isOpen: Boolean,
+  onDismiss: () -> Unit,
+  onPlayLink: (String) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    if (!isOpen) return
+  if (!isOpen) return
 
-    var linkInputUrl by remember { mutableStateOf("") }
-    var isLinkInputUrlValid by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
+  var linkInputUrl by remember { mutableStateOf("") }
+  var isLinkInputUrlValid by remember { mutableStateOf(true) }
+  val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(isOpen) {
-        if (isOpen) {
-            linkInputUrl = ""
-            isLinkInputUrlValid = true
-        }
+  LaunchedEffect(isOpen) {
+    if (isOpen) {
+      linkInputUrl = ""
+      isLinkInputUrlValid = true
     }
+  }
 
-    val handleDismiss = {
-        onDismiss()
+  val handleDismiss = {
+    onDismiss()
+  }
+
+  val handleConfirm = {
+    val url = linkInputUrl.trim()
+    if (url.isNotBlank() && MediaUtils.isURLValid(url)) {
+      // Optimistically record in history so it shows up immediately
+      coroutineScope.launch {
+        val uri = url.toUri()
+        val name = uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { url } ?: url
+        RecentlyPlayedOps.addRecentlyPlayed(
+          filePath = url,
+          fileName = name,
+          launchSource = "play_link",
+        )
+      }
+      onPlayLink(url)
+      onDismiss()
     }
+  }
 
-    val handleConfirm = {
-        val url = linkInputUrl.trim()
-        if (url.isNotBlank() && MediaUtils.isURLValid(url)) {
-            // Optimistically record in history so it shows up immediately
-            coroutineScope.launch {
-                val uri = url.toUri()
-                val name = uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { url } ?: url
-                RecentlyPlayedOps.addRecentlyPlayed(
-                    filePath = url,
-                    fileName = name,
-                    launchSource = "play_link",
-                )
-            }
-            onPlayLink(url)
-            onDismiss()
-        }
-    }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-
-    ModalBottomSheet(
-        onDismissRequest = handleDismiss,
-        sheetState = sheetState,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        modifier = modifier,
+  ModalBottomSheet(
+    onDismissRequest = handleDismiss,
+    sheetState = sheetState,
+    dragHandle = { BottomSheetDefaults.DragHandle() },
+    modifier = modifier,
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 24.dp, vertical = 16.dp)
+          .verticalScroll(rememberScrollState()),
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            Text(
-                text = "Play Link",
-                style = MaterialTheme.typography.titleLarge,
-            )
+      Text(
+        text = "Play Link",
+        style = MaterialTheme.typography.titleLarge,
+      )
 
-            Spacer(modifier = Modifier.height(12.dp))
+      Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = linkInputUrl,
-                onValueChange = { newValue ->
-                    linkInputUrl = newValue
-                    isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Enter URL") },
-                singleLine = true,
-                isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
-                trailingIcon = {
-                    if (linkInputUrl.isNotBlank()) {
-                        ValidationIcon(isValid = isLinkInputUrlValid)
-                    }
-                },
-            )
+      OutlinedTextField(
+        value = linkInputUrl,
+        onValueChange = { newValue ->
+          linkInputUrl = newValue
+          isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Enter URL") },
+        singleLine = true,
+        isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
+        trailingIcon = {
+          if (linkInputUrl.isNotBlank()) {
+            ValidationIcon(isValid = isLinkInputUrlValid)
+          }
+        },
+      )
 
-            if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+      if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+          "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
 
-            Spacer(modifier = Modifier.height(16.dp))
+      Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = handleDismiss) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = handleConfirm,
-                    enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
-                ) {
-                    Text("Play")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+      ) {
+        TextButton(onClick = handleDismiss) {
+          Text("Cancel")
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        Button(
+          onClick = handleConfirm,
+          enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
+        ) {
+          Text("Play")
+        }
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
     }
+  }
 }
 
 @Composable
 private fun ValidationIcon(isValid: Boolean) {
-    if (isValid) {
-        Icon(
-            Icons.Filled.CheckCircle,
-            contentDescription = "Valid URL",
-            tint = MaterialTheme.colorScheme.primary,
-        )
-    } else {
-        Icon(
-            Icons.Filled.Info,
-            contentDescription = "Invalid URL",
-            tint = MaterialTheme.colorScheme.error,
-        )
-    }
+  if (isValid) {
+    Icon(
+      Icons.Filled.CheckCircle,
+      contentDescription = "Valid URL",
+      tint = MaterialTheme.colorScheme.primary,
+    )
+  } else {
+    Icon(
+      Icons.Filled.Info,
+      contentDescription = "Invalid URL",
+      tint = MaterialTheme.colorScheme.error,
+    )
+  }
 }

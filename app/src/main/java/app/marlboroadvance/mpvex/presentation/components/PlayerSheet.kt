@@ -62,172 +62,172 @@ private val sheetAnimationSpec = tween<Float>(350)
 @SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun PlayerSheet(
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
-    tonalElevation: Dp = 1.dp,
-    content: @Composable () -> Unit,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
+  tonalElevation: Dp = 1.dp,
+  content: @Composable () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
-    val maxWidth =
-        if (LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE) {
-            640.dp
-        } else {
-            420.dp
-        }
-    val maxHeight = LocalConfiguration.current.screenHeightDp.dp * .95f
+  val scope = rememberCoroutineScope()
+  val density = LocalDensity.current
+  val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
+  val maxWidth =
+    if (LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE) {
+      640.dp
+    } else {
+      420.dp
+    }
+  val maxHeight = LocalConfiguration.current.screenHeightDp.dp * .95f
 
-    var backgroundAlpha by remember { mutableFloatStateOf(0f) }
-    val alpha by animateFloatAsState(
-        backgroundAlpha,
-        animationSpec = sheetAnimationSpec,
-        label = "alpha",
+  var backgroundAlpha by remember { mutableFloatStateOf(0f) }
+  val alpha by animateFloatAsState(
+    backgroundAlpha,
+    animationSpec = sheetAnimationSpec,
+    label = "alpha",
+  )
+
+  val decayAnimationSpec = rememberSplineBasedDecay<Float>()
+  val anchoredDraggableState =
+    remember {
+      AnchoredDraggableState(
+        initialValue = 1,
+        snapAnimationSpec = sheetAnimationSpec,
+        decayAnimationSpec = decayAnimationSpec,
+        positionalThreshold = { with(density) { 56.dp.toPx() } },
+        velocityThreshold = { with(density) { 125.dp.toPx() } },
+      )
+    }
+  val internalOnDismissRequest = {
+    if (anchoredDraggableState.currentValue == 0) {
+      scope.launch {
+        backgroundAlpha = 0f
+        anchoredDraggableState.animateTo(1)
+      }
+    }
+  }
+  Box(
+    modifier =
+      Modifier
+        .clickable(
+          interactionSource = remember { MutableInteractionSource() },
+          indication = null,
+          onClick = internalOnDismissRequest,
+        ).fillMaxSize()
+        .background(Color.Black.copy(alpha))
+        .onSizeChanged {
+          val anchors =
+            DraggableAnchors {
+              0 at 0f
+              1 at it.height.toFloat()
+            }
+          anchoredDraggableState.updateAnchors(anchors)
+        },
+    contentAlignment = Alignment.BottomCenter,
+  ) {
+    Surface(
+      modifier =
+        Modifier
+          .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight)
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = {},
+          ).nestedScroll(
+            remember(anchoredDraggableState) {
+              anchoredDraggableState.preUpPostDownNestedScrollConnection()
+            },
+          ).then(modifier)
+          .offset {
+            IntOffset(
+              0,
+              anchoredDraggableState.offset
+                .takeIf { it.isFinite() }
+                ?.roundToInt()
+                ?: 0,
+            )
+          }.anchoredDraggable(
+            state = anchoredDraggableState,
+            orientation = Orientation.Vertical,
+          ).windowInsetsPadding(
+            WindowInsets.systemBars
+              .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+          ),
+      shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
+      tonalElevation = tonalElevation,
+      content = {
+        BackHandler(
+          enabled = anchoredDraggableState.targetValue == 0,
+          onBack = internalOnDismissRequest,
+        )
+        content()
+      },
     )
 
-    val decayAnimationSpec = rememberSplineBasedDecay<Float>()
-    val anchoredDraggableState =
-        remember {
-            AnchoredDraggableState(
-                initialValue = 1,
-                snapAnimationSpec = sheetAnimationSpec,
-                decayAnimationSpec = decayAnimationSpec,
-                positionalThreshold = { with(density) { 56.dp.toPx() } },
-                velocityThreshold = { with(density) { 125.dp.toPx() } },
-            )
-        }
-    val internalOnDismissRequest = {
-        if (anchoredDraggableState.currentValue == 0) {
-            scope.launch {
-                backgroundAlpha = 0f
-                anchoredDraggableState.animateTo(1)
-            }
-        }
+    LaunchedEffect(true) {
+      backgroundAlpha = 0.5f
     }
-    Box(
-        modifier =
-            Modifier
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = internalOnDismissRequest,
-                ).fillMaxSize()
-                .background(Color.Black.copy(alpha))
-                .onSizeChanged {
-                    val anchors =
-                        DraggableAnchors {
-                            0 at 0f
-                            1 at it.height.toFloat()
-                        }
-                    anchoredDraggableState.updateAnchors(anchors)
-                },
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Surface(
-            modifier =
-                Modifier
-                    .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ).nestedScroll(
-                        remember(anchoredDraggableState) {
-                            anchoredDraggableState.preUpPostDownNestedScrollConnection()
-                        },
-                    ).then(modifier)
-                    .offset {
-                        IntOffset(
-                            0,
-                            anchoredDraggableState.offset
-                                .takeIf { it.isFinite() }
-                                ?.roundToInt()
-                                ?: 0,
-                        )
-                    }.anchoredDraggable(
-                        state = anchoredDraggableState,
-                        orientation = Orientation.Vertical,
-                    ).windowInsetsPadding(
-                        WindowInsets.systemBars
-                            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                    ),
-            shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
-            tonalElevation = tonalElevation,
-            content = {
-                BackHandler(
-                    enabled = anchoredDraggableState.targetValue == 0,
-                    onBack = internalOnDismissRequest,
-                )
-                content()
-            },
-        )
 
-        LaunchedEffect(true) {
-            backgroundAlpha = 0.5f
-        }
-
-        LaunchedEffect(anchoredDraggableState) {
-            scope.launch { anchoredDraggableState.animateTo(0) }
-            snapshotFlow { anchoredDraggableState.currentValue }
-                .drop(1)
-                .filter { it == 1 }
-                .collectLatest { latestOnDismissRequest() }
-        }
+    LaunchedEffect(anchoredDraggableState) {
+      scope.launch { anchoredDraggableState.animateTo(0) }
+      snapshotFlow { anchoredDraggableState.currentValue }
+        .drop(1)
+        .filter { it == 1 }
+        .collectLatest { latestOnDismissRequest() }
     }
+  }
 }
 
 private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection() =
-    object : NestedScrollConnection {
-        override fun onPreScroll(
-            available: Offset,
-            source: NestedScrollSource,
-        ): Offset {
-            val delta = available.toFloat()
-            return if (delta < 0 && source == NestedScrollSource.UserInput) {
-                dispatchRawDelta(delta).toOffset()
-            } else {
-                Offset.Zero
-            }
-        }
-
-        override fun onPostScroll(
-            consumed: Offset,
-            available: Offset,
-            source: NestedScrollSource,
-        ): Offset =
-            if (source == NestedScrollSource.UserInput) {
-                dispatchRawDelta(available.toFloat()).toOffset()
-            } else {
-                Offset.Zero
-            }
-
-        override suspend fun onPreFling(available: Velocity): Velocity {
-            val toFling = available.toFloat()
-            return if (toFling < 0 && offset > anchors.minPosition()) {
-                settle(toFling)
-                available
-            } else {
-                Velocity.Zero
-            }
-        }
-
-        override suspend fun onPostFling(
-            consumed: Velocity,
-            available: Velocity,
-        ): Velocity {
-            val toFling = available.toFloat()
-            return if (toFling > 0) {
-                settle(toFling)
-                available
-            } else {
-                Velocity.Zero
-            }
-        }
-
-        private fun Float.toOffset(): Offset = Offset(0f, this)
-
-        @JvmName("velocityToFloat")
-        private fun Velocity.toFloat() = y
-
-        private fun Offset.toFloat(): Float = y
+  object : NestedScrollConnection {
+    override fun onPreScroll(
+      available: Offset,
+      source: NestedScrollSource,
+    ): Offset {
+      val delta = available.toFloat()
+      return if (delta < 0 && source == NestedScrollSource.UserInput) {
+        dispatchRawDelta(delta).toOffset()
+      } else {
+        Offset.Zero
+      }
     }
+
+    override fun onPostScroll(
+      consumed: Offset,
+      available: Offset,
+      source: NestedScrollSource,
+    ): Offset =
+      if (source == NestedScrollSource.UserInput) {
+        dispatchRawDelta(available.toFloat()).toOffset()
+      } else {
+        Offset.Zero
+      }
+
+    override suspend fun onPreFling(available: Velocity): Velocity {
+      val toFling = available.toFloat()
+      return if (toFling < 0 && offset > anchors.minPosition()) {
+        settle(toFling)
+        available
+      } else {
+        Velocity.Zero
+      }
+    }
+
+    override suspend fun onPostFling(
+      consumed: Velocity,
+      available: Velocity,
+    ): Velocity {
+      val toFling = available.toFloat()
+      return if (toFling > 0) {
+        settle(toFling)
+        available
+      } else {
+        Velocity.Zero
+      }
+    }
+
+    private fun Float.toOffset(): Offset = Offset(0f, this)
+
+    @JvmName("velocityToFloat")
+    private fun Velocity.toFloat() = y
+
+    private fun Offset.toFloat(): Float = y
+  }

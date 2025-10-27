@@ -25,62 +25,62 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun AudioTracksSheet(
-    tracks: ImmutableList<TrackNode>,
-    onSelect: (TrackNode) -> Unit,
-    onAddAudioTrack: () -> Unit,
-    onOpenDelayPanel: () -> Unit,
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
+  tracks: ImmutableList<TrackNode>,
+  onSelect: (TrackNode) -> Unit,
+  onAddAudioTrack: () -> Unit,
+  onOpenDelayPanel: () -> Unit,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    GenericTracksSheet(
-        tracks,
-        onDismissRequest = onDismissRequest,
-        header = {
-            AddTrackRow(
-                stringResource(R.string.player_sheets_add_ext_audio),
-                onAddAudioTrack,
-                actions = {
-                    IconButton(onClick = onOpenDelayPanel) {
-                        Icon(Icons.Default.MoreTime, null)
-                    }
-                },
-            )
+  GenericTracksSheet(
+    tracks,
+    onDismissRequest = onDismissRequest,
+    header = {
+      AddTrackRow(
+        stringResource(R.string.player_sheets_add_ext_audio),
+        onAddAudioTrack,
+        actions = {
+          IconButton(onClick = onOpenDelayPanel) {
+            Icon(Icons.Default.MoreTime, null)
+          }
         },
-        track = {
-            AudioTrackRow(
-                title = getTrackTitle(it, emptyMap()),
-                isSelected = it.isSelected,
-                onClick = { onSelect(it) },
-            )
-        },
-        modifier = modifier,
-    )
+      )
+    },
+    track = {
+      AudioTrackRow(
+        title = getTrackTitle(it, emptyMap()),
+        isSelected = it.isSelected,
+        onClick = { onSelect(it) },
+      )
+    },
+    modifier = modifier,
+  )
 }
 
 @Composable
 fun AudioTrackRow(
-    title: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+  title: String,
+  isSelected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-    ) {
-        RadioButton(
-            isSelected,
-            onClick,
-        )
-        Text(
-            title,
-            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
-            fontStyle = if (isSelected) FontStyle.Italic else FontStyle.Normal,
-        )
-    }
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+  ) {
+    RadioButton(
+      isSelected,
+      onClick,
+    )
+    Text(
+      title,
+      fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+      fontStyle = if (isSelected) FontStyle.Italic else FontStyle.Normal,
+    )
+  }
 }

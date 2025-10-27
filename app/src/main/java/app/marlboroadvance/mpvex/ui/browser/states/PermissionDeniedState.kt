@@ -21,40 +21,40 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun PermissionDeniedState(
-    onRequestPermission: () -> Unit,
-    modifier: Modifier = Modifier,
+  onRequestPermission: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+  Column(
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(16.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center,
+  ) {
+    Icon(
+      Icons.Filled.Warning,
+      contentDescription = null,
+      modifier = Modifier.size(64.dp),
+      tint = MaterialTheme.colorScheme.primary,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+      "Permission required",
+      style = MaterialTheme.typography.headlineSmall,
+      textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+      "This app needs access to your storage to display videos. Please grant the permission.",
+      style = MaterialTheme.typography.bodyLarge,
+      textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+    Button(
+      onClick = onRequestPermission,
     ) {
-        Icon(
-            Icons.Filled.Warning,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Permission required",
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "This app needs access to your storage to display videos. Please grant the permission.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = onRequestPermission,
-        ) {
-            Text("Grant Permission")
-        }
+      Text("Grant Permission")
     }
+  }
 }

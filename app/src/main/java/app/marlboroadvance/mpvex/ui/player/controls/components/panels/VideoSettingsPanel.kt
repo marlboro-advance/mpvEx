@@ -7,19 +7,19 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.panels.components
 
 @Composable
 fun VideoSettingsPanel(
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
+  onDismissRequest: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    MultiCardPanel(
-        onDismissRequest = onDismissRequest,
-        titleRes = R.string.player_sheets_video_settings_title,
-        cardCount = 2,
-        modifier = modifier,
-    ) { index, cardModifier ->
-        when (index) {
-            0 -> VideoSettingsDebandCard(cardModifier)
-            1 -> VideoSettingsFiltersCard(cardModifier)
-            else -> {}
-        }
+  MultiCardPanel(
+    onDismissRequest = onDismissRequest,
+    titleRes = R.string.player_sheets_video_settings_title,
+    cardCount = 2,
+    modifier = modifier,
+  ) { index, cardModifier ->
+    when (index) {
+      0 -> VideoSettingsDebandCard(cardModifier)
+      1 -> VideoSettingsFiltersCard(cardModifier)
+      else -> {}
     }
+  }
 }

@@ -34,58 +34,58 @@ import org.koin.compose.koinInject
 
 @Composable
 fun VideoSettingsFiltersCard(modifier: Modifier = Modifier) {
-    val decoderPreferences = koinInject<DecoderPreferences>()
-    var isExpanded by remember { mutableStateOf(true) }
+  val decoderPreferences = koinInject<DecoderPreferences>()
+  var isExpanded by remember { mutableStateOf(true) }
 
-    ExpandableCard(
-        isExpanded = isExpanded,
-        onExpand = { isExpanded = !isExpanded },
-        title = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            ) {
-                Icon(Icons.Default.Tune, null)
-                Text(stringResource(R.string.player_sheets_filters_title))
+  ExpandableCard(
+    isExpanded = isExpanded,
+    onExpand = { isExpanded = !isExpanded },
+    title = {
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+      ) {
+        Icon(Icons.Default.Tune, null)
+        Text(stringResource(R.string.player_sheets_filters_title))
+      }
+    },
+    colors = panelCardsColors(),
+    modifier = modifier.widthIn(max = CARDS_MAX_WIDTH),
+  ) {
+    ProvidePreferenceLocals {
+      Column {
+        TextButton(
+          onClick = {
+            VideoFilters.entries.forEach {
+              MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
             }
-        },
-        colors = panelCardsColors(),
-        modifier = modifier.widthIn(max = CARDS_MAX_WIDTH),
-    ) {
-        ProvidePreferenceLocals {
-            Column {
-                TextButton(
-                    onClick = {
-                        VideoFilters.entries.forEach {
-                            MPVLib.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
-                        }
-                    },
-                ) {
-                    Text(text = stringResource(id = R.string.generic_reset))
-                }
-
-                VideoFilters.entries.forEach { filter ->
-                    val value by filter.preference(decoderPreferences).collectAsState()
-                    SliderItem(
-                        label = stringResource(filter.titleRes),
-                        value = value,
-                        valueText = value.toString(),
-                        onChange = {
-                            filter.preference(decoderPreferences).set(it)
-                            MPVLib.setPropertyInt(filter.mpvProperty, it)
-                        },
-                        max = 100,
-                        min = -100,
-                    )
-                }
-
-                if (!decoderPreferences.gpuNext.get()) {
-                    FooterPreference(
-                        summary = {
-                            Text(text = stringResource(id = R.string.player_sheets_filters_warning))
-                        },
-                    )
-                }
-            }
+          },
+        ) {
+          Text(text = stringResource(id = R.string.generic_reset))
         }
+
+        VideoFilters.entries.forEach { filter ->
+          val value by filter.preference(decoderPreferences).collectAsState()
+          SliderItem(
+            label = stringResource(filter.titleRes),
+            value = value,
+            valueText = value.toString(),
+            onChange = {
+              filter.preference(decoderPreferences).set(it)
+              MPVLib.setPropertyInt(filter.mpvProperty, it)
+            },
+            max = 100,
+            min = -100,
+          )
+        }
+
+        if (!decoderPreferences.gpuNext.get()) {
+          FooterPreference(
+            summary = {
+              Text(text = stringResource(id = R.string.player_sheets_filters_warning))
+            },
+          )
+        }
+      }
     }
+  }
 }

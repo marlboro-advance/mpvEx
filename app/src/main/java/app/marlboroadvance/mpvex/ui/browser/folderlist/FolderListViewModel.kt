@@ -15,38 +15,38 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class FolderListViewModel(
-    application: Application,
+  application: Application,
 ) : BaseBrowserViewModel(application) {
-    private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
-    val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
+  private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
+  val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
 
-    companion object {
-        private const val TAG = "FolderListViewModel"
+  companion object {
+    private const val TAG = "FolderListViewModel"
 
-        fun factory(application: Application) =
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T = FolderListViewModel(application) as T
-            }
+    fun factory(application: Application) =
+      object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = FolderListViewModel(application) as T
+      }
+  }
+
+  init {
+    loadVideoFolders()
+  }
+
+  override fun refresh() {
+    loadVideoFolders()
+  }
+
+  private fun loadVideoFolders() {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val folders = VideoFolderRepository.getVideoFolders(getApplication())
+        _videoFolders.value = folders
+      } catch (e: Exception) {
+        Log.e(TAG, "Error loading video folders", e)
+        _videoFolders.value = emptyList()
+      }
     }
-
-    init {
-        loadVideoFolders()
-    }
-
-    override fun refresh() {
-        loadVideoFolders()
-    }
-
-    private fun loadVideoFolders() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val folders = VideoFolderRepository.getVideoFolders(getApplication())
-                _videoFolders.value = folders
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading video folders", e)
-                _videoFolders.value = emptyList()
-            }
-        }
-    }
+  }
 }
