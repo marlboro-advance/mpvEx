@@ -1,6 +1,8 @@
-package app.marlboroadvance.mpvex.ui.preferences
+package app.marlboroadvance.mpvex.utils.media
 
 import android.content.Context
+import android.net.Uri
+import android.util.Log
 import com.github.k1rakishou.fsaf.FileManager
 import com.yubyf.truetypeparser.TTFFile
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +50,7 @@ fun copyFontsFromDirectory(
       File(destinationPath).mkdirs()
     }
 
-    val sourceDir = fileManager.fromUri(android.net.Uri.parse(uriString))
+    val sourceDir = fileManager.fromUri(Uri.parse(uriString))
     if (sourceDir != null && fileManager.exists(sourceDir)) {
       fileManager.listFiles(sourceDir).forEach { file ->
         if (fileManager.isFile(file)) {
@@ -64,7 +66,7 @@ fun copyFontsFromDirectory(
       }
     }
   }.onFailure { e ->
-    android.util.Log.e("SubtitlesPreferences", "Error copying fonts", e)
+    Log.e("SubtitlesPreferences", "Error copying fonts", e)
   }
 }
 

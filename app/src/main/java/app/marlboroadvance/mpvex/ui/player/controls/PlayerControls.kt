@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.ui.player.controls
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -424,8 +425,13 @@ fun PlayerControls(
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
           val readAhead by MPVLib.propFloat["demuxer-cache-seconds"].collectAsState()
+          val animatedPosition by animateFloatAsState(
+            targetValue = position?.toFloat() ?: 0f,
+            animationSpec = tween(durationMillis = 200, easing = LinearEasing),
+            label = "seekbar_position",
+          )
           SeekbarWithTimers(
-            position = position?.toFloat() ?: 0f,
+            position = if (isSeeking) position?.toFloat() ?: 0f else animatedPosition,
             duration = duration?.toFloat() ?: 0f,
             readAheadValue = readAhead ?: 0f,
             onValueChange = {
