@@ -3,7 +3,6 @@ package app.marlboroadvance.mpvex.ui.player.controls
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -17,6 +16,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +33,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -387,19 +388,32 @@ fun PlayerControls(
             }
 
             controlsShown && !areControlsLocked ->
-              Image(
-                painter = rememberAnimatedVectorPainter(icon, paused == false),
+              Surface(
                 modifier =
                   Modifier
-                    .size(96.dp)
+                    .size(64.dp)
                     .clip(CircleShape)
                     .clickable(
                       interaction,
                       ripple(),
                       onClick = viewModel::pauseUnpause,
-                    ).padding(MaterialTheme.spacing.medium),
-                contentDescription = null,
-              )
+                    ),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 2.dp,
+                shadowElevation = 0.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+              ) {
+                Image(
+                  painter = rememberAnimatedVectorPainter(icon, paused == false),
+                  modifier =
+                    Modifier
+                      .fillMaxSize()
+                      .padding(MaterialTheme.spacing.medium),
+                  contentDescription = null,
+                )
+              }
           }
         }
         AnimatedVisibility(
@@ -420,29 +434,26 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(seekbar) {
-              bottom.linkTo(parent.bottom, spacing.medium)
+              bottom.linkTo(bottomLeftControls.top)
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
-          val readAhead by MPVLib.propFloat["demuxer-cache-seconds"].collectAsState()
-          val animatedPosition by animateFloatAsState(
-            targetValue = position?.toFloat() ?: 0f,
-            animationSpec = tween(durationMillis = 200, easing = LinearEasing),
-            label = "seekbar_position",
-          )
+
           SeekbarWithTimers(
-            position = if (isSeeking) position?.toFloat() ?: 0f else animatedPosition,
+            position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
-            readAheadValue = readAhead ?: 0f,
             onValueChange = {
               isSeeking = true
               viewModel.seekTo(it.toInt())
             },
-            onValueChangeFinished = { isSeeking = false },
+            onValueChangeFinished = {
+              isSeeking = false
+            },
             timersInverted = Pair(false, invertDuration),
             durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
             positionTimerOnClick = {},
             chapters = chapters,
+            paused = paused ?: false,
           )
         }
         val mediaTitle by MPVLib.propString["media-title"].collectAsState()
@@ -467,7 +478,7 @@ fun PlayerControls(
               top.linkTo(parent.top, spacing.medium)
               start.linkTo(parent.start)
               width = Dimension.fillToConstraints
-              end.linkTo(topRightControls.start)
+              end.linkTo(topRightControls.start, spacing.medium)
             },
         ) {
           TopLeftPlayerControls(
@@ -500,7 +511,6 @@ fun PlayerControls(
         ) {
           val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
           TopRightPlayerControls(
-            onFrameNavigationClick = { onOpenPanel(Panels.FrameNavigation) },
             decoder = decoder,
             onDecoderClick = { viewModel.cycleDecoders() },
             onDecoderLongClick = { onOpenSheet(Sheets.Decoders) },
@@ -514,7 +524,7 @@ fun PlayerControls(
             onMoreLongClick = { onOpenPanel(Panels.VideoFilters) },
           )
         }
-        // Bottom right controls
+        // Bottom right controls (above seekbar)
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -533,15 +543,15 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(bottomRightControls) {
-              bottom.linkTo(seekbar.top)
-              end.linkTo(seekbar.end)
+              bottom.linkTo(parent.bottom, spacing.medium)
+              end.linkTo(parent.end)
             },
         ) {
           BottomRightPlayerControls(
             viewModel = viewModel,
           )
         }
-        // Bottom left controls
+        // Bottom left controls (above seekbar)
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -560,8 +570,8 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(bottomLeftControls) {
-              bottom.linkTo(seekbar.top)
-              start.linkTo(seekbar.start)
+              bottom.linkTo(parent.bottom, spacing.medium)
+              start.linkTo(parent.start)
               width = Dimension.fillToConstraints
               end.linkTo(bottomRightControls.start)
             },

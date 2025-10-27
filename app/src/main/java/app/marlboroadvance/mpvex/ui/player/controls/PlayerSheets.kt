@@ -14,6 +14,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AspectRati
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AudioTracksSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.ChaptersSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.FrameNavigationSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
@@ -198,6 +199,21 @@ fun PlayerSheets(
             viewModel.setCustomAspectRatio(-1.0)
           }
         },
+        onDismissRequest = onDismissRequest,
+      )
+    }
+
+    Sheets.FrameNavigation -> {
+      val currentFrame by viewModel.currentFrame.composeCollectAsState()
+      val totalFrames by viewModel.totalFrames.composeCollectAsState()
+      FrameNavigationSheet(
+        currentFrame = currentFrame,
+        totalFrames = totalFrames,
+        onUpdateFrameInfo = viewModel::updateFrameInfo,
+        onPause = viewModel::pause,
+        onUnpause = viewModel::unpause,
+        onPauseUnpause = viewModel::pauseUnpause,
+        onSeekTo = { position, _ -> viewModel.seekTo(position) },
         onDismissRequest = onDismissRequest,
       )
     }

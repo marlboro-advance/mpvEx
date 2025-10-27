@@ -10,32 +10,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-/** Loads available font family names from the app's internal fonts directory. */
-suspend fun loadAvailableFonts(
-  context: Context,
-  fileManager: FileManager,
-): List<String> =
-  withContext(Dispatchers.IO) {
-    val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
-    if (fileManager.exists(fontsDir)) {
-      fileManager
-        .listFiles(fontsDir)
-        .filter { file ->
-          fileManager.isFile(file) && fileManager.getName(file).lowercase().matches(".*\\.[ot]tf$".toRegex())
-        }.mapNotNull { file ->
-          runCatching {
-            TTFFile
-              .open(fileManager.getInputStream(file)!!)
-              .families.values
-              .first()
-          }.getOrNull()
-        }.distinct()
-        .sorted()
-    } else {
-      emptyList()
-    }
-  }
-
 /** Copies font files from the selected directory to the app's internal storage. */
 fun copyFontsFromDirectory(
   context: Context,

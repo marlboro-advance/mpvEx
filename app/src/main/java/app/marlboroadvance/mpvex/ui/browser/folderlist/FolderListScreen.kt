@@ -92,18 +92,11 @@ object FolderListScreen : Screen {
         SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
       }
 
-    // Storage operation launchers
-    PermissionUtils.rememberStorageOperationLaunchers(
-      onDeleteSuccess = { viewModel.refresh() },
-      onWriteSuccess = { viewModel.refresh() },
-    )
-
-    // Selection manager (no permission handler for folders as they use different logic)
+    // Selection manager (folders handle deletion through videos)
     val selectionManager =
       rememberSelectionManager<VideoFolder, String>(
         items = sortedFolders,
         getId = { it.bucketId },
-        permissionHandler = null, // Folders handle deletion through videos
         onDeleteItems = { folders ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()

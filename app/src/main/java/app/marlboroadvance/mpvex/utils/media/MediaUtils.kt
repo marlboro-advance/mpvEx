@@ -68,6 +68,7 @@ object MediaUtils {
   ) {
     val intent = Intent(Intent.ACTION_VIEW, video.uri)
     intent.setClass(context, PlayerActivity::class.java)
+    intent.putExtra("internal_launch", true) // Mark as internal launch for subtitle autoload
     context.startActivity(intent)
   }
 

@@ -84,37 +84,15 @@ data class VideoListScreen(
         SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
       }
 
-    // Holder for selection manager (to be set below)
-    val selectionManagerHolder =
-      remember { mutableStateOf<SelectionManager<Video, Long>?>(null) }
-
-    // Storage operation launchers
-    val launchers =
-      PermissionUtils.rememberStorageOperationLaunchers(
-        onDeleteSuccess = {
-          selectionManagerHolder.value?.executePendingDelete()
-          viewModel.refresh()
-        },
-        onWriteSuccess = {
-          selectionManagerHolder.value?.executePendingRename()
-          viewModel.refresh()
-        },
-      )
-    val permissionHandler = PermissionUtils.rememberStoragePermissionHandler(launchers)
-
     // Selection manager
     val selectionManager =
       rememberSelectionManager(
         items = sortedVideos,
         getId = { it.id },
-        permissionHandler = permissionHandler,
         onDeleteItems = { viewModel.deleteVideos(it) },
         onRenameItem = { video, newName -> viewModel.renameVideo(video, newName) },
         onOperationComplete = { viewModel.refresh() },
       )
-
-    // Store selection manager in holder
-    selectionManagerHolder.value = selectionManager
 
     // UI State
     val isRefreshing = remember { mutableStateOf(false) }

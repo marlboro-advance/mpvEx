@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
-import app.marlboroadvance.mpvex.utils.permission.PermissionUtils.StoragePermissionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -25,17 +24,12 @@ class SelectionManager<T, ID>(
   private val getId: (T) -> ID,
   private val context: Context,
   private val scope: CoroutineScope,
-  private val permissionHandler: StoragePermissionHandler?,
   private val onDeleteItems: suspend (List<T>) -> Pair<Int, Int>,
   private val onRenameItem: (suspend (T, String) -> Result<Unit>)?,
   private val onOperationComplete: () -> Unit,
 ) {
   var state by mutableStateOf(SelectionState<ID>())
     private set
-
-  // Pending operations to execute after permission is granted
-  private var pendingRename: Pair<T, String>? = null
-  private var pendingDelete: List<T>? = null
 
   val isInSelectionMode: Boolean
     get() = state.isInSelectionMode
@@ -85,37 +79,22 @@ class SelectionManager<T, ID>(
   fun getSelectedItems(): List<T> = state.getSelected(items(), getId)
 
   /**
-   * Delete selected items with automatic permission handling
+   * Delete selected items directly (using MANAGE_EXTERNAL_STORAGE permission)
    */
   fun deleteSelected() {
     val selected = getSelectedItems()
     if (selected.isEmpty()) return
 
     scope.launch {
-      if (permissionHandler != null && selected.first() is Video) {
-        @Suppress("UNCHECKED_CAST")
-        val videos = selected as List<Video>
-        val handled =
-          permissionHandler.handleDelete(videos) {
-            performDelete(selected)
-          }
-
-        // If permission request was launched, store the pending operation
-        if (!handled) {
-          pendingDelete = selected
-        }
-      } else {
-        performDelete(selected)
+      runCatching {
+        onDeleteItems(selected)
+        Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+      }.onFailure {
+        Toast.makeText(context, "Failed to delete: ${it.message}", Toast.LENGTH_SHORT).show()
       }
+      clear()
+      onOperationComplete()
     }
-  }
-
-  private suspend fun performDelete(selected: List<T>) {
-    // Execute delete and always report success for a simpler UX
-    runCatching { onDeleteItems(selected) }
-    Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
-    clear()
-    onOperationComplete()
   }
 
   /**
@@ -127,82 +106,14 @@ class SelectionManager<T, ID>(
     val item = getSelectedItems().firstOrNull() ?: return
 
     scope.launch {
-      if (permissionHandler != null && item is Video) {
-        @Suppress("UNCHECKED_CAST")
-        val handled =
-          permissionHandler.handleRename(
-            video = item as Video,
-            newName = newName,
-            onDirectRename = {
-              onRenameItem(item, newName)
-            },
-          )
-
-        // If permission request was launched, store the pending operation
-        if (!handled) {
-          pendingRename = Pair(item, newName)
-        } else {
-          Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
-          clear()
-          onOperationComplete()
-        }
-      } else {
-        runCatching { onRenameItem(item, newName) }
+      runCatching {
+        onRenameItem(item, newName)
         Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
-        clear()
-        onOperationComplete()
-      }
-    }
-  }
-
-  /**
-   * Execute pending rename operation after permission is granted
-   * Should be called from the All Files Access or write permission success callback
-   */
-  fun executePendingRename() {
-    val (item, newName) = pendingRename ?: return
-    pendingRename = null
-
-    if (onRenameItem == null) return
-
-    scope.launch {
-      // After permission is granted, try the operation again
-      if (permissionHandler != null && item is Video) {
-        // Store the result from the rename operation
-        @Suppress("UNCHECKED_CAST")
-        val handled =
-          permissionHandler.handleRename(
-            video = item as Video,
-            newName = newName,
-            onDirectRename = {
-              onRenameItem(item, newName)
-            },
-          )
-
-        // If handled directly, show appropriate message
-        if (handled) {
-          Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
-        }
-      } else {
-        // For non-video items, just do direct rename
-        runCatching { onRenameItem(item, newName) }
-        Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+      }.onFailure {
+        Toast.makeText(context, "Failed to rename: ${it.message}", Toast.LENGTH_SHORT).show()
       }
       clear()
       onOperationComplete()
-    }
-  }
-
-  /**
-   * Execute pending delete operation after permission is granted
-   * Should be called from the All Files Access or write permission success callback
-   */
-  fun executePendingDelete() {
-    val selected = pendingDelete ?: return
-    pendingDelete = null
-
-    scope.launch {
-      performDelete(selected)
     }
   }
 
@@ -224,7 +135,6 @@ class SelectionManager<T, ID>(
  *
  * @param items List of items to manage selection for
  * @param getId Function to extract ID from an item
- * @param permissionHandler Optional storage permission handler for videos
  * @param onDeleteItems Callback to delete items
  * @param onRenameItem Optional callback to rename an item
  * @param onOperationComplete Callback when an operation completes (to refresh list)
@@ -233,7 +143,6 @@ class SelectionManager<T, ID>(
 fun <T, ID> rememberSelectionManager(
   items: List<T>,
   getId: (T) -> ID,
-  permissionHandler: StoragePermissionHandler? = null,
   onDeleteItems: suspend (List<T>) -> Pair<Int, Int>,
   onRenameItem: (suspend (T, String) -> Result<Unit>)? = null,
   onOperationComplete: () -> Unit = {},
@@ -241,13 +150,12 @@ fun <T, ID> rememberSelectionManager(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
 
-  return remember(items, getId, permissionHandler, onDeleteItems, onRenameItem) {
+  return remember(items, getId, onDeleteItems, onRenameItem) {
     SelectionManager(
       items = { items },
       getId = getId,
       context = context,
       scope = scope,
-      permissionHandler = permissionHandler,
       onDeleteItems = onDeleteItems,
       onRenameItem = onRenameItem,
       onOperationComplete = onOperationComplete,

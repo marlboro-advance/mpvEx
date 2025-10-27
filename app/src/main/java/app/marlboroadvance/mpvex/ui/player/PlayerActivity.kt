@@ -22,14 +22,10 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -162,16 +158,6 @@ class PlayerActivity :
     setupPipHelper()
     setupAudioFocus()
     setupMediaSession()
-
-    // Set up folder access callback for subtitle autoload
-    SubtitleOps.setOnFolderAccessNeeded {
-      runOnUiThread {
-        folderPicker.launch(null)
-      }
-    }
-
-    // Restore persisted folder permissions
-    restorePersistedFolderPermissions()
 
     // Start playback
     getPlayableUri(intent)?.let(player::playFile)
@@ -722,7 +708,7 @@ class PlayerActivity :
 
   private fun parsePathFromSendIntent(intent: Intent): String? =
     if (intent.hasExtra(Intent.EXTRA_STREAM)) {
-      intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this)
+      intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this@PlayerActivity)
     } else {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
         val uri = text.trim().toUri()
@@ -758,6 +744,7 @@ class PlayerActivity :
         .query(
           uri,
           arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+          null,
           null,
           null,
         )?.use { cursor ->
@@ -913,25 +900,25 @@ class PlayerActivity :
 
     viewModel.unpause()
 
+    // Autoload subtitles after unpausing, only if enabled in settings
+    if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
+      lifecycleScope.launch {
+        val videoFilePath = parsePathFromIntent(intent)
+        if (videoFilePath != null) {
+          SubtitleOps.autoloadSubtitles(
+            videoFilePath = videoFilePath,
+            videoFileName = fileName,
+          )
+        }
+      }
+    }
+
     // MediaSession metadata/state
     updateMediaSessionMetadata(
       title = fileName,
       durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
     )
     updateMediaSessionPlaybackState(isPlaying = true)
-
-    // Subtitle autoload (if enabled)
-    if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
-      lifecycleScope.launch(Dispatchers.IO) {
-        extractUriFromIntent(intent)?.let { videoUri ->
-          SubtitleOps.autoloadSubtitles(
-            context = this@PlayerActivity,
-            videoUri = videoUri,
-            videoFileName = fileName,
-          )
-        }
-      }
-    }
   }
 
   private fun saveVideoPlaybackState(mediaTitle: String) {
@@ -1411,46 +1398,7 @@ class PlayerActivity :
     mediaSessionInitialized = false
   }
 
-  // Folder picker for subtitle autoload
-  private val folderPicker =
-    registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-      uri?.let {
-        // Persist permission across app restarts
-        contentResolver.takePersistableUriPermission(
-          it,
-          Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-        )
-        SubtitleOps.setFolderUri(it)
-
-        if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
-          lifecycleScope.launch(Dispatchers.IO) {
-            extractUriFromIntent(intent)?.let { videoUri ->
-              SubtitleOps.autoloadSubtitles(this@PlayerActivity, videoUri, fileName)
-            }
-          }
-        }
-      }
-    }
-
-  // Restore persisted folder permissions
-  private fun restorePersistedFolderPermissions() {
-    runCatching {
-      contentResolver.persistedUriPermissions.forEach { permission ->
-        if (permission.isReadPermission && permission.isWritePermission) {
-          androidx.documentfile.provider.DocumentFile.fromTreeUri(this, permission.uri)?.let { documentFile ->
-            if (documentFile.isDirectory) {
-              SubtitleOps.setFolderUri(permission.uri)
-              return@runCatching
-            }
-          }
-        }
-      }
-    }.onFailure { e ->
-      Log.e(TAG, "Error restoring folder permissions", e)
-    }
-  }
-
-  // PlayerHost
+  // ==================== PlayerHost ====================
   override val context: Context
     get() = this
   override val windowInsetsController: WindowInsetsControllerCompat

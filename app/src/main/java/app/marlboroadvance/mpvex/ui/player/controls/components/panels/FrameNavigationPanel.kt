@@ -198,7 +198,7 @@ fun FrameNavigationPanel(
 }
 
 @Composable
-private fun FrameNavigationCard(
+internal fun FrameNavigationCard(
   onPreviousFrame: () -> Unit,
   onNextFrame: () -> Unit,
   onPlayPause: () -> Unit,
@@ -528,7 +528,7 @@ private fun ControlButtons(
 }
 
 @Composable
-private fun FrameNavigationCardTitle(
+internal fun FrameNavigationCardTitle(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -551,29 +551,14 @@ private fun FrameNavigationCardTitle(
   }
 }
 
-private suspend fun takeSnapshot(context: Context) {
+internal suspend fun takeSnapshot(context: Context) {
   withContext(Dispatchers.IO) {
     try {
-      // Check write permission on Android 9 and below
-      if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P) {
-        val hasPermission =
-          androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-          ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        if (!hasPermission) {
-          withContext(Dispatchers.Main) {
-            Toast
-              .makeText(
-                context,
-                "Storage permission required to save snapshots",
-                Toast.LENGTH_LONG,
-              ).show()
-          }
-          return@withContext
-        }
-      }
+      // Note: This function relies on the app's permission infrastructure:
+      // - READ_EXTERNAL_STORAGE (all versions)
+      // - WRITE_EXTERNAL_STORAGE (Android 9 and below, maxSdkVersion="28")
+      // - MANAGE_EXTERNAL_STORAGE (Android 11+, provides full file access)
+      // Permissions are handled at the app level before reaching player functionality.
 
       // Generate filename with timestamp
       val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())

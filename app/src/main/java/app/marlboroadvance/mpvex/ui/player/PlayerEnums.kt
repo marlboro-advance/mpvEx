@@ -68,6 +68,7 @@ enum class Sheets {
   More,
   VideoZoom,
   AspectRatios,
+  FrameNavigation,
 }
 
 enum class Panels {

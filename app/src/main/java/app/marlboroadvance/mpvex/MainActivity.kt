@@ -1,6 +1,13 @@
 package app.marlboroadvance.mpvex
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -40,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -50,7 +58,12 @@ class MainActivity : ComponentActivity() {
           darkScrim = Color.Transparent.toArgb(),
         ) { isDarkMode },
       )
-      MpvexTheme { Surface { Navigator() } }
+
+      MpvexTheme {
+        Surface {
+          Navigator()
+        }
+      }
     }
   }
 
@@ -58,9 +71,7 @@ class MainActivity : ComponentActivity() {
     try {
       super.onDestroy()
     } catch (e: Exception) {
-      // Silently handle exceptions during destruction
-      // This can happen with navigation3 lifecycle issues during configuration changes
-      android.util.Log.e("MainActivity", "Error during onDestroy", e)
+      Log.e("MainActivity", "Error during onDestroy", e)
     }
   }
 

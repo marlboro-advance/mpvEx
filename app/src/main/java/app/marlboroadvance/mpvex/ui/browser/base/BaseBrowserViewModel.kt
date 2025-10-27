@@ -36,9 +36,9 @@ abstract class BaseBrowserViewModel(
    *
    * @return Pair of (deletedCount, failedCount)
    */
-  suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
+  open suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
     // Use scoped APIs only (no MANAGE_EXTERNAL_STORAGE)
-    return StorageOps.deleteVideos(getApplication(), videos)
+    return StorageOps.deleteVideos(videos)
   }
 
   /**
@@ -49,11 +49,11 @@ abstract class BaseBrowserViewModel(
    * @param newDisplayName New display name (including extension)
    * @return Result indicating success or failure
    */
-  suspend fun renameVideo(
+  open suspend fun renameVideo(
     video: Video,
     newDisplayName: String,
   ): Result<Unit> {
     // Use scoped APIs only (no MANAGE_EXTERNAL_STORAGE)
-    return StorageOps.renameVideo(getApplication(), video, newDisplayName)
+    return StorageOps.renameVideo(video, newDisplayName)
   }
 }

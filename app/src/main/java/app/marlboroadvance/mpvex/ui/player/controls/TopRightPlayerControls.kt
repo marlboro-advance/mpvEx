@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.runtime.Composable
@@ -12,11 +11,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.marlboroadvance.mpvex.ui.player.Decoder
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
+import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsGroup
 
 @Composable
 fun TopRightPlayerControls(
-  // frame navigation
-  onFrameNavigationClick: () -> Unit,
   // decoder
   decoder: Decoder,
   onDecoderClick: () -> Unit,
@@ -39,35 +37,33 @@ fun TopRightPlayerControls(
     modifier,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    ControlsButton(
-      Icons.Default.Camera,
-      onClick = onFrameNavigationClick,
-    )
-    ControlsButton(
-      decoder.title,
-      onClick = onDecoderClick,
-      onLongClick = onDecoderLongClick,
-    )
-    if (isChaptersVisible) {
+    ControlsGroup {
       ControlsButton(
-        Icons.Default.Bookmarks,
-        onClick = onChaptersClick,
+        decoder.title,
+        onClick = onDecoderClick,
+        onLongClick = onDecoderLongClick,
+      )
+      if (isChaptersVisible) {
+        ControlsButton(
+          Icons.Default.Bookmarks,
+          onClick = onChaptersClick,
+        )
+      }
+      ControlsButton(
+        Icons.Default.Subtitles,
+        onClick = onSubtitlesClick,
+        onLongClick = onSubtitlesLongClick,
+      )
+      ControlsButton(
+        Icons.Default.Audiotrack,
+        onClick = onAudioClick,
+        onLongClick = onAudioLongClick,
+      )
+      ControlsButton(
+        Icons.Default.MoreVert,
+        onClick = onMoreClick,
+        onLongClick = onMoreLongClick,
       )
     }
-    ControlsButton(
-      Icons.Default.Subtitles,
-      onClick = onSubtitlesClick,
-      onLongClick = onSubtitlesLongClick,
-    )
-    ControlsButton(
-      Icons.Default.Audiotrack,
-      onClick = onAudioClick,
-      onLongClick = onAudioLongClick,
-    )
-    ControlsButton(
-      Icons.Default.MoreVert,
-      onClick = onMoreClick,
-      onLongClick = onMoreLongClick,
-    )
   }
 }
