@@ -31,6 +31,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
@@ -40,6 +44,7 @@ import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
@@ -158,7 +163,17 @@ class PlayerActivity :
         setupAudioFocus()
         setupMediaSession()
 
-        // Start playback
+      // Set up folder access callback for subtitle autoload
+      SubtitleOps.setOnFolderAccessNeeded {
+        runOnUiThread {
+          folderPicker.launch(null)
+        }
+        }
+
+      // Restore persisted folder permissions
+      restorePersistedFolderPermissions()
+
+      // Start playback
         getPlayableUri(intent)?.let(player::playFile)
         setOrientation()
 
@@ -532,7 +547,7 @@ class PlayerActivity :
         MPVLib.addObserver(playerObserver)
     }
 
-    private fun setupAudio() {
+  private fun setupAudio() {
         audioPreferences.audioChannels.get().let {
             MPVLib.setPropertyString(it.property, it.value)
         }
@@ -877,7 +892,7 @@ class PlayerActivity :
             loadVideoPlaybackState(fileName)
         }
 
-        // Save recently played in GlobalScope to ensure it completes even if activity finishes
+      // Save recently played in GlobalScope to ensure it completes even if activity finishes
         GlobalScope.launch(Dispatchers.IO) {
             saveRecentlyPlayed()
         }
@@ -905,15 +920,20 @@ class PlayerActivity :
         )
         updateMediaSessionPlaybackState(isPlaying = true)
 
-        // Autoload external subtitles with same filename when enabled and using local files
-        runCatching {
-            if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
-                autoloadMatchingSubtitles()
-            }
-        }.onFailure { e -> Log.e(TAG, "Error auto-loading subtitles", e) }
+      // Subtitle autoload (if enabled)
+      if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
+        lifecycleScope.launch(Dispatchers.IO) {
+          extractUriFromIntent(intent)?.let { videoUri ->
+            SubtitleOps.autoloadSubtitles(
+              context = this@PlayerActivity,
+              videoUri = videoUri,
+              videoFileName = fileName,
+            )
+          }
+        }
+      }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun saveVideoPlaybackState(mediaTitle: String) {
         if (mediaTitle.isBlank()) return
 
@@ -1391,7 +1411,45 @@ class PlayerActivity :
         mediaSessionInitialized = false
     }
 
-    // PlayerHost
+  // Folder picker for subtitle autoload
+  private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+    uri?.let {
+      // Persist permission across app restarts
+      contentResolver.takePersistableUriPermission(
+        it,
+        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+      )
+      SubtitleOps.setFolderUri(it)
+
+      if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
+        lifecycleScope.launch(Dispatchers.IO) {
+          extractUriFromIntent(intent)?.let { videoUri ->
+            SubtitleOps.autoloadSubtitles(this@PlayerActivity, videoUri, fileName)
+          }
+        }
+      }
+    }
+  }
+
+  // Restore persisted folder permissions
+  private fun restorePersistedFolderPermissions() {
+    runCatching {
+      contentResolver.persistedUriPermissions.forEach { permission ->
+        if (permission.isReadPermission && permission.isWritePermission) {
+          androidx.documentfile.provider.DocumentFile.fromTreeUri(this, permission.uri)?.let { documentFile ->
+            if (documentFile.isDirectory) {
+              SubtitleOps.setFolderUri(permission.uri)
+              return@runCatching
+            }
+          }
+        }
+      }
+    }.onFailure { e ->
+      Log.e(TAG, "Error restoring folder permissions", e)
+    }
+  }
+
+  // PlayerHost
     override val context: Context
         get() = this
     override val windowInsetsController: WindowInsetsControllerCompat
@@ -1410,55 +1468,7 @@ class PlayerActivity :
             requestedOrientation = value
         }
 
-    private fun autoloadMatchingSubtitles() {
-        val uri = extractUriFromIntent(intent) ?: return
-        val path: String? =
-            when (uri.scheme) {
-                "file" -> uri.path
-                "content" -> {
-                    // Try to resolve to an actual file path for content URIs
-                    contentResolver
-                        .query(
-                            uri,
-                            arrayOf(MediaStore.MediaColumns.DATA),
-                            null,
-                            null,
-                            null,
-                        )?.use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
-                                if (columnIndex != -1) cursor.getString(columnIndex) else null
-                            } else {
-                                null
-                            }
-                        }
-                }
-
-                else -> null
-            }
-        if (path.isNullOrBlank()) return
-
-        val videoFile = File(path)
-        if (!videoFile.exists()) return
-
-        val baseName = videoFile.nameWithoutExtension
-        val dir = videoFile.parentFile ?: return
-
-        val validExtensions = setOf("srt", "ass", "ssa", "vtt", "sub", "idx")
-        val matchingSubs =
-            dir.listFiles()?.filter { f ->
-                f.isFile && f.extension.lowercase() in validExtensions && f.nameWithoutExtension == baseName
-            } ?: emptyList()
-
-        if (matchingSubs.isEmpty()) return
-
-        matchingSubs.sortedBy { it.name }.forEachIndexed { index, sub ->
-            val flag = if (index == 0) "select" else "auto"
-            MPVLib.command("sub-add", sub.absolutePath, flag)
-        }
-    }
-
-    companion object {
+  companion object {
         private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"
 
         // Timing constants
