@@ -51,7 +51,7 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
-import kotlin.math.round
+import kotlin.math.roundToInt
 
 @Composable
 fun SubtitleDelayPanel(
@@ -70,35 +70,36 @@ fun SubtitleDelayPanel(
 
         var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
         val delay by MPVLib.propDouble["sub-delay"].collectAsState()
-        val delayInt by remember { derivedStateOf { (delay!! * 1000).toInt() } }
+      val delayInt by remember { derivedStateOf { (delay!! * 1000).roundToInt() } }
         val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
-        val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).toInt() } }
-        val speed by MPVLib.propFloat["sub-speed"].collectAsState()
+      val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).roundToInt() } }
+        val speed by MPVLib.propDouble["sub-speed"].collectAsState()
+      val speedFloat by remember { derivedStateOf { speed!!.toFloat() } }
         SubtitleDelayCard(
             delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
             onDelayChange = {
                 when (affectedSubtitle) {
                     SubtitleDelayType.Both -> {
-                        MPVLib.setPropertyFloat("sub-delay", it / 1000f)
-                        MPVLib.setPropertyFloat("secondary-sub-delay", it / 1000f)
+                        MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+                        MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
                     }
 
-                    SubtitleDelayType.Primary -> MPVLib.setPropertyFloat("sub-delay", it / 1000f)
-                    else -> MPVLib.setPropertyFloat("secondary-sub-delay", it / 1000f)
+                    SubtitleDelayType.Primary -> MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+                    else -> MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
                 }
             },
-            speed = speed!!,
-            onSpeedChange = { MPVLib.setPropertyFloat("sub-speed", round(it * 1000) / 1000f) },
+          speed = speedFloat,
+            onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
             affectedSubtitle = affectedSubtitle,
             onTypeChange = { affectedSubtitle = it },
             onApply = {
                 preferences.defaultSubDelay.set(delayInt)
-                if (speed!! in 0.1f..10f) preferences.defaultSubSpeed.set(speed!!)
+              if (speed!! in 0.1..10.0) preferences.defaultSubSpeed.set(speed!!.toFloat())
             },
             onReset = {
-                MPVLib.setPropertyFloat("sub-delay", preferences.defaultSubDelay.get() / 1000f)
-                MPVLib.setPropertyFloat("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000f)
-                MPVLib.setPropertyFloat("sub-speed", preferences.defaultSubSpeed.get())
+                MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
+                MPVLib.setPropertyDouble("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000.0)
+                MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
             },
             onClose = onDismissRequest,
             modifier =
@@ -142,9 +143,9 @@ fun SubtitleDelayCard(
                         label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
                         value = speed,
                         onChange = onSpeedChange,
-                        max = 10f,
-                        step = .01f,
-                        min = .1f,
+                      max = 10f,
+                      step = 0.01f,
+                      min = 0.1f,
                     )
                 }
 
@@ -187,8 +188,8 @@ fun DelayCard(
             Modifier
                 .verticalScroll(rememberScrollState())
                 .padding(
-                    horizontal = MaterialTheme.spacing.medium,
-                    vertical = MaterialTheme.spacing.smaller,
+                  horizontal = MaterialTheme.spacing.medium,
+                  vertical = MaterialTheme.spacing.smaller,
                 ),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {

@@ -27,6 +27,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 @Composable
 fun AudioDelayPanel(
@@ -38,16 +39,16 @@ fun AudioDelayPanel(
     ConstraintLayout(
         modifier =
             modifier
-                .fillMaxSize()
-                .padding(MaterialTheme.spacing.medium),
+              .fillMaxSize()
+              .padding(MaterialTheme.spacing.medium),
     ) {
         val delayControlCard = createRef()
 
         val delay by MPVLib.propDouble["audio-delay"].collectAsState()
         DelayCard(
-            delayMs = (delay!! * 1000).toInt(),
+          delayMs = (delay!! * 1000).roundToInt(),
             onDelayChange = { MPVLib.setPropertyDouble("audio-delay", it / 1000.0) },
-            onApply = { preferences.defaultAudioDelay.set((delay!! * 1000).toInt()) },
+          onApply = { preferences.defaultAudioDelay.set((delay!! * 1000).roundToInt()) },
             onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
             title = { AudioDelayCardTitle(onClose = onDismissRequest) },
             delayType = DelayType.Audio,
