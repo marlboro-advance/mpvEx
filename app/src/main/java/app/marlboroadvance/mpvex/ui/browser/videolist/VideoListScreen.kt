@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.videolist
 
+import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -61,6 +63,7 @@ import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import java.io.File
 
 @Serializable
 data class VideoListScreen(
@@ -74,6 +77,7 @@ data class VideoListScreen(
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
     val privateVideoRepository = koinInject<PrivateVideoRepository>()
+    val videoRepository = koinInject<FileSystemVideoRepository>()
 
     // ViewModel
     val viewModel: VideoListViewModel =
@@ -219,8 +223,9 @@ data class VideoListScreen(
                   .show()
               }
 
-              // Refresh the list to remove moved videos
+              // Refresh the list to remove moved videos and update folder cache
               viewModel.refresh()
+              videoRepository.runIndexUpdate(context)
             }
           },
         )
@@ -299,6 +304,9 @@ data class VideoListScreen(
       // Folder Picker Dialog
       FolderPickerDialog(
         isOpen = folderPickerOpen.value,
+        currentPath =
+          videos.firstOrNull()?.let { File(it.path).parent }
+            ?: Environment.getExternalStorageDirectory().absolutePath,
         onDismiss = { folderPickerOpen.value = false },
         onFolderSelected = { destinationPath ->
           folderPickerOpen.value = false
@@ -308,11 +316,11 @@ data class VideoListScreen(
             coroutineScope.launch {
               when (operationType.value) {
                 is CopyPasteOps.OperationType.Copy -> {
-                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
+                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath, videoRepository)
                 }
 
                 is CopyPasteOps.OperationType.Move -> {
-                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
+                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath, videoRepository)
                 }
 
                 null -> {}

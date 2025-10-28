@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.util.Log
+import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlinx.coroutines.Dispatchers
@@ -103,6 +104,7 @@ object CopyPasteOps {
     context: Context,
     videos: List<Video>,
     destinationPath: String,
+    videoRepository: FileSystemVideoRepository,
   ): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
@@ -158,11 +160,13 @@ object CopyPasteOps {
         // Perform copy operation
         val copiedFilePaths = performCopyOperation(validVideos, destDir, totalBytes)
 
+        // Update database cache with new files
+        videoRepository.updateCacheForFiles(context, copiedFilePaths)
+
         // Trigger media scan
         triggerMediaScan(context, copiedFilePaths)
 
         Log.d(TAG, "Copy operation completed successfully. Copied ${copiedFilePaths.size} files")
-
         Result.success(Unit)
       } catch (e: Exception) {
         Log.e(TAG, "Copy operation failed: ${e.message}", e)
@@ -185,6 +189,7 @@ object CopyPasteOps {
     context: Context,
     videos: List<Video>,
     destinationPath: String,
+    videoRepository: FileSystemVideoRepository,
   ): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
@@ -235,6 +240,11 @@ object CopyPasteOps {
         // Perform move operation
         val (movedFilePaths, historyUpdates) = performMoveOperation(validVideos, destDir, totalBytes)
 
+        // Update database cache
+        val oldPaths = validVideos.map { it.path }
+        videoRepository.removeCacheForFiles(context, oldPaths) // Remove old entries
+        videoRepository.updateCacheForFiles(context, movedFilePaths) // Add new entries
+
         // Update history for moved files
         historyUpdates.forEach { (oldPath, newPath) ->
           RecentlyPlayedOps.onVideoRenamed(oldPath, newPath)
@@ -245,7 +255,6 @@ object CopyPasteOps {
         triggerMediaScan(context, movedFilePaths)
 
         Log.d(TAG, "Move operation completed successfully. Moved ${movedFilePaths.size} files")
-
         Result.success(Unit)
       } catch (e: Exception) {
         Log.e(TAG, "Move operation failed: ${e.message}", e)

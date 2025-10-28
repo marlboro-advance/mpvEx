@@ -53,7 +53,7 @@ fun PlayLinkSheet(
   var isLinkInputUrlValid by remember { mutableStateOf(true) }
   val coroutineScope = rememberCoroutineScope()
 
-  LaunchedEffect(isOpen) {
+  LaunchedEffect(true) {
     if (isOpen) {
       linkInputUrl = ""
       isLinkInputUrlValid = true

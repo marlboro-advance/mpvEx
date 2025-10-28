@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.utils.permission
 
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.PlaybackStateOps
@@ -107,16 +109,22 @@ object PermissionUtils {
      * Delete videos using direct file operations.
      * Requires MANAGE_EXTERNAL_STORAGE on Android 11+.
      */
-    suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> =
+    suspend fun deleteVideos(
+      context: Context,
+      videos: List<Video>,
+      videoRepository: FileSystemVideoRepository,
+    ): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
         var deleted = 0
         var failed = 0
+        val deletedPaths = mutableListOf<String>()
 
         for (video in videos) {
           try {
             val file = File(video.path)
             if (file.exists() && file.delete()) {
               deleted++
+              deletedPaths.add(video.path)
               RecentlyPlayedOps.onVideoDeleted(video.path)
               PlaybackStateOps.onVideoDeleted(video.path)
               Log.d(TAG, "✓ Deleted: ${video.displayName}")
@@ -130,6 +138,11 @@ object PermissionUtils {
           }
         }
 
+        // Update database cache and notify
+        if (deletedPaths.isNotEmpty()) {
+          videoRepository.removeCacheForFiles(context, deletedPaths)
+        }
+
         Pair(deleted, failed)
       }
 
@@ -138,8 +151,10 @@ object PermissionUtils {
      * Requires MANAGE_EXTERNAL_STORAGE on Android 11+.
      */
     suspend fun renameVideo(
+      context: Context,
       video: Video,
       newDisplayName: String,
+      videoRepository: FileSystemVideoRepository,
     ): Result<Unit> =
       withContext(Dispatchers.IO) {
         try {
@@ -147,8 +162,13 @@ object PermissionUtils {
           val newFile = File(oldFile.parentFile, newDisplayName)
 
           if (oldFile.exists() && oldFile.renameTo(newFile)) {
+            // Update history
             RecentlyPlayedOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
             PlaybackStateOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
+
+            // Update database cache
+            videoRepository.removeCacheForFiles(context, listOf(oldFile.absolutePath))
+            videoRepository.updateCacheForFiles(context, listOf(newFile.absolutePath))
             Log.d(TAG, "✓ Renamed: ${video.displayName} -> $newDisplayName")
             Result.success(Unit)
           } else {

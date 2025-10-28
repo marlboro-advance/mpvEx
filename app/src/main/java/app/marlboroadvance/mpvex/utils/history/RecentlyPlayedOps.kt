@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.utils.history
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import kotlinx.coroutines.Dispatchers
@@ -111,26 +112,6 @@ object RecentlyPlayedOps {
 
   // ========== MAINTENANCE OPERATIONS ==========
 
-  /**
-   * Prune invalid recently played entries (files that no longer exist)
-   *
-   * @return True if an entry was pruned, false if no pruning needed
-   */
-  suspend fun pruneIfMissing(): Boolean {
-    return withContext(Dispatchers.IO) {
-      val last = repository.getLastPlayed() ?: return@withContext false
-      val path = last.filePath
-      if (isNonFileUri(path)) {
-        false
-      } else if (!fileExists(path)) {
-        kotlin.runCatching { repository.deleteByFilePath(last.filePath) }
-        true
-      } else {
-        false
-      }
-    }
-  }
-
   // ========== EVENT HANDLERS ==========
 
   /**
@@ -173,6 +154,7 @@ object RecentlyPlayedOps {
   /**
    * Check if a file exists on the filesystem
    */
+  @SuppressLint("UseKtx")
   private fun fileExists(path: String): Boolean =
     kotlin
       .runCatching {
@@ -187,6 +169,7 @@ object RecentlyPlayedOps {
         }
       }.getOrDefault(false)
 
+  @SuppressLint("UseKtx")
   private fun isNonFileUri(path: String): Boolean =
     kotlin
       .runCatching {

@@ -1,5 +1,8 @@
+@file:Suppress("DEPRECATION")
+
 package app.marlboroadvance.mpvex.ui.browser.states
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 
+@SuppressLint("UseKtx")
 @Composable
 fun PermissionDeniedState(
   onRequestPermission: () -> Unit,
@@ -158,7 +162,7 @@ fun PermissionDeniedState(
               val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
               intent.data = Uri.parse("package:${context.packageName}")
               context.startActivity(intent)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
               // Fallback to general All Files Access settings
               val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
               context.startActivity(intent)

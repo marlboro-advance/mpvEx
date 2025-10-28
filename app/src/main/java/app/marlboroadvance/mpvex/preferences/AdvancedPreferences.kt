@@ -12,4 +12,7 @@ class AdvancedPreferences(
   val verboseLogging = preferenceStore.getBoolean("verbose_logging", BuildConfig.BUILD_TYPE != "release")
 
   val enabledStatisticsPage = preferenceStore.getInt("enabled_stats_page", 0)
+
+  // Folder scanning recursion depth (levels of subdirectories to traverse). Default: 3
+  val folderScanDepth = preferenceStore.getInt("folder_scan_depth", 3)
 }

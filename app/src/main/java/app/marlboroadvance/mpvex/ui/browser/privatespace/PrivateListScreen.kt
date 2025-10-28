@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -65,6 +66,7 @@ object PrivateListScreen : Screen {
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
     val privateVideoRepository = koinInject<PrivateVideoRepository>()
+    val videoRepository = koinInject<FileSystemVideoRepository>()
 
     // ViewModel
     val viewModel: PrivateListViewModel =
@@ -97,7 +99,10 @@ object PrivateListScreen : Screen {
           // Delete files from private storage completely
           privateVideoRepository.deleteMultipleFromPrivateStorage(videosToDelete.map { it.id })
         },
-        onOperationComplete = { viewModel.refresh() },
+        onOperationComplete = {
+          viewModel.refresh()
+          coroutineScope.launch { videoRepository.runIndexUpdate(context) }
+        },
       )
 
     // UI State
@@ -189,11 +194,12 @@ object PrivateListScreen : Screen {
                 )
               selectionManager.clear()
               viewModel.refresh()
+              videoRepository.runIndexUpdate(context)
               restoringFromPrivateSpace.value = false
 
               val message =
                 when {
-                  failCount == 0 -> "Restored $successCount video(s) to original location"
+                  failCount == 0 -> "Restored $successCount video(s)"
                   successCount == 0 -> "Failed to restore videos"
                   else -> "Restored $successCount video(s), failed $failCount"
                 }

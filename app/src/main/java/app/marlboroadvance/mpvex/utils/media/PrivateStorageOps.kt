@@ -1,7 +1,9 @@
 package app.marlboroadvance.mpvex.utils.media
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
@@ -10,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
@@ -37,9 +38,14 @@ object PrivateStorageOps {
    * Get the directory where private videos are stored
    * Uses mpvEx/.private directory in external storage which persists after app uninstallation
    */
-  fun getPrivateVideosDir(context: Context): File {
+  fun getPrivateVideosDir(): File {
     // Use custom mpvEx folder in external storage root
-    val externalStorageDir = Environment.getExternalStorageDirectory()
+    val externalStorageDir =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.getExternalStorageDirectory() // This is deprecated but needed for legacy storage behavior
+      } else {
+        Environment.getExternalStorageDirectory()
+      }
     val appDir = File(externalStorageDir, APP_FOLDER)
     val privateDir = File(appDir, PRIVATE_VIDEOS_DIR)
 
@@ -66,10 +72,10 @@ object PrivateStorageOps {
   /**
    * Load all metadata from JSON file with corruption handling
    */
-  suspend fun loadMetadata(context: Context): List<PrivateVideoMetadata> =
+  suspend fun loadMetadata(): List<PrivateVideoMetadata> =
     withContext(Dispatchers.IO) {
       runCatching {
-        val metadataFile = File(getPrivateVideosDir(context), METADATA_FILE)
+        val metadataFile = File(getPrivateVideosDir(), METADATA_FILE)
         if (!metadataFile.exists() || metadataFile.length() == 0L) {
           return@runCatching emptyList()
         }
@@ -79,7 +85,7 @@ object PrivateStorageOps {
         when (e) {
           is SerializationException -> {
             Log.e(TAG, "Corrupted metadata file, resetting", e)
-            saveMetadata(context, emptyList()) // Reset corrupted file
+            saveMetadata(emptyList()) // Reset corrupted file
           }
 
           else -> Log.e(TAG, "Error loading metadata", e)
@@ -91,72 +97,43 @@ object PrivateStorageOps {
   /**
    * Save metadata to JSON file atomically to prevent corruption
    */
-  private suspend fun saveMetadata(
-    context: Context,
-    metadata: List<PrivateVideoMetadata>,
-  ) = withContext(Dispatchers.IO) {
-    runCatching {
-      val metadataFile = File(getPrivateVideosDir(context), METADATA_FILE)
-      val tempFile = File(metadataFile.parent, "${METADATA_FILE}.tmp")
+  private suspend fun saveMetadata(metadata: List<PrivateVideoMetadata>) =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val metadataFile = File(getPrivateVideosDir(), METADATA_FILE)
+        val tempFile = File(metadataFile.parent, "${METADATA_FILE}.tmp")
 
-      // Write to temp file first
-      tempFile.writeText(json.encodeToString(metadata))
+        // Write to temp file first
+        tempFile.writeText(json.encodeToString(metadata))
 
-      // Atomic rename
-      if (metadataFile.exists()) metadataFile.delete()
-      tempFile.renameTo(metadataFile)
+        // Atomic rename
+        if (metadataFile.exists()) metadataFile.delete()
+        tempFile.renameTo(metadataFile)
 
-      Log.d(TAG, "Saved metadata for ${metadata.size} videos")
-    }.onFailure { e ->
-      Log.e(TAG, "Error saving metadata", e)
+        Log.d(TAG, "Saved metadata for ${metadata.size} videos")
+      }.onFailure { e ->
+        Log.e(TAG, "Error saving metadata", e)
+      }
     }
-  }
-
-  /**
-   * Add metadata for a video
-   */
-  suspend fun addMetadata(
-    context: Context,
-    videoId: Long,
-    originalPath: String,
-    privateFilePath: String,
-    displayName: String,
-  ) {
-    val metadata = loadMetadata(context).toMutableList()
-    metadata.add(
-      PrivateVideoMetadata(
-        videoId = videoId,
-        originalPath = originalPath,
-        privateFilePath = privateFilePath,
-        addedAt = System.currentTimeMillis(),
-        displayName = displayName,
-      ),
-    )
-    saveMetadata(context, metadata)
-  }
 
   /**
    * Remove metadata for a video
    */
-  suspend fun removeMetadata(
-    context: Context,
-    videoId: Long,
-  ) {
-    val metadata = loadMetadata(context).filterNot { it.videoId == videoId }
-    saveMetadata(context, metadata)
+  suspend fun removeMetadata(videoId: Long) {
+    val metadata = loadMetadata().filterNot { it.videoId == videoId }
+    saveMetadata(metadata)
   }
 
   /**
    * Update metadata by adding or updating a video entry
    */
   private suspend fun updateMetadata(
-    context: Context,
     videoId: Long,
     originalPath: String,
     privateFilePath: String,
     displayName: String,
   ) {
-    val metadata = loadMetadata(context).toMutableList()
+    val metadata = loadMetadata().toMutableList()
     metadata.removeAll { it.videoId == videoId } // Remove existing if any
     metadata.add(
       PrivateVideoMetadata(
@@ -167,20 +144,13 @@ object PrivateStorageOps {
         displayName = displayName,
       ),
     )
-    saveMetadata(context, metadata)
+    saveMetadata(metadata)
   }
-
-  /**
-   * Get metadata for a specific video
-   */
-  suspend fun getMetadata(
-    context: Context,
-    videoId: Long,
-  ): PrivateVideoMetadata? = loadMetadata(context).find { it.videoId == videoId }
 
   /**
    * Check if there's enough storage space
    */
+  @SuppressLint("UsableSpace")
   private fun hasEnoughSpace(
     directory: File,
     requiredBytes: Long,
@@ -204,7 +174,7 @@ object PrivateStorageOps {
           throw IOException("Source file not found: ${video.path}")
         }
 
-        val privateDir = getPrivateVideosDir(context)
+        val privateDir = getPrivateVideosDir()
         if (!hasEnoughSpace(privateDir, originalFile.length())) {
           throw IOException("Not enough storage space")
         }
@@ -237,31 +207,15 @@ object PrivateStorageOps {
           originalFile.delete()
         }
 
-        // Clean up recently played
+        // Clean up history state for original path
         RecentlyPlayedOps.onVideoDeleted(video.path)
+        PlaybackStateOps.onVideoDeleted(video.path)
 
         // Update metadata
-        updateMetadata(context, video.id, video.path, privateFile.absolutePath, video.displayName)
+        updateMetadata(video.id, video.path, privateFile.absolutePath, video.displayName)
 
         Log.d(TAG, "Moved video to private storage: ${privateFile.name}")
         privateFile.absolutePath
-      }
-    }
-
-  /**
-   * Move multiple videos to private storage
-   */
-  suspend fun moveMultipleToPrivateStorage(
-    context: Context,
-    videos: List<Video>,
-  ): Pair<Int, Int> =
-    withContext(Dispatchers.IO) {
-      videos.fold(0 to 0) { (success, fail), video ->
-        moveToPrivateStorage(context, video)
-          .fold(
-            onSuccess = { (success + 1) to fail },
-            onFailure = { success to (fail + 1) },
-          )
       }
     }
 
@@ -318,12 +272,20 @@ object PrivateStorageOps {
 
         // Delete from private storage
         privateFile.delete()
-        removeMetadata(context, privateFile.name.substringBefore("_").toLong())
+        removeMetadata(privateFile.name.substringBefore("_").toLong())
 
         // Trigger media scan to add back to MediaStore
         val scanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
         scanIntent.data = Uri.fromFile(File(finalPublicFile.absolutePath))
         context.sendBroadcast(scanIntent)
+
+        // Update history paths to public location
+        kotlin.runCatching {
+          RecentlyPlayedOps.onVideoRenamed(privateFilePath, finalPublicFile.absolutePath)
+        }
+        kotlin.runCatching {
+          PlaybackStateOps.onVideoRenamed(privateFilePath, finalPublicFile.absolutePath)
+        }
 
         Log.d(TAG, "Successfully restored video to public storage: ${finalPublicFile.absolutePath}")
         finalPublicFile.absolutePath
@@ -347,7 +309,8 @@ object PrivateStorageOps {
         originalPath == "Unknown" -> {
           // If original path is unknown (e.g., video was imported after reinstall),
           // restore to a default location in Movies/mpvEx
-          val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+          val moviesDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
           File(moviesDir, APP_FOLDER)
         }
 
@@ -374,37 +337,20 @@ object PrivateStorageOps {
   }
 
   /**
-   * Restore multiple videos
-   */
-  suspend fun restoreMultipleFromPrivateStorage(
-    context: Context,
-    entries: List<Pair<String, String>>, // (privateFilePath, originalPath)
-  ): Pair<Int, Int> =
-    withContext(Dispatchers.IO) {
-      entries.fold(0 to 0) { (success, fail), (privatePath, originalPath) ->
-        restoreToOriginalLocation(context, privatePath, originalPath)
-          .fold(
-            onSuccess = { (success + 1) to fail },
-            onFailure = { success to (fail + 1) },
-          )
-      }
-    }
-
-  /**
    * Delete a video from private storage
    */
-  suspend fun deleteFromPrivateStorage(
-    context: Context,
-    privateFilePath: String,
-  ): Boolean =
+  suspend fun deleteFromPrivateStorage(privateFilePath: String): Boolean =
     withContext(Dispatchers.IO) {
       runCatching {
         val file = File(privateFilePath)
         val deleted = !file.exists() || file.delete()
         if (deleted) {
           file.name.substringBefore("_").toLongOrNull()?.let { videoId ->
-            removeMetadata(context, videoId)
+            removeMetadata(videoId)
           }
+          // Remove from history state for the private path
+          kotlin.runCatching { RecentlyPlayedOps.onVideoDeleted(privateFilePath) }
+          kotlin.runCatching { PlaybackStateOps.onVideoDeleted(privateFilePath) }
         }
         deleted
       }.getOrDefault(false)
@@ -413,8 +359,5 @@ object PrivateStorageOps {
   /**
    * Check if a file path is in private storage
    */
-  fun isPrivateStoragePath(
-    context: Context,
-    filePath: String,
-  ): Boolean = filePath.startsWith(getPrivateVideosDir(context).absolutePath)
+  fun isPrivateStoragePath(filePath: String): Boolean = filePath.startsWith(getPrivateVideosDir().absolutePath)
 }

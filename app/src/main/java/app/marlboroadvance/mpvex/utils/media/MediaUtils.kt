@@ -2,12 +2,14 @@ package app.marlboroadvance.mpvex.utils.media
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
+import java.io.File
 
 /**
  * Utility object for media playback operations.
@@ -87,26 +89,10 @@ object MediaUtils {
     context: Context,
     launchSource: String? = null,
   ) {
-    // Validate the source string is not empty
-    if (source.isBlank()) {
-      android.util.Log.e("MediaUtils", "Cannot play file: source is empty")
-      return
-    }
-
+    if (source.isBlank()) return
     val uri = source.toUri()
-
-    // Validate that the URI has a scheme
-    if (uri.scheme == null) {
-      android.util.Log.e("MediaUtils", "Cannot play file: URI has no scheme: $source")
-      // Try to treat it as a file path
-      val fileUri = "file://$source".toUri()
-      if (fileUri.scheme != null) {
-        playFileWithIntent(fileUri, context, launchSource)
-      }
-      return
-    }
-
-    playFileWithIntent(uri, context, launchSource)
+    val playableUri = uri.scheme?.let { uri } ?: "file://$source".toUri()
+    playFileWithIntent(playableUri, context, launchSource)
   }
 
   /**
@@ -127,50 +113,6 @@ object MediaUtils {
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     launchSource?.let { intent.putExtra("launch_source", it) }
     context.startActivity(intent)
-  }
-
-  /**
-   * Directly load a file in the currently running MPV player.
-   *
-   * This bypasses the Intent/Activity route and directly calls MPVLib.command().
-   *
-   * **Important:** This should only be called when a PlayerActivity is already running
-   * with MPV initialized. Calling this without an active player will have no effect
-   * or may cause errors.
-   *
-   * @param filePath The file path or URI to load (must be resolvable by MPV)
-   * @param mode Load mode:
-   *   - "replace" (default): Replace current file
-   *   - "append": Add to playlist
-   *   - "append-play": Add to playlist and play immediately
-   * @return True if command was sent successfully, false if filePath is blank
-   *
-   * @see MPVLib.command
-   */
-  fun loadFileDirectly(
-    filePath: String,
-    mode: String = "replace",
-  ): Boolean {
-    if (filePath.isBlank()) {
-      android.util.Log.e("MediaUtils", "Cannot load file: filePath is empty")
-      return false
-    }
-
-    return try {
-      when (mode) {
-        "replace" -> MPVLib.command("loadfile", filePath)
-        "append", "append-play" -> MPVLib.command("loadfile", filePath, mode)
-        else -> {
-          android.util.Log.w("MediaUtils", "Unknown mode '$mode', using 'replace'")
-          MPVLib.command("loadfile", filePath)
-        }
-      }
-      android.util.Log.d("MediaUtils", "Loaded file directly: $filePath (mode: $mode)")
-      true
-    } catch (e: Exception) {
-      android.util.Log.e("MediaUtils", "Error loading file directly: ${e.message}", e)
-      false
-    }
   }
 
   /**
@@ -224,18 +166,14 @@ object MediaUtils {
    * @param url The URL string to validate
    * @return True if the URL is valid and uses a supported protocol, false otherwise
    */
-  fun isURLValid(url: String): Boolean {
-    val uri = url.toUri()
+  fun isURLValid(url: String): Boolean =
+    url.toUri().let { uri ->
+      val structureOk =
+        uri.isHierarchical && !uri.isRelative && (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
+      structureOk && Utils.PROTOCOLS.contains(uri.scheme)
+    }
 
-    val isValidStructure =
-      uri.isHierarchical &&
-        !uri.isRelative &&
-        (!uri.host.isNullOrBlank() || !uri.path.isNullOrBlank())
-
-    val hasValidProtocol = Utils.PROTOCOLS.contains(uri.scheme)
-
-    return isValidStructure && hasValidProtocol
-  }
+  // --- Sharing ---
 
   /**
    * Share one or more videos via ACTION_SEND or ACTION_SEND_MULTIPLE.
@@ -252,28 +190,30 @@ object MediaUtils {
   ) {
     if (videos.isEmpty()) return
 
+    fun toSharableUri(v: Video): android.net.Uri =
+      v.uri.takeIf { it.scheme.equals("content", true) } ?: run {
+        FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", File(v.path))
+      }
+
+    val uris = videos.map { toSharableUri(it) }
     val intent =
-      if (videos.size == 1) {
-        val video = videos.first()
+      if (uris.size == 1) {
         Intent(Intent.ACTION_SEND).apply {
           type = "video/*"
-          putExtra(Intent.EXTRA_STREAM, video.uri)
-          putExtra(Intent.EXTRA_SUBJECT, video.displayName)
-          putExtra(Intent.EXTRA_TITLE, video.displayName)
-          clipData = android.content.ClipData.newRawUri(video.displayName, video.uri)
+          putExtra(Intent.EXTRA_STREAM, uris.first())
+          putExtra(Intent.EXTRA_SUBJECT, videos.first().displayName)
+          putExtra(Intent.EXTRA_TITLE, videos.first().displayName)
+          clipData = android.content.ClipData.newRawUri(videos.first().displayName, uris.first())
           addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
       } else {
         Intent(Intent.ACTION_SEND_MULTIPLE).apply {
           type = "video/*"
-          val uris = ArrayList(videos.map { it.uri })
-          putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+          putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
           putExtra(Intent.EXTRA_SUBJECT, "Sharing ${videos.size} videos")
-          val clipData = android.content.ClipData.newRawUri(videos.first().displayName, videos.first().uri)
-          videos.drop(1).forEach { video ->
-            clipData.addItem(android.content.ClipData.Item(video.uri))
-          }
-          setClipData(clipData)
+          val clip = android.content.ClipData.newRawUri(videos.first().displayName, uris.first())
+          uris.drop(1).forEach { u -> clip.addItem(android.content.ClipData.Item(u)) }
+          clipData = clip
           addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
       }

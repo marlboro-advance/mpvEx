@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.utils.media
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -11,6 +12,7 @@ import java.io.File
 import java.util.Locale
 
 /** Copies font files from the selected directory to the app's internal storage. */
+@SuppressLint("UseKtx")
 fun copyFontsFromDirectory(
   context: Context,
   fileManager: FileManager,

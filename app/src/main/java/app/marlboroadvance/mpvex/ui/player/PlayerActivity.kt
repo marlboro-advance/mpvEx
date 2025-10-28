@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
@@ -922,6 +924,7 @@ class PlayerActivity :
     updateMediaSessionPlaybackState(isPlaying = true)
   }
 
+  @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
@@ -1062,7 +1065,7 @@ class PlayerActivity :
         }
 
       // Don't track private videos in recently played
-      if (PrivateStorageOps.isPrivateStoragePath(this, filePath)) {
+      if (PrivateStorageOps.isPrivateStoragePath(filePath)) {
         Log.d(TAG, "Skipping recently played for private video: $filePath")
         return@runCatching
       }

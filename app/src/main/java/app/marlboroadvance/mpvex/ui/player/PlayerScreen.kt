@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
@@ -30,7 +31,7 @@ data class PlayerScreen(
   @Composable
   override fun Content() {
     val context = LocalContext.current
-    val backstack = LocalBackStack.current
+    LocalBackStack.current
 
     LaunchedEffect(source) {
       val uri = resolveToUri(source)
@@ -47,6 +48,7 @@ data class PlayerScreen(
   }
 }
 
+@SuppressLint("UseKtx")
 private fun resolveToUri(source: String): Uri {
   val parsed = Uri.parse(source)
   return if (parsed.scheme.isNullOrEmpty()) {

@@ -27,7 +27,7 @@ class PrivateVideoRepository(
   suspend fun syncFromPersistentStorage() =
     withContext(Dispatchers.IO) {
       runCatching {
-        val jsonMetadata = PrivateStorageOps.loadMetadata(context)
+        val jsonMetadata = PrivateStorageOps.loadMetadata()
         val dbEntities = dao.getAll()
 
         val jsonVideoIds = jsonMetadata.map { it.videoId }.toSet()
@@ -86,7 +86,7 @@ class PrivateVideoRepository(
    */
   suspend fun deleteFromPrivateStorage(videoId: Long): Boolean =
     dao.getAll().find { it.videoId == videoId }?.let { entity ->
-      if (PrivateStorageOps.deleteFromPrivateStorage(context, entity.privateFilePath)) {
+      if (PrivateStorageOps.deleteFromPrivateStorage(entity.privateFilePath)) {
         dao.delete(videoId)
         true
       } else {

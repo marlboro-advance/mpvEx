@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,11 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,22 +31,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.io.File
 
 @Composable
 fun FolderPickerDialog(
+  modifier: Modifier = Modifier,
   isOpen: Boolean,
   currentPath: String = Environment.getExternalStorageDirectory().absolutePath,
   onDismiss: () -> Unit,
   onFolderSelected: (String) -> Unit,
-  modifier: Modifier = Modifier,
 ) {
   if (!isOpen) return
 
-  var selectedPath by remember(isOpen) { mutableStateOf(currentPath) }
+  var selectedPath by remember(isOpen) {
+    mutableStateOf(Environment.getExternalStorageDirectory().absolutePath)
+  }
   var showCreateFolderDialog by remember { mutableStateOf(false) }
 
   val currentDir = remember(selectedPath) { File(selectedPath) }
@@ -60,48 +59,47 @@ fun FolderPickerDialog(
         ?: emptyList()
     }
 
+  // Check if selected path is the same as current path
+  val isSameAsSource =
+    remember(selectedPath, currentPath) {
+      selectedPath == currentPath
+    }
+
   AlertDialog(
     onDismissRequest = onDismiss,
-    icon = {
-      Icon(
-        imageVector = Icons.Default.Folder,
-        contentDescription = "Select Folder",
-        tint = MaterialTheme.colorScheme.primary,
-      )
-    },
     title = {
       Column {
-        Text(
-          text = "Select Destination Folder",
-          style = MaterialTheme.typography.headlineSmall,
-        )
+        Text(text = "Select Folder")
         Text(
           text = selectedPath,
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
+          maxLines = 2,
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.padding(top = 4.dp),
         )
+        if (isSameAsSource) {
+          Text(
+            text = "Cannot select the same folder",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 4.dp),
+          )
+        }
       }
     },
     text = {
       Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         // Navigation buttons
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          // Back button
           if (currentDir.parent != null) {
-            IconButton(
-              onClick = {
-                currentDir.parent?.let { selectedPath = it }
-              },
-            ) {
+            IconButton(onClick = { currentDir.parent?.let { selectedPath = it } }) {
               Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
@@ -109,7 +107,6 @@ fun FolderPickerDialog(
             }
           }
 
-          // Home button
           IconButton(
             onClick = {
               selectedPath = Environment.getExternalStorageDirectory().absolutePath
@@ -121,60 +118,37 @@ fun FolderPickerDialog(
             )
           }
 
-          // Storage root button
-          IconButton(
-            onClick = {
-              selectedPath = Environment.getRootDirectory().absolutePath
-            },
-          ) {
-            Icon(
-              imageVector = Icons.Default.SdCard,
-              contentDescription = "Go to storage root",
-            )
-          }
-
-          // Create folder button
-          IconButton(
-            onClick = { showCreateFolderDialog = true },
-          ) {
+          IconButton(onClick = { showCreateFolderDialog = true }) {
             Icon(
               imageVector = Icons.Default.CreateNewFolder,
-              contentDescription = "Create new folder",
+              contentDescription = "Create folder",
             )
           }
         }
 
         // Folder list
-        Card(
-          colors =
-            CardDefaults.cardColors(
-              containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
+        LazyColumn(
           modifier =
             Modifier
               .fillMaxWidth()
-              .weight(1f, fill = false),
+              .height(300.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          LazyColumn(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            items(folders) { folder ->
-              FolderItem(
-                folder = folder,
-                onClick = { selectedPath = folder.absolutePath },
-              )
-            }
+          items(folders) { folder ->
+            FolderItem(
+              folder = folder,
+              onClick = { selectedPath = folder.absolutePath },
+            )
+          }
 
-            if (folders.isEmpty()) {
-              item {
-                Text(
-                  text = "No subfolders",
-                  style = MaterialTheme.typography.bodyMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  modifier = Modifier.padding(16.dp),
-                )
-              }
+          if (folders.isEmpty()) {
+            item {
+              Text(
+                text = "No subfolders",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+              )
             }
           }
         }
@@ -183,6 +157,7 @@ fun FolderPickerDialog(
     confirmButton = {
       Button(
         onClick = { onFolderSelected(selectedPath) },
+        enabled = !isSameAsSource,
       ) {
         Text("Select")
       }
@@ -195,7 +170,6 @@ fun FolderPickerDialog(
     modifier = modifier,
   )
 
-  // Create folder dialog
   if (showCreateFolderDialog) {
     CreateFolderDialog(
       parentPath = selectedPath,
@@ -214,38 +188,27 @@ private fun FolderItem(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Card(
+  Row(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable(onClick = onClick),
-    colors =
-      CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surface,
-      ),
+        .clickable(onClick = onClick)
+        .padding(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Row(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .padding(12.dp),
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Icon(
-        imageVector = Icons.Default.Folder,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(24.dp),
-      )
-      Text(
-        text = folder.name,
-        style = MaterialTheme.typography.bodyMedium,
-        fontWeight = FontWeight.Medium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
+    Icon(
+      imageVector = Icons.Default.Folder,
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.primary,
+      modifier = Modifier.size(24.dp),
+    )
+    Text(
+      text = folder.name,
+      style = MaterialTheme.typography.bodyMedium,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 
@@ -260,15 +223,7 @@ private fun CreateFolderDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    icon = {
-      Icon(
-        imageVector = Icons.Default.CreateNewFolder,
-        contentDescription = "Create Folder",
-      )
-    },
-    title = {
-      Text("Create New Folder")
-    },
+    title = { Text("Create New Folder") },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(

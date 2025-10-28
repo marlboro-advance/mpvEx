@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.di
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
@@ -10,6 +11,7 @@ import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImp
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
@@ -32,6 +34,8 @@ val DatabaseModule =
         .fallbackToDestructiveMigration()
         .build()
     }
+
+    single<FileSystemVideoRepository> { FileSystemVideoRepository(get(), get<AdvancedPreferences>()) }
 
     singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
 
