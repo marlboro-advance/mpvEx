@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -333,7 +334,7 @@ private fun MediaInfoContent(mediaInfo: MediaInfoOps.MediaInfoData) {
       modifier =
         Modifier
           .fillMaxWidth()
-          .height(500.dp)
+          .heightIn(max = 380.dp)
           .verticalScroll(rememberScrollState())
           .padding(vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(20.dp),

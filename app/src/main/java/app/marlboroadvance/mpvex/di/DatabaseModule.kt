@@ -11,6 +11,7 @@ import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayed
 import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.utils.storage.StorageMonitor
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
@@ -57,4 +58,7 @@ val DatabaseModule =
 
     // Ultra-fast thumbnail provider (platform-backed with caching)
     single { ThumbnailRepository(androidContext()) }
+
+    // Start storage monitor early to auto-detect USB OTG mount/unmount
+    single(createdAtStart = true) { StorageMonitor(androidContext(), get()) }
   }

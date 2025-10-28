@@ -37,7 +37,13 @@ object PermissionUtils {
    * Returns READ_EXTERNAL_STORAGE permission for all Android versions.
    * On Android 11+, MANAGE_EXTERNAL_STORAGE provides full file access.
    */
-  fun getStoragePermission(): String = android.Manifest.permission.READ_EXTERNAL_STORAGE
+  fun getStoragePermission(): String =
+    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+      // Android 9 and below need WRITE permission to create folders/files (e.g., mpvsnaps)
+      android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+    } else {
+      android.Manifest.permission.READ_EXTERNAL_STORAGE
+    }
 
   /**
    * Creates a permission state for storage access.

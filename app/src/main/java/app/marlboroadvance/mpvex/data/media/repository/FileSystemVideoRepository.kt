@@ -5,7 +5,9 @@ package app.marlboroadvance.mpvex.data.media.repository
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.storage.StorageManager
 import android.util.Log
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.dao.VideoIndexDao
@@ -157,7 +159,7 @@ class FileSystemVideoRepository(
     }
 
     // Get root directories to scan
-    fun getRootDirectories(): List<File> {
+    fun getRootDirectories(context: Context): List<File> {
       val roots = mutableListOf<File>()
 
       // Primary external storage
@@ -179,7 +181,42 @@ class FileSystemVideoRepository(
         Log.w(TAG, "Could not get secondary storage paths", e)
       }
 
+      // API 30+: reliable volume directories via StorageManager
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        runCatching {
+          val sm = context.getSystemService(StorageManager::class.java)
+          sm?.storageVolumes?.forEach { vol ->
+            val dir = vol.directory
+            if (dir != null && dir.exists() && dir.canRead()) {
+              val name = dir.name.lowercase(Locale.getDefault())
+              val skip = name in setOf("emulated", "self", "enc_emulated")
+              if (!skip) roots.add(dir)
+            }
+          }
+        }.onFailure { e -> Log.w(TAG, "Could not get storage volumes from StorageManager", e) }
+      } else {
+        // Pre-30: discover mounted volumes under /storage (e.g., /storage/XXXX-XXXX)
+        try {
+          val storageRoot = File("/storage")
+          if (storageRoot.exists() && storageRoot.isDirectory) {
+            storageRoot.listFiles()?.forEach { vol ->
+              // Skip virtual or internal wrappers
+              val name = vol.name.lowercase(Locale.getDefault())
+              val skip = name in setOf("emulated", "self", "enc_emulated")
+              if (!skip && vol.isDirectory && vol.canRead()) {
+                roots.add(vol)
+              }
+            }
+          }
+        } catch (e: Exception) {
+          Log.w(TAG, "Could not enumerate /storage volumes", e)
+        }
+      }
+
+      // De-duplicate by absolute path
       return roots
+        .distinctBy { file -> runCatching { file.canonicalPath }.getOrElse { file.absolutePath } }
+        .toList()
     }
 
     // Extract video duration using MediaMetadataRetriever
@@ -327,7 +364,7 @@ class FileSystemVideoRepository(
         )
 
       val allFilePaths = mutableListOf<String>()
-      val rootDirs = getRootDirectories()
+      val rootDirs = getRootDirectories(context)
 
       for (rootDir in rootDirs) {
         if (rootDir.exists() && rootDir.canRead()) {
@@ -404,7 +441,7 @@ class FileSystemVideoRepository(
     val newVideos = mutableListOf<VideoIndexEntity>()
     val modifiedVideos = mutableListOf<VideoIndexEntity>()
 
-    val rootDirs = getRootDirectories()
+    val rootDirs = getRootDirectories(context)
     val maxDepth = advancedPreferences.folderScanDepth.get().coerceAtLeast(0)
 
     // Scan file system quickly (without extracting metadata)
