@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
@@ -92,61 +94,78 @@ fun PlayLinkSheet(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(horizontal = 24.dp, vertical = 16.dp)
+          .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
           .verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+      // Title
       Text(
         text = "Play Link",
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurface,
       )
 
-      Spacer(modifier = Modifier.height(12.dp))
-
-      OutlinedTextField(
-        value = linkInputUrl,
-        onValueChange = { newValue ->
-          linkInputUrl = newValue
-          isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
-        },
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Enter URL") },
-        singleLine = true,
-        isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
-        trailingIcon = {
-          if (linkInputUrl.isNotBlank()) {
-            ValidationIcon(isValid = isLinkInputUrlValid)
-          }
-        },
-      )
-
-      if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-          "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
-          color = MaterialTheme.colorScheme.error,
-          style = MaterialTheme.typography.bodySmall,
+      // URL Input
+      Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        OutlinedTextField(
+          value = linkInputUrl,
+          onValueChange = { newValue ->
+            linkInputUrl = newValue
+            isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
+          },
+          modifier = Modifier.fillMaxWidth(),
+          label = { Text("Enter URL") },
+          placeholder = { Text("https://example.com/video.mp4") },
+          singleLine = true,
+          isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
+          trailingIcon = {
+            if (linkInputUrl.isNotBlank()) {
+              ValidationIcon(isValid = isLinkInputUrlValid)
+            }
+          },
         )
+
+        if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
+          Text(
+            text = "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+          )
+        }
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
-
+      // Buttons
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
       ) {
         TextButton(onClick = handleDismiss) {
-          Text("Cancel")
+          Text(
+            text = "Cancel",
+            fontWeight = FontWeight.Medium,
+          )
         }
         Spacer(modifier = Modifier.width(8.dp))
         Button(
           onClick = handleConfirm,
           enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
+          colors =
+            ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primary,
+            ),
         ) {
-          Text("Play")
+          Text(
+            text = "Play",
+            fontWeight = FontWeight.SemiBold,
+          )
         }
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
+      Spacer(modifier = Modifier.height(8.dp))
     }
   }
 }

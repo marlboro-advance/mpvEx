@@ -39,18 +39,21 @@ import app.marlboroadvance.mpvex.preferences.VideoSortType
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
-import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -107,6 +110,12 @@ data class VideoListScreen(
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
 
+    // Copy/Move state
+    val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
+    val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
+    val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val operationProgress by CopyPasteOps.operationProgress.collectAsState()
+
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
 
     // Predictive back: Only intercept when in selection mode
@@ -140,8 +149,6 @@ data class VideoListScreen(
           },
           onCancelSelection = { selectionManager.clear() },
           onSortClick = { sortDialogOpen.value = true },
-          onDeleteClick = { deleteDialogOpen.value = true },
-          onRenameClick = { renameDialogOpen.value = true },
           isSingleSelection = selectionManager.isSingleSelection,
           onInfoClick = {
             if (selectionManager.isSingleSelection) {
@@ -171,6 +178,22 @@ data class VideoListScreen(
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
+        )
+      },
+      bottomBar = {
+        BrowserBottomBar(
+          isSelectionMode = selectionManager.isInSelectionMode,
+          onCopyClick = {
+            operationType.value = CopyPasteOps.OperationType.Copy
+            folderPickerOpen.value = true
+          },
+          onMoveClick = {
+            operationType.value = CopyPasteOps.OperationType.Move
+            folderPickerOpen.value = true
+          },
+          onRenameClick = { renameDialogOpen.value = true },
+          onDeleteClick = { deleteDialogOpen.value = true },
+          onHideClick = { /* TODO: Implement hide */ },
         )
       },
     ) { padding ->
@@ -242,6 +265,50 @@ data class VideoListScreen(
             extension = if (extension != ".") extension else null,
           )
         }
+      }
+
+      // Folder Picker Dialog
+      FolderPickerDialog(
+        isOpen = folderPickerOpen.value,
+        onDismiss = { folderPickerOpen.value = false },
+        onFolderSelected = { destinationPath ->
+          folderPickerOpen.value = false
+          val selectedVideos = selectionManager.getSelectedItems()
+          if (selectedVideos.isNotEmpty() && operationType.value != null) {
+            progressDialogOpen.value = true
+            coroutineScope.launch {
+              when (operationType.value) {
+                is CopyPasteOps.OperationType.Copy -> {
+                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
+                }
+
+                is CopyPasteOps.OperationType.Move -> {
+                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
+                }
+
+                null -> {}
+              }
+            }
+          }
+        },
+      )
+
+      // File Operation Progress Dialog
+      if (operationType.value != null) {
+        FileOperationProgressDialog(
+          isOpen = progressDialogOpen.value,
+          operationType = operationType.value!!,
+          progress = operationProgress,
+          onCancel = {
+            CopyPasteOps.cancelOperation()
+          },
+          onDismiss = {
+            progressDialogOpen.value = false
+            operationType.value = null
+            selectionManager.clear()
+            viewModel.refresh()
+          },
+        )
       }
     }
   }

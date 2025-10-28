@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.PlaybackStateOps
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.PermissionStatus
@@ -117,6 +118,7 @@ object PermissionUtils {
             if (file.exists() && file.delete()) {
               deleted++
               RecentlyPlayedOps.onVideoDeleted(video.path)
+              PlaybackStateOps.onVideoDeleted(video.path)
               Log.d(TAG, "✓ Deleted: ${video.displayName}")
             } else {
               failed++
@@ -146,6 +148,7 @@ object PermissionUtils {
 
           if (oldFile.exists() && oldFile.renameTo(newFile)) {
             RecentlyPlayedOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
+            PlaybackStateOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
             Log.d(TAG, "✓ Renamed: ${video.displayName} -> $newDisplayName")
             Result.success(Unit)
           } else {

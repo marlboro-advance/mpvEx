@@ -10,27 +10,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -82,13 +86,21 @@ fun MediaInfoDialog(
         Modifier
           .fillMaxWidth(0.95f)
           .padding(16.dp),
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+      colors =
+        CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.surface,
+        ),
+      elevation =
+        CardDefaults.cardElevation(
+          defaultElevation = 6.dp,
+        ),
     ) {
-      Column(modifier = Modifier.padding(16.dp)) {
+      Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+      ) {
         // Header
         DialogHeader(fileName = fileName)
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Content
         DialogContent(
@@ -98,7 +110,6 @@ fun MediaInfoDialog(
         )
 
         // Footer
-        Spacer(modifier = Modifier.height(16.dp))
         DialogFooter(
           showShareButton = mediaInfo != null && !isLoading && videoForShare != null,
           showCopyButton = mediaInfo != null && !isLoading && videoForShare != null,
@@ -179,30 +190,24 @@ fun MediaInfoDialog(
 
 @Composable
 private fun DialogHeader(fileName: String) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.Start,
-    verticalAlignment = Alignment.CenterVertically,
+  Column(
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Icon(
-      Icons.Filled.Info,
-      contentDescription = null,
-      tint = MaterialTheme.colorScheme.primary,
-    )
-    Spacer(modifier = Modifier.width(8.dp))
     Text(
-      "Media Info",
+      text = "Media Information",
       style = MaterialTheme.typography.headlineSmall,
+      fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onSurface,
     )
-  }
 
-  Spacer(modifier = Modifier.height(8.dp))
-  Text(
-    fileName,
-    style = MaterialTheme.typography.titleSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-  )
+    Text(
+      text = fileName,
+      style = MaterialTheme.typography.bodyLarge,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+    )
+  }
 }
 
 @Composable
@@ -224,14 +229,16 @@ private fun LoadingState() {
     modifier =
       Modifier
         .fillMaxWidth()
-        .padding(32.dp),
+        .padding(40.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    CircularProgressIndicator()
-    Spacer(modifier = Modifier.height(16.dp))
+    CircularProgressIndicator(
+      color = MaterialTheme.colorScheme.primary,
+    )
     Text(
-      "Analyzing media...",
-      style = MaterialTheme.typography.bodyMedium,
+      text = "Analyzing media...",
+      style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
@@ -239,11 +246,21 @@ private fun LoadingState() {
 
 @Composable
 private fun ErrorState(error: String) {
-  Text(
-    "Error: $error",
-    style = MaterialTheme.typography.bodyMedium,
-    color = MaterialTheme.colorScheme.error,
-  )
+  Card(
+    colors =
+      CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.errorContainer,
+      ),
+    shape = MaterialTheme.shapes.medium,
+  ) {
+    Text(
+      text = "Error: $error",
+      style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.Medium,
+      color = MaterialTheme.colorScheme.onErrorContainer,
+      modifier = Modifier.padding(16.dp),
+    )
+  }
 }
 
 @Composable
@@ -255,74 +272,97 @@ private fun DialogFooter(
   onDismiss: () -> Unit,
 ) {
   Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 8.dp),
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
       if (showShareButton) {
-        IconButton(onClick = onShare) {
+        FilledTonalIconButton(
+          onClick = onShare,
+          colors =
+            IconButtonDefaults.filledTonalIconButtonColors(
+              containerColor = MaterialTheme.colorScheme.secondaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+        ) {
           Icon(
-            Icons.Filled.Share,
+            imageVector = Icons.Filled.Share,
             contentDescription = "Share",
-            tint = MaterialTheme.colorScheme.primary,
           )
         }
       }
       if (showCopyButton) {
-        IconButton(onClick = onCopy) {
+        FilledTonalIconButton(
+          onClick = onCopy,
+          colors =
+            IconButtonDefaults.filledTonalIconButtonColors(
+              containerColor = MaterialTheme.colorScheme.secondaryContainer,
+              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+        ) {
           Icon(
-            Icons.Filled.ContentCopy,
+            imageVector = Icons.Filled.ContentCopy,
             contentDescription = "Copy",
-            tint = MaterialTheme.colorScheme.primary,
           )
         }
       }
     }
-    Spacer(modifier = Modifier.weight(1f))
-    TextButton(onClick = onDismiss) { Text("Close") }
+
+    Button(
+      onClick = onDismiss,
+      colors =
+        ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+        ),
+    ) {
+      Text(
+        text = "Close",
+        fontWeight = FontWeight.SemiBold,
+      )
+    }
   }
 }
 
 @Composable
 private fun MediaInfoContent(mediaInfo: MediaInfoOps.MediaInfoData) {
-  Column(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .height(500.dp)
-        .verticalScroll(rememberScrollState())
-        .padding(4.dp),
-  ) {
-    StreamInfoSection(
-      title = "General",
-      content = { GeneralInfoContent(mediaInfo.general) },
-    )
-
-    mediaInfo.videoStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
+  SelectionContainer {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .height(500.dp)
+          .verticalScroll(rememberScrollState())
+          .padding(vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
       StreamInfoSection(
-        title = "Video Stream ${index + 1}",
-        content = { VideoStreamContent(stream) },
+        title = "General",
+        content = { GeneralInfoContent(mediaInfo.general) },
       )
-    }
 
-    mediaInfo.audioStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
-      StreamInfoSection(
-        title = "Audio Stream ${index + 1}",
-        content = { AudioStreamContent(stream) },
-      )
-    }
+      mediaInfo.videoStreams.forEachIndexed { index, stream ->
+        StreamInfoSection(
+          title = "Video Stream ${index + 1}",
+          content = { VideoStreamContent(stream) },
+        )
+      }
 
-    mediaInfo.textStreams.forEachIndexed { index, stream ->
-      Spacer(modifier = Modifier.height(16.dp))
-      StreamInfoSection(
-        title = "Subtitle Stream ${index + 1}",
-        content = { TextStreamContent(stream) },
-      )
+      mediaInfo.audioStreams.forEachIndexed { index, stream ->
+        StreamInfoSection(
+          title = "Audio Stream ${index + 1}",
+          content = { AudioStreamContent(stream) },
+        )
+      }
+
+      mediaInfo.textStreams.forEachIndexed { index, stream ->
+        StreamInfoSection(
+          title = "Subtitle Stream ${index + 1}",
+          content = { TextStreamContent(stream) },
+        )
+      }
     }
   }
 }
@@ -332,19 +372,19 @@ private fun StreamInfoSection(
   title: String,
   content: @Composable () -> Unit,
 ) {
-  Column {
+  Column(
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
     Text(
-      title.uppercase(),
+      text = title,
       style = MaterialTheme.typography.titleMedium,
       color = MaterialTheme.colorScheme.primary,
-      fontWeight = FontWeight.Bold,
-      modifier = Modifier.padding(vertical = 8.dp),
+      fontWeight = FontWeight.SemiBold,
     )
     HorizontalDivider(
-      thickness = 2.dp,
-      color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+      thickness = 1.dp,
+      color = MaterialTheme.colorScheme.outlineVariant,
     )
-    Spacer(modifier = Modifier.height(8.dp))
     content()
   }
 }
@@ -443,7 +483,11 @@ private fun TextStreamContent(stream: TextStreamInfo) {
 
 @Composable
 private fun InfoSection(content: @Composable () -> Unit) {
-  Column { content() }
+  Column(
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    content()
+  }
 }
 
 @Composable
@@ -457,18 +501,23 @@ private fun InfoRow(
     modifier =
       Modifier
         .fillMaxWidth()
-        .padding(vertical = 3.dp),
+        .padding(vertical = 2.dp),
+    horizontalArrangement = Arrangement.SpaceBetween,
   ) {
     Text(
-      "$label:",
+      text = "$label:",
       style = MaterialTheme.typography.bodyMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.width(160.dp),
     )
-    Spacer(modifier = Modifier.width(8.dp))
+    Spacer(modifier = Modifier.width(12.dp))
     Text(
-      value,
-      style = MaterialTheme.typography.bodyMedium,
+      text = value,
+      style =
+        MaterialTheme.typography.bodyMedium.copy(
+          fontFamily = FontFamily.Monospace,
+        ),
+      fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onSurface,
       modifier = Modifier.weight(1f),
     )

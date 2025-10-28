@@ -15,4 +15,19 @@ interface PlaybackStateDao {
 
   @Query("DELETE FROM PlaybackStateEntity")
   suspend fun clearAllPlaybackStates()
+
+  @Query("DELETE FROM PlaybackStateEntity WHERE mediaTitle = :mediaTitle")
+  suspend fun deleteByTitle(mediaTitle: String)
+
+  @Query(
+    """
+    UPDATE PlaybackStateEntity 
+    SET mediaTitle = :newTitle 
+    WHERE mediaTitle = :oldTitle
+  """,
+  )
+  suspend fun updateMediaTitle(
+    oldTitle: String,
+    newTitle: String,
+  )
 }

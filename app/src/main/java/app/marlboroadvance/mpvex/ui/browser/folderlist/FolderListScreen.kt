@@ -39,10 +39,10 @@ import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.presentation.components.sort.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet

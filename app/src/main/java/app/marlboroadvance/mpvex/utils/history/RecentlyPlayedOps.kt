@@ -155,11 +155,17 @@ object RecentlyPlayedOps {
     oldPath: String,
     newPath: String,
   ) {
+    if (oldPath.isBlank() || newPath.isBlank()) return
+
     // Extract the new filename from the new path
     val newFileName = java.io.File(newPath).name
-    kotlin.runCatching {
-      repository.updateFilePath(oldPath, newPath, newFileName)
-    }
+    kotlin
+      .runCatching {
+        repository.updateFilePath(oldPath, newPath, newFileName)
+        android.util.Log.d("RecentlyPlayedOps", "✓ Updated history: $oldPath -> $newPath")
+      }.onFailure { e ->
+        android.util.Log.w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")
+      }
   }
 
   // ========== INTERNAL HELPERS ==========
