@@ -1,8 +1,6 @@
 package app.marlboroadvance.mpvex.di
 
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
@@ -11,6 +9,7 @@ import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImp
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
+import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
@@ -31,7 +30,6 @@ val DatabaseModule =
     single<MpvExDatabase> {
       Room
         .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
-        .fallbackToDestructiveMigration()
         .build()
     }
 
@@ -56,4 +54,7 @@ val DatabaseModule =
         context = androidContext(),
       )
     }
+
+    // Ultra-fast thumbnail provider (platform-backed with caching)
+    single { ThumbnailRepository(androidContext()) }
   }

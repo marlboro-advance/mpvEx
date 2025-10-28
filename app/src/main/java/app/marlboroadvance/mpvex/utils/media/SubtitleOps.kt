@@ -34,11 +34,12 @@ object SubtitleOps {
 
       if (subtitles.isNotEmpty()) {
         withContext(Dispatchers.Main) {
-          subtitles.forEach { subtitle ->
+          subtitles.forEachIndexed { index, subtitle ->
             // MPV command format: sub-add <url> [<flags> [<title>]]
-            // Set the title to the subtitle filename for proper display
-            MPVLib.command("sub-add", subtitle.absolutePath, "auto", subtitle.name)
-            Log.d(TAG, "Loaded subtitle: ${subtitle.name}")
+            // Use "select" for the first autoloaded subtitle so it is enabled by default
+            val flag = if (index == 0) "select" else "auto"
+            MPVLib.command("sub-add", subtitle.absolutePath, flag, subtitle.name)
+            Log.d(TAG, "Loaded subtitle: ${subtitle.name} (flag=$flag)")
           }
         }
       }
