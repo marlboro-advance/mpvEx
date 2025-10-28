@@ -31,6 +31,8 @@ val DatabaseModule =
     single<MpvExDatabase> {
       Room
         .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
+        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigrationOnDowngrade()
         .build()
     }
 
