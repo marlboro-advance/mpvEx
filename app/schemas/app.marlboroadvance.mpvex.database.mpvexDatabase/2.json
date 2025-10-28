@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "1704d2a178c11dbf3bb9ad3919523d52",
+    "identityHash": "34d4b3699da91d1f6a433dd57fd7db69",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
@@ -323,7 +323,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1704d2a178c11dbf3bb9ad3919523d52')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '34d4b3699da91d1f6a433dd57fd7db69')"
     ]
   }
 }
