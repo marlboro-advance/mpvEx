@@ -152,7 +152,7 @@ object SubtitlesPreferencesScreen : Screen {
         ) {
           // === GENERAL SECTION ===
           PreferenceCategory(
-            title = { Text("General", style = MaterialTheme.typography.titleMedium) },
+            title = { Text(stringResource(R.string.general), style = MaterialTheme.typography.titleMedium) },
           )
 
           val preferredLanguages by preferences.preferredLanguages.collectAsState()
@@ -165,17 +165,17 @@ object SubtitlesPreferencesScreen : Screen {
               if (preferredLanguages.isNotBlank()) {
                 Text(preferredLanguages)
               } else {
-                Text("Not set (will use video default)")
+                Text(stringResource(R.string.not_set_video_default))
               }
             },
             textField = { value, onValueChange, _ ->
               Column {
-                Text("Enter language codes separated by commas (e.g., eng,jpn,spa)")
+                Text(stringResource(R.string.enter_language_codes))
                 TextField(
                   value,
                   onValueChange,
                   modifier = Modifier.fillMaxWidth(),
-                  placeholder = { Text("eng,jpn,spa") },
+                  placeholder = { Text(stringResource(R.string.language_codes_placeholder)) },
                 )
               }
             },
@@ -212,7 +212,7 @@ object SubtitlesPreferencesScreen : Screen {
                 )
                 if (fontsFolder.isBlank()) {
                   Text(
-                    "Not set (using system fonts)",
+                    stringResource(R.string.not_set_system_fonts),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                   )
@@ -224,7 +224,7 @@ object SubtitlesPreferencesScreen : Screen {
                   )
                   if (availableFonts.isNotEmpty()) {
                     Text(
-                      "${availableFonts.size} fonts loaded",
+                      stringResource(R.string.fonts_loaded, availableFonts.size),
                       style = MaterialTheme.typography.bodySmall,
                       color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
@@ -262,7 +262,7 @@ object SubtitlesPreferencesScreen : Screen {
                     ) {
                       Icon(
                         Icons.Default.Refresh,
-                        contentDescription = "Reload fonts",
+                        contentDescription = stringResource(R.string.reload_fonts),
                         tint = MaterialTheme.colorScheme.primary,
                       )
                     }
@@ -277,7 +277,7 @@ object SubtitlesPreferencesScreen : Screen {
                   ) {
                     Icon(
                       Icons.Default.Clear,
-                      contentDescription = "Clear font directory",
+                      contentDescription = stringResource(R.string.clear_font_directory),
                       tint = MaterialTheme.colorScheme.tertiary,
                     )
                   }
@@ -333,7 +333,7 @@ object SubtitlesPreferencesScreen : Screen {
                   ) {
                     Icon(
                       Icons.Default.Clear,
-                      contentDescription = "Reset to default font",
+                      contentDescription = stringResource(R.string.reset_to_default_font),
                       tint = MaterialTheme.colorScheme.tertiary,
                     )
                   }
@@ -404,7 +404,7 @@ object SubtitlesPreferencesScreen : Screen {
                 },
                 confirmButton = {
                   androidx.compose.material3.TextButton(onClick = { showFontPicker = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.generic_cancel))
                   }
                 },
               )

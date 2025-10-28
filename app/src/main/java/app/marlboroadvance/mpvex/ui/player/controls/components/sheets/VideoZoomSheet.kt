@@ -115,14 +115,14 @@ private fun ZoomVideoSheet(
         onClick = onSetAsDefault,
         enabled = !isDefault,
       ) {
-        Text("Set as default")
+        Text(stringResource(R.string.set_as_default))
       }
 
       Button(
         onClick = onReset,
         enabled = !isZero,
       ) {
-        Text("Reset")
+        Text(stringResource(R.string.generic_reset))
       }
     }
   }

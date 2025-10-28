@@ -21,7 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 
 /**
@@ -62,7 +64,7 @@ fun PlayLinkDialog(
 
   AlertDialog(
     onDismissRequest = handleDismiss,
-    title = { Text("Play Link") },
+    title = { Text(stringResource(R.string.play_link)) },
     text = {
       Column {
         OutlinedTextField(
@@ -72,7 +74,7 @@ fun PlayLinkDialog(
             isLinkInputUrlValid = newValue.isBlank() || MediaUtils.isURLValid(newValue)
           },
           modifier = Modifier.fillMaxWidth(),
-          label = { Text("Enter URL") },
+          label = { Text(stringResource(R.string.enter_url)) },
           singleLine = true,
           isError = linkInputUrl.isNotBlank() && !isLinkInputUrlValid,
           trailingIcon = {
@@ -85,7 +87,7 @@ fun PlayLinkDialog(
         if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
           Spacer(modifier = Modifier.height(4.dp))
           Text(
-            "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
+            stringResource(R.string.invalid_url_protocol),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
           )
@@ -97,12 +99,12 @@ fun PlayLinkDialog(
         onClick = handleConfirm,
         enabled = linkInputUrl.isNotBlank() && isLinkInputUrlValid,
       ) {
-        Text("Play")
+        Text(stringResource(R.string.play))
       }
     },
     dismissButton = {
       TextButton(onClick = handleDismiss) {
-        Text("Cancel")
+        Text(stringResource(R.string.generic_cancel))
       }
     },
     modifier = modifier,
@@ -114,13 +116,13 @@ private fun ValidationIcon(isValid: Boolean) {
   if (isValid) {
     Icon(
       Icons.Filled.CheckCircle,
-      contentDescription = "Valid URL",
+      contentDescription = stringResource(R.string.valid_url),
       tint = MaterialTheme.colorScheme.primary,
     )
   } else {
     Icon(
       Icons.Filled.Info,
-      contentDescription = "Invalid URL",
+      contentDescription = stringResource(R.string.invalid_url),
       tint = MaterialTheme.colorScheme.error,
     )
   }

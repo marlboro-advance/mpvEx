@@ -31,9 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.R
 
 /**
  * Unified top bar for browser screens that switches between normal and selection modes
@@ -130,7 +132,7 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
+            contentDescription = stringResource(R.string.back),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -146,7 +148,7 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.AutoMirrored.Filled.Sort,
-            contentDescription = "Sort",
+            contentDescription = stringResource(R.string.sort),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -159,7 +161,7 @@ private fun NormalTopBar(
         ) {
           Icon(
             Icons.Filled.Settings,
-            contentDescription = "Settings",
+            contentDescription = stringResource(R.string.settings),
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -198,7 +200,7 @@ private fun SelectionTopBar(
         modifier = Modifier.clickable { showDropdown = true },
       ) {
         Text(
-          "$selectedCount / $totalCount Selected",
+          stringResource(R.string.selected_items, selectedCount, totalCount),
           style = MaterialTheme.typography.titleMedium,
           color = MaterialTheme.colorScheme.primary,
           maxLines = 1,
@@ -206,7 +208,7 @@ private fun SelectionTopBar(
         )
         Icon(
           Icons.Filled.ArrowDropDown,
-          contentDescription = "Selection options",
+          contentDescription = stringResource(R.string.selection_options),
           modifier = Modifier.size(24.dp),
           tint = MaterialTheme.colorScheme.primary,
         )
@@ -217,7 +219,7 @@ private fun SelectionTopBar(
         ) {
           if (onSelectAll != null) {
             DropdownMenuItem(
-              text = { Text("Select All") },
+              text = { Text(stringResource(R.string.select_all)) },
               onClick = {
                 onSelectAll()
                 showDropdown = false
@@ -226,7 +228,7 @@ private fun SelectionTopBar(
           }
           if (onInvertSelection != null) {
             DropdownMenuItem(
-              text = { Text("Invert Selection") },
+              text = { Text(stringResource(R.string.invert_selection)) },
               onClick = {
                 onInvertSelection()
                 showDropdown = false
@@ -235,7 +237,7 @@ private fun SelectionTopBar(
           }
           if (onDeselectAll != null) {
             DropdownMenuItem(
-              text = { Text("Deselect All") },
+              text = { Text(stringResource(R.string.deselect_all)) },
               onClick = {
                 onDeselectAll()
                 showDropdown = false
@@ -252,7 +254,7 @@ private fun SelectionTopBar(
       ) {
         Icon(
           Icons.Filled.Close,
-          contentDescription = "Cancel",
+          contentDescription = stringResource(R.string.generic_cancel),
           modifier = Modifier.size(24.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )
@@ -268,7 +270,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.Filled.DriveFileRenameOutline,
-            contentDescription = "Rename",
+            contentDescription = stringResource(R.string.rename),
             modifier = Modifier.size(24.dp),
             tint =
               if (isSingleSelection) {
@@ -289,7 +291,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.Filled.Info,
-            contentDescription = "Info",
+            contentDescription = stringResource(R.string.info),
             modifier = Modifier.size(24.dp),
             tint =
               if (isSingleSelection) {
@@ -309,7 +311,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.Filled.Share,
-            contentDescription = "Share",
+            contentDescription = stringResource(R.string.generic_share),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )
@@ -324,7 +326,7 @@ private fun SelectionTopBar(
         ) {
           Icon(
             Icons.Filled.Delete,
-            contentDescription = "Delete",
+            contentDescription = stringResource(R.string.delete),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.error,
           )

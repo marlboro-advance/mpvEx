@@ -45,11 +45,11 @@ fun TopLeftPlayerControls(
           mediaTitle,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          style = MaterialTheme.typography.bodyLarge,
+          style = MaterialTheme.typography.bodyMedium,
           modifier =
             Modifier.padding(
               horizontal = MaterialTheme.spacing.medium,
-              vertical = MaterialTheme.spacing.smaller,
+              vertical = MaterialTheme.spacing.small,
             ),
         )
       }
