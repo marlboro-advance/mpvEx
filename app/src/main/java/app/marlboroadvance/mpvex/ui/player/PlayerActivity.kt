@@ -40,6 +40,7 @@ import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.PrivateStorageOps
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
@@ -1027,14 +1028,6 @@ class PlayerActivity :
         return@runCatching
       }
 
-      // Determine launch source
-      val launchSource =
-        when {
-          intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
-          intent.action == Intent.ACTION_SEND -> "share"
-          else -> "normal" // Normal playback from list
-        }
-
       // Determine the file path to store
       val filePath =
         when (uri.scheme) {
@@ -1066,6 +1059,19 @@ class PlayerActivity :
             // For other schemes (http, https, etc.), store the full URI
             uri.toString()
           }
+        }
+
+      // Don't track private videos in recently played
+      if (PrivateStorageOps.isPrivateStoragePath(this, filePath)) {
+        Log.d(TAG, "Skipping recently played for private video: $filePath")
+        return@runCatching
+      }
+
+      val launchSource =
+        when {
+          intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
+          intent.action == Intent.ACTION_SEND -> "share"
+          else -> "normal" // Normal playback from list
         }
 
       RecentlyPlayedOps.addRecentlyPlayed(

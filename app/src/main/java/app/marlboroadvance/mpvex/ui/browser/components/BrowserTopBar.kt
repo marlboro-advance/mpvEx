@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,7 @@ fun BrowserTopBar(
   onInvertSelection: (() -> Unit)? = null,
   onDeselectAll: (() -> Unit)? = null,
   additionalActions: @Composable RowScope.() -> Unit = { },
+  onTitleLongPress: (() -> Unit)? = null,
 ) {
   if (isInSelectionMode) {
     SelectionTopBar(
@@ -85,6 +87,7 @@ fun BrowserTopBar(
       onSettingsClick = onSettingsClick,
       additionalActions = additionalActions,
       modifier = modifier,
+      onTitleLongPress = onTitleLongPress,
     )
   }
 }
@@ -101,9 +104,20 @@ private fun NormalTopBar(
   onSettingsClick: (() -> Unit)?,
   additionalActions: @Composable RowScope.() -> Unit,
   modifier: Modifier = Modifier,
+  onTitleLongPress: (() -> Unit)?,
 ) {
   TopAppBar(
     title = {
+      val titleModifier =
+        if (onTitleLongPress != null) {
+          Modifier.combinedClickable(
+            onClick = {},
+            onLongClick = onTitleLongPress,
+          )
+        } else {
+          Modifier
+        }
+
       Text(
         title,
         style =
@@ -117,11 +131,13 @@ private fun NormalTopBar(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier =
-          if (onBackClick == null) {
-            Modifier.padding(start = 8.dp)
-          } else {
-            Modifier
-          },
+          titleModifier.then(
+            if (onBackClick == null) {
+              Modifier.padding(start = 8.dp)
+            } else {
+              Modifier
+            },
+          ),
       )
     },
     navigationIcon = {

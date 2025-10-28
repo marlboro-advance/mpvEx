@@ -1,4 +1,4 @@
-package app.marlboroadvance.mpvex.ui.browser.videolist
+package app.marlboroadvance.mpvex.ui.browser.privatespace
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -20,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,11 +28,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
@@ -45,16 +43,12 @@ import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.LoadingDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
@@ -63,10 +57,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
 @Serializable
-data class VideoListScreen(
-  private val bucketId: String,
-  private val folderName: String,
-) : Screen {
+object PrivateListScreen : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -76,10 +67,14 @@ data class VideoListScreen(
     val privateVideoRepository = koinInject<PrivateVideoRepository>()
 
     // ViewModel
-    val viewModel: VideoListViewModel =
+    val viewModel: PrivateListViewModel =
       viewModel(
-        key = "VideoListViewModel_$bucketId",
-        factory = VideoListViewModel.factory(context.applicationContext as android.app.Application, bucketId),
+        key = "PrivateListViewModel",
+        factory =
+          PrivateListViewModel.factory(
+            context.applicationContext as android.app.Application,
+            privateVideoRepository,
+          ),
       )
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -93,13 +88,15 @@ data class VideoListScreen(
         SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
       }
 
-    // Selection manager
+    // Selection manager with custom onDeleteItems that deletes files from private storage
     val selectionManager =
       rememberSelectionManager(
         items = sortedVideos,
         getId = { it.id },
-        onDeleteItems = { viewModel.deleteVideos(it) },
-        onRenameItem = { video, newName -> viewModel.renameVideo(video, newName) },
+        onDeleteItems = { videosToDelete ->
+          // Delete files from private storage completely
+          privateVideoRepository.deleteMultipleFromPrivateStorage(videosToDelete.map { it.id })
+        },
         onOperationComplete = { viewModel.refresh() },
       )
 
@@ -112,20 +109,7 @@ data class VideoListScreen(
     val mediaInfoLoading = remember { mutableStateOf(false) }
     val mediaInfoError = remember { mutableStateOf<String?>(null) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
-
-    // Copy/Move state
-    val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
-    val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
-    val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val operationProgress by CopyPasteOps.operationProgress.collectAsState()
-
-    // Private space state
-    val movingToPrivateSpace = rememberSaveable { mutableStateOf(false) }
-    val showPrivateSpaceCompletionDialog = rememberSaveable { mutableStateOf(false) }
-    val privateSpaceMovedCount = remember { mutableIntStateOf(0) }
-
-    val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
+    val restoringFromPrivateSpace = rememberSaveable { mutableStateOf(false) }
 
     // Predictive back: Only intercept when in selection mode
     BackHandler(enabled = selectionManager.isInSelectionMode) {
@@ -134,9 +118,8 @@ data class VideoListScreen(
 
     androidx.compose.runtime.LaunchedEffect(
       deleteDialogOpen.value,
-      renameDialogOpen.value,
     ) {
-      if (!deleteDialogOpen.value && !renameDialogOpen.value) {
+      if (!deleteDialogOpen.value) {
         kotlinx.coroutines.delay(100)
         viewModel.refresh()
       }
@@ -145,7 +128,7 @@ data class VideoListScreen(
     Scaffold(
       topBar = {
         BrowserTopBar(
-          title = displayFolderName,
+          title = "Private Space",
           isInSelectionMode = selectionManager.isInSelectionMode,
           selectedCount = selectionManager.selectedCount,
           totalCount = sortedVideos.size,
@@ -183,7 +166,7 @@ data class VideoListScreen(
               }
             }
           },
-          onShareClick = { selectionManager.shareSelected() },
+          onShareClick = null,
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
@@ -192,37 +175,39 @@ data class VideoListScreen(
       bottomBar = {
         BrowserBottomBar(
           isSelectionMode = selectionManager.isInSelectionMode,
-          onCopyClick = {
-            operationType.value = CopyPasteOps.OperationType.Copy
-            folderPickerOpen.value = true
-          },
-          onMoveClick = {
-            operationType.value = CopyPasteOps.OperationType.Move
-            folderPickerOpen.value = true
-          },
-          onRenameClick = { renameDialogOpen.value = true },
+          onCopyClick = { },
+          onMoveClick = { },
+          onRenameClick = { },
           onDeleteClick = { deleteDialogOpen.value = true },
           onHideClick = {
-            movingToPrivateSpace.value = true
+            restoringFromPrivateSpace.value = true
             coroutineScope.launch {
               val selectedVideos = selectionManager.getSelectedItems()
-              val (successCount, _) = privateVideoRepository.addMultipleToPrivateList(selectedVideos)
+              val (successCount, failCount) =
+                privateVideoRepository.restoreMultipleFromPrivateStorage(
+                  selectedVideos.map { it.id },
+                )
               selectionManager.clear()
-              movingToPrivateSpace.value = false
-
-              if (successCount > 0) {
-                privateSpaceMovedCount.intValue = successCount
-                showPrivateSpaceCompletionDialog.value = true
-              } else {
-                android.widget.Toast
-                  .makeText(context, "Failed to move videos to private space", android.widget.Toast.LENGTH_SHORT)
-                  .show()
-              }
-
-              // Refresh the list to remove moved videos
               viewModel.refresh()
+              restoringFromPrivateSpace.value = false
+
+              val message =
+                when {
+                  failCount == 0 -> "Restored $successCount video(s) to original location"
+                  successCount == 0 -> "Failed to restore videos"
+                  else -> "Restored $successCount video(s), failed $failCount"
+                }
+
+              android.widget.Toast
+                .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                .show()
             }
           },
+          showCopy = false,
+          showMove = false,
+          showRename = false,
+          hideIcon = Icons.Filled.Visibility,
+          hideContentDescription = "Restore",
         )
       },
     ) { padding ->
@@ -279,100 +264,11 @@ data class VideoListScreen(
         itemCount = selectionManager.selectedCount,
       )
 
-      // Rename Dialog
-      if (renameDialogOpen.value && selectionManager.isSingleSelection) {
-        val video = selectionManager.getSelectedItems().firstOrNull()
-        if (video != null) {
-          val baseName = video.displayName.substringBeforeLast('.')
-          val extension = "." + video.displayName.substringAfterLast('.', "")
-          RenameDialog(
-            isOpen = true,
-            onDismiss = { renameDialogOpen.value = false },
-            onConfirm = { newName -> selectionManager.renameSelected(newName) },
-            currentName = baseName,
-            itemType = "file",
-            extension = if (extension != ".") extension else null,
-          )
-        }
-      }
-
-      // Folder Picker Dialog
-      FolderPickerDialog(
-        isOpen = folderPickerOpen.value,
-        onDismiss = { folderPickerOpen.value = false },
-        onFolderSelected = { destinationPath ->
-          folderPickerOpen.value = false
-          val selectedVideos = selectionManager.getSelectedItems()
-          if (selectedVideos.isNotEmpty() && operationType.value != null) {
-            progressDialogOpen.value = true
-            coroutineScope.launch {
-              when (operationType.value) {
-                is CopyPasteOps.OperationType.Copy -> {
-                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
-                }
-
-                is CopyPasteOps.OperationType.Move -> {
-                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
-                }
-
-                null -> {}
-              }
-            }
-          }
-        },
-      )
-
-      // File Operation Progress Dialog
-      if (operationType.value != null) {
-        FileOperationProgressDialog(
-          isOpen = progressDialogOpen.value,
-          operationType = operationType.value!!,
-          progress = operationProgress,
-          onCancel = {
-            CopyPasteOps.cancelOperation()
-          },
-          onDismiss = {
-            progressDialogOpen.value = false
-            operationType.value = null
-            selectionManager.clear()
-            viewModel.refresh()
-          },
-        )
-      }
-
-      // Private Space Loading Dialog
+      // Restore Loading Dialog
       LoadingDialog(
-        isOpen = movingToPrivateSpace.value,
-        message = "Moving to private space...",
+        isOpen = restoringFromPrivateSpace.value,
+        message = "Restoring videos...",
       )
-
-      // Private Space Completion Dialog
-      if (showPrivateSpaceCompletionDialog.value) {
-        androidx.compose.material3.AlertDialog(
-          onDismissRequest = { showPrivateSpaceCompletionDialog.value = false },
-          title = {
-            Text(
-              text = "Moved to Private Space",
-              style = MaterialTheme.typography.headlineSmall,
-            )
-          },
-          text = {
-            Text(
-              text =
-                "Successfully moved ${privateSpaceMovedCount.intValue} video(s) to private space.\n\n" +
-                  "To access private space, long press on the app name at the top of the main screen.",
-              style = MaterialTheme.typography.bodyMedium,
-            )
-          },
-          confirmButton = {
-            androidx.compose.material3.Button(
-              onClick = { showPrivateSpaceCompletionDialog.value = false },
-            ) {
-              Text("Close")
-            }
-          },
-        )
-      }
     }
   }
 }
@@ -413,7 +309,7 @@ private fun VideoListContent(
           contentAlignment = Alignment.Center,
         ) {
           Text(
-            stringResource(R.string.no_videos_found),
+            "No private videos\nLong press videos to add them here",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,

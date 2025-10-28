@@ -30,6 +30,13 @@ fun BrowserBottomBar(
   onDeleteClick: () -> Unit,
   onHideClick: () -> Unit,
   modifier: Modifier = Modifier,
+  showCopy: Boolean = true,
+  showMove: Boolean = true,
+  showRename: Boolean = true,
+  showDelete: Boolean = true,
+  showHide: Boolean = true,
+  hideIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.VisibilityOff,
+  hideContentDescription: String = "Hide",
 ) {
   AnimatedVisibility(
     visible = isSelectionMode,
@@ -46,44 +53,54 @@ fun BrowserBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        IconButton(onClick = onCopyClick) {
-          Icon(
-            imageVector = Icons.Default.ContentCopy,
-            contentDescription = "Copy",
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+        if (showCopy) {
+          IconButton(onClick = onCopyClick) {
+            Icon(
+              imageVector = Icons.Default.ContentCopy,
+              contentDescription = "Copy",
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
         }
 
-        IconButton(onClick = onMoveClick) {
-          Icon(
-            imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-            contentDescription = "Move",
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+        if (showMove) {
+          IconButton(onClick = onMoveClick) {
+            Icon(
+              imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
+              contentDescription = "Move",
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
         }
 
-        IconButton(onClick = onRenameClick) {
-          Icon(
-            imageVector = Icons.Default.DriveFileRenameOutline,
-            contentDescription = "Rename",
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+        if (showRename) {
+          IconButton(onClick = onRenameClick) {
+            Icon(
+              imageVector = Icons.Default.DriveFileRenameOutline,
+              contentDescription = "Rename",
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
         }
 
-        IconButton(onClick = onDeleteClick) {
-          Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Delete",
-            tint = MaterialTheme.colorScheme.error,
-          )
+        if (showDelete) {
+          IconButton(onClick = onDeleteClick) {
+            Icon(
+              imageVector = Icons.Default.Delete,
+              contentDescription = "Delete",
+              tint = MaterialTheme.colorScheme.error,
+            )
+          }
         }
 
-        IconButton(onClick = onHideClick) {
-          Icon(
-            imageVector = Icons.Default.VisibilityOff,
-            contentDescription = "Hide",
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+        if (showHide) {
+          IconButton(onClick = onHideClick) {
+            Icon(
+              imageVector = hideIcon,
+              contentDescription = hideContentDescription,
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
         }
       }
     }

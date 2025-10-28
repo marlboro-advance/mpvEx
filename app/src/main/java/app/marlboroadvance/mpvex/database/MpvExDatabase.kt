@@ -4,14 +4,16 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import app.marlboroadvance.mpvex.database.dao.ExternalSubtitleDao
 import app.marlboroadvance.mpvex.database.dao.PlaybackStateDao
+import app.marlboroadvance.mpvex.database.dao.PrivateVideoDao
 import app.marlboroadvance.mpvex.database.dao.RecentlyPlayedDao
 import app.marlboroadvance.mpvex.database.entities.ExternalSubtitleEntity
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
+import app.marlboroadvance.mpvex.database.entities.PrivateVideoEntity
 import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 
 @Database(
-  entities = [PlaybackStateEntity::class, RecentlyPlayedEntity::class, ExternalSubtitleEntity::class],
-  version = 3,
+  entities = [PlaybackStateEntity::class, RecentlyPlayedEntity::class, ExternalSubtitleEntity::class, PrivateVideoEntity::class],
+  version = 1,
 )
 abstract class MpvExDatabase : RoomDatabase() {
   abstract fun videoDataDao(): PlaybackStateDao
@@ -19,4 +21,6 @@ abstract class MpvExDatabase : RoomDatabase() {
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao
 
   abstract fun externalSubtitleDao(): ExternalSubtitleDao
+
+  abstract fun privateVideoDao(): PrivateVideoDao
 }

@@ -3,11 +3,10 @@ package app.marlboroadvance.mpvex.ui.browser.dialogs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.AlertDialog
@@ -15,8 +14,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
@@ -63,7 +65,7 @@ fun FileOperationProgressDialog(
     text = {
       Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         // Status Messages
         when {
@@ -92,9 +94,9 @@ fun FileOperationProgressDialog(
 
         // Progress Section (only show during operation)
         if (!isOperationComplete) {
-          Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Current File Info
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
               Text(
                 text = "File ${progress.currentFileIndex} of ${progress.totalFiles}",
                 style = MaterialTheme.typography.labelLarge,
@@ -136,7 +138,7 @@ fun FileOperationProgressDialog(
 
         // Summary (when complete)
         if (isOperationComplete) {
-          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SummaryRow(
               label = "Files processed",
               value = "${progress.currentFileIndex} / ${progress.totalFiles}",
@@ -176,6 +178,44 @@ fun FileOperationProgressDialog(
     containerColor = MaterialTheme.colorScheme.surface,
     tonalElevation = 6.dp,
     modifier = modifier,
+  )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun LoadingDialog(
+  isOpen: Boolean,
+  message: String = "Loading...",
+  onDismissRequest: () -> Unit = {},
+) {
+  if (!isOpen) return
+
+  AlertDialog(
+    onDismissRequest = onDismissRequest,
+    title = null,
+    text = {
+      Column(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        LoadingIndicator(
+          modifier = Modifier.size(80.dp),
+        )
+        Text(
+          text = message,
+          style = MaterialTheme.typography.bodyLarge,
+          color = MaterialTheme.colorScheme.onSurface,
+          textAlign = TextAlign.Center,
+        )
+      }
+    },
+    confirmButton = {},
+    containerColor = MaterialTheme.colorScheme.surface,
+    tonalElevation = 6.dp,
   )
 }
 
