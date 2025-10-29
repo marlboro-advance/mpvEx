@@ -4,8 +4,12 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -15,8 +19,13 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -26,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,6 +50,7 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
+import app.marlboroadvance.mpvex.ui.browser.cards.UsbFolderCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
@@ -48,12 +59,14 @@ import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
+import app.marlboroadvance.mpvex.ui.browser.usbvideolist.UsbVideoListScreen
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
+import app.marlboroadvance.mpvex.utils.usb.UsbOtgBroadcastReceiver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import kotlinx.coroutines.launch
@@ -70,6 +83,7 @@ object FolderListScreen : Screen {
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
     val videoFolders by viewModel.videoFolders.collectAsState()
+    val usbOtgFolders by viewModel.usbOtgFolders.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -83,6 +97,20 @@ object FolderListScreen : Screen {
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var hasRecentlyPlayed by remember { mutableStateOf(false) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
+
+    // Register USB OTG broadcast receiver
+    DisposableEffect(Unit) {
+      val receiver =
+        UsbOtgBroadcastReceiver {
+          viewModel.scanUsbDevices()
+        }
+      val filter = UsbOtgBroadcastReceiver.createIntentFilter()
+      context.registerReceiver(receiver, filter)
+
+      onDispose {
+        context.unregisterReceiver(receiver)
+      }
+    }
 
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
@@ -200,6 +228,7 @@ object FolderListScreen : Screen {
         PermissionStatus.Granted -> {
           FolderListContent(
             folders = sortedFolders,
+            usbFolders = usbOtgFolders,
             listState = listState,
             isRefreshing = isRefreshing,
             recentlyPlayedFilePath = recentlyPlayedFilePath,
@@ -214,6 +243,11 @@ object FolderListScreen : Screen {
               }
             },
             onFolderLongClick = { folder -> selectionManager.toggle(folder) },
+            onUsbFolderClick = { usbFolder ->
+              // Navigate to USB video list screen
+              fabMenuExpanded = false
+              backstack.add(UsbVideoListScreen(usbFolder.path, usbFolder.name))
+            },
             modifier = Modifier.padding(padding),
           )
         }
@@ -255,6 +289,7 @@ object FolderListScreen : Screen {
 @Composable
 private fun FolderListContent(
   folders: List<VideoFolder>,
+  usbFolders: List<app.marlboroadvance.mpvex.utils.usb.UsbVideoFolder>,
   listState: LazyListState,
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
@@ -262,6 +297,7 @@ private fun FolderListContent(
   selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<VideoFolder, String>,
   onFolderClick: (VideoFolder) -> Unit,
   onFolderLongClick: (VideoFolder) -> Unit,
+  onUsbFolderClick: (app.marlboroadvance.mpvex.utils.usb.UsbVideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   PullRefreshBox(
@@ -271,13 +307,13 @@ private fun FolderListContent(
   ) {
     // Avoid brief empty-state flicker by delaying its appearance slightly
     val showEmpty =
-      remember(folders) {
+      remember(folders, usbFolders) {
         mutableStateOf(false)
       }
-    LaunchedEffect(folders) {
-      if (folders.isEmpty()) {
+    LaunchedEffect(folders, usbFolders) {
+      if (folders.isEmpty() && usbFolders.isEmpty()) {
         kotlinx.coroutines.delay(250)
-        showEmpty.value = folders.isEmpty()
+        showEmpty.value = folders.isEmpty() && usbFolders.isEmpty()
       } else {
         showEmpty.value = false
       }
@@ -288,6 +324,36 @@ private fun FolderListContent(
       modifier = Modifier.fillMaxWidth(),
       contentPadding = PaddingValues(8.dp),
     ) {
+      // USB OTG folders section
+      if (usbFolders.isNotEmpty()) {
+        item {
+          SectionHeader(
+            title = "USB OTG Devices",
+            icon = Icons.Default.Usb,
+          )
+        }
+      }
+
+      items(usbFolders, key = { it.path }) { usbFolder ->
+        UsbFolderCard(
+          folder = usbFolder,
+          isSelected = false,
+          onClick = { onUsbFolderClick(usbFolder) },
+          onLongClick = { /* USB folders don't support selection yet */ },
+        )
+      }
+
+      // Regular folders section
+      if (folders.isNotEmpty() && usbFolders.isNotEmpty()) {
+        item {
+          SectionHeader(
+            title = "Internal/SD Card Folders",
+            icon = Icons.Default.Folder,
+          )
+        }
+      }
+
+      // Regular folders
       items(folders) { folder ->
         val isRecentlyPlayed =
           recentlyPlayedFilePath?.let { filePath ->
@@ -314,6 +380,34 @@ private fun FolderListContent(
         }
       }
     }
+  }
+}
+
+@Composable
+private fun SectionHeader(
+  title: String,
+  icon: androidx.compose.ui.graphics.vector.ImageVector,
+  modifier: Modifier = Modifier,
+) {
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(
+      imageVector = icon,
+      contentDescription = null,
+      modifier = Modifier.size(20.dp),
+      tint = MaterialTheme.colorScheme.primary,
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+    Text(
+      text = title,
+      style = MaterialTheme.typography.titleMedium,
+      color = MaterialTheme.colorScheme.primary,
+    )
   }
 }
 
