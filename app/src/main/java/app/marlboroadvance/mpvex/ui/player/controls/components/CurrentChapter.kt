@@ -21,16 +21,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
+import org.koin.compose.koinInject
 
 @Composable
 fun CurrentChapter(
@@ -38,16 +43,34 @@ fun CurrentChapter(
   modifier: Modifier = Modifier,
   onClick: () -> Unit = {},
 ) {
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
+
   Surface(
     modifier =
       modifier
         .clip(RoundedCornerShape(50))
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
-    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+    color =
+      if (hideBackground) {
+        Color.Transparent
+      } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(
+          alpha = 0.5f,
+        )
+      },
     contentColor = MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 5.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+    tonalElevation = if (hideBackground) 0.dp else 5.dp,
+    border =
+      if (hideBackground) {
+        null
+      } else {
+        BorderStroke(
+          1.dp,
+          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+      },
   ) {
     AnimatedContent(
       targetState = chapter,

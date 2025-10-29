@@ -17,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,9 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import org.koin.compose.koinInject
 
 @Suppress("ModifierClickableOrder")
 @OptIn(ExperimentalFoundationApi::class)
@@ -41,6 +45,8 @@ fun ControlsButton(
   color: Color? = null,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
 
   val clickEvent = LocalPlayerButtonsClickEvent.current
   Surface(
@@ -58,11 +64,19 @@ fun ControlsButton(
           indication = ripple(),
         ),
     shape = CircleShape,
-    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
     contentColor = color ?: MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 2.dp,
+    tonalElevation = if (hideBackground) 0.dp else 2.dp,
     shadowElevation = 0.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    border =
+      if (hideBackground) {
+        null
+      } else {
+        BorderStroke(
+          1.dp,
+          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        )
+      },
   ) {
     Icon(
       imageVector = icon,
@@ -88,6 +102,8 @@ fun ControlsButton(
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val clickEvent = LocalPlayerButtonsClickEvent.current
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
 
   Surface(
     modifier =
@@ -104,11 +120,19 @@ fun ControlsButton(
           indication = ripple(),
         ),
     shape = CircleShape,
-    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
     contentColor = color ?: MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 2.dp,
+    tonalElevation = if (hideBackground) 0.dp else 2.dp,
     shadowElevation = 0.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    border =
+      if (hideBackground) {
+        null
+      } else {
+        BorderStroke(
+          1.dp,
+          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        )
+      },
   ) {
     Text(
       text,

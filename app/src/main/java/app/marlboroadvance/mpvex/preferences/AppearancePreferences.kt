@@ -12,4 +12,5 @@ class AppearancePreferences(
   val materialYou = preferenceStore.getBoolean("material_you", true)
   val highContrastMode = preferenceStore.getBoolean("high_contrast_mode", false)
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
+  val hidePlayerButtonsBackground = preferenceStore.getBoolean("hide_player_buttons_background", false)
 }

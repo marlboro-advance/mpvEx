@@ -117,9 +117,10 @@ data class UsbVideoListScreen(
             icon = Icons.Filled.VideoLibrary,
             title = "No videos in this folder",
             message = "This USB folder doesn't contain any video files",
-            modifier = Modifier
-              .fillMaxSize()
-              .padding(padding),
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .padding(padding),
           )
         }
 

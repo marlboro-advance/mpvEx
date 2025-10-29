@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -104,6 +105,8 @@ fun PlayerControls(
   modifier: Modifier = Modifier,
 ) {
   val spacing = MaterialTheme.spacing
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
   val interactionSource = remember { MutableInteractionSource() }
@@ -399,11 +402,26 @@ fun PlayerControls(
                       onClick = viewModel::pauseUnpause,
                     ),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                color =
+                  if (!hideBackground) {
+                    MaterialTheme.colorScheme.surfaceContainer.copy(
+                      alpha = 0.55f,
+                    )
+                  } else {
+                    Color.Transparent
+                  },
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = 2.dp,
                 shadowElevation = 0.dp,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                border =
+                  if (!hideBackground) {
+                    BorderStroke(
+                      1.dp,
+                      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    )
+                  } else {
+                    null
+                  },
               ) {
                 Image(
                   painter = rememberAnimatedVectorPainter(icon, paused == false),

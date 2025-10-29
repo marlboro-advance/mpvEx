@@ -55,9 +55,10 @@ fun EmptyState(
     contentAlignment = Alignment.Center,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(48.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(48.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {

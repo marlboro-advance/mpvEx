@@ -30,6 +30,8 @@
     <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
     <string name="pref_appearance_unlimited_name_lines_title">Show full names</string>
     <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
+    <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
+    <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
 
     <string name="pref_player">Player</string>
     <string name="pref_player_summary">Orientation, gestures and controls</string>

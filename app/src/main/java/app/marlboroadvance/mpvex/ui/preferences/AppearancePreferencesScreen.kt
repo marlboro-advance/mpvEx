@@ -114,6 +114,21 @@ object AppearancePreferencesScreen : Screen {
               )
             },
           )
+          val hidePlayerButtonsBackground by preferences.hidePlayerButtonsBackground.collectAsState()
+          SwitchPreference(
+            value = hidePlayerButtonsBackground,
+            onValueChange = { preferences.hidePlayerButtonsBackground.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_summary),
+              )
+            },
+          )
         }
       }
     }
