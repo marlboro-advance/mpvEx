@@ -231,6 +231,9 @@
     <string name="crash_screen_logs_title">Crash logs:</string>
     <string name="crash_screen_share">Share crash logs</string>
     <string name="crash_screen_restart">Restart the app</string>
+    <string name="crash_screen_fix_crash">Fix Crash (Delete Database)</string>
+    <string name="crash_screen_database_deleted">Database deleted successfully. Please restart the app.</string>
+    <string name="crash_screen_database_hint">This crash appears to be database-related. Try deleting the database to fix it.</string>
 
     <string name="timer_picker_enter_timer">Enter time</string>
     <string name="timer_picker_pick_time">Pick time</string>
