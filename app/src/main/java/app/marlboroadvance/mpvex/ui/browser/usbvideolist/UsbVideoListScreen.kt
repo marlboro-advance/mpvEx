@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -197,7 +198,7 @@ private fun UsbVideoCard(
       modifier
         .fillMaxWidth()
         .padding(horizontal = 8.dp, vertical = 4.dp)
-        .combinedClickable(onClick = onClick),
+        .debouncedCombinedClickable(onClick = onClick),
     colors =
       CardDefaults.cardColors(
         containerColor = MaterialTheme.colorScheme.surface,

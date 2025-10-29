@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import app.marlboroadvance.mpvex.utils.usb.UsbVideoFolder
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
@@ -57,7 +58,7 @@ fun UsbFolderCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .debouncedCombinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),

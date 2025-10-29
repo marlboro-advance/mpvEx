@@ -41,6 +41,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -63,7 +64,7 @@ fun VideoCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .debouncedCombinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),

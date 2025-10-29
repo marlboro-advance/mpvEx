@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
 
 @Composable
@@ -52,7 +53,7 @@ fun FolderCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .combinedClickable(
+        .debouncedCombinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),

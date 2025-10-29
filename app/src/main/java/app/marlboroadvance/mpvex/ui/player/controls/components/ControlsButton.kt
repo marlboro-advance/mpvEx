@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
+import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 
 @Suppress("ModifierClickableOrder")
 @OptIn(ExperimentalFoundationApi::class)
@@ -46,7 +47,8 @@ fun ControlsButton(
     modifier =
       modifier
         .clip(CircleShape)
-        .combinedClickable(
+        .debouncedCombinedClickable(
+          debounceTime = 300L,
           onClick = {
             clickEvent()
             onClick()
@@ -91,7 +93,8 @@ fun ControlsButton(
     modifier =
       modifier
         .clip(CircleShape)
-        .combinedClickable(
+        .debouncedCombinedClickable(
+          debounceTime = 300L,
           onClick = {
             clickEvent()
             onClick()
