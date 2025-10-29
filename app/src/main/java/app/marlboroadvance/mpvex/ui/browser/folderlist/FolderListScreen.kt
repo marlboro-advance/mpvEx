@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
+import app.marlboroadvance.mpvex.data.media.repository.VideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
@@ -42,10 +42,8 @@ import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefresh
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.IndexingProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
-import app.marlboroadvance.mpvex.ui.browser.privatespace.PrivateListScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -76,8 +74,6 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val videoRepository = koinInject<FileSystemVideoRepository>()
-    val indexingProgress by videoRepository.indexingProgress.collectAsState()
 
     // UI State
     val listState = rememberLazyListState()
@@ -104,7 +100,7 @@ object FolderListScreen : Screen {
         onDeleteItems = { folders ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()
-          val videos = videoRepository.getVideosForBuckets(context, ids)
+          val videos = VideoRepository.getVideosForBuckets(context, ids)
           viewModel.deleteVideos(videos)
         },
         onOperationComplete = { viewModel.refresh() },
@@ -178,7 +174,7 @@ object FolderListScreen : Screen {
             // Share all videos across selected folders with a single chooser
             coroutineScope.launch {
               val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-              val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
+              val allVideos = VideoRepository.getVideosForBuckets(context, selectedIds)
               if (allVideos.isNotEmpty()) {
                 MediaUtils.shareVideos(context, allVideos)
               }
@@ -187,7 +183,6 @@ object FolderListScreen : Screen {
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
-          onTitleLongPress = { backstack.add(PrivateListScreen) },
         )
       },
       floatingActionButton = {
@@ -260,14 +255,6 @@ object FolderListScreen : Screen {
         itemType = "folder",
         itemCount = selectionManager.selectedCount,
       )
-
-      // Show indexing dialog only for initial index (not for fast incremental refresh)
-      if (
-        permissionState.status is PermissionStatus.Granted &&
-        indexingProgress.isIndexing && indexingProgress.isInitialIndex
-      ) {
-        IndexingProgressDialog(progress = indexingProgress)
-      }
     }
   }
 }

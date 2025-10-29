@@ -11,7 +11,6 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,15 +27,11 @@ fun BrowserBottomBar(
   onMoveClick: () -> Unit,
   onRenameClick: () -> Unit,
   onDeleteClick: () -> Unit,
-  onHideClick: () -> Unit,
   modifier: Modifier = Modifier,
   showCopy: Boolean = true,
   showMove: Boolean = true,
   showRename: Boolean = true,
   showDelete: Boolean = true,
-  showHide: Boolean = true,
-  hideIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.VisibilityOff,
-  hideContentDescription: String = "Hide",
 ) {
   AnimatedVisibility(
     visible = isSelectionMode,
@@ -89,16 +84,6 @@ fun BrowserBottomBar(
               imageVector = Icons.Default.Delete,
               contentDescription = "Delete",
               tint = MaterialTheme.colorScheme.error,
-            )
-          }
-        }
-
-        if (showHide) {
-          IconButton(onClick = onHideClick) {
-            Icon(
-              imageVector = hideIcon,
-              contentDescription = hideContentDescription,
-              tint = MaterialTheme.colorScheme.secondary,
             )
           }
         }

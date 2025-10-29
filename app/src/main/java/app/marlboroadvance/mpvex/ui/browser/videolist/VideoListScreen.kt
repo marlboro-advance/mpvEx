@@ -34,8 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
-import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
@@ -76,8 +74,6 @@ data class VideoListScreen(
     val coroutineScope = rememberCoroutineScope()
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
-    val privateVideoRepository = koinInject<PrivateVideoRepository>()
-    val videoRepository = koinInject<FileSystemVideoRepository>()
 
     // ViewModel
     val viewModel: VideoListViewModel =
@@ -206,28 +202,6 @@ data class VideoListScreen(
           },
           onRenameClick = { renameDialogOpen.value = true },
           onDeleteClick = { deleteDialogOpen.value = true },
-          onHideClick = {
-            movingToPrivateSpace.value = true
-            coroutineScope.launch {
-              val selectedVideos = selectionManager.getSelectedItems()
-              val (successCount, _) = privateVideoRepository.addMultipleToPrivateList(selectedVideos)
-              selectionManager.clear()
-              movingToPrivateSpace.value = false
-
-              if (successCount > 0) {
-                privateSpaceMovedCount.intValue = successCount
-                showPrivateSpaceCompletionDialog.value = true
-              } else {
-                android.widget.Toast
-                  .makeText(context, "Failed to move videos to private space", android.widget.Toast.LENGTH_SHORT)
-                  .show()
-              }
-
-              // Refresh the list to remove moved videos and update folder cache
-              viewModel.refresh()
-              videoRepository.runIndexUpdate(context)
-            }
-          },
         )
       },
     ) { padding ->
@@ -316,11 +290,11 @@ data class VideoListScreen(
             coroutineScope.launch {
               when (operationType.value) {
                 is CopyPasteOps.OperationType.Copy -> {
-                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath, videoRepository)
+                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
                 }
 
                 is CopyPasteOps.OperationType.Move -> {
-                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath, videoRepository)
+                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
                 }
 
                 null -> {}

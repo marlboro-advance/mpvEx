@@ -14,9 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.PlaybackStateOps
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
@@ -38,11 +38,18 @@ object PermissionUtils {
    * On Android 11+, MANAGE_EXTERNAL_STORAGE provides full file access.
    */
   fun getStoragePermission(): String =
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-      // Android 9 and below need WRITE permission to create folders/files (e.g., mpvsnaps)
-      android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-    } else {
-      android.Manifest.permission.READ_EXTERNAL_STORAGE
+    when {
+      Build.VERSION.SDK_INT <= Build.VERSION_CODES.P -> {
+        // Android 9 and below need WRITE permission to create folders/files (e.g., mpvsnaps)
+        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+      }
+
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+        // Android 13+: request media-specific permission
+        android.Manifest.permission.READ_MEDIA_VIDEO
+      }
+
+      else -> android.Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
   /**
@@ -115,22 +122,16 @@ object PermissionUtils {
      * Delete videos using direct file operations.
      * Requires MANAGE_EXTERNAL_STORAGE on Android 11+.
      */
-    suspend fun deleteVideos(
-      context: Context,
-      videos: List<Video>,
-      videoRepository: FileSystemVideoRepository,
-    ): Pair<Int, Int> =
+    suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
         var deleted = 0
         var failed = 0
-        val deletedPaths = mutableListOf<String>()
 
         for (video in videos) {
           try {
             val file = File(video.path)
             if (file.exists() && file.delete()) {
               deleted++
-              deletedPaths.add(video.path)
               RecentlyPlayedOps.onVideoDeleted(video.path)
               PlaybackStateOps.onVideoDeleted(video.path)
               Log.d(TAG, "✓ Deleted: ${video.displayName}")
@@ -144,9 +145,9 @@ object PermissionUtils {
           }
         }
 
-        // Update database cache and notify
-        if (deletedPaths.isNotEmpty()) {
-          videoRepository.removeCacheForFiles(context, deletedPaths)
+        // Notify that media library has changed
+        if (deleted > 0) {
+          MediaLibraryEvents.notifyChanged()
         }
 
         Pair(deleted, failed)
@@ -160,7 +161,6 @@ object PermissionUtils {
       context: Context,
       video: Video,
       newDisplayName: String,
-      videoRepository: FileSystemVideoRepository,
     ): Result<Unit> =
       withContext(Dispatchers.IO) {
         try {
@@ -172,10 +172,20 @@ object PermissionUtils {
             RecentlyPlayedOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
             PlaybackStateOps.onVideoRenamed(oldFile.absolutePath, newFile.absolutePath)
 
-            // Update database cache
-            videoRepository.removeCacheForFiles(context, listOf(oldFile.absolutePath))
-            videoRepository.updateCacheForFiles(context, listOf(newFile.absolutePath))
+            // Notify that media library has changed
+            MediaLibraryEvents.notifyChanged()
+
             Log.d(TAG, "✓ Renamed: ${video.displayName} -> $newDisplayName")
+            // Trigger media scan so MediaStore reflects the new file
+            try {
+              android.media.MediaScannerConnection.scanFile(
+                context,
+                arrayOf(newFile.absolutePath),
+                null,
+                null,
+              )
+            } catch (_: Exception) {
+            }
             Result.success(Unit)
           } else {
             Log.w(TAG, "✗ Rename failed: ${video.displayName}")

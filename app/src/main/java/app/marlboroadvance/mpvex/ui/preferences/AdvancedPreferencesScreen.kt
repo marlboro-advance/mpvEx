@@ -199,20 +199,7 @@ object AdvancedPreferencesScreen : Screen {
             title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
             summary = { Text(stringResource(R.string.pref_advanced_verbose_logging_summary)) },
           )
-          // Folder scan recursion depth
-          val scanDepth by preferences.folderScanDepth.collectAsState()
-          var depthText by remember { mutableStateOf(scanDepth.toString()) }
-          TextFieldPreference(
-            value = depthText,
-            onValueChange = { depthText = it.filter { c -> c.isDigit() }.take(2) },
-            title = { Text(text = "Folder scan recursion depth") },
-            summary = { Text(text = "How many directory levels to scan (default 3)") },
-            textToValue = { value ->
-              val parsed = value.toIntOrNull()?.coerceIn(0, 10) ?: 3
-              preferences.folderScanDepth.set(parsed)
-              parsed.toString()
-            },
-          )
+          // Removed: folder scan recursion depth (no longer used)
           var isConfirmDialogShown by remember { mutableStateOf(false) }
           val mpvexDatabase = koinInject<MpvExDatabase>()
           Preference(

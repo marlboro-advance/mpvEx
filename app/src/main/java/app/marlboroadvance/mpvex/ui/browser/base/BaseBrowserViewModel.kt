@@ -3,7 +3,6 @@ package app.marlboroadvance.mpvex.ui.browser.base
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils.StorageOps
@@ -11,7 +10,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 /**
  * Base ViewModel for browser screens with shared functionality
@@ -20,8 +18,6 @@ abstract class BaseBrowserViewModel(
   application: Application,
 ) : AndroidViewModel(application),
   KoinComponent {
-  protected val videoRepository: FileSystemVideoRepository by inject()
-
   /**
    * Observable recently played file path for highlighting
    * Automatically filters out non-existent files
@@ -42,10 +38,7 @@ abstract class BaseBrowserViewModel(
    *
    * @return Pair of (deletedCount, failedCount)
    */
-  open suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
-    // Use scoped APIs only (no MANAGE_EXTERNAL_STORAGE)
-    return StorageOps.deleteVideos(getApplication(), videos, videoRepository)
-  }
+  open suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> = StorageOps.deleteVideos(videos)
 
   /**
    * Rename a video
@@ -58,8 +51,5 @@ abstract class BaseBrowserViewModel(
   open suspend fun renameVideo(
     video: Video,
     newDisplayName: String,
-  ): Result<Unit> {
-    // Use scoped APIs only (no MANAGE_EXTERNAL_STORAGE)
-    return StorageOps.renameVideo(getApplication(), video, newDisplayName, videoRepository)
-  }
+  ): Result<Unit> = StorageOps.renameVideo(getApplication(), video, newDisplayName)
 }

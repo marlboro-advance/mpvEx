@@ -23,6 +23,7 @@ import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -253,12 +255,14 @@ class PlayerViewModel(
     val subtitles = externalSubtitleRepository.getSubtitlesForMedia(mediaTitle)
     val metadata = mutableMapOf<String, String>()
 
-    subtitles.forEach { subtitle ->
-      if (File(subtitle.cachedFilePath).exists()) {
-        MPVLib.command("sub-add", subtitle.cachedFilePath, "select")
-        metadata[subtitle.cachedFilePath] = subtitle.originalFileName
-      } else {
-        externalSubtitleRepository.deleteSubtitle(subtitle.cachedFilePath)
+    withContext(Dispatchers.IO) {
+      subtitles.forEach { subtitle ->
+        if (File(subtitle.cachedFilePath).exists()) {
+          MPVLib.command("sub-add", subtitle.cachedFilePath, "select")
+          metadata[subtitle.cachedFilePath] = subtitle.originalFileName
+        } else {
+          externalSubtitleRepository.deleteSubtitle(subtitle.cachedFilePath)
+        }
       }
     }
 
