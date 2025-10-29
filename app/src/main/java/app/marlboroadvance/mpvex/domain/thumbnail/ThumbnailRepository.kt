@@ -11,18 +11,23 @@ import android.util.Size
 import androidx.core.graphics.scale
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Ultra-fast thumbnail provider.
+ * Ultra-fast thumbnail provider with optimized caching and generation.
  *
- * Strategy:
+ * Optimizations:
  * - Prefer platform thumbnails (MediaStore.loadThumbnail) for content URIs.
  * - Fallback to ThumbnailUtils for file paths.
- * - Memory (LruCache) + disk cache (filesDir/thumbnails) keyed by uri/path + size + mtime.
+ * - Multi-level caching: Memory (LruCache) + Disk cache with concurrent access.
+ * - Parallel thumbnail generation with coroutines.
+ * - JPEG compression with optimized quality for smaller file sizes.
+ * - Prefetching support for upcoming thumbnails.
  */
 class ThumbnailRepository(
   private val context: Context,
@@ -30,9 +35,12 @@ class ThumbnailRepository(
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
 
+  // Track ongoing operations to prevent duplicate work
+  private val ongoingOperations = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Bitmap?>>()
+
   init {
     val maxMemoryKb = (Runtime.getRuntime().maxMemory() / 1024L).toInt()
-    val cacheSizeKb = maxMemoryKb / 8 // Use 1/8th of available memory for thumbnails
+    val cacheSizeKb = maxMemoryKb / 6 // Increased from 1/8 to 1/6 for better hit rate
     memoryCache =
       object : LruCache<String, Bitmap>(cacheSizeKb) {
         override fun sizeOf(
@@ -42,6 +50,9 @@ class ThumbnailRepository(
       }
   }
 
+  /**
+   * Get thumbnail with optimized caching and generation.
+   */
   suspend fun getThumbnail(
     video: Video,
     widthPx: Int,
@@ -49,28 +60,116 @@ class ThumbnailRepository(
   ): Bitmap? =
     withContext(Dispatchers.IO) {
       val key = buildKey(video, widthPx, heightPx)
+
+      // 1) Check memory cache
       memoryCache.get(key)?.let { return@withContext it }
 
-      val diskFile = File(diskDir, keyToFileName(key))
-      if (diskFile.exists()) {
-        BitmapFactory.decodeFile(diskFile.absolutePath)?.let { bmp ->
-          memoryCache.put(key, bmp)
-          return@withContext bmp
-        }
+      // 2) Check if operation is already in progress
+      ongoingOperations[key]?.let {
+        return@withContext it.await()
       }
 
-      val generated = generateThumbnail(video, widthPx, heightPx)
-      if (generated != null) {
-        // Persist to disk cache
-        runCatching {
-          FileOutputStream(diskFile).use { out ->
-            // JPEG for smaller size. If you need transparency, switch to PNG.
-            generated.compress(Bitmap.CompressFormat.JPEG, 80, out)
+      // 3) Start new operation
+      val deferred =
+        async {
+          try {
+            // Check disk cache
+            val diskFile = File(diskDir, keyToFileName(key))
+            if (diskFile.exists()) {
+              val options =
+                BitmapFactory.Options().apply {
+                  inPreferredConfig = Bitmap.Config.RGB_565 // Use less memory
+                }
+              BitmapFactory.decodeFile(diskFile.absolutePath, options)?.let { bmp ->
+                memoryCache.put(key, bmp)
+                return@async bmp
+              }
+            }
+
+            // Generate new thumbnail
+            val generated = generateThumbnail(video, widthPx, heightPx)
+            if (generated != null) {
+              // Persist to disk cache asynchronously
+              async(Dispatchers.IO) {
+                runCatching {
+                  FileOutputStream(diskFile).use { out ->
+                    // Optimized JPEG compression (85 quality for better size/quality balance)
+                    generated.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                    out.flush()
+                  }
+                }
+              }
+              memoryCache.put(key, generated)
+            }
+            generated
+          } finally {
+            ongoingOperations.remove(key)
           }
         }
-        memoryCache.put(key, generated)
+
+      ongoingOperations[key] = deferred
+      return@withContext deferred.await()
+    }
+
+  /**
+   * Synchronously check if thumbnail exists in memory cache.
+   * Useful for immediate UI updates without suspending.
+   */
+  fun getThumbnailFromMemory(
+    video: Video,
+    widthPx: Int,
+    heightPx: Int,
+  ): Bitmap? {
+    val key = buildKey(video, widthPx, heightPx)
+    return memoryCache.get(key)
+  }
+
+  /**
+   * Prefetch thumbnails for a list of videos (non-blocking).
+   * Useful for preloading upcoming items in a list.
+   */
+  suspend fun prefetchThumbnails(
+    videos: List<Video>,
+    widthPx: Int,
+    heightPx: Int,
+  ) = withContext(Dispatchers.IO) {
+    videos.take(10).map { video ->
+      // Prefetch next 10 items
+      async {
+        val key = buildKey(video, widthPx, heightPx)
+        // Only prefetch if not in memory and not already being processed
+        if (memoryCache.get(key) == null && !ongoingOperations.containsKey(key)) {
+          getThumbnail(video, widthPx, heightPx)
+        }
       }
-      return@withContext generated
+    }
+  }
+
+  /**
+   * Clear memory cache (useful for memory pressure situations).
+   */
+  fun clearMemoryCache() {
+    memoryCache.evictAll()
+  }
+
+  /**
+   * Clear disk cache.
+   */
+  suspend fun clearDiskCache() =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        diskDir.listFiles()?.forEach { it.delete() }
+      }
+    }
+
+  /**
+   * Get cache size in bytes.
+   */
+  suspend fun getCacheSize(): Long =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        diskDir.listFiles()?.sumOf { it.length() } ?: 0L
+      }.getOrDefault(0L)
     }
 
   private fun buildKey(
@@ -94,7 +193,7 @@ class ThumbnailRepository(
     width: Int,
     height: Int,
   ): Bitmap? {
-    // 1) Try platform thumbnail for indexed content URIs
+    // 1) Try platform thumbnail for indexed content URIs (fastest method)
     if (video.uri.scheme == "content" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       runCatching {
         return context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
@@ -103,11 +202,14 @@ class ThumbnailRepository(
 
     // 2) Fallback to ThumbnailUtils for file paths
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      runCatching { ThumbnailUtils.createVideoThumbnail(File(video.path), Size(width, height), null) }.getOrNull()
+      runCatching {
+        ThumbnailUtils.createVideoThumbnail(File(video.path), Size(width, height), null)
+      }.getOrNull()
     } else {
       // Deprecated API for pre-Q. May not match exact size; scale down if needed.
       val raw =
         runCatching {
+          @Suppress("DEPRECATION")
           ThumbnailUtils.createVideoThumbnail(video.path, MediaStore.Images.Thumbnails.MINI_KIND)
         }.getOrNull()
       raw?.let { bmp ->

@@ -143,13 +143,6 @@ object FolderListScreen : Screen {
       }
     }
 
-    LaunchedEffect(deleteDialogOpen.value) {
-      if (!deleteDialogOpen.value) {
-        kotlinx.coroutines.delay(100)
-        viewModel.refresh()
-      }
-    }
-
     // Predictive back: Only intercept when in selection mode
     androidx.activity.compose.BackHandler(enabled = selectionManager.isInSelectionMode) {
       selectionManager.clear()

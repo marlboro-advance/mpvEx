@@ -183,6 +183,13 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
+    // Guard: If we're still initializing and video hasn't loaded, allow immediate exit
+    // but ensure proper cleanup
+    if (isInitializing && !hasVideoLoaded) {
+      finishSafely()
+      return
+    }
+
     // 1) Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
       viewModel.sheetShown.update { Sheets.None }
@@ -211,8 +218,8 @@ class PlayerActivity :
       return
     }
 
-    // 4) Otherwise finish
-    finish()
+    // 4) Otherwise finish safely
+    finishSafely()
   }
 
   @RequiresApi(Build.VERSION_CODES.P)
@@ -221,7 +228,7 @@ class PlayerActivity :
       MpvexTheme {
         PlayerControls(
           viewModel = viewModel,
-          onBackPress = ::finish,
+          onBackPress = ::finishSafely,
           modifier = Modifier,
         )
       }
@@ -307,6 +314,10 @@ class PlayerActivity :
     Log.d(TAG, "Exiting PlayerActivity")
 
     runCatching {
+      // Mark as not initializing to prevent further operations
+      isInitializing = false
+      hasVideoLoaded = false
+
       if (isFinishing && !systemUIRestored) {
         restoreSystemUI()
       }
@@ -332,13 +343,19 @@ class PlayerActivity :
     // Perform shutdown asynchronously to avoid blocking UI thread
     Thread {
       try {
-        MPVLib.setPropertyString("pause", "yes")
-        Thread.sleep(PAUSE_DELAY_MS)
+        // Add safety check: only call MPV if it's been initialized
+        if (hasVideoLoaded) {
+          MPVLib.setPropertyString("pause", "yes")
+          Thread.sleep(PAUSE_DELAY_MS)
+        }
       } catch (_: Throwable) {
+        // Ignore errors during pause
       }
       try {
-        MPVLib.command("quit")
-        Thread.sleep(QUIT_DELAY_MS)
+        if (hasVideoLoaded) {
+          MPVLib.command("quit")
+          Thread.sleep(QUIT_DELAY_MS)
+        }
       } catch (e: Throwable) {
         Log.e(TAG, "Error quitting MPV", e)
       }
@@ -1437,5 +1454,37 @@ class PlayerActivity :
     private const val DEFAULT_PLAYBACK_SPEED = 1.0
     private const val DEFAULT_SUB_SPEED = 1.0
     const val TAG = "mpvex"
+  }
+
+  /**
+   * Safe finish method that handles rapid back presses and initialization states.
+   */
+  @RequiresApi(Build.VERSION_CODES.P)
+  private fun finishSafely() {
+    runCatching {
+      // Prevent multiple finish calls
+      if (isFinishing) return
+
+      // Set flags to indicate we're finishing
+      isInitializing = false
+      hasVideoLoaded = false
+
+      if (!systemUIRestored && !isDestroyed) {
+        restoreSystemUI()
+      }
+      if (!isDestroyed) {
+        setReturnIntent()
+      }
+
+      finish()
+    }.onFailure { e ->
+      Log.e(TAG, "Error during finishSafely", e)
+      // Fallback: try simple finish
+      try {
+        finish()
+      } catch (e2: Exception) {
+        Log.e(TAG, "Critical error: could not finish activity", e2)
+      }
+    }
   }
 }

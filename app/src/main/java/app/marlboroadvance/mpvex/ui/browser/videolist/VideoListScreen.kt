@@ -29,12 +29,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.domain.media.model.Video
+import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.VideoSortType
@@ -62,6 +64,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
+import kotlin.math.roundToInt
 
 @Serializable
 data class VideoListScreen(
@@ -130,16 +133,6 @@ data class VideoListScreen(
     // Predictive back: Only intercept when in selection mode
     BackHandler(enabled = selectionManager.isInSelectionMode) {
       selectionManager.clear()
-    }
-
-    androidx.compose.runtime.LaunchedEffect(
-      deleteDialogOpen.value,
-      renameDialogOpen.value,
-    ) {
-      if (!deleteDialogOpen.value && !renameDialogOpen.value) {
-        kotlinx.coroutines.delay(100)
-        viewModel.refresh()
-      }
     }
 
     Scaffold(
@@ -371,6 +364,13 @@ private fun VideoListContent(
   onVideoLongClick: (Video) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val thumbnailRepository = koinInject<ThumbnailRepository>()
+  val density = LocalDensity.current
+  val thumbWidthDp = 128.dp
+  val aspect = 16f / 9f
+  val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
+  val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -408,9 +408,24 @@ private fun VideoListContent(
           modifier = Modifier.fillMaxWidth(),
           contentPadding = PaddingValues(8.dp),
         ) {
-          items(videos.size) { index ->
+          items(
+            count = videos.size,
+            key = { index -> videos[index].id },
+          ) { index ->
             val video = videos[index]
             val isRecentlyPlayed = recentlyPlayedFilePath?.let { video.path == it } ?: false
+
+            // Prefetch upcoming thumbnails
+            androidx.compose.runtime.LaunchedEffect(index) {
+              if (index < videos.size - 1) {
+                val upcomingVideos =
+                  videos.subList(
+                    (index + 1).coerceAtMost(videos.size),
+                    (index + 11).coerceAtMost(videos.size),
+                  )
+                thumbnailRepository.prefetchThumbnails(upcomingVideos, thumbWidthPx, thumbHeightPx)
+              }
+            }
 
             VideoCard(
               video = video,

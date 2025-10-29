@@ -23,8 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +41,8 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
@@ -84,14 +89,26 @@ fun VideoCard(
       val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
       val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
-      // Load thumbnail keyed by identity + content changes
-      val thumbnail by produceState<Bitmap?>(
-        initialValue = null,
-        key1 = video.id,
-        key2 = video.dateModified,
-        key3 = video.size,
-      ) {
-        value = thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+      // Load thumbnail with optimized state management
+      // Key includes video identity to prevent reloading same thumbnail
+      val thumbnailKey =
+        remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
+          "${video.id}_${video.dateModified}_${video.size}_${thumbWidthPx}_$thumbHeightPx"
+        }
+
+      // Try to get from memory cache immediately (synchronous, no flicker)
+      var thumbnail by remember(thumbnailKey) {
+        mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx))
+      }
+
+      // Only load if not already in memory - prevents reload on recomposition
+      LaunchedEffect(thumbnailKey) {
+        if (thumbnail == null) {
+          thumbnail =
+            withContext(Dispatchers.IO) {
+              thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+            }
+        }
       }
 
       Box(
