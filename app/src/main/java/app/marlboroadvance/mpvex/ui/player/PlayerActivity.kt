@@ -218,7 +218,10 @@ class PlayerActivity :
       return
     }
 
-    // 4) Otherwise finish safely
+    // 4) Restore system UI IMMEDIATELY before finishing for fastest restoration
+    restoreSystemUI()
+
+    // 5) Finish safely
     finishSafely()
   }
 
@@ -314,13 +317,14 @@ class PlayerActivity :
     Log.d(TAG, "Exiting PlayerActivity")
 
     runCatching {
+      // Restore system UI IMMEDIATELY at the start of cleanup
+      if (isFinishing) {
+        restoreSystemUI()
+      }
+
       // Mark as not initializing to prevent further operations
       isInitializing = false
       hasVideoLoaded = false
-
-      if (isFinishing && !systemUIRestored) {
-        restoreSystemUI()
-      }
 
       cleanupMPV()
       cleanupAudio()
@@ -346,7 +350,7 @@ class PlayerActivity :
         // Add safety check: only call MPV if it's been initialized
         if (hasVideoLoaded) {
           MPVLib.setPropertyString("pause", "yes")
-          Thread.sleep(PAUSE_DELAY_MS)
+          // Removed Thread.sleep(PAUSE_DELAY_MS) - unnecessary delay
         }
       } catch (_: Throwable) {
         // Ignore errors during pause
@@ -354,14 +358,14 @@ class PlayerActivity :
       try {
         if (hasVideoLoaded) {
           MPVLib.command("quit")
-          Thread.sleep(QUIT_DELAY_MS)
+          // Removed Thread.sleep(QUIT_DELAY_MS) - unnecessary delay
         }
       } catch (e: Throwable) {
         Log.e(TAG, "Error quitting MPV", e)
       }
       try {
         MPVLib.removeObserver(playerObserver)
-        Thread.sleep(OBSERVER_REMOVAL_DELAY_MS)
+        // Removed Thread.sleep(OBSERVER_REMOVAL_DELAY_MS) - unnecessary delay
       } catch (e: Throwable) {
         Log.e(TAG, "Error removing MPV observer", e)
       }
@@ -393,15 +397,16 @@ class PlayerActivity :
     runCatching {
       val isInPip = isInPictureInPictureMode
 
+      // Restore system UI IMMEDIATELY when finishing (not in PiP)
+      if (isFinishing && !isInPip) {
+        restoreSystemUI()
+      }
+
       if (!isInPip) {
         viewModel.pause()
       }
 
       saveVideoPlaybackState(fileName)
-
-      if (isFinishing && !isInPip && !systemUIRestored) {
-        restoreSystemUI()
-      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -412,16 +417,14 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
+      // Restore system UI IMMEDIATELY as the very first action
+      restoreSystemUI()
+
       // Set flag to indicate we're finishing
       isInitializing = false
       hasVideoLoaded = false
 
-      if (!systemUIRestored && !isDestroyed) {
-        restoreSystemUI()
-      }
-      if (!isDestroyed) {
-        setReturnIntent()
-      }
+      setReturnIntent()
     }.onFailure { e ->
       Log.e(TAG, "Error during finish", e)
     }
@@ -526,16 +529,15 @@ class PlayerActivity :
   }
 
   private fun copyMPVAssets() {
-    // Only copy critical default subfont synchronously (fast operation)
-    runCatching {
-      val fontsPath = filesDir.path
-      val destDir = ensureFontsDirectory(fontsPath)
-      copyDefaultSubfont(fontsPath, destDir)
-    }.onFailure { e -> Log.e(TAG, "Error ensuring default subtitle font", e) }
-
-    // Move heavy I/O operations to background thread
+    // Move ALL I/O operations to background thread for non-blocking startup
     lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
+        // Copy default subfont first (fast operation, but still async)
+        val fontsPath = filesDir.path
+        val destDir = ensureFontsDirectory(fontsPath)
+        copyDefaultSubfont(fontsPath, destDir)
+
+        // Copy other assets
         Utils.copyAssets(this@PlayerActivity)
         copyMPVScripts()
         copyMPVConfigFiles()
@@ -1312,31 +1314,25 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
-    if (systemUIRestored || isFinishing || isDestroyed) {
-      systemUIRestored = true
-      return
-    }
+    if (systemUIRestored) return
+    systemUIRestored = true
 
     runCatching {
-      // Guard against detached window
-      if (!isFinishing && !isDestroyed) {
-        window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // Immediately restore system UI without any delays or checks
+      // This ensures the UI is restored as fast as possible when closing
+      window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-        windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+      windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+      windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+      windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
 
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+      WindowCompat.setDecorFitsSystemWindows(window, true)
 
-        window.attributes.layoutInDisplayCutoutMode =
-          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-      }
-
-      systemUIRestored = true
+      window.attributes.layoutInDisplayCutoutMode =
+        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
     }.onFailure { e ->
       Log.e(TAG, "Error restoring system UI", e)
-      systemUIRestored = true
     }
   }
 
@@ -1465,22 +1461,20 @@ class PlayerActivity :
       // Prevent multiple finish calls
       if (isFinishing) return
 
+      // IMMEDIATELY restore system UI as the very first action for fastest restoration
+      restoreSystemUI()
+
       // Set flags to indicate we're finishing
       isInitializing = false
       hasVideoLoaded = false
 
-      if (!systemUIRestored && !isDestroyed) {
-        restoreSystemUI()
-      }
-      if (!isDestroyed) {
-        setReturnIntent()
-      }
-
+      setReturnIntent()
       finish()
     }.onFailure { e ->
       Log.e(TAG, "Error during finishSafely", e)
-      // Fallback: try simple finish
+      // Fallback: try simple finish with system UI restoration
       try {
+        restoreSystemUI()
         finish()
       } catch (e2: Exception) {
         Log.e(TAG, "Critical error: could not finish activity", e2)
