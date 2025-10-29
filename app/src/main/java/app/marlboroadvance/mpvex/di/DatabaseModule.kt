@@ -1,9 +1,12 @@
 package app.marlboroadvance.mpvex.di
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.edit
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import app.marlboroadvance.mpvex.data.media.repository.FileSystemVideoRepository
+import app.marlboroadvance.mpvex.database.Migrations
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.PrivateVideoRepository
@@ -20,108 +23,60 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-// -----------------------------------------
-// Safe Migration: Version 1 → 2
-// Adds the new 'video_index' table if missing
-// -----------------------------------------
-val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        // Check if the table already exists to avoid duplicate creation
-        val cursor = database.query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='video_index';"
-        )
-
-        val tableExists = cursor.moveToFirst()
-        cursor.close()
-
-        if (!tableExists) {
-            // Create the new table safely
-            database.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS `video_index` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                    `path` TEXT NOT NULL,
-                    `displayName` TEXT NOT NULL,
-                    `title` TEXT NOT NULL,
-                    `size` INTEGER NOT NULL,
-                    `duration` INTEGER NOT NULL,
-                    `dateModified` INTEGER NOT NULL,
-                    `dateAdded` INTEGER NOT NULL,
-                    `lastModified` INTEGER NOT NULL,
-                    `mimeType` TEXT NOT NULL,
-                    `bucketId` TEXT NOT NULL,
-                    `bucketDisplayName` TEXT NOT NULL,
-                    `lastIndexed` INTEGER NOT NULL
-                )
-                """.trimIndent()
-            )
-
-            // Safely create indexes (only if they don't exist)
-            database.execSQL(
-                "CREATE UNIQUE INDEX IF NOT EXISTS `index_video_index_path` ON `video_index` (`path`)"
-            )
-            database.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_video_index_bucketId` ON `video_index` (`bucketId`)"
-            )
-            database.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_video_index_lastModified` ON `video_index` (`lastModified`)"
-            )
-        }
-    }
-}
-
-// -----------------------------------------
-// Koin Database Module
-// -----------------------------------------
-val DatabaseModule = module {
-
-    // JSON Serializer (for preferences & repositories)
+val DatabaseModule =
+  module {
+    // Provide kotlinx.serialization Json as a singleton (used by PlayerViewModel)
     single<Json> {
-        Json {
-            isLenient = true
-            ignoreUnknownKeys = true
-        }
+      Json {
+        isLenient = true
+        ignoreUnknownKeys = true
+      }
     }
 
-    // Database with migration
     single<MpvExDatabase> {
-        Room
-            .databaseBuilder(androidContext(), MpvExDatabase::class.java, "mpvex.db")
-            .addMigrations(MIGRATION_1_2)
-            .fallbackToDestructiveMigrationOnDowngrade()
-            .build()
+      val context = androidContext()
+      // Delete DB only on a true fresh install (not on app updates)
+      val packageManager = context.packageManager
+      val packageInfo =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+          packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+          @Suppress("DEPRECATION")
+          packageManager.getPackageInfo(context.packageName, 0)
+        }
+      val isFreshInstall = packageInfo.firstInstallTime == packageInfo.lastUpdateTime
+      if (isFreshInstall) {
+        context.deleteDatabase("mpvex.db")
+      }
+      Room
+        .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
+        .addMigrations(*Migrations.ALL)
+        .build()
     }
 
-    // File system video repository
     single<FileSystemVideoRepository> { FileSystemVideoRepository(get(), get<AdvancedPreferences>()) }
 
-    // Playback state repository
     singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
 
-    // Recently played repository
     single<RecentlyPlayedRepository> {
-        RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
+      RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
     }
 
-    // External subtitle repository
     single<ExternalSubtitleRepository> {
-        ExternalSubtitleRepository(
-            context = androidContext(),
-            dao = get<MpvExDatabase>().externalSubtitleDao(),
-        )
+      ExternalSubtitleRepository(
+        context = androidContext(),
+        dao = get<MpvExDatabase>().externalSubtitleDao(),
+      )
     }
 
-    // Private video repository
     single {
-        PrivateVideoRepository(
-            dao = get<MpvExDatabase>().privateVideoDao(),
-            context = androidContext(),
-        )
+      PrivateVideoRepository(
+        dao = get<MpvExDatabase>().privateVideoDao(),
+        context = androidContext(),
+      )
     }
 
-    // Thumbnail repository
     single { ThumbnailRepository(androidContext()) }
 
-    // Storage monitor (auto-starts to track storage mounts)
     single(createdAtStart = true) { StorageMonitor(androidContext(), get()) }
-}
+  }
