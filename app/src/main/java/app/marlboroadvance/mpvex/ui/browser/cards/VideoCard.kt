@@ -103,14 +103,14 @@ fun VideoCard(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
-        if (thumbnail != null) {
+        thumbnail?.let {
           Image(
-            bitmap = thumbnail!!.asImageBitmap(),
+            bitmap = it.asImageBitmap(),
             contentDescription = "Thumbnail",
             modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Crop,
           )
-        } else {
+        } ?: run {
           Icon(
             Icons.Filled.PlayArrow,
             contentDescription = "Play",

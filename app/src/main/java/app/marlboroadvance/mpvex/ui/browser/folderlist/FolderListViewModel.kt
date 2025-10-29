@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import app.marlboroadvance.mpvex.data.media.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 
 class FolderListViewModel(
@@ -36,19 +35,13 @@ class FolderListViewModel(
   }
 
   init {
-    // Show MediaStore folders immediately (no DB dependency)
-    try {
-      val mediaStoreFolders = runBlocking(Dispatchers.IO) { VideoFolderRepository.getVideoFolders(getApplication()) }
-      _videoFolders.value = mediaStoreFolders
-    } catch (_: Exception) {
-    }
+    // Load folders asynchronously on initialization
     loadVideoFolders()
 
-    // Refresh folders on global media library changes (cache already updated by repository)
+    // Refresh folders on global media library changes
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
-        val refreshed = VideoFolderRepository.getVideoFolders(getApplication())
-        _videoFolders.value = refreshed
+        loadVideoFolders()
       }
     }
   }

@@ -184,7 +184,8 @@ object PermissionUtils {
                 null,
                 null,
               )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+              Log.w(TAG, "Media scan failed after rename: ${e.message}")
             }
             Result.success(Unit)
           } else {

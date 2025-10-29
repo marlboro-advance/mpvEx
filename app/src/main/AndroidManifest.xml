@@ -45,7 +45,7 @@
             android:autoRemoveFromRecents="false"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:exported="true"
-            android:launchMode="singleTask"
+            android:launchMode="standard"
             android:documentLaunchMode="never"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"

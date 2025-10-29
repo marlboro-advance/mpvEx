@@ -177,7 +177,9 @@ fun resetColors(
   }
 }
 
-val getCurrentMPVColor: (SubColorType) -> Int = { MPVLib.getPropertyString(it.property)!!.uppercase().toColorInt() }
+val getCurrentMPVColor: (SubColorType) -> Int = {
+  MPVLib.getPropertyString(it.property)?.uppercase()?.toColorInt() ?: 0xFFFFFFFF.toInt()
+}
 
 @Composable
 fun SubtitlesColorPicker(

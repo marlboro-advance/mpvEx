@@ -309,6 +309,7 @@ fun GestureHandler(
                 // Exactly two fingers - zoom gesture
                 val currentPointers = event.changes.filter { it.pressed }
 
+                // Ensure not empty and size == 2 before accessing by index
                 if (currentPointers.size == 2) {
                   // Calculate current distance between the two fingers
                   val pointer1 = currentPointers[0].position

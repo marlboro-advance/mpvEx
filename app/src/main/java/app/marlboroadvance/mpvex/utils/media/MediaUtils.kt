@@ -188,7 +188,10 @@ object MediaUtils {
     context: Context,
     videos: List<Video>,
   ) {
-    if (videos.isEmpty()) return
+    if (videos.isEmpty()) {
+      android.util.Log.w("MediaUtils", "Cannot share: video list is empty")
+      return
+    }
 
     fun toSharableUri(v: Video): android.net.Uri =
       v.uri.takeIf { it.scheme.equals("content", true) } ?: run {
@@ -196,6 +199,12 @@ object MediaUtils {
       }
 
     val uris = videos.map { toSharableUri(it) }
+
+    if (uris.isEmpty()) {
+      android.util.Log.w("MediaUtils", "Cannot share: no valid URIs generated")
+      return
+    }
+
     val intent =
       if (uris.size == 1) {
         Intent(Intent.ACTION_SEND).apply {

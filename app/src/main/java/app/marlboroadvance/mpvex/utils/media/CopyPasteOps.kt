@@ -16,6 +16,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Handles copy and move operations for video files with progress tracking.
@@ -56,8 +57,7 @@ object CopyPasteOps {
   private val _operationProgress = MutableStateFlow(FileOperationProgress())
   val operationProgress: StateFlow<FileOperationProgress> = _operationProgress.asStateFlow()
 
-  @Volatile
-  private var isCancelled = false
+  private val isCancelled = AtomicBoolean(false)
 
   // ============================================================================
   // Permission Check
@@ -81,14 +81,14 @@ object CopyPasteOps {
    * Cancel the current operation
    */
   fun cancelOperation() {
-    isCancelled = true
+    isCancelled.set(true)
   }
 
   /**
    * Reset the cancellation flag and progress
    */
   fun resetOperation() {
-    isCancelled = false
+    isCancelled.set(false)
     _operationProgress.value = FileOperationProgress()
   }
 
@@ -605,7 +605,7 @@ object CopyPasteOps {
   }
 
   private fun checkCancellation() {
-    if (isCancelled) {
+    if (isCancelled.get()) {
       _operationProgress.value =
         _operationProgress.value.copy(
           isCancelled = true,

@@ -70,11 +70,11 @@ fun SubtitleDelayPanel(
 
     var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
     val delay by MPVLib.propDouble["sub-delay"].collectAsState()
-    val delayInt by remember { derivedStateOf { (delay!! * 1000).roundToInt() } }
+    val delayInt by remember { derivedStateOf { ((delay ?: 0.0) * 1000).roundToInt() } }
     val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
-    val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).roundToInt() } }
+    val secondaryDelayInt by remember { derivedStateOf { ((secondaryDelay ?: 0.0) * 1000).roundToInt() } }
     val speed by MPVLib.propDouble["sub-speed"].collectAsState()
-    val speedFloat by remember { derivedStateOf { speed!!.toFloat() } }
+    val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
     SubtitleDelayCard(
       delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
       onDelayChange = {
@@ -94,7 +94,8 @@ fun SubtitleDelayPanel(
       onTypeChange = { affectedSubtitle = it },
       onApply = {
         preferences.defaultSubDelay.set(delayInt)
-        if (speed!! in 0.1..10.0) preferences.defaultSubSpeed.set(speed!!.toFloat())
+        val currentSpeed = speed ?: 1.0
+        if (currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
       },
       onReset = {
         MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
@@ -219,11 +220,13 @@ fun DelayCard(
             return@LaunchedEffect
           }
           finalDelay = delayMs
-          timerStart = System.currentTimeMillis()
+          val startTime = System.currentTimeMillis()
+          timerStart = startTime
           val startingDelay: Int = finalDelay
           while (isDirectionPositive != null && timerStart != null) {
-            val elapsed = System.currentTimeMillis() - timerStart!!
-            finalDelay = startingDelay + (if (isDirectionPositive!!) elapsed else -elapsed).toInt()
+            val elapsed = System.currentTimeMillis() - startTime
+            val direction = isDirectionPositive ?: break
+            finalDelay = startingDelay + (if (direction) elapsed else -elapsed).toInt()
             // Arbitrary delay of 20ms
             delay(20)
           }

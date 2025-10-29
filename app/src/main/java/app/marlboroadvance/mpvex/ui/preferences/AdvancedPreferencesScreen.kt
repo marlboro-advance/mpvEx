@@ -175,7 +175,12 @@ object AdvancedPreferencesScreen : Screen {
               }
               it
             },
-            summary = { if (mpvConf.isNotBlank()) Text(mpvConf.lines()[0]) },
+            summary = {
+              val firstLine = mpvConf.lines().firstOrNull()
+              if (firstLine != null && firstLine.isNotBlank()) {
+                Text(firstLine)
+              }
+            },
           )
           val activity = LocalActivity.current!!
           val clipboard = LocalClipboardManager.current

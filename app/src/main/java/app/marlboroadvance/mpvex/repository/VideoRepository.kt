@@ -1,4 +1,4 @@
-package app.marlboroadvance.mpvex.data.media.repository
+package app.marlboroadvance.mpvex.repository
 
 import android.annotation.SuppressLint
 import android.content.Context

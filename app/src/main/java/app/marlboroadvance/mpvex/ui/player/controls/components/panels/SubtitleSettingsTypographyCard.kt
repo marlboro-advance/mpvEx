@@ -90,11 +90,8 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
                 fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
             }.mapNotNull {
               runCatching {
-                TTFFile
-                  .open(
-                    fileManager.getInputStream(it)!!,
-                  ).families.values
-                  .first()
+                val ttfFile = TTFFile.open(fileManager.getInputStream(it) ?: return@mapNotNull null)
+                ttfFile.families.values.firstOrNull()
               }.getOrNull()
             }.distinct()
         fonts.addAll(familyNames)

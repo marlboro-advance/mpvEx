@@ -80,7 +80,7 @@ suspend fun loadCustomFontEntries(context: Context): List<CustomFontEntry> =
               .open(input)
               .families
               .values
-              .first()
+              .firstOrNull()
           }
         }.getOrNull()
 

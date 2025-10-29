@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.LruCache
 import android.util.Size
+import androidx.core.graphics.scale
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -111,7 +112,7 @@ class ThumbnailRepository(
         }.getOrNull()
       raw?.let { bmp ->
         if (bmp.width == width && bmp.height == height) return bmp
-        Bitmap.createScaledBitmap(bmp, width, height, true)
+        bmp.scale(width, height)
       }
     }
   }
