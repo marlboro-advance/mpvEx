@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -111,19 +113,14 @@ data class UsbVideoListScreen(
         }
 
         videoFiles.value.isEmpty() -> {
-          Box(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center,
-          ) {
-            Text(
-              text = "No videos found in this folder",
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              style = MaterialTheme.typography.bodyLarge,
-            )
-          }
+          EmptyState(
+            icon = Icons.Filled.VideoLibrary,
+            title = "No videos in this folder",
+            message = "This USB folder doesn't contain any video files",
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(padding),
+          )
         }
 
         else -> {
