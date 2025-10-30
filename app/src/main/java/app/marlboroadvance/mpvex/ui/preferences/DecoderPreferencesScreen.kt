@@ -52,10 +52,11 @@ object DecoderPreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
           SwitchPreference(
@@ -80,7 +81,7 @@ object DecoderPreferencesScreen : Screen {
             onValueChange = { preferences.debanding.set(it) },
             values = Debanding.entries,
             title = { Text(stringResource(R.string.pref_decoder_debanding_title)) },
-            summary = { Text(debanding.name) }
+            summary = { Text(debanding.name) },
           )
           val useYUV420p by preferences.useYUV420P.collectAsState()
           SwitchPreference(
@@ -89,7 +90,7 @@ object DecoderPreferencesScreen : Screen {
               preferences.useYUV420P.set(it)
             },
             title = { Text(stringResource(R.string.pref_decoder_yuv420p_title)) },
-            summary = { Text(stringResource(R.string.pref_decoder_yuv420p_summary)) }
+            summary = { Text(stringResource(R.string.pref_decoder_yuv420p_summary)) },
           )
         }
       }

@@ -113,7 +113,7 @@ fun VideoSettingsDebandCard(modifier: Modifier = Modifier) {
           ) {
             Row(
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              verticalAlignment = Alignment.CenterVertically
+              verticalAlignment = Alignment.CenterVertically,
             ) {
               Icon(painterResource(R.drawable.reset_iso_24px), null)
               Text(stringResource(R.string.generic_reset))

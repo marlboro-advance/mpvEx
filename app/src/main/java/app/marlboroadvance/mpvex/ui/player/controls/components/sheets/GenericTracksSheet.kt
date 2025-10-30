@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,44 +59,56 @@ fun AddTrackRow(
   actions: @Composable RowScope.() -> Unit = {},
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick)
-      .height(48.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .height(56.dp)
+        .padding(horizontal = MaterialTheme.spacing.medium),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    Row(
-      modifier = Modifier
-        .clickable(onClick = onClick)
-        .fillMaxHeight()
-        .weight(1f)
-        .padding(start = MaterialTheme.spacing.medium),
-      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Icon(
-        Icons.Default.Add,
-        null,
-        modifier = Modifier.size(32.dp),
-      )
-      Text(title)
-    }
+    Icon(
+      Icons.Default.Add,
+      contentDescription = null,
+      modifier = Modifier.size(24.dp),
+    )
+    Text(
+      text = title,
+      style = MaterialTheme.typography.bodyLarge,
+      modifier = Modifier.weight(1f),
+    )
     actions()
   }
 }
 
 @Composable
-fun getTrackTitle(track: TrackNode): String {
+fun getTrackTitle(
+  track: TrackNode,
+  externalSubtitleMetadata: Map<String, String> = emptyMap(),
+): String {
+  // For external subtitles, use cached metadata for proper filename display
+  if (track.isSubtitle && track.external == true && track.externalFilename != null) {
+    externalSubtitleMetadata[track.externalFilename]?.let { cachedName ->
+      return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, cachedName)
+    }
+  }
+
   val hasTitle = !track.title.isNullOrBlank()
   val hasLang = !track.lang.isNullOrBlank()
 
   return when {
-    hasTitle && hasLang -> stringResource(R.string.player_sheets_track_title_w_lang, track.id, track.title, track.lang)
-    hasTitle && !hasLang -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.title)
-    !hasTitle && hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, track.lang)
+    hasTitle && hasLang ->
+      stringResource(
+        R.string.player_sheets_track_title_w_lang,
+        track.id,
+        track.title,
+        track.lang,
+      )
+    hasTitle -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.title)
+    hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, track.lang)
     track.isSubtitle -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
     track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
-    else -> "" // idk what to show tbh
+    else -> ""
   }
 }

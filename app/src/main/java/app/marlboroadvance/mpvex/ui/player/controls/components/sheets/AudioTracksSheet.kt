@@ -30,7 +30,7 @@ fun AudioTracksSheet(
   onAddAudioTrack: () -> Unit,
   onOpenDelayPanel: () -> Unit,
   onDismissRequest: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   GenericTracksSheet(
     tracks,
@@ -43,17 +43,17 @@ fun AudioTracksSheet(
           IconButton(onClick = onOpenDelayPanel) {
             Icon(Icons.Default.MoreTime, null)
           }
-        }
+        },
       )
     },
     track = {
       AudioTrackRow(
-        title = getTrackTitle(it),
+        title = getTrackTitle(it, emptyMap()),
         isSelected = it.isSelected,
         onClick = { onSelect(it) },
       )
     },
-    modifier = modifier
+    modifier = modifier,
   )
 }
 
@@ -62,13 +62,14 @@ fun AudioTrackRow(
   title: String,
   isSelected: Boolean,
   onClick: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick)
-      .padding(start = MaterialTheme.spacing.smaller, end = MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {

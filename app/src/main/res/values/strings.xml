@@ -23,9 +23,15 @@
     <string name="pref_appearance_darkmode_system">System</string>
     <string name="pref_appearance_darkmode_light">Light</string>
     <string name="pref_appearance_darkmode_dark">Dark</string>
+    <string name="pref_appearance_high_contrast_title">High Contrast Mode</string>
+    <string name="pref_appearance_high_contrast_summary">Use pure black background for dark themes</string>
     <string name="pref_appearance_material_you_title">Material You</string>
     <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
     <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
+    <string name="pref_appearance_unlimited_name_lines_title">Show full names</string>
+    <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
+    <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
+    <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
 
     <string name="pref_player">Player</string>
     <string name="pref_player_summary">Orientation, gestures and controls</string>
@@ -38,15 +44,12 @@
     <string name="pref_player_orientation_landscape">Landscape</string>
     <string name="pref_player_orientation_reverse_landscape">Reverse landscape</string>
     <string name="pref_player_orientation_sensor_landscape">Sensor landscape</string>
-    <string name="pref_player_draw_over_cutout">Draw over display cutout</string>
     <string name="pref_player_save_position_on_quit">Save position on quit</string>
     <string name="pref_player_double_tap_to_pause">Double tap to pause</string>
     <string name="pref_player_double_tap_to_seek">Double tap to seek</string>
     <string name="pref_player_double_tap_seek_duration">Double tap seek duration</string>
     <string name="pref_player_show_seekbar_when_seeking">Show seekbar when seeking</string>
     <string name="pref_player_seeking_title">Seeking</string>
-    <string name="pref_player_precise_seeking_title">Precise seeking</string>
-    <string name="pref_player_precise_seeking_summary">Seek to exact positions instead of keyframes (slow)</string>
     <string name="pref_player_automatically_enter_pip">Automatically switch to PiP</string>
     <string name="pref_player_close_after_eof">Close after the end of playback</string>
     <string name="pref_player_remember_brightness">Remember display brightness</string>
@@ -55,6 +58,7 @@
     <string name="pref_player_gestures_seek">Horizontal seek gestures</string>
     <string name="pref_player_gestures_brightness">Brightness gestures</string>
     <string name="pref_player_gestures_volume">Volume gestures</string>
+    <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
     <string name="pref_player_gestures_hold_for_double_speed">Hold for 2x speed</string>
     <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
 
@@ -81,13 +85,11 @@
     <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>
     <string name="pref_gesture_double_tap_center_title">Double tap (center)</string>
     <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
-    <string name="pref_gesture_double_tap_custom_info">When a tap gesture is set to "Custom", it can be bound through input.conf. The key codes are 0x10001 for left, 0x10002 for center, and 0x10003 for right.</string>
 
     <string name="pref_gesture_media_title">Media controls</string>
     <string name="pref_gesture_media_previous">Previous</string>
     <string name="pref_gesture_media_play">Play/Pause</string>
     <string name="pref_gesture_media_next">Next</string>
-    <string name="pref_gesture_media_custom_info">When a media control is set to "Custom", it can be bound through input.conf. The key codes are 0x10004 for previous, 0x10005 for play/pause, and 0x10006 for next.</string>
 
     <string name="pref_decoder">Decoder</string>
     <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
@@ -104,7 +106,7 @@
     <string name="pref_subtitles_fonts_dir">Fonts directory</string>
     <string name="pref_subtitles_preferred_language">Subtitle language(s) to be selected by default on a video with multiple subtitles, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
     <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
-    <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name. When there are multiple files, the first one is enabled by default. (Only valid when using the file picker)</string>
+    <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
 
     <string name="pref_audio">Audio</string>
     <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
@@ -120,10 +122,9 @@
     <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
 
     <string name="pref_advanced">Advanced</string>
-    <string name="pref_advanced_summary">Configuration location, mpv.conf, input.conf</string>
+    <string name="pref_advanced_summary">Configuration location, mpv.conf</string>
     <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
     <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
-    <string name="pref_advanced_input_conf">Edit input.conf</string>
     <string name="pref_advanced_dump_logs_title">Dump logs</string>
     <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>
     <string name="pref_advanced_verbose_logging_title">Verbose logging</string>
@@ -209,7 +210,7 @@
     <string name="player_sheets_speed_slider_label">Speed</string>
     <string name="player_sheets_speed_make_default">Make default speed</string>
 
-    <string name="player_sheets_decoder_formatted">%s (%s)</string>
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
 
     <string name="numeric_chooser_value_too_big">Value too big</string>
     <string name="numeric_chooser_value_too_small">Value too small</string>
@@ -230,6 +231,9 @@
     <string name="crash_screen_logs_title">Crash logs:</string>
     <string name="crash_screen_share">Share crash logs</string>
     <string name="crash_screen_restart">Restart the app</string>
+    <string name="crash_screen_fix_crash">Fix Crash (Delete Database)</string>
+    <string name="crash_screen_database_deleted">Database deleted successfully. Please restart the app.</string>
+    <string name="crash_screen_database_hint">This crash appears to be database-related. Try deleting the database to fix it.</string>
 
     <string name="timer_picker_enter_timer">Enter time</string>
     <string name="timer_picker_pick_time">Pick time</string>
@@ -272,9 +276,39 @@
         <item quantity="other">%1$d seconds</item>
     </plurals>
 
-    <!-- <string name="app_name">My Awesome App</string> -->
-
-    <!-- <string name="app_name">My Awesome App</string> -->
-
-    <!-- <string name="app_name">My Awesome App</string> -->
+    <!-- Background Playback -->
+    <string name="background_playback_title">Background playback</string>
+    <string name="pref_audio_background_playback_summary">Continue playing audio in the background when app is minimized</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="select_all">Select All</string>
+    <string name="invert_selection">Invert Selection</string>
+    <string name="selected_items">%1$d / %2$d Selected</string>
+    <string name="selection_options">Selection options</string>
+    <string name="back">Back</string>
+    <string name="sort">Sort</string>
+    <string name="settings">Settings</string>
+    <string name="rename">Rename</string>
+    <string name="info">Info</string>
+    <string name="delete">Delete</string>
+    <string name="got_it">Got it</string>
+    <string name="play_link">Play Link</string>
+    <string name="enter_url">Enter URL</string>
+    <string name="invalid_url_protocol">Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.</string>
+    <string name="valid_url">Valid URL</string>
+    <string name="invalid_url">Invalid URL</string>
+    <string name="no_videos_found">No videos found in this folder.</string>
+    <string name="general">General</string>
+    <string name="not_set_video_default">Not set (will use video default)</string>
+    <string name="enter_language_codes">Enter language codes separated by commas (e.g., eng,jpn,spa)</string>
+    <string name="language_codes_placeholder">eng,jpn,spa</string>
+    <string name="not_set_system_fonts">Not set (using system fonts)</string>
+    <string name="fonts_loaded">%1$d fonts loaded</string>
+    <string name="reload_fonts">Reload fonts</string>
+    <string name="clear_font_directory">Clear font directory</string>
+    <string name="reset_to_default_font">Reset to default font</string>
+    <string name="set_as_default">Set as default</string>
 </resources>

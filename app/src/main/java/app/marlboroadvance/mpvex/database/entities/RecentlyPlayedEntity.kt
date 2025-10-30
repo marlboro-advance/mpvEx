@@ -9,4 +9,5 @@ data class RecentlyPlayedEntity(
   val filePath: String,
   val fileName: String,
   val timestamp: Long,
+  val launchSource: String? = null, // null or empty means normal playback from list
 )

@@ -6,4 +6,8 @@
     <files-path
         name="files_path"
         path="." />
+    <!-- Allow sharing files from external storage (e.g., /storage/emulated/0/...) -->
+    <external-path
+        name="external_storage"
+        path="." />
 </paths>

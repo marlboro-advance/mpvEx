@@ -53,9 +53,10 @@ fun ExpandableCard(
     elevation = elevation,
   ) {
     Row(
-      modifier = Modifier
-        .clickable(onClick = { onExpand(!isExpanded) })
-        .padding(start = MaterialTheme.spacing.medium),
+      modifier =
+        Modifier
+          .clickable(onClick = { onExpand(!isExpanded) })
+          .padding(start = MaterialTheme.spacing.medium),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       title(isExpanded)

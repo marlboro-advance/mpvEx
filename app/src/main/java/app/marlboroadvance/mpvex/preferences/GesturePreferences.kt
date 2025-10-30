@@ -4,7 +4,9 @@ import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.SingleActionGesture
 
-class GesturePreferences(preferenceStore: PreferenceStore) {
+class GesturePreferences(
+  preferenceStore: PreferenceStore,
+) {
   val doubleTapToSeekDuration = preferenceStore.getInt("double_tap_to_seek_duration", 10)
   val leftSingleActionGesture = preferenceStore.getEnum("left_double_tap_gesture", SingleActionGesture.Seek)
   val centerSingleActionGesture = preferenceStore.getEnum("center_drag_gesture", SingleActionGesture.PlayPause)

@@ -20,9 +20,10 @@ fun MultiChoiceSegmentedButton(
   modifier: Modifier = Modifier,
 ) {
   MultiChoiceSegmentedButtonRow(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     choices.forEachIndexed { index, choice ->
       SegmentedButton(

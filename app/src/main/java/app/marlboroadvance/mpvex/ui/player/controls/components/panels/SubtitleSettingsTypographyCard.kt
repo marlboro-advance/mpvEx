@@ -41,7 +41,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.SubtitleJustification
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
@@ -66,9 +65,7 @@ import org.koin.compose.koinInject
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
-fun SubtitleSettingsTypographyCard(
-  modifier: Modifier = Modifier,
-) {
+fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   val context = LocalContext.current
   val preferences = koinInject<SubtitlesPreferences>()
   val fileManager = koinInject<FileManager>()
@@ -81,20 +78,24 @@ fun SubtitleSettingsTypographyCard(
     mutableStateOf(indicator)
   }
   LaunchedEffect(Unit) {
-    if (!preferences.fontsFolder.isSet()) {
-      fontsLoadingIndicator = null
-      return@LaunchedEffect
-    }
     withContext(Dispatchers.IO) {
-      fonts.addAll(
-        fileManager.listFiles(
-          fileManager.fromUri(preferences.fontsFolder.get().toUri()) ?: return@withContext,
-        ).filter {
-          fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
-        }.mapNotNull {
-          runCatching { TTFFile.open(fileManager.getInputStream(it)!!).families.values.first() }.getOrNull()
-        }.distinct(),
-      )
+      // Read fonts from the app's persistent cache: filesDir/fonts
+      val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
+      if (fileManager.exists(fontsDir)) {
+        val familyNames =
+          fileManager
+            .listFiles(fontsDir)
+            .filter {
+              fileManager.isFile(it) &&
+                fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
+            }.mapNotNull {
+              runCatching {
+                val ttfFile = TTFFile.open(fileManager.getInputStream(it) ?: return@mapNotNull null)
+                ttfFile.families.values.firstOrNull()
+              }.getOrNull()
+            }.distinct()
+        fonts.addAll(familyNames)
+      }
       fontsLoadingIndicator = null
     }
   }
@@ -271,7 +272,7 @@ fun SubtitleSettingsTypographyCard(
 fun resetTypography(preferences: SubtitlesPreferences) {
   MPVLib.setPropertyBoolean("sub-bold", preferences.bold.deleteAndGet())
   MPVLib.setPropertyBoolean("sub-italic", preferences.italic.deleteAndGet())
-  MPVLib.setPropertyBoolean("sub-ass-justify", preferences.overrideAssSubs.deleteAndGet())
+  MPVLib.setPropertyBoolean("sub-ass-justify", false)
   MPVLib.setPropertyString("sub-justify", preferences.justification.deleteAndGet().value)
   MPVLib.setPropertyString("sub-font", preferences.font.deleteAndGet())
   MPVLib.setPropertyInt("sub-font-size", preferences.fontSize.deleteAndGet())
@@ -286,5 +287,5 @@ enum class SubtitlesBorderStyle(
 ) {
   OutlineAndShadow("outline-and-shadow", R.string.player_sheets_subtitles_border_style_outline_and_shadow),
   OpaqueBox("opaque-box", R.string.player_sheets_subtitles_border_style_opaque_box),
-  BackgroundBox("background-box", R.string.player_sheets_subtitles_border_style_background_box)
+  BackgroundBox("background-box", R.string.player_sheets_subtitles_border_style_background_box),
 }

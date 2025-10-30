@@ -25,7 +25,7 @@ import app.marlboroadvance.mpvex.R
 @Composable
 fun DoubleTapSeekTriangles(
   isForward: Boolean,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   val animationDuration = 750L
 
@@ -56,15 +56,14 @@ fun DoubleTapSeekTriangles(
 }
 
 @Composable
-private fun DoubleTapArrow(
-  alpha: Float,
-) {
+private fun DoubleTapArrow(alpha: Float) {
   Icon(
     painter = painterResource(R.drawable.ic_play_seek_triangle),
     contentDescription = null,
-    modifier = Modifier
-      .size(width = 16.dp, height = 20.dp)
-      .alpha(alpha = alpha),
+    modifier =
+      Modifier
+        .size(width = 16.dp, height = 20.dp)
+        .alpha(alpha = alpha),
     tint = Color.White,
   )
 }

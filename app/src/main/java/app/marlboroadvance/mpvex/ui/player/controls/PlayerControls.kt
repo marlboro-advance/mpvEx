@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -58,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -102,6 +105,8 @@ fun PlayerControls(
   modifier: Modifier = Modifier,
 ) {
   val spacing = MaterialTheme.spacing
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
   val interactionSource = remember { MutableInteractionSource() }
@@ -116,7 +121,6 @@ fun PlayerControls(
   val gestureSeekAmount by viewModel.gestureSeekAmount.collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
-  val showSeekIcon by playerPreferences.showSeekIcon.collectAsState()
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
   var isSeeking by remember { mutableStateOf(false) }
   var resetControls by remember { mutableStateOf(true) }
@@ -165,7 +169,7 @@ fun PlayerControls(
     viewModel = viewModel,
     interactionSource = interactionSource,
   )
-  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekIcon, showSeekTime, interactionSource)
+  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, interactionSource)
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
     LocalPlayerButtonsClickEvent provides { resetControls = !resetControls },
@@ -175,18 +179,18 @@ fun PlayerControls(
       LocalLayoutDirection provides LayoutDirection.Ltr,
     ) {
       ConstraintLayout(
-        modifier = modifier
-          .fillMaxSize()
-          .background(
-            Brush.verticalGradient(
-              Pair(0f, Color.Black),
-              Pair(.2f, Color.Transparent),
-              Pair(.7f, Color.Transparent),
-              Pair(1f, Color.Black),
-            ),
-            alpha = transparentOverlay,
-          )
-          .padding(horizontal = MaterialTheme.spacing.medium),
+        modifier =
+          modifier
+            .fillMaxSize()
+            .background(
+              Brush.verticalGradient(
+                Pair(0f, Color.Black),
+                Pair(.2f, Color.Transparent),
+                Pair(.7f, Color.Transparent),
+                Pair(1f, Color.Black),
+              ),
+              alpha = transparentOverlay,
+            ).padding(horizontal = MaterialTheme.spacing.medium),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -215,71 +219,73 @@ fun PlayerControls(
         AnimatedVisibility(
           isBrightnessSliderShown,
           enter =
-          if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) {
-              if (swapVolumeAndBrightness) -it else it
-            } +
-              fadeIn(
-                playerControlsEnterAnimationSpec(),
-              )
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit =
-          if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) {
-              if (swapVolumeAndBrightness) -it else it
-            } +
-              fadeOut(
-                playerControlsExitAnimationSpec(),
-              )
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(brightnessSlider) {
-            if (swapVolumeAndBrightness) {
-              start.linkTo(parent.start, spacing.medium)
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) {
+                if (swapVolumeAndBrightness) -it else it
+              } +
+                fadeIn(
+                  playerControlsEnterAnimationSpec(),
+                )
             } else {
-              end.linkTo(parent.end, spacing.medium)
-            }
-            top.linkTo(parent.top)
-            bottom.linkTo(parent.bottom)
-          },
+              fadeIn(playerControlsEnterAnimationSpec())
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) {
+                if (swapVolumeAndBrightness) -it else it
+              } +
+                fadeOut(
+                  playerControlsExitAnimationSpec(),
+                )
+            } else {
+              fadeOut(playerControlsExitAnimationSpec())
+            },
+          modifier =
+            Modifier.constrainAs(brightnessSlider) {
+              if (swapVolumeAndBrightness) {
+                start.linkTo(parent.start, spacing.medium)
+              } else {
+                end.linkTo(parent.end, spacing.medium)
+              }
+              top.linkTo(parent.top)
+              bottom.linkTo(parent.bottom)
+            },
         ) { BrightnessSlider(brightness, 0f..1f) }
 
         AnimatedVisibility(
           isVolumeSliderShown,
           enter =
-          if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) {
-              if (swapVolumeAndBrightness) it else -it
-            } +
-              fadeIn(
-                playerControlsEnterAnimationSpec(),
-              )
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit =
-          if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) {
-              if (swapVolumeAndBrightness) it else -it
-            } +
-              fadeOut(
-                playerControlsExitAnimationSpec(),
-              )
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(volumeSlider) {
-            if (swapVolumeAndBrightness) {
-              end.linkTo(parent.end, spacing.medium)
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) {
+                if (swapVolumeAndBrightness) it else -it
+              } +
+                fadeIn(
+                  playerControlsEnterAnimationSpec(),
+                )
             } else {
-              start.linkTo(parent.start, spacing.medium)
-            }
-            top.linkTo(parent.top)
-            bottom.linkTo(parent.bottom)
-          },
+              fadeIn(playerControlsEnterAnimationSpec())
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) {
+                if (swapVolumeAndBrightness) it else -it
+              } +
+                fadeOut(
+                  playerControlsExitAnimationSpec(),
+                )
+            } else {
+              fadeOut(playerControlsExitAnimationSpec())
+            },
+          modifier =
+            Modifier.constrainAs(volumeSlider) {
+              if (swapVolumeAndBrightness) {
+                end.linkTo(parent.end, spacing.medium)
+              } else {
+                start.linkTo(parent.start, spacing.medium)
+              }
+              top.linkTo(parent.top)
+              bottom.linkTo(parent.bottom)
+            },
         ) {
           val boostCap by audioPreferences.volumeBoostCap.collectAsState()
           val displayVolumeAsPercentage by playerPreferences.displayVolumeAsPercentage.collectAsState()
@@ -294,8 +300,11 @@ fun PlayerControls(
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
         val aspectRatio by playerPreferences.videoAspect.collectAsState()
-        LaunchedEffect(currentPlayerUpdate, aspectRatio) {
-          if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed || currentPlayerUpdate is PlayerUpdates.None) {
+        val videoZoom by viewModel.videoZoom.collectAsState()
+        LaunchedEffect(currentPlayerUpdate, aspectRatio, videoZoom) {
+          if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed ||
+            currentPlayerUpdate is PlayerUpdates.None
+          ) {
             return@LaunchedEffect
           }
           delay(2000)
@@ -305,15 +314,23 @@ fun PlayerControls(
           currentPlayerUpdate !is PlayerUpdates.None,
           enter = fadeIn(playerControlsEnterAnimationSpec()),
           exit = fadeOut(playerControlsExitAnimationSpec()),
-          modifier = Modifier.constrainAs(playerUpdates) {
-            linkTo(parent.start, parent.end)
-            linkTo(parent.top, parent.bottom, bias = 0.2f)
-          },
+          modifier =
+            Modifier.constrainAs(playerUpdates) {
+              linkTo(parent.start, parent.end)
+              linkTo(parent.top, parent.bottom, bias = 0.2f)
+            },
         ) {
           when (currentPlayerUpdate) {
             is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed)
             is PlayerUpdates.AspectRatio -> TextPlayerUpdate(stringResource(aspectRatio.titleRes))
-            is PlayerUpdates.ShowText -> TextPlayerUpdate((currentPlayerUpdate as PlayerUpdates.ShowText).value)
+            is PlayerUpdates.ShowText ->
+              TextPlayerUpdate(
+                (currentPlayerUpdate as PlayerUpdates.ShowText).value,
+              )
+            is PlayerUpdates.VideoZoom -> {
+              val zoomPercentage = (videoZoom * 100).toInt()
+              TextPlayerUpdate("Zoom: $zoomPercentage%")
+            }
             else -> {}
           }
         }
@@ -322,10 +339,11 @@ fun PlayerControls(
           controlsShown && areControlsLocked,
           enter = fadeIn(),
           exit = fadeOut(),
-          modifier = Modifier.constrainAs(unlockControlsButton) {
-            top.linkTo(parent.top, spacing.medium)
-            start.linkTo(parent.start, spacing.medium)
-          },
+          modifier =
+            Modifier.constrainAs(unlockControlsButton) {
+              top.linkTo(parent.top, spacing.medium)
+              start.linkTo(parent.start, spacing.medium)
+            },
         ) {
           ControlsButton(
             Icons.Filled.Lock,
@@ -333,15 +351,17 @@ fun PlayerControls(
           )
         }
         AnimatedVisibility(
-          visible = (controlsShown && !areControlsLocked || gestureSeekAmount != null) || pausedForCache == true,
+          visible =
+            (controlsShown && !areControlsLocked || gestureSeekAmount != null) || pausedForCache == true,
           enter = fadeIn(playerControlsEnterAnimationSpec()),
           exit = fadeOut(playerControlsExitAnimationSpec()),
-          modifier = Modifier.constrainAs(playerPauseButton) {
-            end.linkTo(parent.absoluteRight)
-            start.linkTo(parent.absoluteLeft)
-            top.linkTo(parent.top)
-            bottom.linkTo(parent.bottom)
-          },
+          modifier =
+            Modifier.constrainAs(playerPauseButton) {
+              end.linkTo(parent.absoluteRight)
+              start.linkTo(parent.absoluteLeft)
+              top.linkTo(parent.top)
+              bottom.linkTo(parent.bottom)
+            },
         ) {
           val showLoadingCircle by playerPreferences.showLoadingCircle.collectAsState()
           val icon = AnimatedImageVector.animatedVectorResource(R.drawable.anim_play_to_pause)
@@ -355,9 +375,10 @@ fun PlayerControls(
                   Utils.prettyTime(abs(gestureSeekAmount!!.second)),
                   Utils.prettyTime(gestureSeekAmount!!.first + gestureSeekAmount!!.second),
                 ),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                  shadow = Shadow(Color.Black, blurRadius = 5f),
-                ),
+                style =
+                  MaterialTheme.typography.headlineMedium.copy(
+                    shadow = Shadow(Color.Black, blurRadius = 5f),
+                  ),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
               )
@@ -369,78 +390,114 @@ fun PlayerControls(
               )
             }
 
-            controlsShown && !areControlsLocked -> Image(
-              painter = rememberAnimatedVectorPainter(icon, paused == false),
-              modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .clickable(
-                  interaction,
-                  ripple(),
-                  onClick = viewModel::pauseUnpause,
+            controlsShown && !areControlsLocked ->
+              Surface(
+                modifier =
+                  Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                      interaction,
+                      ripple(),
+                      onClick = viewModel::pauseUnpause,
+                    ),
+                shape = CircleShape,
+                color =
+                  if (!hideBackground) {
+                    MaterialTheme.colorScheme.surfaceContainer.copy(
+                      alpha = 0.55f,
+                    )
+                  } else {
+                    Color.Transparent
+                  },
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 2.dp,
+                shadowElevation = 0.dp,
+                border =
+                  if (!hideBackground) {
+                    BorderStroke(
+                      1.dp,
+                      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    )
+                  } else {
+                    null
+                  },
+              ) {
+                Image(
+                  painter = rememberAnimatedVectorPainter(icon, paused == false),
+                  modifier =
+                    Modifier
+                      .fillMaxSize()
+                      .padding(MaterialTheme.spacing.medium),
+                  contentDescription = null,
                 )
-                .padding(MaterialTheme.spacing.medium),
-              contentDescription = null,
-            )
+              }
           }
         }
         AnimatedVisibility(
           visible = (controlsShown || seekBarShown) && !areControlsLocked,
-          enter = if (!reduceMotion) {
-            slideInVertically(playerControlsEnterAnimationSpec()) { it } +
+          enter =
+            if (!reduceMotion) {
+              slideInVertically(playerControlsEnterAnimationSpec()) { it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
               fadeIn(playerControlsEnterAnimationSpec())
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit = if (!reduceMotion) {
-            slideOutVertically(playerControlsExitAnimationSpec()) { it } +
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutVertically(playerControlsExitAnimationSpec()) { it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
               fadeOut(playerControlsExitAnimationSpec())
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(seekbar) {
-            bottom.linkTo(parent.bottom, spacing.medium)
-          },
+            },
+          modifier =
+            Modifier.constrainAs(seekbar) {
+              bottom.linkTo(bottomLeftControls.top)
+            },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
-          val readAhead by MPVLib.propFloat["demuxer-cache-seconds"].collectAsState()
-          val preciseSeeking by playerPreferences.preciseSeeking.collectAsState()
+
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
-            readAheadValue = readAhead ?: 0f,
             onValueChange = {
               isSeeking = true
-              viewModel.seekTo(it.toInt(), preciseSeeking)
+              viewModel.seekTo(it.toInt())
             },
-            onValueChangeFinished = { isSeeking = false },
+            onValueChangeFinished = {
+              isSeeking = false
+            },
             timersInverted = Pair(false, invertDuration),
             durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
             positionTimerOnClick = {},
             chapters = chapters,
+            paused = paused ?: false,
           )
         }
         val mediaTitle by MPVLib.propString["media-title"].collectAsState()
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
-          enter = if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
+          visible = controlsShown && !areControlsLocked,
+          enter =
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
               fadeIn(playerControlsEnterAnimationSpec())
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit = if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
               fadeOut(playerControlsExitAnimationSpec())
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(topLeftControls) {
-            top.linkTo(parent.top, spacing.medium)
-            start.linkTo(parent.start)
-            width = Dimension.fillToConstraints
-            end.linkTo(topRightControls.start)
-          },
+            },
+          modifier =
+            Modifier.constrainAs(topLeftControls) {
+              top.linkTo(parent.top, spacing.medium)
+              start.linkTo(parent.start)
+              width = Dimension.fillToConstraints
+              end.linkTo(topRightControls.start, spacing.medium)
+            },
         ) {
           TopLeftPlayerControls(
             mediaTitle = mediaTitle ?: "", // it'll be set when the video loads so no problem keeping it empty for now
@@ -449,27 +506,29 @@ fun PlayerControls(
         }
         // Top right controls
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
-          enter = if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
+          visible = controlsShown && !areControlsLocked,
+          enter =
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
               fadeIn(playerControlsEnterAnimationSpec())
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit = if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) { it } +
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) { it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
               fadeOut(playerControlsExitAnimationSpec())
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(topRightControls) {
-            top.linkTo(parent.top, spacing.medium)
-            end.linkTo(parent.end)
-          },
+            },
+          modifier =
+            Modifier.constrainAs(topRightControls) {
+              top.linkTo(parent.top, spacing.medium)
+              end.linkTo(parent.end)
+            },
         ) {
           val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
           TopRightPlayerControls(
-            onFrameNavigationClick = { onOpenPanel(Panels.FrameNavigation) },
             decoder = decoder,
             onDecoderClick = { viewModel.cycleDecoders() },
             onDecoderLongClick = { onOpenSheet(Sheets.Decoders) },
@@ -483,51 +542,57 @@ fun PlayerControls(
             onMoreLongClick = { onOpenPanel(Panels.VideoFilters) },
           )
         }
-        // Bottom right controls
+        // Bottom right controls (above seekbar)
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
-          enter = if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
+          visible = controlsShown && !areControlsLocked,
+          enter =
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
               fadeIn(playerControlsEnterAnimationSpec())
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit = if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) { it } +
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) { it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
               fadeOut(playerControlsExitAnimationSpec())
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(bottomRightControls) {
-            bottom.linkTo(seekbar.top)
-            end.linkTo(seekbar.end)
-          },
+            },
+          modifier =
+            Modifier.constrainAs(bottomRightControls) {
+              bottom.linkTo(parent.bottom, spacing.medium)
+              end.linkTo(parent.end)
+            },
         ) {
           BottomRightPlayerControls(
             viewModel = viewModel,
           )
         }
-        // Bottom left controls
+        // Bottom left controls (above seekbar)
         AnimatedVisibility(
-          controlsShown && !areControlsLocked,
-          enter = if (!reduceMotion) {
-            slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
+          visible = controlsShown && !areControlsLocked,
+          enter =
+            if (!reduceMotion) {
+              slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
               fadeIn(playerControlsEnterAnimationSpec())
-          } else {
-            fadeIn(playerControlsEnterAnimationSpec())
-          },
-          exit = if (!reduceMotion) {
-            slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
               fadeOut(playerControlsExitAnimationSpec())
-          } else {
-            fadeOut(playerControlsExitAnimationSpec())
-          },
-          modifier = Modifier.constrainAs(bottomLeftControls) {
-            bottom.linkTo(seekbar.top)
-            start.linkTo(seekbar.start)
-            width = Dimension.fillToConstraints
-            end.linkTo(bottomRightControls.start)
-          },
+            },
+          modifier =
+            Modifier.constrainAs(bottomLeftControls) {
+              bottom.linkTo(parent.bottom, spacing.medium)
+              start.linkTo(parent.start)
+              width = Dimension.fillToConstraints
+              end.linkTo(bottomRightControls.start)
+            },
         ) {
           val showChapterIndicator by playerPreferences.currentChaptersIndicator.collectAsState()
           BottomLeftPlayerControls(
@@ -556,6 +621,7 @@ fun PlayerControls(
       subtitles = subtitles,
       onAddSubtitle = viewModel::addSubtitle,
       onSelectSubtitle = viewModel::selectSub,
+      onRemoveSubtitle = viewModel::removeSubtitle,
       audioTracks = audioTracks,
       onAddAudio = viewModel::addAudio,
       onSelectAudio = {
@@ -583,7 +649,6 @@ fun PlayerControls(
       onResetDefaultSpeed = {
         MPVLib.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
       },
-
       sleepTimerTimeRemaining = sleepTimerTimeRemaining,
       onStartSleepTimer = viewModel::startTimer,
       onOpenPanel = onOpenPanel,
@@ -598,12 +663,14 @@ fun PlayerControls(
   }
 }
 
-fun <T> playerControlsExitAnimationSpec(): FiniteAnimationSpec<T> = tween(
-  durationMillis = 300,
-  easing = FastOutSlowInEasing,
-)
+fun <T> playerControlsExitAnimationSpec(): FiniteAnimationSpec<T> =
+  tween(
+    durationMillis = 300,
+    easing = FastOutSlowInEasing,
+  )
 
-fun <T> playerControlsEnterAnimationSpec(): FiniteAnimationSpec<T> = tween(
-  durationMillis = 100,
-  easing = LinearOutSlowInEasing,
-)
+fun <T> playerControlsEnterAnimationSpec(): FiniteAnimationSpec<T> =
+  tween(
+    durationMillis = 100,
+    easing = LinearOutSlowInEasing,
+  )

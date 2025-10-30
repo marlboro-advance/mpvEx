@@ -1,0 +1,150 @@
+name: Preview Build & Deploy
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'build.gradle.kts'
+      - 'settings.gradle'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'build.gradle.kts'
+      - 'settings.gradle'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew.bat'
+
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_count: ${{ steps.set_commit.outputs.commit_count }}
+      build_time: ${{ steps.set_commit.outputs.build_time }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew assemblePreview
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/preview
+          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE }}
+          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "35.0.0"
+
+      - name: Copy build artifacts
+        id: set_commit
+        run: |
+          set -e
+          commit_count=$(git rev-list --count HEAD)
+          build_time=$(date -u +"%Y-%m-%d %H:%M UTC")
+          echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
+          echo "build_time=$build_time" >> $GITHUB_OUTPUT
+
+          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+          mkdir -p output
+          for arch in "${apks[@]}"; do
+            cp app/build/outputs/apk/preview/app-${arch}-preview-signed.apk output/mpvEx-preview-r${commit_count}-${arch}.apk
+          done
+
+      - name: Upload all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-apks
+          path: output/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: preview-apks
+          path: ./public
+
+      - name: Generate download page
+        run: |
+          commit_count=${{ needs.build.outputs.commit_count }}
+          build_time="${{ needs.build.outputs.build_time }}"
+          echo "<!DOCTYPE html>
+          <html lang='en'>
+          <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>mpvEx Preview Builds</title>
+            <style>
+              body { font-family: sans-serif; padding: 2em; background: #0d1117; color: #c9d1d9; }
+              h1 { color: #58a6ff; }
+              a { color: #58a6ff; text-decoration: none; display: block; margin: 8px 0; }
+              a:hover { text-decoration: underline; }
+              .note { color: #8b949e; font-size: 0.9em; margin-top: 1em; }
+            </style>
+          </head>
+          <body>
+            <h1>mpvEx Preview Build r${commit_count}</h1>
+            <p>Build time: ${build_time}</p>
+            <p>Download the latest signed APKs:</p>
+            <ul>
+              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'>Universal</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'>arm64-v8a</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'>armeabi-v7a</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64</a></li>
+            </ul>
+            <p class='note'>Built automatically from the <code>dev</code> branch.</p>
+          </body>
+          </html>" > ./public/index.html
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

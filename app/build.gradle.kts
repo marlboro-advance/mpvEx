@@ -1,5 +1,5 @@
+
 import com.android.build.api.variant.FilterConfiguration
-import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,8 +8,7 @@ plugins {
   alias(libs.plugins.jetbrains.kotlin.android)
   alias(libs.plugins.kotlin.compose.compiler)
   alias(libs.plugins.room)
-  alias(libs.plugins.detekt)
-  alias(libs.plugins.about.libraries)
+  alias(libs.plugins.aboutlibraries)
   alias(libs.plugins.kotlinx.serialization)
 }
 
@@ -19,10 +18,10 @@ android {
 
   defaultConfig {
     applicationId = "app.marlboroadvance.mpvex"
-    minSdk = 25
+    minSdk = 26
     targetSdk = 36
-    versionCode = 10
-    versionName = "1.0.0"
+    versionCode = 11
+    versionName = "1.1.0"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -43,11 +42,15 @@ android {
   buildTypes {
     named("release") {
       isMinifyEnabled = true
-      isShrinkResources = false
+      isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
+      signingConfig = signingConfigs.getByName("debug")
+      ndk {
+        debugSymbolLevel = "none" // or 'minimal' if needed for crash reports
+      }
     }
     create("preview") {
       initWith(getByName("release"))
@@ -78,12 +81,13 @@ android {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
   }
-  val abiCodes = mapOf(
-    "armeabi-v7a" to 1,
-    "arm64-v8a" to 2,
-    "x86" to 3,
-    "x86_64" to 4,
-  )
+  val abiCodes =
+    mapOf(
+      "armeabi-v7a" to 1,
+      "arm64-v8a" to 2,
+      "x86" to 3,
+      "x86_64" to 4,
+    )
   androidComponents {
     onVariants { variant ->
       variant.outputs.forEach { output ->
@@ -139,7 +143,7 @@ dependencies {
 
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
-  implementation(libs.bundles.about.libs)
+  implementation(libs.aboutlibraries.compose.m3)
   implementation(libs.simple.icons)
 
   implementation(libs.accompanist.permissions)
@@ -147,40 +151,29 @@ dependencies {
   implementation(libs.room.runtime)
   ksp(libs.room.compiler)
   implementation(libs.room.ktx)
-  detektPlugins(libs.detekt.rules.compose)
-  detektPlugins(libs.detekt.formatter)
 
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
-}
-
-detekt {
-  parallel = true
-  allRules = false
-  buildUponDefaultConfig = true
-  config.setFrom("$rootDir/config/detekt/detekt.yml")
-}
-
-tasks.withType<Detekt>().configureEach {
-  setSource(files(project.projectDir))
-  exclude("**/build/**")
-  autoCorrect = true
-  reports {
-    html.required.set(true)
-    md.required.set(true)
-  }
+  implementation(libs.mwdiainfo.lib)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD")
+
 fun getCommitSha(): String = runCommand("git rev-parse --short HEAD")
+
 fun runCommand(command: String): String {
   val parts = command.split(' ')
-  val process = ProcessBuilder(parts)
-    .redirectErrorStream(true)
-    .start()
-  val output = process.inputStream.bufferedReader().readText().trim()
+  val process =
+    ProcessBuilder(parts)
+      .redirectErrorStream(true)
+      .start()
+  val output =
+    process.inputStream
+      .bufferedReader()
+      .readText()
+      .trim()
   process.waitFor()
   return output
 }

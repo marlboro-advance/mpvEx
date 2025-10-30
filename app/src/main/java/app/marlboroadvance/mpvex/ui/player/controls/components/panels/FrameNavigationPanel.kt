@@ -1,7 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
 import android.content.Context
-import android.os.Environment
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -97,13 +96,14 @@ fun FrameNavigationPanel(
   val dur = duration ?: 0
 
   // Format timestamp based on current position
-  val timestamp = remember(pos) {
-    val currentPos = pos
-    val hours = currentPos / 3600
-    val minutes = (currentPos % 3600) / 60
-    val seconds = currentPos % 60
-    String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
-  }
+  val timestamp =
+    remember(pos) {
+      val currentPos = pos
+      val hours = currentPos / 3600
+      val minutes = (currentPos % 3600) / 60
+      val seconds = currentPos % 60
+      String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+    }
 
   // Pause playback when the panel opens
   LaunchedEffect(Unit) {
@@ -126,9 +126,10 @@ fun FrameNavigationPanel(
   }
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val frameControlCard = createRef()
 
@@ -187,16 +188,17 @@ fun FrameNavigationPanel(
       pos = pos.toFloat(),
       onSeekTo = onSeekTo,
       title = { FrameNavigationCardTitle(onClose = onDismissRequest) },
-      modifier = Modifier.constrainAs(frameControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.0f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(frameControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.0f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }
 
 @Composable
-private fun FrameNavigationCard(
+internal fun FrameNavigationCard(
   onPreviousFrame: () -> Unit,
   onNextFrame: () -> Unit,
   onPlayPause: () -> Unit,
@@ -229,11 +231,12 @@ private fun FrameNavigationCard(
   var isSeeking by remember { mutableStateOf(false) }
   val videoProgress = if (duration > 0) pos / duration else 0f
 
-  val seekbarProgress = if (isSeeking) {
-    userSliderPosition
-  } else {
-    videoProgress
-  }
+  val seekbarProgress =
+    if (isSeeking) {
+      userSliderPosition
+    } else {
+      videoProgress
+    }
   val animatedProgress by animateFloatAsState(
     targetValue = seekbarProgress,
     label = "seekbar",
@@ -241,9 +244,10 @@ private fun FrameNavigationCard(
   // -------------------------------------------------------
 
   Card(
-    modifier = modifier
-      .widthIn(max = 520.dp)
-      .animateContentSize(),
+    modifier =
+      modifier
+        .widthIn(max = 520.dp)
+        .animateContentSize(),
     colors = panelCardsColors(),
   ) {
     Column(
@@ -281,12 +285,13 @@ private fun FrameNavigationCard(
       }
 
       // Define button colors to make disabled buttons look the same as enabled
-      val buttonColors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        disabledContainerColor = MaterialTheme.colorScheme.primary,
-        disabledContentColor = MaterialTheme.colorScheme.onPrimary,
-      )
+      val buttonColors =
+        ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          contentColor = MaterialTheme.colorScheme.onPrimary,
+          disabledContainerColor = MaterialTheme.colorScheme.primary,
+          disabledContentColor = MaterialTheme.colorScheme.onPrimary,
+        )
 
       // Frame info, timestamp and navigation buttons
       if (isLandscape) {
@@ -413,11 +418,12 @@ private fun FrameInfoDisplay(
         color = MaterialTheme.colorScheme.tertiary,
       )
       Text(
-        text = if (totalFrames > 0) {
-          "$currentFrame / $totalFrames"
-        } else {
-          "$currentFrame"
-        },
+        text =
+          if (totalFrames > 0) {
+            "$currentFrame / $totalFrames"
+          } else {
+            "$currentFrame"
+          },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurface,
       )
@@ -522,7 +528,7 @@ private fun ControlButtons(
 }
 
 @Composable
-private fun FrameNavigationCardTitle(
+internal fun FrameNavigationCardTitle(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -545,35 +551,122 @@ private fun FrameNavigationCardTitle(
   }
 }
 
-private suspend fun takeSnapshot(context: Context) {
+internal suspend fun takeSnapshot(context: Context) {
   withContext(Dispatchers.IO) {
     try {
-      // Create mpvSnaps folder in Pictures directory
-      val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-      val snapshotsDir = File(picturesDir, "mpvSnaps")
-      if (!snapshotsDir.exists()) {
-        snapshotsDir.mkdirs()
-      }
+      // Note: This function relies on the app's permission infrastructure:
+      // - READ_EXTERNAL_STORAGE (all versions)
+      // - WRITE_EXTERNAL_STORAGE (Android 9 and below, maxSdkVersion="28")
+      // - MANAGE_EXTERNAL_STORAGE (Android 11+, provides full file access)
+      // Permissions are handled at the app level before reaching player functionality.
 
       // Generate filename with timestamp
       val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
       val filename = "mpv_snapshot_$timestamp.png"
-      val snapshotPath = File(snapshotsDir, filename).absolutePath
 
-      // Take screenshot using MPV in PNG format for lossless quality
-      MPVLib.command("screenshot-to-file", snapshotPath, "video")
+      // Create a temporary file first
+      val tempFile = File(context.cacheDir, filename)
 
-      // Show toast notification
-      withContext(Dispatchers.Main) {
-        Toast.makeText(
-          context,
-          context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
-          Toast.LENGTH_SHORT,
-        ).show()
+      // Take screenshot using MPV to temp file
+      MPVLib.command("screenshot-to-file", tempFile.absolutePath, "video")
+
+      // Wait a bit for MPV to finish writing the file
+      kotlinx.coroutines.delay(200)
+
+      // Check if file was created
+      if (!tempFile.exists() || tempFile.length() == 0L) {
+        withContext(Dispatchers.Main) {
+          Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
+        }
+        return@withContext
+      }
+
+      // Use different methods based on Android version
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        // Android 10+ - Use MediaStore with RELATIVE_PATH
+        val contentValues =
+          android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(
+              android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+              "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+            )
+            put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+          }
+
+        val resolver = context.contentResolver
+        val imageUri =
+          resolver.insert(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues,
+          )
+
+        if (imageUri != null) {
+          // Copy temp file to MediaStore
+          resolver.openOutputStream(imageUri)?.use { outputStream ->
+            tempFile.inputStream().use { inputStream ->
+              inputStream.copyTo(outputStream)
+            }
+          }
+
+          // Mark as finished
+          contentValues.clear()
+          contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+          resolver.update(imageUri, contentValues, null, null)
+
+          // Delete temp file
+          tempFile.delete()
+
+          // Show success toast
+          withContext(Dispatchers.Main) {
+            Toast
+              .makeText(
+                context,
+                context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+                Toast.LENGTH_SHORT,
+              ).show()
+          }
+        } else {
+          throw Exception("Failed to create MediaStore entry")
+        }
+      } else {
+        // Android 9 and below - Use legacy external storage
+        val picturesDir =
+          android.os.Environment.getExternalStoragePublicDirectory(
+            android.os.Environment.DIRECTORY_PICTURES,
+          )
+        val snapshotsDir = File(picturesDir, "mpvSnaps")
+
+        // Create directory if it doesn't exist
+        if (!snapshotsDir.exists()) {
+          val created = snapshotsDir.mkdirs()
+          if (!created && !snapshotsDir.exists()) {
+            throw Exception("Failed to create mpvSnaps directory")
+          }
+        }
+
+        val destFile = File(snapshotsDir, filename)
+        tempFile.copyTo(destFile, overwrite = true)
+        tempFile.delete()
+
+        // Notify media scanner about the new file
+        val mediaScanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+        mediaScanIntent.data = android.net.Uri.fromFile(destFile)
+        context.sendBroadcast(mediaScanIntent)
+
+        withContext(Dispatchers.Main) {
+          Toast
+            .makeText(
+              context,
+              context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+              Toast.LENGTH_SHORT,
+            ).show()
+        }
       }
     } catch (e: Exception) {
       withContext(Dispatchers.Main) {
-        Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
       }
     }
   }

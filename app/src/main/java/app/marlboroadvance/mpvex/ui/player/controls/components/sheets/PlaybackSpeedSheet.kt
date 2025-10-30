@@ -22,7 +22,6 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,9 +67,10 @@ fun PlaybackSpeedSheet(
         min = 0.01f,
       )
       Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MaterialTheme.spacing.medium),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
@@ -78,8 +78,9 @@ fun PlaybackSpeedSheet(
           Icon(Icons.Default.RestartAlt, null)
         }
         LazyRow(
-          modifier = Modifier
-            .weight(1f),
+          modifier =
+            Modifier
+              .weight(1f),
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
           items(speedPresets, key = { it }) {
@@ -87,8 +88,9 @@ fun PlaybackSpeedSheet(
               selected = speed == it,
               onClick = { onSpeedChange(it) },
               label = { Text(stringResource(R.string.player_speed, it)) },
-              modifier = Modifier
-                .animateItem(),
+              modifier =
+                Modifier
+                  .animateItem(),
               trailingIcon = {
                 Icon(
                   Icons.Default.Close,
@@ -117,8 +119,9 @@ fun PlaybackSpeedSheet(
         )
       }
       Row(
-        modifier = Modifier
-          .padding(horizontal = MaterialTheme.spacing.medium),
+        modifier =
+          Modifier
+            .padding(horizontal = MaterialTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
         Button(

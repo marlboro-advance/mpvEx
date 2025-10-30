@@ -33,13 +33,15 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-fun percentage(value: Float, range: ClosedFloatingPointRange<Float>): Float {
-  return ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
-}
+fun percentage(
+  value: Float,
+  range: ClosedFloatingPointRange<Float>,
+): Float = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
 
-fun percentage(value: Int, range: ClosedRange<Int>): Float {
-  return ((value - range.start - 0f) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
-}
+fun percentage(
+  value: Int,
+  range: ClosedRange<Int>,
+): Float = ((value - range.start - 0f) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
 
 @Composable
 fun VerticalSlider(
@@ -51,11 +53,12 @@ fun VerticalSlider(
 ) {
   require(range.contains(value)) { "Value must be within the provided range" }
   Box(
-    modifier = modifier
-      .height(120.dp)
-      .aspectRatio(0.2f)
-      .clip(RoundedCornerShape(16.dp))
-      .background(MaterialTheme.colorScheme.background),
+    modifier =
+      modifier
+        .height(120.dp)
+        .aspectRatio(0.2f)
+        .clip(RoundedCornerShape(16.dp))
+        .background(MaterialTheme.colorScheme.background),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
@@ -90,11 +93,12 @@ fun VerticalSlider(
 ) {
   require(range.contains(value)) { "Value must be within the provided range" }
   Box(
-    modifier = modifier
-      .height(120.dp)
-      .aspectRatio(0.2f)
-      .clip(RoundedCornerShape(16.dp))
-      .background(MaterialTheme.colorScheme.background),
+    modifier =
+      modifier
+        .height(120.dp)
+        .aspectRatio(0.2f)
+        .clip(RoundedCornerShape(16.dp))
+        .background(MaterialTheme.colorScheme.background),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
@@ -192,11 +196,12 @@ fun VolumeSlider(
 val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
   { volume, mpvVolume, boostVolume, percentage, displayAsPercentage ->
     when (mpvVolume - 100) {
-      0 -> if (displayAsPercentage) {
-        stringResource(R.string.value_percentage_int, percentage)
-      } else {
-        "$volume"
-      }
+      0 ->
+        if (displayAsPercentage) {
+          stringResource(R.string.value_percentage_int, percentage)
+        } else {
+          "$volume"
+        }
 
       in 0..1000 -> {
         if (displayAsPercentage) {

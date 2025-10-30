@@ -56,10 +56,11 @@ object AppearancePreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           PreferenceCategory(
             title = { Text(text = stringResource(id = R.string.pref_appearance_category_theme)) },
@@ -70,6 +71,14 @@ object AppearancePreferencesScreen : Screen {
             selectedIndices = persistentListOf(DarkMode.entries.indexOf(darkMode)),
             onClick = { preferences.darkMode.set(DarkMode.entries[it]) },
           )
+          val highContrastMode by preferences.highContrastMode.collectAsState()
+          SwitchPreference(
+            value = highContrastMode,
+            onValueChange = { preferences.highContrastMode.set(it) },
+            title = { Text(text = stringResource(id = R.string.pref_appearance_high_contrast_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_appearance_high_contrast_summary)) },
+            enabled = darkMode != DarkMode.Light,
+          )
           val materialYou by preferences.materialYou.collectAsState()
           val isMaterialYouAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
           SwitchPreference(
@@ -78,16 +87,47 @@ object AppearancePreferencesScreen : Screen {
             title = { Text(text = stringResource(id = R.string.pref_appearance_material_you_title)) },
             summary = {
               Text(
-                text = stringResource(
-                  if (isMaterialYouAvailable) {
-                    R.string.pref_appearance_material_you_summary
-                  } else {
-                    R.string.pref_appearance_material_you_summary_disabled
-                  },
-                ),
+                text =
+                  stringResource(
+                    if (isMaterialYouAvailable) {
+                      R.string.pref_appearance_material_you_summary
+                    } else {
+                      R.string.pref_appearance_material_you_summary_disabled
+                    },
+                  ),
               )
             },
             enabled = isMaterialYouAvailable,
+          )
+          val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
+          SwitchPreference(
+            value = unlimitedNameLines,
+            onValueChange = { preferences.unlimitedNameLines.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_summary),
+              )
+            },
+          )
+          val hidePlayerButtonsBackground by preferences.hidePlayerButtonsBackground.collectAsState()
+          SwitchPreference(
+            value = hidePlayerButtonsBackground,
+            onValueChange = { preferences.hidePlayerButtonsBackground.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_summary),
+              )
+            },
           )
         }
       }

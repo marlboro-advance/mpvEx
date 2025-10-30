@@ -40,7 +40,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -72,9 +75,8 @@ import java.io.File
 import java.io.InputStreamReader
 
 class CrashActivity : ComponentActivity() {
-
   private val clipboardManager by lazy { getSystemService(CLIPBOARD_SERVICE) as ClipboardManager }
-  private lateinit var logcat: String
+  private var logcat: String = ""
   private val appearancePreferences: AppearancePreferences by inject()
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,11 +87,12 @@ class CrashActivity : ComponentActivity() {
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
+      val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
       enableEdgeToEdge(
         SystemBarStyle.auto(
           lightScrim = Color.White.toArgb(),
-          darkScrim = Color.White.toArgb(),
-        ) { dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme) },
+          darkScrim = Color.Transparent.toArgb(),
+        ) { isDarkMode },
       )
       MpvexTheme {
         CrashScreen(intent.getStringExtra("exception") ?: "")
@@ -100,9 +103,56 @@ class CrashActivity : ComponentActivity() {
   override fun onDestroy() {
     try {
       super.onDestroy()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       // Silently handle exceptions during destruction
     }
+  }
+
+  private fun deleteDatabase(): Boolean =
+    try {
+      val dbFile = getDatabasePath("mpvex.db")
+      val dbWalFile = File(dbFile.parent, "mpvex.db-wal")
+      val dbShmFile = File(dbFile.parent, "mpvex.db-shm")
+
+      var deleted = false
+      if (dbFile.exists()) {
+        deleted = dbFile.delete() || deleted
+      }
+      if (dbWalFile.exists()) {
+        deleted = dbWalFile.delete() || deleted
+      }
+      if (dbShmFile.exists()) {
+        deleted = dbShmFile.delete() || deleted
+      }
+      deleted
+    } catch (e: Exception) {
+      false
+    }
+
+  private fun isDatabaseCrash(
+    exceptionString: String,
+    logcat: String,
+  ): Boolean {
+    val databaseKeywords =
+      listOf(
+        "database",
+        "sqlite",
+        "room",
+        "mpvex.db",
+        "MpvExDatabase",
+        "android.database",
+        "androidx.room",
+        "SQLiteException",
+        "DatabaseException",
+        "android.database.sqlite",
+        "migration",
+        "FOREIGN KEY constraint failed",
+        "no such table",
+        "no such column",
+      )
+
+    val combinedLogs = "$exceptionString\n$logcat".lowercase()
+    return databaseKeywords.any { keyword -> combinedLogs.contains(keyword.lowercase()) }
   }
 
   companion object {
@@ -133,19 +183,19 @@ class CrashActivity : ComponentActivity() {
       deviceInfo: String,
       crashLogs: String? = null,
       logcat: String,
-    ): String {
-      return StringBuilder().apply {
-        appendLine(deviceInfo)
-        appendLine()
-        if (!crashLogs.isNullOrBlank()) {
-          appendLine("Exception:")
-          appendLine(crashLogs)
+    ): String =
+      StringBuilder()
+        .apply {
+          appendLine(deviceInfo)
           appendLine()
-        }
-        appendLine("Logcat:")
-        appendLine(logcat)
-      }.toString()
-    }
+          if (!crashLogs.isNullOrBlank()) {
+            appendLine("Exception:")
+            appendLine(crashLogs)
+            appendLine()
+          }
+          appendLine("Logcat:")
+          appendLine(logcat)
+        }.toString()
 
     fun collectLogcat(): String {
       val process = Runtime.getRuntime()
@@ -156,8 +206,8 @@ class CrashActivity : ComponentActivity() {
       return logcat.toString()
     }
 
-    fun collectDeviceInfo(): String {
-      return """
+    fun collectDeviceInfo(): String =
+      """
       App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.GIT_SHA})
       Android version: ${Build.VERSION.RELEASE} (${Build.VERSION.SDK_INT})
       Device brand: ${Build.BRAND}
@@ -167,7 +217,6 @@ class CrashActivity : ComponentActivity() {
       ffmpeg version: ${Utils.VERSIONS.ffmpeg}
       libplacebo version: ${Utils.VERSIONS.libPlacebo}
       """.trimIndent()
-    }
   }
 
   @Composable
@@ -176,6 +225,12 @@ class CrashActivity : ComponentActivity() {
     modifier: Modifier = Modifier,
   ) {
     val scope = rememberCoroutineScope()
+    var databaseDeleted by remember { mutableStateOf(false) }
+    val isDatabaseRelated =
+      remember(exceptionString, logcat) {
+        isDatabaseCrash(exceptionString, logcat)
+      }
+
     Scaffold(
       modifier = modifier.fillMaxSize(),
       bottomBar = {
@@ -190,10 +245,34 @@ class CrashActivity : ComponentActivity() {
                 Offset(size.width, 0f),
                 strokeWidth = Dp.Hairline.value,
               )
-            }
-            .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+            }.padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         ) {
+          if (isDatabaseRelated && !databaseDeleted) {
+            Button(
+              onClick = {
+                scope.launch(Dispatchers.IO) {
+                  val deleted = deleteDatabase()
+                  withContext(Dispatchers.Main) {
+                    databaseDeleted = deleted
+                  }
+                }
+              },
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Text(stringResource(R.string.crash_screen_fix_crash))
+            }
+          }
+
+          if (databaseDeleted) {
+            Text(
+              text = stringResource(R.string.crash_screen_database_deleted),
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.padding(vertical = MaterialTheme.spacing.extraSmall),
+            )
+          }
+
           Row(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
           ) {
@@ -231,10 +310,11 @@ class CrashActivity : ComponentActivity() {
       },
     ) { paddingValues ->
       Column(
-        modifier = Modifier
-          .padding(paddingValues)
-          .padding(horizontal = MaterialTheme.spacing.medium)
-          .verticalScroll(rememberScrollState()),
+        modifier =
+          Modifier
+            .padding(paddingValues)
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
         Spacer(Modifier.height(paddingValues.calculateTopPadding()))
@@ -252,6 +332,15 @@ class CrashActivity : ComponentActivity() {
           stringResource(R.string.crash_screen_subtitle, stringResource(R.string.app_name)),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        if (isDatabaseRelated) {
+          Text(
+            stringResource(R.string.crash_screen_database_hint),
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+          )
+        }
+
         Text(
           stringResource(R.string.crash_screen_logs_title),
           style = MaterialTheme.typography.headlineSmall,
@@ -273,9 +362,10 @@ class CrashActivity : ComponentActivity() {
     modifier: Modifier = Modifier,
   ) {
     LazyRow(
-      modifier = modifier
-        .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant),
+      modifier =
+        modifier
+          .clip(RoundedCornerShape(16.dp))
+          .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
       item {
         SelectionContainer {

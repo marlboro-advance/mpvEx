@@ -51,7 +51,7 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
-import kotlin.math.round
+import kotlin.math.roundToInt
 
 @Composable
 fun SubtitleDelayPanel(
@@ -61,49 +61,53 @@ fun SubtitleDelayPanel(
   val preferences = koinInject<SubtitlesPreferences>()
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val delayControlCard = createRef()
 
     var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
     val delay by MPVLib.propDouble["sub-delay"].collectAsState()
-    val delayInt by remember { derivedStateOf { (delay!! * 1000).toInt() } }
+    val delayInt by remember { derivedStateOf { ((delay ?: 0.0) * 1000).roundToInt() } }
     val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
-    val secondaryDelayInt by remember { derivedStateOf { (secondaryDelay!! * 1000).toInt() } }
-    val speed by MPVLib.propFloat["sub-speed"].collectAsState()
+    val secondaryDelayInt by remember { derivedStateOf { ((secondaryDelay ?: 0.0) * 1000).roundToInt() } }
+    val speed by MPVLib.propDouble["sub-speed"].collectAsState()
+    val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
     SubtitleDelayCard(
       delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
       onDelayChange = {
         when (affectedSubtitle) {
           SubtitleDelayType.Both -> {
-            MPVLib.setPropertyFloat("sub-delay", it / 1000f)
-            MPVLib.setPropertyFloat("secondary-sub-delay", it / 1000f)
+            MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+            MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
           }
 
-          SubtitleDelayType.Primary -> MPVLib.setPropertyFloat("sub-delay", it / 1000f)
-          else -> MPVLib.setPropertyFloat("secondary-sub-delay", it / 1000f)
+          SubtitleDelayType.Primary -> MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+          else -> MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
         }
       },
-      speed = speed!!,
-      onSpeedChange = { MPVLib.setPropertyFloat("sub-speed", round(it * 1000) / 1000f) },
+      speed = speedFloat,
+      onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
       affectedSubtitle = affectedSubtitle,
       onTypeChange = { affectedSubtitle = it },
       onApply = {
         preferences.defaultSubDelay.set(delayInt)
-        if (speed!! in 0.1f..10f) preferences.defaultSubSpeed.set(speed!!)
+        val currentSpeed = speed ?: 1.0
+        if (currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
       },
       onReset = {
-        MPVLib.setPropertyFloat("sub-delay", preferences.defaultSubDelay.get() / 1000f)
-        MPVLib.setPropertyFloat("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000f)
-        MPVLib.setPropertyFloat("sub-speed", preferences.defaultSubSpeed.get())
+        MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
+        MPVLib.setPropertyDouble("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000.0)
+        MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
       },
       onClose = onDismissRequest,
-      modifier = Modifier.constrainAs(delayControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.8f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(delayControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }
@@ -141,8 +145,8 @@ fun SubtitleDelayCard(
             value = speed,
             onChange = onSpeedChange,
             max = 10f,
-            step = .01f,
-            min = .1f,
+            step = 0.01f,
+            min = 0.1f,
           )
         }
 
@@ -175,9 +179,10 @@ fun DelayCard(
   extraSettings: @Composable ColumnScope.() -> Unit = {},
 ) {
   Card(
-    modifier = modifier
-      .widthIn(max = CARDS_MAX_WIDTH)
-      .animateContentSize(),
+    modifier =
+      modifier
+        .widthIn(max = CARDS_MAX_WIDTH)
+        .animateContentSize(),
     colors = panelCardsColors(),
   ) {
     Column(
@@ -215,11 +220,13 @@ fun DelayCard(
             return@LaunchedEffect
           }
           finalDelay = delayMs
-          timerStart = System.currentTimeMillis()
+          val startTime = System.currentTimeMillis()
+          timerStart = startTime
           val startingDelay: Int = finalDelay
           while (isDirectionPositive != null && timerStart != null) {
-            val elapsed = System.currentTimeMillis() - timerStart!!
-            finalDelay = startingDelay + (if (isDirectionPositive!!) elapsed else -elapsed).toInt()
+            val elapsed = System.currentTimeMillis() - startTime
+            val direction = isDirectionPositive ?: break
+            finalDelay = startingDelay + (if (direction) elapsed else -elapsed).toInt()
             // Arbitrary delay of 20ms
             delay(20)
           }
@@ -331,5 +338,6 @@ fun SubtitleDelayTitle(
 }
 
 enum class DelayType {
-  Audio, Subtitle
+  Audio,
+  Subtitle,
 }

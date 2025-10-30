@@ -7,10 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,18 +18,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
+import org.koin.compose.koinInject
 
 @Composable
 fun CurrentChapter(
@@ -38,15 +43,38 @@ fun CurrentChapter(
   modifier: Modifier = Modifier,
   onClick: () -> Unit = {},
 ) {
-  Box(
-    modifier = modifier
-      .clip(RoundedCornerShape(25))
-      .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6F))
-      .clickable(onClick = onClick)
-      .padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
+
+  Surface(
+    modifier =
+      modifier
+        .clip(RoundedCornerShape(50))
+        .clickable(onClick = onClick),
+    shape = RoundedCornerShape(50),
+    color =
+      if (hideBackground) {
+        Color.Transparent
+      } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(
+          alpha = 0.5f,
+        )
+      },
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    tonalElevation = if (hideBackground) 0.dp else 5.dp,
+    border =
+      if (hideBackground) {
+        null
+      } else {
+        BorderStroke(
+          1.dp,
+          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+      },
   ) {
     AnimatedContent(
       targetState = chapter,
+      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.small),
       transitionSpec = {
         if (targetState.start > initialState.start) {
           (slideInVertically { height -> height } + fadeIn())
@@ -62,15 +90,15 @@ fun CurrentChapter(
     ) { currentChapter ->
       Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
         Icon(
           imageVector = Icons.Default.Bookmarks,
           contentDescription = null,
-          modifier = Modifier
-            .padding(end = MaterialTheme.spacing.extraSmall)
-            .size(16.dp),
-          tint = MaterialTheme.colorScheme.onBackground
+          modifier =
+            Modifier
+              .padding(end = MaterialTheme.spacing.extraSmall)
+              .size(16.dp),
         )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
@@ -96,7 +124,7 @@ fun CurrentChapter(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
           )
         }
       }

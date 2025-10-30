@@ -74,10 +74,11 @@ fun MoreSheet(
     modifier,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(MaterialTheme.spacing.medium)
-        .verticalScroll(rememberScrollState()),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(MaterialTheme.spacing.medium)
+          .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
       Row(
@@ -101,14 +102,14 @@ fun MoreSheet(
               Icon(imageVector = Icons.Outlined.Timer, contentDescription = null)
               Text(
                 text =
-                if (remainingTime == 0) {
-                  stringResource(R.string.timer_title)
-                } else {
-                  stringResource(
-                    R.string.timer_remaining,
-                    DateUtils.formatElapsedTime(remainingTime.toLong()),
-                  )
-                },
+                  if (remainingTime == 0) {
+                    stringResource(R.string.timer_title)
+                  } else {
+                    stringResource(
+                      R.string.timer_remaining,
+                      DateUtils.formatElapsedTime(remainingTime.toLong()),
+                    )
+                  },
               )
               if (isSleepTimerDialogShown) {
                 TimePickerDialog(
@@ -139,13 +140,23 @@ fun MoreSheet(
             label = {
               Text(
                 stringResource(
-                  if (page == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip,
+                  if (page ==
+                    0
+                  ) {
+                    R.string.player_sheets_tracks_off
+                  } else {
+                    R.string.player_sheets_stats_page_chip
+                  },
                   page,
                 ),
               )
             },
             onClick = {
-              if ((page == 0) xor (statisticsPage == 0)) MPVLib.command("script-binding", "stats/display-stats-toggle")
+              if ((page == 0) xor
+                (statisticsPage == 0)
+              ) {
+                MPVLib.command("script-binding", "stats/display-stats-toggle")
+              }
               if (page != 0) MPVLib.command("script-binding", "stats/display-page-$page")
               advancedPreferences.enabledStatisticsPage.set(page)
             },
@@ -196,28 +207,32 @@ fun TimePickerDialog(
       modifier = modifier.padding(MaterialTheme.spacing.medium),
     ) {
       Column(
-        modifier = Modifier
-          .verticalScroll(rememberScrollState())
-          .width(IntrinsicSize.Max)
-          .animateContentSize()
-          .padding(MaterialTheme.spacing.medium),
+        modifier =
+          Modifier
+            .verticalScroll(rememberScrollState())
+            .width(IntrinsicSize.Max)
+            .animateContentSize()
+            .padding(MaterialTheme.spacing.medium),
       ) {
         var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
         Text(
-          text = stringResource(
-            id = if (currentLayoutType == 1) {
-              R.string.timer_picker_pick_time
-            } else {
-              R.string.timer_picker_enter_timer
-            },
-          ),
+          text =
+            stringResource(
+              id =
+                if (currentLayoutType == 1) {
+                  R.string.timer_picker_pick_time
+                } else {
+                  R.string.timer_picker_enter_timer
+                },
+            ),
         )
 
-        val state = rememberTimePickerState(
-          remainingTime / 3600,
-          (remainingTime % 3600) / 60,
-          is24Hour = true,
-        )
+        val state =
+          rememberTimePickerState(
+            remainingTime / 3600,
+            (remainingTime % 3600) / 60,
+            is24Hour = true,
+          )
         Box(
           contentAlignment = Alignment.Center,
         ) {
@@ -233,7 +248,14 @@ fun TimePickerDialog(
         ) {
           IconButton(onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 }) {
             Icon(
-              imageVector = if (currentLayoutType == 0) Icons.Outlined.Schedule else Icons.Default.KeyboardAlt,
+              imageVector =
+                if (currentLayoutType ==
+                  0
+                ) {
+                  Icons.Outlined.Schedule
+                } else {
+                  Icons.Default.KeyboardAlt
+                },
               contentDescription = null,
             )
           }

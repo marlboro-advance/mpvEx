@@ -57,10 +57,11 @@ object PlayerPreferencesScreen : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(padding),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(padding),
         ) {
           val orientation by preferences.orientation.collectAsState()
           ListPreference(
@@ -70,12 +71,6 @@ object PlayerPreferencesScreen : Screen {
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
             title = { Text(text = stringResource(id = R.string.pref_player_orientation)) },
             summary = { Text(text = stringResource(id = orientation.titleRes)) },
-          )
-          val drawOverDisplayCutout by preferences.drawOverDisplayCutout.collectAsState()
-          SwitchPreference(
-            value = drawOverDisplayCutout,
-            onValueChange = preferences.drawOverDisplayCutout::set,
-            title = { Text(stringResource(R.string.pref_player_draw_over_cutout)) },
           )
           val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           SwitchPreference(
@@ -95,16 +90,16 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = closeAfterEndOfVideo,
             onValueChange = preferences.closeAfterReachingEndOfVideo::set,
-            title = { Text(text = stringResource(id = R.string.pref_player_close_after_eof)) }
+            title = { Text(stringResource(id = R.string.pref_player_close_after_eof)) },
           )
           val rememberBrightness by preferences.rememberBrightness.collectAsState()
           SwitchPreference(
             value = rememberBrightness,
             onValueChange = preferences.rememberBrightness::set,
-            title = { Text(text = stringResource(R.string.pref_player_remember_brightness)) }
+            title = { Text(text = stringResource(R.string.pref_player_remember_brightness)) },
           )
           PreferenceCategory(
-            title = { Text(stringResource(R.string.pref_player_seeking_title)) }
+            title = { Text(stringResource(R.string.pref_player_seeking_title)) },
           )
           val horizontalSeekGesture by preferences.horizontalSeekGesture.collectAsState()
           SwitchPreference(
@@ -116,26 +111,13 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = showSeekbarWhenSeeking,
             onValueChange = preferences.showSeekBarWhenSeeking::set,
-            title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) }
-          )
-          val preciseSeeking by preferences.preciseSeeking.collectAsState()
-          SwitchPreference(
-            value = preciseSeeking,
-            onValueChange = preferences.preciseSeeking::set,
-            title = { Text(stringResource(R.string.pref_player_precise_seeking_title)) },
-            summary = { Text(stringResource(R.string.pref_player_precise_seeking_summary)) }
+            title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) },
           )
           val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
           SwitchPreference(
             value = showDoubleTapOvals,
             onValueChange = preferences.showDoubleTapOvals::set,
             title = { Text(stringResource(R.string.show_splash_ovals_on_double_tap_to_seek)) },
-          )
-          val showSeekIcon by preferences.showSeekIcon.collectAsState()
-          SwitchPreference(
-            value = showSeekIcon,
-            onValueChange = preferences.showSeekIcon::set,
-            title = { Text(stringResource(R.string.show_icon_on_double_tap_to_seek)) },
           )
           val showSeekTimeWhileSeeking by preferences.showSeekTimeWhileSeeking.collectAsState()
           SwitchPreference(
@@ -157,6 +139,12 @@ object PlayerPreferencesScreen : Screen {
             value = volumeGesture,
             onValueChange = preferences.volumeGesture::set,
             title = { Text(stringResource(R.string.pref_player_gestures_volume)) },
+          )
+          val pinchToZoomGesture by preferences.pinchToZoomGesture.collectAsState()
+          SwitchPreference(
+            value = pinchToZoomGesture,
+            onValueChange = preferences.pinchToZoomGesture::set,
+            title = { Text(stringResource(R.string.pref_player_gestures_pinch_to_zoom)) },
           )
           val holdForMultipleSpeed by preferences.holdForMultipleSpeed.collectAsState()
           SliderPreference(
@@ -183,7 +171,11 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = allowGesturesInPanels,
             onValueChange = preferences.allowGesturesInPanels::set,
-            title = { Text(text = stringResource(id = R.string.pref_player_controls_allow_gestures_in_panels)) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_player_controls_allow_gestures_in_panels),
+              )
+            },
           )
           val displayVolumeAsPercentage by preferences.displayVolumeAsPercentage.collectAsState()
           SwitchPreference(
@@ -201,7 +193,7 @@ object PlayerPreferencesScreen : Screen {
           SwitchPreference(
             value = showLoadingCircle,
             onValueChange = preferences.showLoadingCircle::set,
-            title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) }
+            title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
           )
           val showChaptersButton by preferences.showChaptersButton.collectAsState()
           SwitchPreference(
@@ -251,10 +243,11 @@ object PlayerPreferencesScreen : Screen {
             valueRange = 0f..1f,
             summary = {
               Text(
-                text = stringResource(
-                  id = R.string.pref_player_display_panel_transparency_summary,
-                  panelTransparency.times(100).toInt(),
-                ),
+                text =
+                  stringResource(
+                    id = R.string.pref_player_display_panel_transparency_summary,
+                    panelTransparency.times(100).toInt(),
+                  ),
               )
             },
             onSliderValueChange = { preferences.panelTransparency.set(it) },

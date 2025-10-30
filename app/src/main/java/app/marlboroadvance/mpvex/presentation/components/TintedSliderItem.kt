@@ -37,12 +37,13 @@ fun TintedSliderItem(
   val haptic = LocalHapticFeedback.current
 
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(
-        horizontal = MaterialTheme.spacing.medium,
-        vertical = MaterialTheme.spacing.smaller,
-      ),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(
+          horizontal = MaterialTheme.spacing.medium,
+          vertical = MaterialTheme.spacing.smaller,
+        ),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
   ) {
@@ -67,7 +68,7 @@ fun TintedSliderItem(
       modifier = Modifier.weight(1.5f),
       valueRange = min.toFloat()..max.toFloat(),
       steps = max - min,
-      tint = tint
+      tint = tint,
     )
   }
 }
@@ -82,7 +83,7 @@ fun TintedSlider(
   @IntRange steps: Int = 0,
   onValueChangeFinished: (() -> Unit)? = null,
   tint: Color = MaterialTheme.colorScheme.primaryContainer,
-  interactionSource: MutableInteractionSource = MutableInteractionSource()
+  interactionSource: MutableInteractionSource = MutableInteractionSource(),
 ) {
   Slider(
     value = value,
@@ -93,7 +94,7 @@ fun TintedSlider(
     steps = steps,
     onValueChangeFinished = onValueChangeFinished,
     colors = generateSliderColors(tint),
-    interactionSource = interactionSource
+    interactionSource = interactionSource,
   )
 }
 
@@ -103,7 +104,7 @@ private fun PreviewTintedSliderRed() {
   TintedSlider(
     0.5f,
     {},
-    tint = Color.Red
+    tint = Color.Red,
   )
 }
 
@@ -116,13 +117,16 @@ private fun PreviewTintedSliderItemRed() {
     "1",
     {},
     20,
-    tint = Color.Red
+    tint = Color.Red,
   )
 }
 
 fun generateSliderColors(baseColor: Color): SliderColors {
   // Utility function to darken a color
-  fun darken(color: Color, factor: Float): Color {
+  fun darken(
+    color: Color,
+    factor: Float,
+  ): Color {
     val red = max((color.red * factor), 0f)
     val green = max((color.green * factor), 0f)
     val blue = max((color.blue * factor), 0f)
@@ -130,7 +134,10 @@ fun generateSliderColors(baseColor: Color): SliderColors {
   }
 
   // Utility function to lighten a color
-  fun lighten(color: Color, factor: Float): Color {
+  fun lighten(
+    color: Color,
+    factor: Float,
+  ): Color {
     val red = min((color.red + (1 - color.red) * factor), 255f)
     val green = min((color.green + (1 - color.green) * factor), 255f)
     val blue = min((color.blue + (1 - color.blue) * factor), 255f)
@@ -147,6 +154,6 @@ fun generateSliderColors(baseColor: Color): SliderColors {
     disabledActiveTrackColor = lighten(baseColor, 0.2f).copy(alpha = 0.5f),
     disabledActiveTickColor = lighten(baseColor, 0.4f).copy(alpha = 0.5f),
     disabledInactiveTrackColor = darken(baseColor, 0.2f).copy(alpha = 0.5f),
-    disabledInactiveTickColor = darken(baseColor, 0.4f).copy(alpha = 0.5f)
+    disabledInactiveTickColor = darken(baseColor, 0.4f).copy(alpha = 0.5f),
   )
 }

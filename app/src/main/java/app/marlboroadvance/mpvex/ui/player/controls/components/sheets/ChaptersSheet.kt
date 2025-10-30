@@ -38,8 +38,9 @@ fun ChaptersSheet(
       )
     },
     onDismissRequest = onDismissRequest,
-    modifier = modifier
-      .padding(vertical = MaterialTheme.spacing.medium)
+    modifier =
+      modifier
+        .padding(vertical = MaterialTheme.spacing.medium),
   )
 }
 
@@ -49,13 +50,14 @@ fun ChapterTrack(
   index: Int,
   selected: Boolean,
   onClick: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .clickable(onClick = onClick)
-      .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium),
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
     Text(
@@ -64,7 +66,7 @@ fun ChapterTrack(
       fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
       maxLines = 1,
       modifier = Modifier.weight(1f),
-      overflow = TextOverflow.Ellipsis
+      overflow = TextOverflow.Ellipsis,
     )
     Text(
       Utils.prettyTime(chapter.start.toInt()),

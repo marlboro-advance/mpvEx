@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,6 +27,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 @Composable
 fun AudioDelayPanel(
@@ -35,24 +37,26 @@ fun AudioDelayPanel(
   val preferences = koinInject<AudioPreferences>()
 
   ConstraintLayout(
-    modifier = modifier
-      .fillMaxSize()
-      .padding(MaterialTheme.spacing.medium),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .padding(MaterialTheme.spacing.medium),
   ) {
     val delayControlCard = createRef()
 
     val delay by MPVLib.propDouble["audio-delay"].collectAsState()
     DelayCard(
-      delayMs = (delay!! * 1000).toInt(),
+      delayMs = ((delay ?: 0.0) * 1000).roundToInt(),
       onDelayChange = { MPVLib.setPropertyDouble("audio-delay", it / 1000.0) },
-      onApply = { preferences.defaultAudioDelay.set((delay!! * 1000).toInt()) },
+      onApply = { preferences.defaultAudioDelay.set(((delay ?: 0.0) * 1000).roundToInt()) },
       onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
       title = { AudioDelayCardTitle(onClose = onDismissRequest) },
       delayType = DelayType.Audio,
-      modifier = Modifier.constrainAs(delayControlCard) {
-        linkTo(parent.top, parent.bottom, bias = 0.8f)
-        end.linkTo(parent.end)
-      },
+      modifier =
+        Modifier.constrainAs(delayControlCard) {
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          end.linkTo(parent.end)
+        },
     )
   }
 }

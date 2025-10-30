@@ -31,15 +31,17 @@ fun RepeatingIconButton(
   var pressed by remember { mutableStateOf(false) }
 
   IconButton(
-    modifier = modifier.pointerInteropFilter {
-      pressed = when (it.action) {
-        MotionEvent.ACTION_DOWN -> true
+    modifier =
+      modifier.pointerInteropFilter {
+        pressed =
+          when (it.action) {
+            MotionEvent.ACTION_DOWN -> true
 
-        else -> false
-      }
+            else -> false
+          }
 
-      true
-    },
+        true
+      },
     onClick = {},
     enabled = enabled,
     interactionSource = interactionSource,
@@ -54,7 +56,8 @@ fun RepeatingIconButton(
       delay(currentDelayMillis)
       currentDelayMillis =
         (currentDelayMillis - (currentDelayMillis * delayDecayFactor))
-          .toLong().coerceAtLeast(minDelayMillis)
+          .toLong()
+          .coerceAtLeast(minDelayMillis)
     }
   }
 }

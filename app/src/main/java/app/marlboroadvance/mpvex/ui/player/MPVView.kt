@@ -1,7 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.Context
-import android.os.Build
 import android.os.Environment
 import android.util.AttributeSet
 import android.util.Log
@@ -12,6 +11,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
+import app.marlboroadvance.mpvex.ui.player.PlayerActivity.Companion.TAG
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.toColorHexString
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.KeyMapping
@@ -20,8 +20,11 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.reflect.KProperty
 
-class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context, attributes), KoinComponent {
-
+class MPVView(
+  context: Context,
+  attributes: AttributeSet,
+) : BaseMPVView(context, attributes),
+  KoinComponent {
   private val audioPreferences: AudioPreferences by inject()
   private val playerPreferences: PlayerPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
@@ -40,13 +43,23 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
   }
 
-  class TrackDelegate(private val name: String) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Int {
+  class TrackDelegate(
+    private val name: String,
+  ) {
+    operator fun getValue(
+      thisRef: Any?,
+      property: KProperty<*>,
+    ): Int {
       val v = MPVLib.getPropertyString(name)
       // we can get null here for "no" or other invalid value
       return v?.toIntOrNull() ?: -1
     }
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+
+    operator fun setValue(
+      thisRef: Any?,
+      property: KProperty<*>,
+      value: Int,
+    ) {
       if (value == -1) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
     }
   }
@@ -58,7 +71,12 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
   override fun initOptions() {
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
     MPVLib.setOptionString("profile", "fast")
-    MPVLib.setOptionString("hwdec", if (decoderPreferences.tryHWDecoding.get()) "auto" else "no")
+    // Set hwdec with fallback order: HW+ (mediacodec) -> SW (no) -> HW (mediacodec-copy)
+    MPVLib.setOptionString(
+      "hwdec",
+      if (decoderPreferences.tryHWDecoding.get()) "mediacodec,no,mediacodec-copy" else "no",
+    )
+    MPVLib.setOptionString("hwdec-codecs", "all")
 
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
@@ -72,7 +90,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
 
     // Limit demuxer cache since the defaults are too high for mobile devices
-    val cacheMegs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) 64 else 32
+    val cacheMegs = 64
     MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
     MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
     //
@@ -87,6 +105,14 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     MPVLib.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
     // workaround for <https://github.com/mpv-player/mpv/issues/14651>
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
+
+    // Improve seek responsiveness/smoothness on mobile
+    MPVLib.setOptionString("hr-seek", "no")
+    MPVLib.setOptionString("hr-seek-framedrop", "no")
+    MPVLib.setOptionString("demuxer-readahead-secs", "8")
+    MPVLib.setOptionString("demuxer-seekable-cache", "yes")
+    MPVLib.setOptionString("cache", "yes")
+    MPVLib.setOptionString("cache-secs", "8")
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -111,7 +137,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
   }
 
-  @Suppress("ReturnCount")
+  @Suppress("ReturnCount", "DEPRECATION")
   fun onKey(event: KeyEvent): Boolean {
     if (event.action == KeyEvent.ACTION_MULTIPLE || KeyEvent.isModifierKey(event.keyCode)) {
       return false
@@ -135,7 +161,7 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     }
 
     if (event.repeatCount > 0) {
-      return true // eat event but ignore it, mpv has its own key repeat
+      return true
     }
 
     val mod: MutableList<String> = mutableListOf()
@@ -151,23 +177,23 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
     return true
   }
 
-  private val observedProps = mapOf(
-    "pause" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
-    "video-params/aspect" to MPVLib.mpvFormat.MPV_FORMAT_DOUBLE,
-    "eof-reached" to MPVLib.mpvFormat.MPV_FORMAT_FLAG,
-
-    "user-data/mpvex/show_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/toggle_ui" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/show_panel" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/set_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/reset_button_title" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/toggle_button" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_by" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_to" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_by_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/seek_to_with_text" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-    "user-data/mpvex/software_keyboard" to MPVLib.mpvFormat.MPV_FORMAT_STRING,
-  )
+  private val observedProps =
+    mapOf(
+      "pause" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
+      "video-params/aspect" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
+      "eof-reached" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
+      "user-data/mpvex/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/show_panel" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/set_button_title" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/reset_button_title" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/toggle_button" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_by" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_to" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_by_with_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/seek_to_with_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+      "user-data/mpvex/software_keyboard" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
+    )
 
   private fun setupAudioOptions() {
     MPVLib.setOptionString("alang", audioPreferences.preferredLanguages.get())
@@ -180,19 +206,27 @@ class MPVView(context: Context, attributes: AttributeSet) : BaseMPVView(context,
   private fun setupSubtitlesOptions() {
     MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
 
-    MPVLib.setOptionString("sub-fonts-dir", context.cacheDir.path + "/fonts/")
+    // Disable automatic subtitle loading from video directory
+    // Users must manually add subtitles via the subtitle picker
+    MPVLib.setOptionString("sub-auto", "no")
+
+    // Load external subtitle files from the same directory as the video
+    MPVLib.setOptionString("sub-file-paths", "")
+
+    val fontsDirPath = context.filesDir.path + "/fonts/"
+    MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
     MPVLib.setOptionString("sub-delay", (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("sub-speed", subtitlesPreferences.defaultSubSpeed.get().toString())
     MPVLib.setOptionString(
       "secondary-sub-delay",
-      (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString()
+      (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString(),
     )
 
-    MPVLib.setOptionString("sub-font", subtitlesPreferences.font.get())
-    if (subtitlesPreferences.overrideAssSubs.get()) {
-      MPVLib.setOptionString("sub-ass-override", "force")
-      MPVLib.setOptionString("sub-ass-justify", "yes")
-    }
+    // With fonts cached persistently in filesDir/fonts, just set preferred or fallback
+    val preferredFontFamily = subtitlesPreferences.font.get()
+    MPVLib.setOptionString("sub-font", preferredFontFamily.ifBlank { "sans-serif" })
+
+    // Removed SSA/ASS global override; rely on track styling and per-justify settings only
     MPVLib.setOptionString("sub-font-size", subtitlesPreferences.fontSize.get().toString())
     MPVLib.setOptionString("sub-bold", if (subtitlesPreferences.bold.get()) "yes" else "no")
     MPVLib.setOptionString("sub-italic", if (subtitlesPreferences.italic.get()) "yes" else "no")

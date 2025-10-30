@@ -61,11 +61,12 @@ fun MultiCardPanel(
     val pagerState = rememberPagerState { cardCount }
     if (orientation == ORIENTATION_PORTRAIT) {
       Column(
-        modifier = Modifier.constrainAs(settingsCards) {
-          top.linkTo(parent.top, 32.dp)
-          start.linkTo(parent.start)
-        },
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+        modifier =
+          Modifier.constrainAs(settingsCards) {
+            top.linkTo(parent.top, 32.dp)
+            start.linkTo(parent.start)
+          },
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
         TopAppBar(
           title = {
@@ -96,12 +97,12 @@ fun MultiCardPanel(
       Column(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-        modifier = Modifier
-          .constrainAs(settingsCards) {
-            top.linkTo(parent.top)
-            end.linkTo(parent.end, 32.dp)
-          }
-          .verticalScroll(rememberScrollState()),
+        modifier =
+          Modifier
+            .constrainAs(settingsCards) {
+              top.linkTo(parent.top)
+              end.linkTo(parent.end, 32.dp)
+            }.verticalScroll(rememberScrollState()),
       ) {
         Spacer(Modifier.height(16.dp))
         Row(
@@ -111,9 +112,10 @@ fun MultiCardPanel(
         ) {
           Text(
             text = stringResource(titleRes),
-            style = MaterialTheme.typography.headlineMedium.copy(
-              shadow = Shadow(blurRadius = 20f),
-            ),
+            style =
+              MaterialTheme.typography.headlineMedium.copy(
+                shadow = Shadow(blurRadius = 20f),
+              ),
           )
           IconButton(onDismissRequest) {
             Icon(imageVector = Icons.Default.Close, contentDescription = null)

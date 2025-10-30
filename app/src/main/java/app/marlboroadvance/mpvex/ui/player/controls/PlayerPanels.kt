@@ -41,11 +41,15 @@ fun PlayerPanels(
     transitionSpec = {
       fadeIn() + slideInHorizontally { it / 3 } togetherWith fadeOut() + slideOutHorizontally { it / 2 }
     },
-    modifier = modifier
+    modifier = modifier,
   ) { currentPanel ->
     when (currentPanel) {
-      Panels.None -> { Box(Modifier.fillMaxHeight()) }
-      Panels.SubtitleSettings -> { SubtitleSettingsPanel(onDismissRequest) }
+      Panels.None -> {
+        Box(Modifier.fillMaxHeight())
+      }
+      Panels.SubtitleSettings -> {
+        SubtitleSettingsPanel(onDismissRequest)
+      }
       Panels.SubtitleDelay -> {
         SubtitleDelayPanel(onDismissRequest)
       }
@@ -65,7 +69,7 @@ fun PlayerPanels(
           onPause = viewModel::pause,
           onUnpause = viewModel::unpause,
           onPauseUnpause = viewModel::pauseUnpause,
-          onSeekTo = viewModel::seekTo,
+          onSeekTo = { position, _ -> viewModel.seekTo(position) },
           onDismissRequest = onDismissRequest,
         )
       }
@@ -76,10 +80,11 @@ fun PlayerPanels(
 val CARDS_MAX_WIDTH = 420.dp
 val panelCardsColors: @Composable () -> CardColors = {
   val playerPreferences = koinInject<PlayerPreferences>()
+  val transparency = playerPreferences.panelTransparency.get()
 
   val colors = CardDefaults.cardColors()
   colors.copy(
-    containerColor = MaterialTheme.colorScheme.surface.copy(playerPreferences.panelTransparency.get()),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(playerPreferences.panelTransparency.get()),
+    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = transparency),
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(alpha = transparency),
   )
 }
