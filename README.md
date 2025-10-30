@@ -30,20 +30,6 @@ Try the latest preview builds:
 
 ---
 
-## Installation
-
-### Stable Release
-Download the latest stable version from the [GitHub releases page](https://github.com/marlboro-advance/mpvEx/releases).
-
-[![Download Release](https://img.shields.io/badge/Download-Release-blue?style=for-the-badge)](https://github.com/marlboro-advance/mpvEx/releases)
-
-### Preview Builds
-Try the latest preview builds:
-
-[![Download Preview Builds](https://img.shields.io/badge/Download-Preview%20Builds-green?style=for-the-badge)](https://marlboro-advance.github.io/mpvEx/)
-
----
-
 ## Showcase
 <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/folderscreen.png" width="24%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/videoscreen.png" width="24%" />
 <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/settings.png" width="24%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/pip.png" width="24%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/player.png" width="49%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/framenavigation.png" width="49%" />
