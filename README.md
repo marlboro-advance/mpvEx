@@ -1,8 +1,7 @@
 # mpvExtended
-A media player for Android based on [mpv-android](https://github.com/mpv-android/mpv-android) and [mpvKt](https://github.com/abdallahmehiz/mpvKt) aiming to provide a *nicer* user interface and additional features over the originals.
+A media player for Android based on [mpv-android](https://github.com/mpv-android/mpv-android) and [mpvKt](https://github.com/abdallahmehiz/mpvKt) aiming to provide a **nicer** user interface and additional features over the original
 
 ---
-
 ## Features
 * Nicer player UI
 * Better playback history implementation
@@ -14,6 +13,20 @@ A media player for Android based on [mpv-android](https://github.com/mpv-android
 * Play network streams with the "Open URL" function
 * Picture-in-Picture supported
 * Provides basic file operations like copy, move, rename, delete
+
+---
+
+## Installation
+
+### Stable Release
+Download the latest stable version from the [GitHub releases page](https://github.com/marlboro-advance/mpvEx/releases).
+
+[![Download Release](https://img.shields.io/badge/Download-Release-blue?style=for-the-badge)](https://github.com/marlboro-advance/mpvEx/releases)
+
+### Preview Builds
+Try the latest preview builds:
+
+[![Download Preview Builds](https://img.shields.io/badge/Download-Preview%20Builds-green?style=for-the-badge)](https://marlboro-advance.github.io/mpvEx/)
 
 ---
 
