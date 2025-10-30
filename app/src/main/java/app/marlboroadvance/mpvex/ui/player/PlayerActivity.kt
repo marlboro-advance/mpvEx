@@ -56,8 +56,16 @@ import java.io.File
 
 /**
  * Main player activity that handles video playback using MPV library.
- * Manages the lifecycle of the player, audio focus, picture-in-picture mode,
- * and playback state persistence.
+ *
+ * This is a 1500-line clusterfuck that manages everything because Android
+ * makes it damn near impossible to separate concerns when you need to deal with:
+ * - System UI that keeps trying to show itself
+ * - Audio focus that other apps steal constantly
+ * - PiP mode that breaks on every manufacturer differently
+ * - MPV which was written for desktops and hates mobile
+ * - MediaSession for Android Auto/wear that nobody uses but you HAVE to implement
+ *
+ * Good luck understanding this mess. I certainly don't anymore.
  */
 @Suppress("TooManyFunctions", "LargeClass")
 class PlayerActivity :
@@ -83,7 +91,7 @@ class PlayerActivity :
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val fileManager: FileManager by inject()
 
-  // State variables
+  // State variables - because Android lifecycle makes everything a goddamn mess
   private var fileName = ""
   private lateinit var pipHelper: MPVPipHelper
   private var systemUIRestored = false
@@ -91,10 +99,10 @@ class PlayerActivity :
   private var audioFocusRequested = false
   private var audioFocusRequest: AudioFocusRequest? = null
   private var resumeOnAudioFocusGain = false
-  private var isInitializing = false
-  private var hasVideoLoaded = false
+  private var isInitializing = false // Guard flag because rapid back presses crash everything
+  private var hasVideoLoaded = false // Another guard flag because fuck race conditions
 
-  // Media session
+  // Media session - Google forces you to implement this even though nobody uses it
   private lateinit var mediaSession: MediaSession
   private var mediaSessionInitialized = false
   private lateinit var playbackStateBuilder: PlaybackState.Builder
@@ -114,11 +122,12 @@ class PlayerActivity :
 
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { focusChange ->
+      // Because apparently EVERY app on Android fights over audio like toddlers
       when (focusChange) {
         AudioManager.AUDIOFOCUS_LOSS,
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
         -> {
-          // If we were playing, remember to resume only on transient loss
+          // Some asshole app took audio focus
           resumeOnAudioFocusGain =
             (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) &&
             (viewModel.paused == false)
@@ -127,13 +136,14 @@ class PlayerActivity :
         }
 
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-          // Policy: pause on duck for a better UX with video content
+          // "Can duck" but we pause anyway because fuck that noise
           resumeOnAudioFocusGain = true
           viewModel.pause()
           audioFocusRequested = false
         }
 
         AudioManager.AUDIOFOCUS_GAIN -> {
+          // We got audio focus back, maybe we can actually play something now
           audioFocusRequested = true
           if (resumeOnAudioFocusGain) {
             resumeOnAudioFocusGain = false
@@ -149,10 +159,11 @@ class PlayerActivity :
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
 
-    // Mark as initializing to prevent issues during stream loading
+    // Mark as initializing because users spam back button and crash the whole thing
     isInitializing = true
     hasVideoLoaded = false
 
+    // Setup literally everything because Android has 47 different subsystems
     setupMPV()
     setupAudio()
     setupBackPressHandler()
@@ -161,10 +172,11 @@ class PlayerActivity :
     setupAudioFocus()
     setupMediaSession()
 
-    // Start playback
+    // Finally start the damn video
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
+    // Deal with notch cutouts because manufacturers love their inconsistent designs
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
@@ -183,14 +195,13 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
-    // Guard: If we're still initializing and video hasn't loaded, allow immediate exit
-    // but ensure proper cleanup
+    // If we're still loading and user is impatient, let them bail
     if (isInitializing && !hasVideoLoaded) {
       finishSafely()
       return
     }
 
-    // 1) Dismiss overlays first
+    // Dismiss overlays first because users expect this (for some reason)
     if (viewModel.sheetShown.value != Sheets.None) {
       viewModel.sheetShown.update { Sheets.None }
       viewModel.showControls()
@@ -202,13 +213,13 @@ class PlayerActivity :
       return
     }
 
-    // 2) If controls are hidden, show them instead of exiting
+    // Show controls instead of exiting because that's "intuitive" apparently
     if (!viewModel.controlsShown.value) {
       viewModel.showControls()
       return
     }
 
-    // 3) Optionally enter PiP (if playing and enabled)
+    // Try to enter PiP if they have it enabled
     val shouldEnterPip =
       pipHelper.isPipSupported &&
         viewModel.paused != true &&
@@ -218,10 +229,9 @@ class PlayerActivity :
       return
     }
 
-    // 4) Restore system UI IMMEDIATELY before finishing for fastest restoration
+    // Restore system UI IMMEDIATELY or users see black bars for 500ms
     restoreSystemUI()
 
-    // 5) Finish safely
     finishSafely()
   }
 
@@ -239,6 +249,7 @@ class PlayerActivity :
   }
 
   private fun setupPipHelper() {
+    // Picture-in-Picture: Works perfectly on Pixel, breaks on Samsung, doesn't exist on Xiaomi
     pipHelper =
       MPVPipHelper(
         activity = this,
@@ -262,6 +273,7 @@ class PlayerActivity :
   }
 
   private fun setupAudioFocus() {
+    // Android's audio focus system: Because apps fighting over audio is "good UX"
     val audioAttributes =
       AudioAttributes
         .Builder()
@@ -277,7 +289,6 @@ class PlayerActivity :
         .setAcceptsDelayedFocusGain(true)
         .setWillPauseWhenDucked(true)
         .build()
-    // Do not request focus here; request only when playback actually starts
   }
 
   private fun requestAudioFocusForPlayback(): Boolean {
@@ -291,12 +302,14 @@ class PlayerActivity :
       }
 
       AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
+        // "Maybe later" - thanks Android, super helpful
         audioFocusRequested = false
         resumeOnAudioFocusGain = true
         false
       }
 
       else -> {
+        // Get fucked, you can't play audio
         audioFocusRequested = false
         resumeOnAudioFocusGain = false
         false
@@ -318,7 +331,7 @@ class PlayerActivity :
 
     runCatching {
       // Restore system UI IMMEDIATELY at the start of cleanup
-      if (isFinishing) {
+      if (isFinishing && !systemUIRestored) {
         restoreSystemUI()
       }
 
@@ -344,34 +357,32 @@ class PlayerActivity :
       return
     }
 
-    // Perform shutdown asynchronously to avoid blocking UI thread
+    // MPV cleanup is a delicate dance - do it wrong and you get native crashes
+    // But we're NOT gonna wait around with Thread.sleep() like chumps
     Thread {
       try {
-        // Add safety check: only call MPV if it's been initialized
         if (hasVideoLoaded) {
           MPVLib.setPropertyString("pause", "yes")
-          // Removed Thread.sleep(PAUSE_DELAY_MS) - unnecessary delay
         }
       } catch (_: Throwable) {
-        // Ignore errors during pause
+        // MPV already died, whatever
       }
       try {
         if (hasVideoLoaded) {
           MPVLib.command("quit")
-          // Removed Thread.sleep(QUIT_DELAY_MS) - unnecessary delay
         }
       } catch (e: Throwable) {
         Log.e(TAG, "Error quitting MPV", e)
       }
       try {
         MPVLib.removeObserver(playerObserver)
-        // Removed Thread.sleep(OBSERVER_REMOVAL_DELAY_MS) - unnecessary delay
       } catch (e: Throwable) {
         Log.e(TAG, "Error removing MPV observer", e)
       }
       try {
         MPVLib.destroy()
       } catch (e: Throwable) {
+        // MPV native crashes happen here sometimes, can't do shit about it
         Log.e(TAG, "Error destroying MPV (may be expected)", e)
       }
     }.start()
@@ -397,16 +408,16 @@ class PlayerActivity :
     runCatching {
       val isInPip = isInPictureInPictureMode
 
-      // Restore system UI IMMEDIATELY when finishing (not in PiP)
-      if (isFinishing && !isInPip) {
-        restoreSystemUI()
-      }
-
       if (!isInPip) {
         viewModel.pause()
       }
 
       saveVideoPlaybackState(fileName)
+
+      // Only restore UI if we're actually finishing and not already restored
+      if (isFinishing && !isInPip && !systemUIRestored) {
+        restoreSystemUI()
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -417,10 +428,11 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
-      // Restore system UI IMMEDIATELY as the very first action
-      restoreSystemUI()
+      // Don't restore UI here if it's already restored
+      if (!systemUIRestored) {
+        restoreSystemUI()
+      }
 
-      // Set flag to indicate we're finishing
       isInitializing = false
       hasVideoLoaded = false
 
@@ -479,6 +491,7 @@ class PlayerActivity :
       pipHelper.updatePictureInPictureParams()
     }
 
+    // More Android boilerplate to hide system UI
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -490,6 +503,7 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
+    // Deprecated flags that still work better than the "modern" API
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
@@ -497,11 +511,13 @@ class PlayerActivity :
       View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
       View.SYSTEM_UI_FLAG_LOW_PROFILE
 
+    // Also use new API because Android fragmentation is fun
     windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
     windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
     windowInsetsController.systemBarsBehavior =
       WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
+    // And deal with notches AGAIN
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
@@ -529,15 +545,13 @@ class PlayerActivity :
   }
 
   private fun copyMPVAssets() {
-    // Move ALL I/O operations to background thread for non-blocking startup
+    // Copy a bunch of files on EVERY startup because MPV needs its config files
     lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
-        // Copy default subfont first (fast operation, but still async)
         val fontsPath = filesDir.path
         val destDir = ensureFontsDirectory(fontsPath)
         copyDefaultSubfont(fontsPath, destDir)
 
-        // Copy other assets
         Utils.copyAssets(this@PlayerActivity)
         copyMPVScripts()
         copyMPVConfigFiles()
@@ -604,15 +618,16 @@ class PlayerActivity :
   }
 
   private fun copyMPVFonts() {
+    // Font copying: Because subtitle rendering is never simple
     runCatching {
       val persistentPath = filesDir.path
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
       val fontsDir =
         fileManager.fromUri(fontsFolderUri)
-          ?: return@runCatching // No fonts directory set; keep default font only
+          ?: return@runCatching
 
       if (!fileManager.exists(fontsDir)) {
-        return@runCatching // Source folder missing; keep whatever is already cached
+        return@runCatching
       }
 
       val destDir = ensureFontsDirectory(persistentPath)
@@ -667,15 +682,12 @@ class PlayerActivity :
   private fun setIntentExtras(extras: Bundle?) {
     if (extras == null) return
 
-    // Set time position if provided
+    // Handle intent extras because external apps send us random shit
     extras.getInt("position", POSITION_NOT_SET).takeIf { it != POSITION_NOT_SET }?.let {
       MPVLib.setPropertyInt("time-pos", it / MILLISECONDS_TO_SECONDS)
     }
 
-    // Add subtitles
     addSubtitlesFromExtras(extras)
-
-    // Set HTTP headers
     setHttpHeadersFromExtras(extras)
   }
 
@@ -695,6 +707,7 @@ class PlayerActivity :
   }
 
   private fun setHttpHeadersFromExtras(extras: Bundle) {
+    // Because sometimes external apps want custom HTTP headers
     extras.getStringArray("headers")?.let { headers ->
       if (headers.isEmpty()) return
 
@@ -744,10 +757,9 @@ class PlayerActivity :
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
 
-    // Try to get display name from content resolver
     getDisplayNameFromUri(uri)?.let { return it }
 
-    // Fallback to path segment
+    // Fallback: just get whatever we can from the URI
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
   }
 
@@ -786,8 +798,7 @@ class PlayerActivity :
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    // Only handle configuration change if video has loaded
-    // This prevents issues during initialization
+    // Guard against rotation during initialization because shit breaks
     if (!isInitializing && hasVideoLoaded) {
       handleConfigurationChange()
     }
@@ -820,6 +831,7 @@ class PlayerActivity :
   }
 
   private fun handlePauseStateChange(isPaused: Boolean) {
+    // Manage screen-on flag and audio focus because Android won't do it for us
     if (isPaused) {
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       abandonAudioFocusIfHeld()
@@ -827,12 +839,12 @@ class PlayerActivity :
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       val hasFocus = requestAudioFocusForPlayback()
       if (!hasFocus) {
-        // Do not play without focus
+        // Can't play without audio focus, fuck you very much
         viewModel.pause()
       }
     }
     updateMediaSessionPlaybackState(!isPaused)
-    // Refresh PiP actions to reflect play/pause state
+    // Update PiP UI because it needs constant hand-holding
     runCatching {
       if (isInPictureInPictureMode && pipHelper.isPipSupported) {
         pipHelper.updatePictureInPictureParams()
@@ -900,7 +912,7 @@ class PlayerActivity :
       loadVideoPlaybackState(fileName)
     }
 
-    // Save recently played in GlobalScope to ensure it completes even if activity finishes
+    // GlobalScope because we NEED this to complete even if activity dies
     GlobalScope.launch(Dispatchers.IO) {
       saveRecentlyPlayed()
     }
@@ -909,19 +921,18 @@ class PlayerActivity :
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
     viewModel.restoreCustomAspectRatio()
 
-    // Initialize video zoom from the app preference only (ignore mpv.conf)
+    // Initialize zoom from preferences (ignore mpv.conf because it's unreliable)
     val zoomPreference = playerPreferences.defaultVideoZoom.get()
     MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
     viewModel.setVideoZoom(zoomPreference)
 
-    // Set media title AFTER all MPV properties are set and BEFORE unpause
-    // This ensures subtitle restoration doesn't interfere with the title
+    // Set title BEFORE unpause to avoid subtitle restoration race conditions
     MPVLib.setPropertyString("force-media-title", fileName)
     viewModel.setMediaTitle(fileName)
 
     viewModel.unpause()
 
-    // Autoload subtitles after unpausing, only if enabled in settings
+    // Autoload subtitles if user enabled it (and pray they're named correctly)
     if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
       lifecycleScope.launch {
         val videoFilePath = parsePathFromIntent(intent)
@@ -934,7 +945,7 @@ class PlayerActivity :
       }
     }
 
-    // MediaSession metadata/state
+    // Update MediaSession for Android Auto users (all 3 of them)
     updateMediaSessionMetadata(
       title = fileName,
       durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
@@ -946,7 +957,7 @@ class PlayerActivity :
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
-    // Use GlobalScope to ensure save completes even if activity is finishing
+    // GlobalScope because fuck activity lifecycle, this NEEDS to save
     GlobalScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
@@ -1035,31 +1046,27 @@ class PlayerActivity :
   @OptIn(DelicateCoroutinesApi::class)
   private suspend fun saveRecentlyPlayed() {
     runCatching {
-      // Extract the original URI from the intent
       val uri = extractUriFromIntent(intent)
 
-      // Early return if URI is null - cannot save recently played without a valid URI
       if (uri == null) {
         Log.w(TAG, "Cannot save recently played: URI is null")
         return@runCatching
       }
 
-      // Validate URI has a scheme
       if (uri.scheme == null) {
         Log.w(TAG, "Cannot save recently played: URI has null scheme: $uri")
         return@runCatching
       }
 
-      // Determine the file path to store
+      // Figure out what the hell to save based on URI scheme
       val filePath =
         when (uri.scheme) {
           "file" -> {
-            // For file URIs, use the path directly
             uri.path ?: uri.toString()
           }
 
           "content" -> {
-            // For content URIs, try to resolve to actual file path first
+            // Try to resolve to actual path or just save the URI
             contentResolver
               .query(
                 uri,
@@ -1074,11 +1081,10 @@ class PlayerActivity :
                 } else {
                   null
                 }
-              } ?: uri.toString() // Fallback to full URI string if we can't resolve
+              } ?: uri.toString()
           }
 
           else -> {
-            // For other schemes (http, https, etc.), store the full URI
             uri.toString()
           }
         }
@@ -1087,7 +1093,7 @@ class PlayerActivity :
         when {
           intent.getStringExtra("launch_source") != null -> intent.getStringExtra("launch_source")
           intent.action == Intent.ACTION_SEND -> "share"
-          else -> "normal" // Normal playback from list
+          else -> "normal"
         }
 
       RecentlyPlayedOps.addRecentlyPlayed(
@@ -1314,12 +1320,14 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
-    if (systemUIRestored) return
-    systemUIRestored = true
+    // Check multiple guards because Android lifecycle is a shitshow
+    if (systemUIRestored || isFinishing || isDestroyed) {
+      systemUIRestored = true
+      return
+    }
 
     runCatching {
-      // Immediately restore system UI without any delays or checks
-      // This ensures the UI is restored as fast as possible when closing
+      // RESTORE IMMEDIATELY OR USERS WILL BITCH ABOUT BLACK BARS
       window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -1331,12 +1339,16 @@ class PlayerActivity :
 
       window.attributes.layoutInDisplayCutoutMode =
         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+
+      systemUIRestored = true
     }.onFailure { e ->
       Log.e(TAG, "Error restoring system UI", e)
+      systemUIRestored = true // Mark as restored even on failure to prevent loops
     }
   }
 
   private fun setupMediaSession() {
+    // MediaSession for Android Auto/Wear - Google mandates it, users ignore it
     runCatching {
       mediaSession =
         MediaSession(this, TAG).apply {
@@ -1436,12 +1448,7 @@ class PlayerActivity :
   companion object {
     private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"
 
-    // Timing constants
-    private const val PAUSE_DELAY_MS = 100L
-    private const val QUIT_DELAY_MS = 150L
-    private const val OBSERVER_REMOVAL_DELAY_MS = 50L
-
-    // Value constants
+    // Constants for actual useful values, not for stupid sleep delays
     private const val BRIGHTNESS_NOT_SET = -1f
     private const val POSITION_NOT_SET = 0
     private const val MAX_MPV_VOLUME = 100
@@ -1454,17 +1461,19 @@ class PlayerActivity :
 
   /**
    * Safe finish method that handles rapid back presses and initialization states.
+   *
+   * Called "safe" but it's really just a bunch of try-catch blocks hoping nothing explodes.
    */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun finishSafely() {
     runCatching {
-      // Prevent multiple finish calls
       if (isFinishing) return
 
-      // IMMEDIATELY restore system UI as the very first action for fastest restoration
-      restoreSystemUI()
+      // RESTORE UI FIRST OR DIE TRYING
+      if (!systemUIRestored) {
+        restoreSystemUI()
+      }
 
-      // Set flags to indicate we're finishing
       isInitializing = false
       hasVideoLoaded = false
 
@@ -1472,9 +1481,11 @@ class PlayerActivity :
       finish()
     }.onFailure { e ->
       Log.e(TAG, "Error during finishSafely", e)
-      // Fallback: try simple finish with system UI restoration
+      // Hail Mary: just finish and hope for the best
       try {
-        restoreSystemUI()
+        if (!systemUIRestored) {
+          restoreSystemUI()
+        }
         finish()
       } catch (e2: Exception) {
         Log.e(TAG, "Critical error: could not finish activity", e2)

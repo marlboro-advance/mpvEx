@@ -31,6 +31,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.mpvex"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true"
         tools:targetApi="35">
         <activity
             android:name=".MainActivity"
@@ -46,10 +48,12 @@
 
         <activity
             android:name=".ui.player.PlayerActivity"
-            android:autoRemoveFromRecents="false"
+            android:autoRemoveFromRecents="true"
+            android:noHistory="false"
+            android:excludeFromRecents="false"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:exported="true"
-            android:launchMode="standard"
+            android:launchMode="singleTask"
             android:documentLaunchMode="never"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"

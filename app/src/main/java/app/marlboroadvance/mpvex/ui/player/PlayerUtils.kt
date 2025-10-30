@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
@@ -14,116 +15,183 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * Try to get the real file path from a content:// URI
- * Tries multiple methods before falling back to file descriptor
+ * Storage path constants for Android's various storage locations.
  */
-internal fun Uri.openContentFd(context: Context): String? {
-  // Method 1: Try to get real path from file descriptor
-  context.contentResolver.openFileDescriptor(this, "r")?.use { pfd ->
-    Utils.findRealPath(pfd.fd)?.let { realPath ->
-      Log.d(TAG, "Resolved content URI to real path via fd: $realPath")
-      return realPath
-    }
-  }
+private object StoragePaths {
+  const val PRIMARY_PREFIX = "primary:"
+  const val RAW_PREFIX = "raw:"
+  const val PRIMARY_STORAGE = "/storage/emulated/0"
+  const val EXTERNAL_STORAGE = "/storage"
+  const val MEDIA_RW = "/mnt/media_rw"
+}
 
-  // Method 2: Try to query _data column (MediaStore files)
-  try {
+/**
+ * Resolves content:// URIs to paths MPV can play.
+ *
+ * Tries multiple resolution strategies because Android's storage system varies by:
+ * - Android version (pre-10, 10+, 11+ with scoped storage)
+ * - Storage type (internal, external SD, SAF documents)
+ * - Content provider implementation
+ *
+ * Falls back to file descriptor if real path cannot be determined.
+ */
+internal fun Uri.openContentFd(context: Context): String? =
+  tryFileDescriptorPath(context)
+    ?: tryMediaStoreQuery(context)
+    ?: tryDocumentUriParsing(context)
+    ?: tryFileDescriptorFallback(context)
+
+/**
+ * Method 1: Extract real filesystem path from file descriptor.
+ * Works best for most content URIs on modern Android.
+ */
+private fun Uri.tryFileDescriptorPath(context: Context): String? =
+  runCatching {
+    context.contentResolver.openFileDescriptor(this, "r")?.use { pfd ->
+      Utils.findRealPath(pfd.fd)?.also {
+        Log.d(TAG, "Resolved via file descriptor: $it")
+      }
+    }
+  }.getOrNull()
+
+/**
+ * Method 2: Query MediaStore for direct file path.
+ * Works for media files indexed by MediaStore (videos, music, images).
+ */
+private fun Uri.tryMediaStoreQuery(context: Context): String? =
+  runCatching {
     context.contentResolver
-      .query(
-        this,
-        arrayOf(MediaStore.MediaColumns.DATA),
-        null,
-        null,
-        null,
-      )?.use { cursor ->
+      .query(this, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
+      ?.use { cursor ->
         if (cursor.moveToFirst()) {
           val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
           if (columnIndex != -1) {
-            val path = cursor.getString(columnIndex)
-            if (!path.isNullOrBlank() && File(path).exists()) {
-              Log.d(TAG, "Resolved content URI via MediaStore query: $path")
-              return path
-            }
+            cursor
+              .getString(columnIndex)
+              ?.takeIf { path ->
+                path.isNotBlank() && File(path).exists()
+              }?.also {
+                Log.d(TAG, "Resolved via MediaStore: $it")
+              }
+          } else {
+            null
           }
+        } else {
+          null
         }
       }
-  } catch (e: Exception) {
-    Log.d(TAG, "Failed to query MediaStore: ${e.message}")
-  }
+  }.onFailure { e ->
+    Log.d(TAG, "MediaStore query failed: ${e.message}")
+  }.getOrNull()
 
-  // Method 3: Try to parse document URI path
-  if (DocumentsContract.isDocumentUri(context, this)) {
-    try {
-      val docId = DocumentsContract.getDocumentId(this)
-      Log.d(TAG, "Document ID: $docId")
+/**
+ * Method 3: Parse DocumentsContract URIs manually.
+ *
+ * Document IDs have format: "storageType:path"
+ * Examples:
+ * - "primary:DCIM/video.mp4" → /storage/emulated/0/DCIM/video.mp4
+ * - "raw:/storage/1234-5678/Movies/file.mp4" → /storage/1234-5678/Movies/file.mp4
+ * - "1234-5678:Movies/video.mp4" → External SD card path
+ */
+private fun Uri.tryDocumentUriParsing(context: Context): String? {
+  if (!DocumentsContract.isDocumentUri(context, this)) return null
 
-      // Parse document ID (format: "primary:path/to/file" or "raw:/storage/path")
-      when {
-        docId.startsWith("primary:") -> {
-          val path = docId.substringAfter("primary:")
-          val primaryPath = "/storage/emulated/0/$path"
-          if (File(primaryPath).exists()) {
-            Log.d(TAG, "Resolved document URI to primary storage: $primaryPath")
-            return primaryPath
-          }
-        }
+  return runCatching {
+    val docId = DocumentsContract.getDocumentId(this)
+    Log.d(TAG, "Parsing document ID: $docId")
 
-        docId.startsWith("raw:") -> {
-          val rawPath = docId.substringAfter("raw:")
-          if (File(rawPath).exists()) {
-            Log.d(TAG, "Resolved document URI from raw path: $rawPath")
-            return rawPath
-          }
-        }
-
-        docId.contains(":") -> {
-          // Try other storage types (e.g., "1234-5678:path/to/file")
-          val path = docId.substringAfter(":")
-          // Try common storage locations
-          val possiblePaths =
-            listOf(
-              "/storage/emulated/0/$path",
-              "/storage/$path",
-              "/mnt/media_rw/$path",
-            )
-          for (possiblePath in possiblePaths) {
-            if (File(possiblePath).exists()) {
-              Log.d(TAG, "Resolved document URI to: $possiblePath")
-              return possiblePath
-            }
-          }
-        }
+    when {
+      docId.startsWith(StoragePaths.PRIMARY_PREFIX) -> {
+        tryPrimaryStoragePath(docId)
       }
-    } catch (e: Exception) {
-      Log.d(TAG, "Failed to parse document URI: ${e.message}")
+      docId.startsWith(StoragePaths.RAW_PREFIX) -> {
+        tryRawPath(docId)
+      }
+
+      docId.contains(":") -> {
+        tryExternalStoragePaths(docId)
+      }
+
+      else -> null
     }
-  }
+  }.onFailure { e ->
+    Log.d(TAG, "Document URI parsing failed: ${e.message}")
+  }.getOrNull()
+}
 
-  // Fallback: Use file descriptor
-  return context.contentResolver.openFileDescriptor(this, "r")?.detachFd()?.let { fd ->
-    Log.d(TAG, "Could not resolve content URI to real path, using fd://$fd")
-    "fd://$fd"
+private fun tryPrimaryStoragePath(docId: String): String? {
+  val path = docId.substringAfter(StoragePaths.PRIMARY_PREFIX)
+  val fullPath = "${StoragePaths.PRIMARY_STORAGE}/$path"
+  return fullPath.takeIf { File(it).exists() }?.also {
+    Log.d(TAG, "Resolved document URI to primary storage: $it")
   }
 }
 
+private fun tryRawPath(docId: String): String? {
+  val rawPath = docId.substringAfter(StoragePaths.RAW_PREFIX)
+  return rawPath.takeIf { File(it).exists() }?.also {
+    Log.d(TAG, "Resolved document URI from raw path: $it")
+  }
+}
+
+/**
+ * Tries multiple common mount points for external storage.
+ * External SD cards can be mounted at different locations depending on manufacturer.
+ */
+private fun tryExternalStoragePaths(docId: String): String? {
+  val path = docId.substringAfter(":")
+  val possiblePaths =
+    listOf(
+      "${StoragePaths.PRIMARY_STORAGE}/$path",
+      "${StoragePaths.EXTERNAL_STORAGE}/$path",
+      "${StoragePaths.MEDIA_RW}/$path",
+    )
+
+  return possiblePaths.firstOrNull { File(it).exists() }?.also {
+    Log.d(TAG, "Resolved document URI to: $it")
+  }
+}
+
+/**
+ * Fallback: Return file descriptor URI.
+ * MPV can play directly from fd:// when filesystem path is unavailable.
+ * Common with scoped storage on Android 11+.
+ */
+@SuppressLint("Recycle")
+private fun Uri.tryFileDescriptorFallback(context: Context): String? =
+  runCatching {
+    context.contentResolver.openFileDescriptor(this, "r")?.detachFd()?.let { fd ->
+      "fd://$fd".also {
+        Log.d(TAG, "Using file descriptor fallback: $it")
+      }
+    }
+  }.getOrNull()
+
+/**
+ * Resolves any URI to a format MPV can play.
+ *
+ * Returns null if URI scheme is null or unsupported.
+ */
 internal fun Uri.resolveUri(context: Context): String? {
-  // Handle null scheme case first
   if (scheme == null) {
-    Log.e(TAG, "URI has null scheme, cannot resolve: $this")
+    Log.e(TAG, "URI has null scheme: $this")
     return null
   }
 
-  val filepath =
-    when (scheme) {
-      "file" -> path
-      "content" -> openContentFd(context)
-      "data" -> "data://$schemeSpecificPart"
-      in Utils.PROTOCOLS -> toString()
-      else -> null
+  return when (scheme) {
+    "file" -> path
+    "content" -> openContentFd(context)
+    "data" -> "data://$schemeSpecificPart"
+    in Utils.PROTOCOLS -> toString()
+    else -> {
+      Log.e(TAG, "Unsupported URI scheme: $scheme")
+      null
     }
-
-  if (filepath == null) Log.e(TAG, "unknown scheme: $scheme")
-  return filepath
+  }
 }
 
+/**
+ * Deserializes MPV's native node structure to Kotlin data classes.
+ * MPV uses C-style tree structures (MPVNode) which we convert to typed objects.
+ */
 inline fun <reified T> MPVNode.toObject(json: Json): T = json.decodeFromString<T>(toJson())
