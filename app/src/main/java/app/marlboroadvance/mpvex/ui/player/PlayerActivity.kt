@@ -181,6 +181,35 @@ class PlayerActivity :
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
+  override fun attachBaseContext(newBase: Context?) {
+    if (newBase == null) {
+      super.attachBaseContext(null)
+      return
+    }
+
+    val contextWithDefaultFontScale = enforceDefaultFontScale(newBase)
+    super.attachBaseContext(contextWithDefaultFontScale)
+  }
+
+  private fun enforceDefaultFontScale(baseContext: Context): Context {
+    val originalConfiguration = baseContext.resources.configuration
+    if (originalConfiguration.fontScale == 1f) {
+      return baseContext
+    }
+
+    val updatedConfiguration = Configuration(originalConfiguration).apply {
+      fontScale = 1f
+    }
+
+    val configurationContext = baseContext.createConfigurationContext(updatedConfiguration)
+    val configurationResources = configurationContext.resources
+    val configurationDisplayMetrics = configurationResources.displayMetrics
+    val density = configurationDisplayMetrics.density
+    configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * density
+
+    return configurationContext
+  }
+
   private fun setupBackPressHandler() {
     onBackPressedDispatcher.addCallback(
       this,
