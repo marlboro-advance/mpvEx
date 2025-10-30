@@ -48,14 +48,23 @@ jobs:
 
       - name: Copy build artifacts
         run: |
-          set -e
+          set -euo pipefail
 
-          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+          apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
 
-          printf "%s\n" "${apks[@]}" | xargs -n 1 -I {} sh -c '
-          cp app/build/outputs/apk/release/app-{}-release-unsigned-signed.apk mpvEx-{}-${{ env.VERSION_TAG }}.apk
-          sha=$(sha256sum mpvEx-{}-${{ env.VERSION_TAG }}.apk | awk '\''{ print $1 }'\'')
-          echo "apk-{}-sha256=$sha" >> $GITHUB_ENV'
+          for abi in "${apks[@]}"; do
+            source_path="app/build/outputs/apk/release/app-${abi}-release-signed.apk"
+            target_path="mpvEx-${abi}-${{ env.VERSION_TAG }}.apk"
+
+            if [ ! -f "$source_path" ]; then
+              echo "::error file=$source_path::Signed APK for $abi was not found"
+              exit 1
+            fi
+
+            cp "$source_path" "$target_path"
+            checksum=$(sha256sum "$target_path" | awk '{ print $1 }')
+            echo "apk-${abi}-sha256=$checksum" >> "$GITHUB_ENV"
+          done
 
       - name: Create release
         uses: softprops/action-gh-release@v1
