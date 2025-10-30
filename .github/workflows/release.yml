@@ -29,13 +29,11 @@ jobs:
       - name: Build release with Gradle
         run: ./gradlew assembleRelease
 
-      - name: Get tag ame
+      - name: Get tag name
         if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          set -x
-          echo "VERSION_TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        run: echo "VERSION_TAG=$(basename $GITHUB_REF)" >> $GITHUB_ENV
 
-      - name: Sign apk
+      - name: Sign APKs
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
@@ -48,39 +46,44 @@ jobs:
 
       - name: Copy build artifacts
         run: |
-          set -e
+          set -euo pipefail
+          apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+          for abi in "${apks[@]}"; do
+            src="app/build/outputs/apk/release/app-${abi}-release-signed.apk"
+            dst="mpvEx-${abi}-${VERSION_TAG}.apk"
+            if [ ! -f "$src" ]; then
+              echo "::error file=$src::Signed APK for $abi was not found"
+              exit 1
+            fi
+            cp "$src" "$dst"
+            checksum=$(sha256sum "$dst" | awk '{ print $1 }')
+            varname="apk_${abi//-/_}_sha256"
+            echo "$varname=$checksum" >> "$GITHUB_ENV"
+          done
 
-          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
-
-          printf "%s\n" "${apks[@]}" | xargs -n 1 -I {} sh -c '
-          cp app/build/outputs/apk/release/app-{}-release-unsigned-signed.apk mpvEx-{}-${{ env.VERSION_TAG }}.apk
-          sha=$(sha256sum mpvEx-{}-${{ env.VERSION_TAG }}.apk | awk '\''{ print $1 }'\'')
-          echo "apk-{}-sha256=$sha" >> $GITHUB_ENV'
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
           name: mpvEx ${{ env.VERSION_TAG }}
           body: |
             ---
-
             ### Checksums
 
             | Variant | SHA-256 |
             | ------- | ------- |
-            | arm64-v8a | ${{ env.apk-arm64-v8a-sha256 }}
-            | armeabi-v7a | ${{ env.apk-armeabi-v7a-sha256 }}
-            | Universal | ${{ env.apk-universal-sha256 }}
-            | x86 | ${{ env.apk-x86-sha256 }}
-            | x86_64 | ${{ env.apk-x86_64-sha256 }} |
+            | arm64-v8a | ${{ env.apk_arm64_v8a_sha256 }} |
+            | armeabi-v7a | ${{ env.apk_armeabi_v7a_sha256 }} |
+            | Universal | ${{ env.apk_universal_sha256 }} |
+            | x86 | ${{ env.apk_x86_sha256 }} |
+            | x86_64 | ${{ env.apk_x86_64_sha256 }} |
           files: |
             mpvEx-universal-${{ env.VERSION_TAG }}.apk
             mpvEx-arm64-v8a-${{ env.VERSION_TAG }}.apk
             mpvEx-armeabi-v7a-${{ env.VERSION_TAG }}.apk
             mpvEx-x86-${{ env.VERSION_TAG }}.apk
             mpvEx-x86_64-${{ env.VERSION_TAG }}.apk
-          prerelease: false
           draft: true
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
