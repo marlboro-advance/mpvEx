@@ -179,6 +179,7 @@ data class VideoListScreen(
             }
           },
           onShareClick = { selectionManager.shareSelected() },
+          onPlayClick = { selectionManager.playSelected() },
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },

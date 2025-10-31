@@ -28,6 +28,7 @@ fun TopLeftPlayerControls(
   mediaTitle: String,
   onBackClick: () -> Unit,
   modifier: Modifier = Modifier,
+  playlistInfo: String? = null,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
@@ -64,17 +65,30 @@ fun TopLeftPlayerControls(
             )
           },
       ) {
-        Text(
-          mediaTitle,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          style = MaterialTheme.typography.bodyMedium,
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
           modifier =
             Modifier.padding(
               horizontal = MaterialTheme.spacing.medium,
               vertical = MaterialTheme.spacing.small,
             ),
-        )
+        ) {
+          Text(
+            mediaTitle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+          )
+          // Playlist indicator
+          if (playlistInfo != null) {
+            Text(
+              " • $playlistInfo",
+              maxLines = 1,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+          }
+        }
       }
     }
   }

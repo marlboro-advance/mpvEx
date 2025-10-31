@@ -705,6 +705,46 @@ class PlayerViewModel(
       _totalFrames.update { 0 }
     }
   }
+
+  // ==================== Playlist Management ====================
+
+  /**
+   * Check if playlist navigation is available
+   */
+  fun hasPlaylistSupport(): Boolean = (host as? PlayerActivity)?.let { it.playlist.isNotEmpty() } ?: false
+
+  /**
+   * Get playlist info string for display (e.g., "2/5")
+   */
+  fun getPlaylistInfo(): String? {
+    val activity = host as? PlayerActivity ?: return null
+    if (activity.playlist.isEmpty()) return null
+    return "${activity.playlistIndex + 1}/${activity.playlist.size}"
+  }
+
+  /**
+   * Check if there's a next video in the playlist
+   */
+  fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false
+
+  /**
+   * Check if there's a previous video in the playlist
+   */
+  fun hasPrevious(): Boolean = (host as? PlayerActivity)?.hasPrevious() ?: false
+
+  /**
+   * Play the next video in the playlist
+   */
+  fun playNext() {
+    (host as? PlayerActivity)?.playNext()
+  }
+
+  /**
+   * Play the previous video in the playlist
+   */
+  fun playPrevious() {
+    (host as? PlayerActivity)?.playPrevious()
+  }
 }
 
 fun Float.normalize(

@@ -201,6 +201,30 @@ object FolderListScreen : Screen {
               }
             }
           },
+          onPlayClick = {
+            // Play all videos from selected folders as a playlist
+            coroutineScope.launch {
+              val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
+              val allVideos = VideoRepository.getVideosForBuckets(context, selectedIds)
+              if (allVideos.isNotEmpty()) {
+                if (allVideos.size == 1) {
+                  // Single video - play normally
+                  MediaUtils.playFile(allVideos.first(), context)
+                } else {
+                  // Multiple videos - play as playlist
+                  val intent = Intent(Intent.ACTION_VIEW, allVideos.first().uri)
+                  intent.setClass(context, app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java)
+                  intent.putExtra("internal_launch", true)
+                  intent.putParcelableArrayListExtra("playlist", ArrayList(allVideos.map { it.uri }))
+                  intent.putExtra("playlist_index", 0)
+                  intent.putExtra("launch_source", "playlist")
+                  context.startActivity(intent)
+                }
+                // Clear selection after starting playback
+                selectionManager.clear()
+              }
+            }
+          },
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },

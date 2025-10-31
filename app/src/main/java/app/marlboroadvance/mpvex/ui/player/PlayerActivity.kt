@@ -146,6 +146,16 @@ class PlayerActivity :
   private var fileName = ""
 
   /**
+   * Playlist of URIs for sequential playback
+   */
+  internal var playlist: List<Uri> = emptyList()
+
+  /**
+   * Current index in the playlist
+   */
+  internal var playlistIndex: Int = 0
+
+  /**
    * Helper for managing Picture-in-Picture mode.
    */
   private lateinit var pipHelper: MPVPipHelper
@@ -293,6 +303,10 @@ class PlayerActivity :
     setupPlayerControls()
     setupPipHelper()
     setupMediaSession()
+
+    // Extract playlist info from intent
+    playlist = intent.getParcelableArrayListExtra<Uri>("playlist") ?: emptyList()
+    playlistIndex = intent.getIntExtra("playlist_index", 0)
 
     // Start playback
     getPlayableUri(intent)?.let(player::playFile)
@@ -1235,13 +1249,19 @@ class PlayerActivity :
   }
 
   /**
-   * Handles end-of-file event by finishing activity if configured.
+   * Handles end-of-file event by playing next in playlist if available, otherwise finishing activity if configured.
    *
    * @param isEof true if end of file reached
    */
   private fun handleEndOfFile(isEof: Boolean) {
-    if (isEof && playerPreferences.closeAfterReachingEndOfVideo.get()) {
-      finishAndRemoveTask()
+    if (isEof) {
+      // If there's a next video in the playlist, play it
+      if (hasNext()) {
+        playNext()
+      } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
+        // Only close if no next video and setting is enabled
+        finishAndRemoveTask()
+      }
     }
   }
 
@@ -1349,15 +1369,26 @@ class PlayerActivity :
    */
   @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
-    fileName = getFileName(intent)
+    // Only extract fileName from intent if not already set (i.e., not from playlist navigation)
+    if (fileName.isBlank()) {
+      fileName = getFileName(intent)
+    }
+
     setIntentExtras(intent.extras)
 
     lifecycleScope.launch(Dispatchers.IO) {
       loadVideoPlaybackState(fileName)
     }
 
+    // Save to recently played when video actually loads and plays
     GlobalScope.launch(Dispatchers.IO) {
-      saveRecentlyPlayed()
+      if (playlist.isNotEmpty()) {
+        // For playlist items, save using the current URI
+        saveRecentlyPlayedForUri(playlist[playlistIndex], fileName)
+      } else {
+        // For non-playlist videos, use the original saveRecentlyPlayed
+        saveRecentlyPlayed()
+      }
     }
 
     setOrientation()
@@ -2066,6 +2097,133 @@ class PlayerActivity :
     set(value) {
       requestedOrientation = value
     }
+
+  // ==================== Playlist Management ====================
+
+  /**
+   * Check if there's a next video in the playlist
+   */
+  fun hasNext(): Boolean = playlist.isNotEmpty() && playlistIndex < playlist.size - 1
+
+  /**
+   * Check if there's a previous video in the playlist
+   */
+  fun hasPrevious(): Boolean = playlist.isNotEmpty() && playlistIndex > 0
+
+  /**
+   * Play the next video in the playlist
+   */
+  fun playNext() {
+    if (!hasNext()) return
+
+    playlistIndex++
+    loadPlaylistItem(playlistIndex)
+  }
+
+  /**
+   * Play the previous video in the playlist
+   */
+  fun playPrevious() {
+    if (!hasPrevious()) return
+
+    playlistIndex--
+    loadPlaylistItem(playlistIndex)
+  }
+
+  /**
+   * Load a playlist item by index
+   */
+  private fun loadPlaylistItem(index: Int) {
+    if (index < 0 || index >= playlist.size) return
+
+    // Save current video's playback state before switching
+    if (fileName.isNotBlank()) {
+      saveVideoPlaybackState(fileName)
+    }
+
+    val uri = playlist[index]
+    val playableUri = uri.openContentFd(this) ?: uri.toString()
+
+    // Update playlist index
+    playlistIndex = index
+
+    // Extract and set the new file name
+    fileName = getFileNameFromUri(uri)
+
+    // Load the new video
+    MPVLib.command("loadfile", playableUri)
+
+    // Update media title (this will trigger UI update)
+    MPVLib.setPropertyString("force-media-title", fileName)
+    viewModel.setMediaTitle(fileName)
+
+    // Update media session metadata
+    lifecycleScope.launch {
+      kotlinx.coroutines.delay(100) // Wait for MPV to load the file
+      val durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L
+      updateMediaSessionMetadata(
+        title = fileName,
+        durationMs = durationMs,
+      )
+    }
+  }
+
+  /**
+   * Get file name from URI
+   */
+  private fun getFileNameFromUri(uri: Uri): String {
+    getDisplayNameFromUri(uri)?.let { return it }
+    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
+  }
+
+  /**
+   * Save recently played for a specific URI
+   */
+  private suspend fun saveRecentlyPlayedForUri(
+    uri: Uri,
+    name: String,
+  ) {
+    runCatching {
+      val filePath =
+        when (uri.scheme) {
+          "file" -> {
+            uri.path ?: uri.toString()
+          }
+
+          "content" -> {
+            contentResolver
+              .query(
+                uri,
+                arrayOf(MediaStore.MediaColumns.DATA),
+                null,
+                null,
+                null,
+              )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                  val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                  if (columnIndex != -1) cursor.getString(columnIndex) else null
+                } else {
+                  null
+                }
+              } ?: uri.toString()
+          }
+
+          else -> {
+            uri.toString()
+          }
+        }
+
+      RecentlyPlayedOps.addRecentlyPlayed(
+        filePath = filePath,
+        fileName = name,
+        launchSource = "playlist",
+      )
+
+      Log.d(TAG, "Saved recently played: $filePath (source: playlist)")
+    }.onFailure { e ->
+      Log.e(TAG, "Error saving recently played for playlist item", e)
+    }
+  }
 
   companion object {
     /**

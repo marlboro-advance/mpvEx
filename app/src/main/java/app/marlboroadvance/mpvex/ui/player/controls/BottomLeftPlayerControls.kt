@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.player.Sheets
@@ -43,6 +46,7 @@ fun BottomLeftPlayerControls(
         icon = Icons.Default.ScreenRotation,
         onClick = onCycleRotation,
       )
+
       ControlsButton(
         text = stringResource(R.string.player_speed, playbackSpeed),
         onClick = { onPlaybackSpeedChange(if (playbackSpeed >= 2) 0.25f else playbackSpeed + 0.25f) },

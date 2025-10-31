@@ -21,12 +21,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
@@ -46,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -390,48 +394,199 @@ fun PlayerControls(
               )
             }
 
-            controlsShown && !areControlsLocked ->
-              Surface(
-                modifier =
-                  Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                      interaction,
-                      ripple(),
-                      onClick = viewModel::pauseUnpause,
-                    ),
-                shape = CircleShape,
-                color =
-                  if (!hideBackground) {
-                    MaterialTheme.colorScheme.surfaceContainer.copy(
-                      alpha = 0.55f,
+            controlsShown && !areControlsLocked -> {
+              // Show playlist controls (previous, play/pause, next) if in playlist mode
+              if (viewModel.hasPlaylistSupport()) {
+                Row(
+                  horizontalArrangement =
+                    androidx.compose.foundation.layout.Arrangement
+                      .spacedBy(24.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                ) {
+                  // Previous button
+                  Surface(
+                    modifier =
+                      Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                          enabled = viewModel.hasPrevious(),
+                          onClick = { if (viewModel.hasPrevious()) viewModel.playPrevious() },
+                        ),
+                    shape = CircleShape,
+                    color =
+                      if (!hideBackground) {
+                        MaterialTheme.colorScheme.surfaceContainer.copy(
+                          alpha = 0.55f,
+                        )
+                      } else {
+                        Color.Transparent
+                      },
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 0.dp,
+                    border =
+                      if (!hideBackground) {
+                        BorderStroke(
+                          1.dp,
+                          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        )
+                      } else {
+                        null
+                      },
+                  ) {
+                    androidx.compose.material3.Icon(
+                      imageVector = Icons.Default.SkipPrevious,
+                      contentDescription = "Previous",
+                      tint =
+                        if (viewModel.hasPrevious()) {
+                          MaterialTheme.colorScheme.onSurface
+                        } else {
+                          MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        },
+                      modifier =
+                        Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.small),
                     )
-                  } else {
-                    Color.Transparent
-                  },
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                tonalElevation = 2.dp,
-                shadowElevation = 0.dp,
-                border =
-                  if (!hideBackground) {
-                    BorderStroke(
-                      1.dp,
-                      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                  }
+
+                  // Play/Pause button
+                  Surface(
+                    modifier =
+                      Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                          interaction,
+                          ripple(),
+                          onClick = viewModel::pauseUnpause,
+                        ),
+                    shape = CircleShape,
+                    color =
+                      if (!hideBackground) {
+                        MaterialTheme.colorScheme.surfaceContainer.copy(
+                          alpha = 0.55f,
+                        )
+                      } else {
+                        Color.Transparent
+                      },
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 0.dp,
+                    border =
+                      if (!hideBackground) {
+                        BorderStroke(
+                          1.dp,
+                          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        )
+                      } else {
+                        null
+                      },
+                  ) {
+                    Image(
+                      painter = rememberAnimatedVectorPainter(icon, paused == false),
+                      modifier =
+                        Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.medium),
+                      contentDescription = null,
                     )
-                  } else {
-                    null
-                  },
-              ) {
-                Image(
-                  painter = rememberAnimatedVectorPainter(icon, paused == false),
+                  }
+
+                  // Next button
+                  Surface(
+                    modifier =
+                      Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                          enabled = viewModel.hasNext(),
+                          onClick = { if (viewModel.hasNext()) viewModel.playNext() },
+                        ),
+                    shape = CircleShape,
+                    color =
+                      if (!hideBackground) {
+                        MaterialTheme.colorScheme.surfaceContainer.copy(
+                          alpha = 0.55f,
+                        )
+                      } else {
+                        Color.Transparent
+                      },
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = 2.dp,
+                    shadowElevation = 0.dp,
+                    border =
+                      if (!hideBackground) {
+                        BorderStroke(
+                          1.dp,
+                          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        )
+                      } else {
+                        null
+                      },
+                  ) {
+                    androidx.compose.material3.Icon(
+                      imageVector = Icons.Default.SkipNext,
+                      contentDescription = "Next",
+                      tint =
+                        if (viewModel.hasNext()) {
+                          MaterialTheme.colorScheme.onSurface
+                        } else {
+                          MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        },
+                      modifier =
+                        Modifier
+                          .fillMaxSize()
+                          .padding(MaterialTheme.spacing.small),
+                    )
+                  }
+                }
+              } else {
+                // Single play/pause button for non-playlist mode
+                Surface(
                   modifier =
                     Modifier
-                      .fillMaxSize()
-                      .padding(MaterialTheme.spacing.medium),
-                  contentDescription = null,
-                )
+                      .size(64.dp)
+                      .clip(CircleShape)
+                      .clickable(
+                        interaction,
+                        ripple(),
+                        onClick = viewModel::pauseUnpause,
+                      ),
+                  shape = CircleShape,
+                  color =
+                    if (!hideBackground) {
+                      MaterialTheme.colorScheme.surfaceContainer.copy(
+                        alpha = 0.55f,
+                      )
+                    } else {
+                      Color.Transparent
+                    },
+                  contentColor = MaterialTheme.colorScheme.onSurface,
+                  tonalElevation = 2.dp,
+                  shadowElevation = 0.dp,
+                  border =
+                    if (!hideBackground) {
+                      BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                      )
+                    } else {
+                      null
+                    },
+                ) {
+                  Image(
+                    painter = rememberAnimatedVectorPainter(icon, paused == false),
+                    modifier =
+                      Modifier
+                        .fillMaxSize()
+                        .padding(MaterialTheme.spacing.medium),
+                    contentDescription = null,
+                  )
+                }
               }
+            }
           }
         }
         AnimatedVisibility(
@@ -500,8 +655,9 @@ fun PlayerControls(
             },
         ) {
           TopLeftPlayerControls(
-            mediaTitle = mediaTitle ?: "", // it'll be set when the video loads so no problem keeping it empty for now
+            mediaTitle = mediaTitle ?: "",
             onBackClick = onBackPress,
+            playlistInfo = viewModel.getPlaylistInfo(),
           )
         }
         // Top right controls

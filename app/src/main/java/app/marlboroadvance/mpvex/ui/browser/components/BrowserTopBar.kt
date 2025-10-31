@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +59,7 @@ fun BrowserTopBar(
   isSingleSelection: Boolean = false,
   onInfoClick: (() -> Unit)? = null,
   onShareClick: (() -> Unit)? = null,
+  onPlayClick: (() -> Unit)? = null,
   onSelectAll: (() -> Unit)? = null,
   onInvertSelection: (() -> Unit)? = null,
   onDeselectAll: (() -> Unit)? = null,
@@ -74,6 +76,7 @@ fun BrowserTopBar(
       isSingleSelection = isSingleSelection,
       onInfo = onInfoClick,
       onShare = onShareClick,
+      onPlay = onPlayClick,
       onSelectAll = onSelectAll,
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
@@ -202,6 +205,7 @@ private fun SelectionTopBar(
   isSingleSelection: Boolean,
   onInfo: (() -> Unit)?,
   onShare: (() -> Unit)?,
+  onPlay: (() -> Unit)?,
   onSelectAll: (() -> Unit)?,
   onInvertSelection: (() -> Unit)?,
   onDeselectAll: (() -> Unit)?,
@@ -277,6 +281,21 @@ private fun SelectionTopBar(
       }
     },
     actions = {
+      // Play icon
+      if (onPlay != null) {
+        IconButton(
+          onClick = onPlay,
+          modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+          Icon(
+            Icons.Filled.PlayArrow,
+            contentDescription = "Play",
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.primary,
+          )
+        }
+      }
+
       // Rename icon
       if (onRename != null) {
         IconButton(
