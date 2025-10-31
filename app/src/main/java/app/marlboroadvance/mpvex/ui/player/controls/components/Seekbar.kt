@@ -246,11 +246,7 @@ private fun SquigglySeekbar(
       } else {
         // Linear interpolation between minWaveEndpoint and matchedWaveEndpoint
         val t =
-          if (matchedWaveEndpoint > 0f) {
-            (progress / matchedWaveEndpoint).coerceIn(0f, 1f)
-          } else {
-            0f
-          }
+          (progress / matchedWaveEndpoint).coerceIn(0f, 1f)
         totalWidth * (minWaveEndpoint + (matchedWaveEndpoint - minWaveEndpoint) * t)
       }
 
@@ -444,7 +440,7 @@ private fun PreviewSeekBar() {
     Pair(false, true),
     {},
     {},
-    persistentListOf<Segment>(),
+    persistentListOf(),
     paused = false,
   )
 }

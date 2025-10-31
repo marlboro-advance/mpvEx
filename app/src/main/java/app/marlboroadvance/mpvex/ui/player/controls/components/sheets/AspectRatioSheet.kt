@@ -271,7 +271,7 @@ private fun calculateRatio(
     val width = widthStr.toDouble()
     val height = heightStr.toDouble()
     if (width > 0 && height > 0) width / height else null
-  } catch (e: NumberFormatException) {
+  } catch (_: NumberFormatException) {
     null
   }
 }

@@ -79,7 +79,7 @@ class PlayerViewModel(
 
   val subtitleTracks =
     MPVLib.propNode["track-list"]
-      .map {
+      .map { it ->
         (
           it
             ?.toObject<List<TrackNode>>(
@@ -90,7 +90,7 @@ class PlayerViewModel(
 
   val audioTracks =
     MPVLib.propNode["track-list"]
-      .map {
+      .map { it ->
         (
           it
             ?.toObject<List<TrackNode>>(
@@ -101,7 +101,7 @@ class PlayerViewModel(
 
   val chapters =
     MPVLib.propNode["chapter-list"]
-      .map {
+      .map { it ->
         (
           it?.toObject<List<ChapterNode>>(
             json,
@@ -314,7 +314,7 @@ class PlayerViewModel(
       selectedSubs.first -> Pair(selectedSubs.second, null)
       selectedSubs.second -> Pair(selectedSubs.first, null)
       else -> if (selectedSubs.first != null) Pair(selectedSubs.first, id) else Pair(id, null)
-    }.let {
+    }.let { it ->
       it.second?.let { MPVLib.setPropertyInt("secondary-sid", it) }
         ?: MPVLib.setPropertyBoolean("secondary-sid", false)
       it.first?.let { MPVLib.setPropertyInt("sid", it) } ?: MPVLib.setPropertyBoolean("sid", false)
@@ -711,7 +711,7 @@ class PlayerViewModel(
   /**
    * Check if playlist navigation is available
    */
-  fun hasPlaylistSupport(): Boolean = (host as? PlayerActivity)?.let { it.playlist.isNotEmpty() } ?: false
+  fun hasPlaylistSupport(): Boolean = (host as? PlayerActivity)?.playlist?.isNotEmpty() ?: false
 
   /**
    * Get playlist info string for display (e.g., "2/5")

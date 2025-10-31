@@ -13,14 +13,14 @@ import java.io.File
 import java.util.Locale
 
 object VideoFolderRepository {
-  private const val Tag = "VideoFolderRepository"
+  private const val TAG = "VideoFolderRepository"
 
   // Cache the external storage path to avoid repeated calls
   private val externalStoragePath: String by lazy { Environment.getExternalStorageDirectory().path }
 
   suspend fun getVideoFolders(context: Context): List<VideoFolder> =
     withContext(Dispatchers.IO) {
-      Log.d(Tag, "Starting video folder scan")
+      Log.d(TAG, "Starting video folder scan")
       val folders = mutableMapOf<String, VideoFolderInfo>()
 
       val projection = getProjection()
@@ -35,9 +35,9 @@ object VideoFolderRepository {
 
       cursor?.use { c -> processFolderCursor(c, folders) }
 
-      Log.d(Tag, "Finished video folder scan")
+      Log.d(TAG, "Finished video folder scan")
       val result = convertToVideoFolderList(folders)
-      Log.d(Tag, "Found ${result.size} folders")
+      Log.d(TAG, "Found ${result.size} folders")
       result
     }
 
@@ -61,10 +61,10 @@ object VideoFolderRepository {
       val canonicalPath = File(preprocessedPath).canonicalPath
       if (canonicalPath.length > 1 && canonicalPath.endsWith("/")) canonicalPath.dropLast(1) else canonicalPath
     } catch (e: SecurityException) {
-      Log.w(Tag, "Security exception normalizing path: $path", e)
+      Log.w(TAG, "Security exception normalizing path: $path", e)
       preprocessedPath.trimEnd('/')
     } catch (e: Exception) {
-      Log.w(Tag, "Error normalizing path: $path", e)
+      Log.w(TAG, "Error normalizing path: $path", e)
       preprocessedPath.trimEnd('/')
     }
   }
@@ -116,7 +116,7 @@ object VideoFolderRepository {
     val normalizedPath = normalizePath(File(filePath).parent ?: return)
     val (finalBucketId, finalBucketName) = getFinalBucketInfo(bucketId, bucketName, normalizedPath)
 
-    Log.d(Tag, "Found video: $filePath, bucketId: $finalBucketId, bucketName: $finalBucketName")
+    Log.d(TAG, "Found video: $filePath, bucketId: $finalBucketId, bucketName: $finalBucketName")
 
     updateFolderInfo(finalBucketId, finalBucketName, normalizedPath, dateModified, size, duration, filePath, folders)
   }
@@ -171,9 +171,9 @@ object VideoFolderRepository {
           lastModified = maxOf(folderInfo.lastModified, dateModified),
           processedVideos = folderInfo.processedVideos,
         )
-      Log.d(Tag, "Counted video: $normalizedFilePath in folder $bucketName (total: ${folderInfo.videoCount + 1})")
+      Log.d(TAG, "Counted video: $normalizedFilePath in folder $bucketName (total: ${folderInfo.videoCount + 1})")
     } else {
-      Log.d(Tag, "Skipping duplicate video: $normalizedFilePath in folder $bucketName")
+      Log.d(TAG, "Skipping duplicate video: $normalizedFilePath in folder $bucketName")
     }
   }
 

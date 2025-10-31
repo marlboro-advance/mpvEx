@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.ui.browser.cards
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,18 +33,16 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import app.marlboroadvance.mpvex.utils.usb.UsbVideoFolder
 import org.koin.compose.koinInject
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun UsbFolderCard(
+  modifier: Modifier = Modifier,
   folder: UsbVideoFolder,
   isSelected: Boolean = false,
   onClick: () -> Unit,
   onLongClick: () -> Unit,
-  modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -175,9 +172,3 @@ private fun formatFileSize(bytes: Long): String =
     bytes < 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024))
     else -> String.format(Locale.US, "%.2f GB", bytes / (1024.0 * 1024 * 1024))
   }
-
-private fun formatDate(timestamp: Long): String {
-  val date = Date(timestamp)
-  val format = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-  return format.format(date)
-}

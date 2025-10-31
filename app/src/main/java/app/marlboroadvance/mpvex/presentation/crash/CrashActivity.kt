@@ -125,7 +125,7 @@ class CrashActivity : ComponentActivity() {
         deleted = dbShmFile.delete() || deleted
       }
       deleted
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       false
     }
 

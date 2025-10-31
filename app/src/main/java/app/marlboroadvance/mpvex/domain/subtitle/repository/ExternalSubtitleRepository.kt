@@ -11,7 +11,6 @@ class ExternalSubtitleRepository(
   private val dao: ExternalSubtitleDao,
 ) {
   companion object {
-    private const val TAG = "ExternalSubtitleRepo"
     private const val SUBTITLE_CACHE_DIR = "subtitle_cache"
     private val INVALID_CHARS_REGEX = "[^a-zA-Z0-9._-]".toRegex()
   }
@@ -57,14 +56,6 @@ class ExternalSubtitleRepository(
     }.getOrElse { emptyList() }
 
   /**
-   * Get subtitle metadata by cached file path
-   */
-  suspend fun getSubtitleByCachedPath(cachedPath: String): ExternalSubtitleEntity? =
-    runCatching {
-      dao.getSubtitleByCachedPath(cachedPath)
-    }.getOrNull()
-
-  /**
    * Delete a cached subtitle by its cached file path
    */
   suspend fun deleteSubtitle(cachedFilePath: String): Result<Unit> =
@@ -73,38 +64,5 @@ class ExternalSubtitleRepository(
       File(cachedFilePath).takeIf { it.exists() }?.delete()
       // Remove from database
       dao.deleteByCachedPath(cachedFilePath)
-    }
-
-  /**
-   * Delete all cached subtitles for a specific media file
-   */
-  suspend fun deleteAllForMedia(mediaTitle: String): Result<Unit> =
-    runCatching {
-      val subtitles = dao.getSubtitlesForMedia(mediaTitle)
-      subtitles.forEach { subtitle ->
-        val file = File(subtitle.cachedFilePath)
-        if (file.exists()) {
-          file.delete()
-        }
-      }
-      dao.deleteAllForMedia(mediaTitle)
-    }
-
-  /**
-   * Clean up orphaned subtitle files (files without database entries)
-   */
-  suspend fun cleanupOrphanedFiles(): Result<Unit> =
-    runCatching {
-      val cacheDir = File(context.filesDir, SUBTITLE_CACHE_DIR)
-      if (!cacheDir.exists()) return@runCatching
-
-      val allEntries = dao.getAll()
-      val validPaths = allEntries.map { it.cachedFilePath }.toSet()
-
-      cacheDir.listFiles()?.forEach { file ->
-        if (file.isFile && file.absolutePath !in validPaths) {
-          file.delete()
-        }
-      }
     }
 }

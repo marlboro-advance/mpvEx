@@ -58,7 +58,6 @@ fun SubtitlesSheet(
         title = getTrackTitle(track, externalSubtitleMetadata),
         selected = track.mainSelection?.toInt() ?: -1,
         isExternal = track.external == true,
-        trackId = track.id,
         onClick = { onSelect(track.id) },
         onRemove = { onRemoveSubtitle(track.id) },
       )
@@ -72,7 +71,6 @@ fun SubtitleTrackRow(
   title: String,
   selected: Int,
   isExternal: Boolean,
-  trackId: Int,
   onClick: () -> Unit,
   onRemove: () -> Unit,
   modifier: Modifier = Modifier,

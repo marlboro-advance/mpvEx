@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
@@ -305,7 +303,7 @@ class PlayerActivity :
     setupMediaSession()
 
     // Extract playlist info from intent
-    playlist = intent.getParcelableArrayListExtra<Uri>("playlist") ?: emptyList()
+    playlist = intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     playlistIndex = intent.getIntExtra("playlist_index", 0)
 
     // Start playback
@@ -1203,11 +1201,12 @@ class PlayerActivity :
    * @param property The property name that changed
    * @param value The new Long value
    */
+  @Suppress("UnusedParameter")
   internal fun onObserverEvent(
     property: String,
     value: Long,
   ) {
-    if (player.isExiting) return
+    // Currently no Long properties are handled
   }
 
   /**
@@ -1221,8 +1220,6 @@ class PlayerActivity :
     property: String,
     value: Boolean,
   ) {
-    if (player.isExiting) return
-
     when (property) {
       "pause" -> handlePauseStateChange(value)
       "eof-reached" -> handleEndOfFile(value)
@@ -1276,8 +1273,6 @@ class PlayerActivity :
     property: String,
     value: String,
   ) {
-    if (player.isExiting) return
-
     when (property.substringBeforeLast("/")) {
       "user-data/mpvex" -> viewModel.handleLuaInvocation(property, value)
     }
@@ -1297,7 +1292,7 @@ class PlayerActivity :
     property: String,
     value: MPVNode,
   ) {
-    if (player.isExiting) return
+    // Currently no MPVNode properties are handled
   }
 
   /**
@@ -1314,7 +1309,7 @@ class PlayerActivity :
     property: String,
     value: Double,
   ) {
-    if (player.isExiting) return
+    // Currently no Double properties are handled
   }
 
   /**
@@ -1324,8 +1319,6 @@ class PlayerActivity :
    * @param property The property name that changed
    */
   internal fun onObserverEvent(property: String) {
-    if (player.isExiting) return
-
     when (property) {
       "video-params/aspect" -> {
         if (pipHelper.isPipSupported) {
@@ -1343,8 +1336,6 @@ class PlayerActivity :
    * @param eventId The MPV event ID
    */
   internal fun event(eventId: Int) {
-    if (player.isExiting) return
-
     when (eventId) {
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
         handleFileLoaded()
@@ -2057,12 +2048,8 @@ class PlayerActivity :
 
     Log.d(TAG, "Starting background playback")
     val intent = Intent(this, MediaPlaybackService::class.java)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      startForegroundService(intent)
-    } else {
-      startService(intent)
-    }
-    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    startForegroundService(intent)
+    bindService(intent, serviceConnection, BIND_AUTO_CREATE)
   }
 
   /**

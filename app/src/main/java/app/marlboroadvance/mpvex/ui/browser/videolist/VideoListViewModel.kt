@@ -120,7 +120,7 @@ class VideoListViewModel(
   private fun triggerMediaScan() {
     try {
       // Trigger a media scan for all video directories
-      val intent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+      android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
       android.media.MediaScannerConnection.scanFile(
         getApplication(),
         arrayOf(

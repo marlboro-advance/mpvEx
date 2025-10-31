@@ -7,6 +7,7 @@ class PlayerObserver(
   private val activity: PlayerActivity,
 ) : MPVLib.EventObserver {
   override fun eventProperty(property: String) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property) }
   }
 
@@ -14,6 +15,7 @@ class PlayerObserver(
     property: String,
     value: Long,
   ) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
@@ -21,6 +23,7 @@ class PlayerObserver(
     property: String,
     value: Boolean,
   ) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
@@ -28,6 +31,7 @@ class PlayerObserver(
     property: String,
     value: String,
   ) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
@@ -35,6 +39,7 @@ class PlayerObserver(
     property: String,
     value: Double,
   ) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
@@ -43,10 +48,12 @@ class PlayerObserver(
     property: String,
     value: MPVNode,
   ) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
   override fun event(eventId: Int) {
+    if (activity.player.isExiting) return
     activity.runOnUiThread { activity.event(eventId) }
   }
 }

@@ -13,8 +13,6 @@ import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 
 /**
- * Single source of truth for all recently played operations.
- *
  * This object consolidates all recently played logic including:
  * - Recording playback history
  * - Retrieving recently played items

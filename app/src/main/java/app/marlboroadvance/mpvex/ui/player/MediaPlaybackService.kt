@@ -41,22 +41,20 @@ class MediaPlaybackService :
     var thumbnail: Bitmap? = null
 
     fun createNotificationChannel(context: Context) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel =
-          NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW,
-          ).apply {
-            description = context.getString(R.string.notification_channel_description)
-            setShowBadge(false)
-            enableLights(false)
-            enableVibration(false)
-          }
+      val channel =
+        NotificationChannel(
+          NOTIFICATION_CHANNEL_ID,
+          context.getString(R.string.notification_channel_name),
+          NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+          description = context.getString(R.string.notification_channel_description)
+          setShowBadge(false)
+          enableLights(false)
+          enableVibration(false)
+        }
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-      }
+      val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+      notificationManager.createNotificationChannel(channel)
     }
   }
 

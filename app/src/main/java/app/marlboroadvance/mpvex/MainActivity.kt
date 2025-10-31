@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
     CompositionLocalProvider(LocalBackStack provides typedBackstack) {
-      NavDisplay<Screen>(
+      NavDisplay(
         backStack = typedBackstack,
         onBack = { typedBackstack.removeLastOrNull() },
         entryProvider = { route -> NavEntry(route) { route.Content() } },

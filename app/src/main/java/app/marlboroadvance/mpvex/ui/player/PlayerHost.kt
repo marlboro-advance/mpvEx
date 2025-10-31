@@ -21,24 +21,3 @@ interface PlayerHost {
   val hostContentResolver: ContentResolver
   var hostRequestedOrientation: Int
 }
-
-/**
- * Callbacks that are invoked by the mpv event observer.
- */
-interface PlayerObserverCallbacks {
-  fun onObserverEvent()
-
-  fun onObserverEvent(property: String)
-
-  fun onObserverEvent(
-    property: String,
-    value: Boolean,
-  )
-
-  fun onObserverEvent(
-    property: String,
-    value: String,
-  )
-
-  fun event(eventId: Int)
-}

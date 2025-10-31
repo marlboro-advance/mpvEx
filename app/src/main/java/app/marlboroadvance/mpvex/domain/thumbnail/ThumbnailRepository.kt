@@ -145,33 +145,6 @@ class ThumbnailRepository(
     }
   }
 
-  /**
-   * Clear memory cache (useful for memory pressure situations).
-   */
-  fun clearMemoryCache() {
-    memoryCache.evictAll()
-  }
-
-  /**
-   * Clear disk cache.
-   */
-  suspend fun clearDiskCache() =
-    withContext(Dispatchers.IO) {
-      runCatching {
-        diskDir.listFiles()?.forEach { it.delete() }
-      }
-    }
-
-  /**
-   * Get cache size in bytes.
-   */
-  suspend fun getCacheSize(): Long =
-    withContext(Dispatchers.IO) {
-      runCatching {
-        diskDir.listFiles()?.sumOf { it.length() } ?: 0L
-      }.getOrDefault(0L)
-    }
-
   private fun buildKey(
     video: Video,
     width: Int,

@@ -2,9 +2,7 @@ package app.marlboroadvance.mpvex.ui.player
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.database.Cursor
 import android.net.Uri
-import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
