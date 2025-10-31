@@ -87,21 +87,26 @@ data class VideoListScreen(
         factory = VideoListViewModel.factory(context.applicationContext as android.app.Application, bucketId),
       )
     val videos by viewModel.videos.collectAsState()
+    val videosWithPlaybackInfo by viewModel.videosWithPlaybackInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
 
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-    val sortedVideos =
-      remember(videos, videoSortType, videoSortOrder) {
-        SortUtils.sortVideos(videos, videoSortType, videoSortOrder)
+    val sortedVideosWithInfo =
+      remember(videosWithPlaybackInfo, videoSortType, videoSortOrder) {
+        val sortedVideos = SortUtils.sortVideos(videosWithPlaybackInfo.map { it.video }, videoSortType, videoSortOrder)
+        // Maintain the playback info mapping
+        sortedVideos.map { video ->
+          videosWithPlaybackInfo.find { it.video.id == video.id } ?: VideoWithPlaybackInfo(video)
+        }
       }
 
     // Selection manager
     val selectionManager =
       rememberSelectionManager(
-        items = sortedVideos,
+        items = sortedVideosWithInfo.map { it.video },
         getId = { it.id },
         onDeleteItems = { viewModel.deleteVideos(it) },
         onRenameItem = { video, newName -> viewModel.renameVideo(video, newName) },
@@ -143,7 +148,7 @@ data class VideoListScreen(
           title = displayFolderName,
           isInSelectionMode = selectionManager.isInSelectionMode,
           selectedCount = selectionManager.selectedCount,
-          totalCount = sortedVideos.size,
+          totalCount = sortedVideosWithInfo.size,
           onBackClick = {
             if (selectionManager.isInSelectionMode) {
               selectionManager.clear()
@@ -202,7 +207,7 @@ data class VideoListScreen(
       },
     ) { padding ->
       VideoListContent(
-        videos = sortedVideos,
+        videosWithInfo = sortedVideosWithInfo,
         isLoading = isLoading && videos.isEmpty(),
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
@@ -357,7 +362,7 @@ data class VideoListScreen(
 
 @Composable
 private fun VideoListContent(
-  videos: List<Video>,
+  videosWithInfo: List<VideoWithPlaybackInfo>,
   isLoading: Boolean,
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
@@ -392,7 +397,7 @@ private fun VideoListContent(
         }
       }
 
-      videos.isEmpty() -> {
+      videosWithInfo.isEmpty() -> {
         EmptyState(
           icon = Icons.Filled.VideoLibrary,
           title = "No videos in this folder",
@@ -407,30 +412,31 @@ private fun VideoListContent(
           contentPadding = PaddingValues(8.dp),
         ) {
           items(
-            count = videos.size,
-            key = { index -> videos[index].id },
+            count = videosWithInfo.size,
+            key = { index -> videosWithInfo[index].video.id },
           ) { index ->
-            val video = videos[index]
-            val isRecentlyPlayed = recentlyPlayedFilePath?.let { video.path == it } ?: false
+            val videoWithInfo = videosWithInfo[index]
+            val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
             // Prefetch upcoming thumbnails
             androidx.compose.runtime.LaunchedEffect(index) {
-              if (index < videos.size - 1) {
+              if (index < videosWithInfo.size - 1) {
                 val upcomingVideos =
-                  videos.subList(
-                    (index + 1).coerceAtMost(videos.size),
-                    (index + 11).coerceAtMost(videos.size),
+                  videosWithInfo.subList(
+                    (index + 1).coerceAtMost(videosWithInfo.size),
+                    (index + 11).coerceAtMost(videosWithInfo.size),
                   )
-                thumbnailRepository.prefetchThumbnails(upcomingVideos, thumbWidthPx, thumbHeightPx)
+                thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
               }
             }
 
             VideoCard(
-              video = video,
+              video = videoWithInfo.video,
+              timeRemainingFormatted = videoWithInfo.timeRemainingFormatted,
               isRecentlyPlayed = isRecentlyPlayed,
-              isSelected = selectionManager.isSelected(video),
-              onClick = { onVideoClick(video) },
-              onLongClick = { onVideoLongClick(video) },
+              isSelected = selectionManager.isSelected(videoWithInfo.video),
+              onClick = { onVideoClick(videoWithInfo.video) },
+              onLongClick = { onVideoLongClick(videoWithInfo.video) },
             )
           }
         }

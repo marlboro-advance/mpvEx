@@ -55,6 +55,7 @@ fun VideoCard(
   isRecentlyPlayed: Boolean = false,
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
+  timeRemainingFormatted: String? = null,
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -178,6 +179,20 @@ fun VideoCard(
                 ).padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
+          if (timeRemainingFormatted != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              timeRemainingFormatted,
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  ).padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+          }
         }
       }
     }

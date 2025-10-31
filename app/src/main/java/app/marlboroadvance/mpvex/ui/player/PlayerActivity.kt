@@ -1439,10 +1439,14 @@ class PlayerActivity :
         val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
         Log.d(TAG, "Saving playback state for: $mediaTitle")
 
+        val lastPosition = calculateSavePosition(oldState)
+        val duration = viewModel.duration ?: 0
+        val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
+
         playbackStateRepository.upsert(
           PlaybackStateEntity(
             mediaTitle = mediaTitle,
-            lastPosition = calculateSavePosition(oldState),
+            lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
             sid = player.sid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
@@ -1458,6 +1462,7 @@ class PlayerActivity :
               (
                 (MPVLib.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS
               ).toInt(),
+            timeRemaining = timeRemaining,
           ),
         )
       }.onFailure { e ->

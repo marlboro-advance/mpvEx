@@ -15,4 +15,5 @@ data class PlaybackStateEntity(
   val secondarySubDelay: Int,
   val aid: Int,
   val audioDelay: Int,
+  val timeRemaining: Int = 0, // in seconds (duration - lastPosition)
 )
