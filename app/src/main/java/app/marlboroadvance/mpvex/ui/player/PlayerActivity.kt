@@ -36,6 +36,7 @@ import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
@@ -89,6 +90,7 @@ class PlayerActivity :
   private val playerPreferences: PlayerPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val advancedPreferences: AdvancedPreferences by inject()
   private val fileManager: FileManager by inject()
 
   // State variables - because Android lifecycle makes everything a goddamn mess
@@ -197,9 +199,10 @@ class PlayerActivity :
       return baseContext
     }
 
-    val updatedConfiguration = Configuration(originalConfiguration).apply {
-      fontScale = 1f
-    }
+    val updatedConfiguration =
+      Configuration(originalConfiguration).apply {
+        fontScale = 1f
+      }
 
     val configurationContext = baseContext.createConfigurationContext(updatedConfiguration)
     val configurationResources = configurationContext.resources
@@ -619,6 +622,22 @@ class PlayerActivity :
       val mpvConfFile = File("$applicationPath/mpv.conf")
       if (!mpvConfFile.exists()) {
         mpvConfFile.createNewFile()
+      }
+      // Write mpv.conf content from preferences
+      val mpvConfContent = advancedPreferences.mpvConf.get()
+      if (mpvConfContent.isNotBlank()) {
+        mpvConfFile.writeText(mpvConfContent)
+      }
+
+      // Create and write input.conf
+      val inputConfFile = File("$applicationPath/input.conf")
+      if (!inputConfFile.exists()) {
+        inputConfFile.createNewFile()
+      }
+      // Write input.conf content from preferences
+      val inputConfContent = advancedPreferences.inputConf.get()
+      if (inputConfContent.isNotBlank()) {
+        inputConfFile.writeText(inputConfContent)
       }
     }.onFailure { e ->
       Log.e(TAG, "Error creating default config files", e)

@@ -59,7 +59,6 @@
     <string name="pref_player_gestures_brightness">Brightness gestures</string>
     <string name="pref_player_gestures_volume">Volume gestures</string>
     <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
-    <string name="pref_player_gestures_hold_for_double_speed">Hold for 2x speed</string>
     <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
 
     <string name="pref_player_controls">Controls</string>
@@ -85,11 +84,13 @@
     <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>
     <string name="pref_gesture_double_tap_center_title">Double tap (center)</string>
     <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
+    <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
 
     <string name="pref_gesture_media_title">Media controls</string>
     <string name="pref_gesture_media_previous">Previous</string>
     <string name="pref_gesture_media_play">Play/Pause</string>
     <string name="pref_gesture_media_next">Next</string>
+    <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
 
     <string name="pref_decoder">Decoder</string>
     <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
@@ -125,6 +126,7 @@
     <string name="pref_advanced_summary">Configuration location, mpv.conf</string>
     <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
     <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
+    <string name="pref_advanced_input_conf">Edit input.conf</string>
     <string name="pref_advanced_dump_logs_title">Dump logs</string>
     <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>
     <string name="pref_advanced_verbose_logging_title">Verbose logging</string>

@@ -32,6 +32,18 @@ enum class SingleActionGesture(
   None(R.string.pref_gesture_double_tap_none),
   Seek(R.string.pref_gesture_double_tap_seek),
   PlayPause(R.string.pref_gesture_double_tap_play),
+  Custom(R.string.pref_gesture_double_tap_custom),
+}
+
+enum class CustomKeyCodes(
+  val keyCode: String,
+) {
+  DoubleTapLeft("MBTN_LEFT_DBL"),
+  DoubleTapCenter("MBTN_MID_DBL"),
+  DoubleTapRight("MBTN_RIGHT_DBL"),
+  MediaPrevious("PREV"),
+  MediaPlay("PLAYPAUSE"),
+  MediaNext("NEXT"),
 }
 
 enum class Decoder(

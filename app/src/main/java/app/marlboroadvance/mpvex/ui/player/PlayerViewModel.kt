@@ -635,6 +635,10 @@ class PlayerViewModel(
         pauseUnpause()
       }
 
+      SingleActionGesture.Custom -> {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
+      }
+
       SingleActionGesture.None -> {}
     }
   }
@@ -643,6 +647,10 @@ class PlayerViewModel(
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> {
         pauseUnpause()
+      }
+
+      SingleActionGesture.Custom -> {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
       }
 
       SingleActionGesture.Seek -> {}
@@ -658,6 +666,10 @@ class PlayerViewModel(
 
       SingleActionGesture.PlayPause -> {
         pauseUnpause()
+      }
+
+      SingleActionGesture.Custom -> {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
       }
 
       SingleActionGesture.None -> {}

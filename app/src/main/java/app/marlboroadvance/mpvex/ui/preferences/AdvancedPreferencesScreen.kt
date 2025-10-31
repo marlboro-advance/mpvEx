@@ -182,6 +182,73 @@ object AdvancedPreferencesScreen : Screen {
               }
             },
           )
+          var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
+          LaunchedEffect(mpvConfStorageLocation) {
+            if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
+            withContext(Dispatchers.IO) {
+              val tempFile = kotlin.io.path.createTempFile()
+              runCatching {
+                val tree =
+                  DocumentFile.fromTreeUri(
+                    context,
+                    mpvConfStorageLocation.toUri(),
+                  )
+                val inputConfFile = tree?.findFile("input.conf")
+                if (inputConfFile != null && inputConfFile.exists()) {
+                  context.contentResolver
+                    .openInputStream(
+                      inputConfFile.uri,
+                    )?.copyTo(tempFile.outputStream())
+                  val content = tempFile.readLines().fastJoinToString("\n")
+                  preferences.inputConf.set(content)
+                  File(context.filesDir, "input.conf").writeText(content)
+                  withContext(Dispatchers.Main) {
+                    inputConf = content
+                  }
+                }
+              }
+              tempFile.deleteIfExists()
+            }
+          }
+          TextFieldPreference(
+            value = inputConf,
+            onValueChange = { inputConf = it },
+            title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
+            textField = { value, onValueChange, onOk ->
+              OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                maxLines = Int.MAX_VALUE,
+                keyboardActions = KeyboardActions(onDone = { onOk() }),
+              )
+            },
+            textToValue = {
+              preferences.inputConf.set(it)
+              File(context.filesDir, "input.conf").writeText(it)
+              if (mpvConfStorageLocation.isNotBlank()) {
+                val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
+                val uri =
+                  if (tree.findFile("input.conf") == null) {
+                    val conf = tree.createFile("text/plain", "input.conf")!!
+                    conf.renameTo("input.conf")
+                    conf.uri
+                  } else {
+                    tree.findFile("input.conf")!!.uri
+                  }
+                val out = context.contentResolver.openOutputStream(uri, "wt")
+                out!!.write(it.toByteArray())
+                out.flush()
+                out.close()
+              }
+              it
+            },
+            summary = {
+              val firstLine = inputConf.lines().firstOrNull()
+              if (firstLine != null && firstLine.isNotBlank()) {
+                Text(firstLine)
+              }
+            },
+          )
           val activity = LocalActivity.current!!
           val clipboard = LocalClipboardManager.current
           Preference(
