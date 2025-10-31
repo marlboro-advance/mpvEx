@@ -78,7 +78,12 @@ fun AddTrackRow(
       style = MaterialTheme.typography.bodyLarge,
       modifier = Modifier.weight(1f),
     )
-    actions()
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      actions()
+    }
   }
 }
 

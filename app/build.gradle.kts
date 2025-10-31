@@ -132,6 +132,7 @@ dependencies {
   implementation(libs.androidx.material3.icons.extended)
   implementation(libs.androidx.compose.animation.graphics)
   implementation(libs.material)
+  implementation(libs.mediasession)
   implementation(libs.androidx.preferences.ktx)
   implementation(libs.androidx.documentfile)
   implementation(libs.saveable)

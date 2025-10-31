@@ -3,9 +3,11 @@
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ServiceConnection
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.media.AudioAttributes
@@ -17,6 +19,7 @@ import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
@@ -46,6 +49,7 @@ import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
+import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -56,60 +60,170 @@ import org.koin.android.ext.android.inject
 import java.io.File
 
 /**
- * Main player activity that handles video playback using MPV library.
+ * Main player activity that handles video playback using the MPV library.
  *
- * This is a 1500-line clusterfuck that manages everything because Android
- * makes it damn near impossible to separate concerns when you need to deal with:
- * - System UI that keeps trying to show itself
- * - Audio focus that other apps steal constantly
- * - PiP mode that breaks on every manufacturer differently
- * - MPV which was written for desktops and hates mobile
- * - MediaSession for Android Auto/wear that nobody uses but you HAVE to implement
+ * This activity manages:
+ * - Video playback using MPV library
+ * - System UI visibility (immersive mode)
+ * - Audio focus management
+ * - Picture-in-Picture (PiP) mode
+ * - Background playback service
+ * - MediaSession for external controls (Android Auto, Bluetooth, etc.)
+ * - Playback state persistence and restoration
+ * - Subtitle and audio track management
+ * - Hardware key event handling
  *
- * Good luck understanding this mess. I certainly don't anymore.
+ * @see PlayerViewModel for UI state management
+ * @see MediaPlaybackService for background playback functionality
  */
 @Suppress("TooManyFunctions", "LargeClass")
 class PlayerActivity :
   AppCompatActivity(),
-  PlayerHost,
-  PlayerObserverCallbacks {
-  // ViewModels and Bindings
+  PlayerHost {
+  // ==================== ViewModels and Bindings ====================
+
+  /**
+   * View model for managing player UI state.
+   */
   private val viewModel: PlayerViewModel by viewModels<PlayerViewModel> {
     PlayerViewModelProviderFactory(this)
   }
+
+  /**
+   * Binding for the player layout.
+   */
   private val binding by lazy { PlayerLayoutBinding.inflate(layoutInflater) }
+
+  /**
+   * Observer for MPV events.
+   */
   private val playerObserver by lazy { PlayerObserver(this) }
 
-  // Repositories
+  // ==================== Dependency Injection ====================
+
+  /**
+   * Repository for managing playback state.
+   */
   private val playbackStateRepository: PlaybackStateRepository by inject()
 
-  // Views and Controllers
-  val player by lazy { binding.player }
-
-  // Preferences
+  /**
+   * Preferences for player settings.
+   */
   private val playerPreferences: PlayerPreferences by inject()
+
+  /**
+   * Preferences for audio settings.
+   */
   private val audioPreferences: AudioPreferences by inject()
+
+  /**
+   * Preferences for subtitle settings.
+   */
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+
+  /**
+   * Preferences for advanced settings.
+   */
   private val advancedPreferences: AdvancedPreferences by inject()
+
+  /**
+   * Manager for file operations.
+   */
   private val fileManager: FileManager by inject()
 
-  // State variables - because Android lifecycle makes everything a goddamn mess
-  private var fileName = ""
-  private lateinit var pipHelper: MPVPipHelper
-  private var systemUIRestored = false
-  private var noisyReceiverRegistered = false
-  private var audioFocusRequested = false
-  private var audioFocusRequest: AudioFocusRequest? = null
-  private var resumeOnAudioFocusGain = false
-  private var isInitializing = false // Guard flag because rapid back presses crash everything
-  private var hasVideoLoaded = false // Another guard flag because fuck race conditions
+  // ==================== Views ====================
 
-  // Media session - Google forces you to implement this even though nobody uses it
+  /**
+   * The MPV player view.
+   */
+  val player by lazy { binding.player }
+
+  // ==================== State Management ====================
+
+  /**
+   * Current video file name being played.
+   */
+  private var fileName = ""
+
+  /**
+   * Helper for managing Picture-in-Picture mode.
+   */
+  private lateinit var pipHelper: MPVPipHelper
+
+  /**
+   * Tracks whether system UI has been restored to prevent multiple restoration attempts.
+   */
+  private var systemUIRestored = false
+
+  /**
+   * Tracks whether the noisy audio receiver is currently registered.
+   */
+  private var noisyReceiverRegistered = false
+
+  /**
+   * Guard flag to prevent operations during initialization that could cause crashes.
+   * Set to true during onCreate, set to false when video loads.
+   */
+  private var isInitializing = false
+
+  /**
+   * Tracks whether video has been loaded successfully.
+   * Used to prevent operations before playback is ready.
+   */
+  private var hasVideoLoaded = false
+
+  // ==================== Background Playback ====================
+
+  /**
+   * Reference to the background playback service.
+   */
+  private var mediaPlaybackService: MediaPlaybackService? = null
+
+  /**
+   * Tracks whether we're currently bound to the background playback service.
+   */
+  private var serviceBound = false
+
+  /**
+   * Tracks if user explicitly wants to exit (e.g., via back button).
+   * When true, background playback service will be stopped.
+   */
+  private var isUserFinishing = false
+
+  // ==================== MediaSession ====================
+
+  /**
+   * MediaSession for integration with system media controls, Android Auto, and Wear OS.
+   */
   private lateinit var mediaSession: MediaSession
+
+  /**
+   * Tracks whether MediaSession has been successfully initialized.
+   */
   private var mediaSessionInitialized = false
+
+  /**
+   * Builder for MediaSession playback states.
+   */
   private lateinit var playbackStateBuilder: PlaybackState.Builder
 
-  // Receivers and Listeners
+  // ==================== Audio Focus ====================
+
+  /**
+   * Audio focus request for API 26+.
+   */
+  private var audioFocusRequest: AudioFocusRequest? = null
+
+  /**
+   * Callback to restore audio focus after it's been lost and regained.
+   */
+  private var restoreAudioFocus: () -> Unit = {}
+
+  // ==================== Broadcast Receivers ====================
+
+  /**
+   * Receiver for handling noisy audio events.
+   */
   private val noisyReceiver =
     object : BroadcastReceiver() {
       override fun onReceive(
@@ -122,35 +236,41 @@ class PlayerActivity :
       }
     }
 
+  /**
+   * Listener for audio focus changes.
+   */
   private val audioFocusChangeListener =
     AudioManager.OnAudioFocusChangeListener { focusChange ->
-      // Because apparently EVERY app on Android fights over audio like toddlers
       when (focusChange) {
         AudioManager.AUDIOFOCUS_LOSS,
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
         -> {
-          // Some asshole app took audio focus
-          resumeOnAudioFocusGain =
-            (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) &&
-            (viewModel.paused == false)
-          pausePlayback()
-          audioFocusRequested = false
+          // Save current state to restore later
+          val oldRestore = restoreAudioFocus
+          val wasPlayerPaused = viewModel.paused ?: false
+          viewModel.pause()
+          restoreAudioFocus = {
+            oldRestore()
+            if (!wasPlayerPaused) viewModel.unpause()
+          }
         }
 
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-          // "Can duck" but we pause anyway because fuck that noise
-          resumeOnAudioFocusGain = true
-          viewModel.pause()
-          audioFocusRequested = false
+          // Lower volume temporarily
+          MPVLib.command("multiply", "volume", "0.5")
+          restoreAudioFocus = {
+            MPVLib.command("multiply", "volume", "2")
+          }
         }
 
         AudioManager.AUDIOFOCUS_GAIN -> {
-          // We got audio focus back, maybe we can actually play something now
-          audioFocusRequested = true
-          if (resumeOnAudioFocusGain) {
-            resumeOnAudioFocusGain = false
-            viewModel.unpause()
-          }
+          // Restore previous audio state
+          restoreAudioFocus()
+          restoreAudioFocus = {}
+        }
+
+        AudioManager.AUDIOFOCUS_REQUEST_FAILED -> {
+          Log.d(TAG, "Audio focus request failed")
         }
       }
     }
@@ -161,28 +281,33 @@ class PlayerActivity :
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
 
-    // Mark as initializing because users spam back button and crash the whole thing
+    // Prevent operations during initialization
     isInitializing = true
     hasVideoLoaded = false
 
-    // Setup literally everything because Android has 47 different subsystems
+    // Initialize components
     setupMPV()
+    MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
     setupPlayerControls()
     setupPipHelper()
-    setupAudioFocus()
     setupMediaSession()
 
-    // Finally start the damn video
+    // Start playback
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
-    // Deal with notch cutouts because manufacturers love their inconsistent designs
+    // Configure display cutout handling for devices with notches
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
+  /**
+   * Enforces a default font scale to maintain consistent UI across different system settings.
+   *
+   * @param newBase The new base context
+   */
   override fun attachBaseContext(newBase: Context?) {
     if (newBase == null) {
       super.attachBaseContext(null)
@@ -193,6 +318,12 @@ class PlayerActivity :
     super.attachBaseContext(contextWithDefaultFontScale)
   }
 
+  /**
+   * Creates a context with default font scale to prevent UI layout issues.
+   *
+   * @param baseContext The original context
+   * @return Context with enforced font scale of 1.0
+   */
   private fun enforceDefaultFontScale(baseContext: Context): Context {
     val originalConfiguration = baseContext.resources.configuration
     if (originalConfiguration.fontScale == 1f) {
@@ -213,6 +344,9 @@ class PlayerActivity :
     return configurationContext
   }
 
+  /**
+   * Sets up the back press handler to manage navigation and cleanup.
+   */
   private fun setupBackPressHandler() {
     onBackPressedDispatcher.addCallback(
       this,
@@ -227,31 +361,33 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
-    // If we're still loading and user is impatient, let them bail
+    // Allow exit during initialization if video hasn't loaded yet
     if (isInitializing && !hasVideoLoaded) {
       finishSafely()
       return
     }
 
-    // Dismiss overlays first because users expect this (for some reason)
+    // Dismiss overlays first (sheets)
     if (viewModel.sheetShown.value != Sheets.None) {
       viewModel.sheetShown.update { Sheets.None }
       viewModel.showControls()
       return
     }
+
+    // Dismiss panels
     if (viewModel.panelShown.value != Panels.None) {
       viewModel.panelShown.update { Panels.None }
       viewModel.showControls()
       return
     }
 
-    // Show controls instead of exiting because that's "intuitive" apparently
+    // Show controls if hidden
     if (!viewModel.controlsShown.value) {
       viewModel.showControls()
       return
     }
 
-    // Try to enter PiP if they have it enabled
+    // Attempt to enter PiP mode if available and enabled
     val shouldEnterPip =
       pipHelper.isPipSupported &&
         viewModel.paused != true &&
@@ -261,27 +397,36 @@ class PlayerActivity :
       return
     }
 
-    // Restore system UI IMMEDIATELY or users see black bars for 500ms
+    // Restore system UI before finishing
     restoreSystemUI()
 
+    isUserFinishing = true
     finishSafely()
   }
 
+  /**
+   * Initializes the Compose-based player controls UI.
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
       MpvexTheme {
         PlayerControls(
           viewModel = viewModel,
-          onBackPress = ::finishSafely,
+          onBackPress = {
+            isUserFinishing = true
+            finishSafely()
+          },
           modifier = Modifier,
         )
       }
     }
   }
 
+  /**
+   * Initializes the Picture-in-Picture helper.
+   */
   private fun setupPipHelper() {
-    // Picture-in-Picture: Works perfectly on Pixel, breaks on Samsung, doesn't exist on Xiaomi
     pipHelper =
       MPVPipHelper(
         activity = this,
@@ -295,6 +440,10 @@ class PlayerActivity :
       )
   }
 
+  /**
+   * Hides all UI elements (controls, sliders, sheets, panels).
+   * Typically called when entering PiP mode.
+   */
   private fun hideAllUIElements() {
     viewModel.hideControls()
     viewModel.hideSeekBar()
@@ -304,65 +453,89 @@ class PlayerActivity :
     viewModel.panelShown.update { Panels.None }
   }
 
-  private fun setupAudioFocus() {
-    // Android's audio focus system: Because apps fighting over audio is "good UX"
-    val audioAttributes =
-      AudioAttributes
-        .Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA)
-        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-        .build()
-
-    audioFocusRequest =
-      AudioFocusRequest
-        .Builder(AudioManager.AUDIOFOCUS_GAIN)
-        .setAudioAttributes(audioAttributes)
-        .setOnAudioFocusChangeListener(audioFocusChangeListener)
-        .setAcceptsDelayedFocusGain(true)
-        .setWillPauseWhenDucked(true)
-        .build()
+  /**
+   * Configures audio settings and requests audio focus.
+   * Audio focus is only requested if not bound to background service.
+   */
+  private fun setupAudio() {
+    audioPreferences.audioChannels.get().let {
+      MPVLib.setPropertyString(it.property, it.value)
+    }
+    // Only request focus if background service is not bound
+    if (!serviceBound) {
+      audioFocusRequest =
+        AudioFocusRequest
+          .Builder(AudioManager.AUDIOFOCUS_GAIN)
+          .setAudioAttributes(
+            AudioAttributes
+              .Builder()
+              .setUsage(AudioAttributes.USAGE_MEDIA)
+              .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+              .build(),
+          ).setOnAudioFocusChangeListener(audioFocusChangeListener)
+          .setAcceptsDelayedFocusGain(true)
+          .setWillPauseWhenDucked(true)
+          .build()
+      requestAudioFocusForPlayback()
+    }
   }
 
+  /**
+   * Requests audio focus for media playback.
+   *
+   * @return true if audio focus was granted immediately, false otherwise
+   */
   private fun requestAudioFocusForPlayback(): Boolean {
     val req = audioFocusRequest ?: return false
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
       AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> {
-        audioFocusRequested = true
-        resumeOnAudioFocusGain = false
+        restoreAudioFocus = {}
         true
       }
 
       AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
-        // "Maybe later" - thanks Android, super helpful
-        audioFocusRequested = false
-        resumeOnAudioFocusGain = true
+        restoreAudioFocus = { requestAudioFocusForPlayback() }
         false
       }
 
       else -> {
-        // Get fucked, you can't play audio
-        audioFocusRequested = false
-        resumeOnAudioFocusGain = false
+        restoreAudioFocus = {}
         false
       }
     }
   }
 
+  /**
+   * Abandons audio focus if currently held.
+   */
   private fun abandonAudioFocusIfHeld() {
-    if (!audioFocusRequested) return
-    runCatching {
+    if (restoreAudioFocus != {}) {
       audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      audioFocusRequested = false
-    }.onFailure { e -> Log.e(TAG, "Error abandoning audio focus", e) }
+      restoreAudioFocus = {}
+    }
   }
 
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
-    Log.d(TAG, "Exiting PlayerActivity")
+    Log.d(TAG, "PlayerActivity onDestroy - isUserFinishing: $isUserFinishing")
 
     runCatching {
-      // Restore system UI IMMEDIATELY at the start of cleanup
+      // Stop background service if user explicitly finished
+      if (isUserFinishing || isFinishing) {
+        if (serviceBound) {
+          try {
+            unbindService(serviceConnection)
+          } catch (e: Exception) {
+            Log.e(TAG, "Error unbinding service in onDestroy", e)
+          }
+          serviceBound = false
+        }
+        stopService(Intent(this, MediaPlaybackService::class.java))
+        mediaPlaybackService = null
+      }
+
+      // Restore system UI at the start of cleanup
       if (isFinishing && !systemUIRestored) {
         restoreSystemUI()
       }
@@ -382,6 +555,10 @@ class PlayerActivity :
     super.onDestroy()
   }
 
+  /**
+   * Cleans up MPV resources.
+   * Must be done on a background thread to avoid blocking the main thread.
+   */
   private fun cleanupMPV() {
     player.isExiting = true
 
@@ -389,15 +566,14 @@ class PlayerActivity :
       return
     }
 
-    // MPV cleanup is a delicate dance - do it wrong and you get native crashes
-    // But we're NOT gonna wait around with Thread.sleep() like chumps
+    // Cleanup MPV on background thread to prevent blocking
     Thread {
       try {
         if (hasVideoLoaded) {
           MPVLib.setPropertyString("pause", "yes")
         }
       } catch (_: Throwable) {
-        // MPV already died, whatever
+        // MPV may already be destroyed
       }
       try {
         if (hasVideoLoaded) {
@@ -414,16 +590,21 @@ class PlayerActivity :
       try {
         MPVLib.destroy()
       } catch (e: Throwable) {
-        // MPV native crashes happen here sometimes, can't do shit about it
-        Log.e(TAG, "Error destroying MPV (may be expected)", e)
+        Log.e(TAG, "Error destroying MPV", e)
       }
     }.start()
   }
 
+  /**
+   * Cleans up audio focus resources.
+   */
   private fun cleanupAudio() {
     abandonAudioFocusIfHeld()
   }
 
+  /**
+   * Unregisters broadcast receivers.
+   */
   private fun cleanupReceivers() {
     if (noisyReceiverRegistered) {
       runCatching {
@@ -435,18 +616,24 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Called when activity is paused.
+   * Pauses playback (unless in PiP or background playback enabled) and saves state.
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
 
-      if (!isInPip) {
+      // Only pause if not in background playback mode or user is finishing
+      val shouldPause = !playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing
+      if (!isInPip && shouldPause) {
         viewModel.pause()
       }
 
       saveVideoPlaybackState(fileName)
 
-      // Only restore UI if we're actually finishing and not already restored
+      // Restore UI if finishing and not in PiP
       if (isFinishing && !isInPip && !systemUIRestored) {
         restoreSystemUI()
       }
@@ -457,10 +644,14 @@ class PlayerActivity :
     super.onPause()
   }
 
+  /**
+   * Called when activity is finishing.
+   * Restores system UI and sets return intent with playback position.
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
-      // Don't restore UI here if it's already restored
+      // Restore UI if not already restored
       if (!systemUIRestored) {
         restoreSystemUI()
       }
@@ -476,12 +667,35 @@ class PlayerActivity :
     super.finish()
   }
 
+  /**
+   * Called when activity is stopped.
+   * Manages background playback service and saves state.
+   */
   override fun onStop() {
     runCatching {
       pipHelper.onStop()
       saveVideoPlaybackState(fileName)
-      viewModel.pause()
       unregisterNoisyReceiver()
+
+      // Start background playback if enabled, not already bound, and not user finishing
+      if (!serviceBound && playerPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
+        startBackgroundPlayback()
+      } else {
+        // Only pause if NOT background playback and not resuming
+        if (!playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
+          viewModel.pause()
+        }
+        if (serviceBound) {
+          try {
+            unbindService(serviceConnection)
+            serviceBound = false
+          } catch (e: IllegalArgumentException) {
+            // Service was not registered
+            Log.w(TAG, "Service was not bound when trying to unbind", e)
+            serviceBound = false
+          }
+        }
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onStop", e)
     }
@@ -489,6 +703,9 @@ class PlayerActivity :
     super.onStop()
   }
 
+  /**
+   * Unregisters the noisy audio receiver if it's currently registered.
+   */
   private fun unregisterNoisyReceiver() {
     if (noisyReceiverRegistered) {
       runCatching {
@@ -513,17 +730,23 @@ class PlayerActivity :
       setupSystemUI()
       registerNoisyReceiver()
       restoreBrightness()
+      // End background playback if service is bound
+      if (serviceBound) {
+        endBackgroundPlayback()
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
     }
   }
 
+  /**
+   * Configures window flags for immersive playback.
+   */
   private fun setupWindowFlags() {
     if (pipHelper.isPipSupported) {
       pipHelper.updatePictureInPictureParams()
     }
 
-    // More Android boilerplate to hide system UI
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -549,7 +772,6 @@ class PlayerActivity :
     windowInsetsController.systemBarsBehavior =
       WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-    // And deal with notches AGAIN
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
@@ -576,8 +798,14 @@ class PlayerActivity :
     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
 
+  /**
+   * Copies MPV assets to the app's storage.
+   *
+   * This method is responsible for copying the necessary MPV assets,
+   * including fonts, scripts, and configuration files, to the app's
+   * storage directory. This is done asynchronously on app startup.
+   */
   private fun copyMPVAssets() {
-    // Copy a bunch of files on EVERY startup because MPV needs its config files
     lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
         val fontsPath = filesDir.path
@@ -594,47 +822,55 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Initializes the MPV player with the necessary paths and observers.
+   *
+   * This method sets up the MPV player by providing it with the
+   * necessary paths and observers. It also copies the MPV assets
+   * to the app's storage directory.
+   */
   private fun setupMPV() {
     copyMPVAssets()
     player.initialize(filesDir.path, cacheDir.path)
     MPVLib.addObserver(playerObserver)
   }
 
-  private fun setupAudio() {
-    audioPreferences.audioChannels.get().let {
-      MPVLib.setPropertyString(it.property, it.value)
-    }
-  }
-
+  /**
+   * Copies or creates the MPV configuration files.
+   *
+   * This method copies or creates the necessary MPV configuration
+   * files, including mpv.conf and input.conf, to the app's storage
+   * directory.
+   */
   private fun copyMPVConfigFiles() {
     val applicationPath = filesDir.path
     runCatching {
-      // Simply ensure default config files exist
-      // The actual content is managed by AdvancedPreferencesScreen via cache
       createDefaultConfigFiles(applicationPath)
     }.onFailure { e ->
       Log.e(TAG, "Error ensuring config files exist: ${e.message}")
     }
   }
 
+  /**
+   * Creates default MPV configuration files with user preferences.
+   *
+   * @param applicationPath Path to the application's file directory
+   */
   private fun createDefaultConfigFiles(applicationPath: String) {
     runCatching {
       val mpvConfFile = File("$applicationPath/mpv.conf")
       if (!mpvConfFile.exists()) {
         mpvConfFile.createNewFile()
       }
-      // Write mpv.conf content from preferences
       val mpvConfContent = advancedPreferences.mpvConf.get()
       if (mpvConfContent.isNotBlank()) {
         mpvConfFile.writeText(mpvConfContent)
       }
 
-      // Create and write input.conf
       val inputConfFile = File("$applicationPath/input.conf")
       if (!inputConfFile.exists()) {
         inputConfFile.createNewFile()
       }
-      // Write input.conf content from preferences
       val inputConfContent = advancedPreferences.inputConf.get()
       if (inputConfContent.isNotBlank()) {
         inputConfFile.writeText(inputConfContent)
@@ -666,7 +902,6 @@ class PlayerActivity :
   }
 
   private fun copyMPVFonts() {
-    // Font copying: Because subtitle rendering is never simple
     runCatching {
       val persistentPath = filesDir.path
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
@@ -717,6 +952,13 @@ class PlayerActivity :
     updateVolume()
   }
 
+  /**
+   * Updates the volume level to match the system volume.
+   *
+   * This method updates the current volume level by getting the current system volume
+   * and adjusting the MPV volume accordingly. It ensures that the MPV volume is set
+   * to the maximum allowed value if the system volume is lower than the maximum.
+   */
   private fun updateVolume() {
     viewModel.currentVolume.update {
       audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).also { volume ->
@@ -727,10 +969,20 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Processes intent extras to set initial playback position, subtitles, and HTTP headers.
+   *
+   * This method checks the intent extras for the following keys:
+   * - "position": The initial playback position in seconds.
+   * - "subs": A list of subtitle URIs to add.
+   * - "subs.enable": A list of subtitle URIs to enable.
+   * - "headers": A list of HTTP headers to set for network playback.
+   *
+   * @param extras Bundle containing intent extras
+   */
   private fun setIntentExtras(extras: Bundle?) {
     if (extras == null) return
 
-    // Handle intent extras because external apps send us random shit
     extras.getInt("position", POSITION_NOT_SET).takeIf { it != POSITION_NOT_SET }?.let {
       MPVLib.setPropertyInt("time-pos", it / MILLISECONDS_TO_SECONDS)
     }
@@ -739,6 +991,15 @@ class PlayerActivity :
     setHttpHeadersFromExtras(extras)
   }
 
+  /**
+   * Adds subtitle tracks from intent extras.
+   *
+   * This method checks the intent extras for the "subs" key, which contains a list
+   * of subtitle URIs to add. It also checks for the "subs.enable" key, which contains
+   * a list of subtitle URIs to enable.
+   *
+   * @param extras Bundle containing subtitle URIs
+   */
   private fun addSubtitlesFromExtras(extras: Bundle) {
     if (!extras.containsKey("subs")) return
 
@@ -754,8 +1015,16 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Sets HTTP headers from intent extras for network playback.
+   *
+   * This method checks the intent extras for the "headers" key, which contains a list
+   * of HTTP headers to set. It sets the User-Agent header and any additional headers
+   * specified in the list.
+   *
+   * @param extras Bundle containing HTTP headers
+   */
   private fun setHttpHeadersFromExtras(extras: Bundle) {
-    // Because sometimes external apps want custom HTTP headers
     extras.getStringArray("headers")?.let { headers ->
       if (headers.isEmpty()) return
 
@@ -781,6 +1050,17 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Parses the file path from the intent.
+   *
+   * This method checks the intent action and data to determine the file path.
+   * It supports the following actions:
+   * - ACTION_VIEW: The file path is contained in the intent data.
+   * - ACTION_SEND: The file path is contained in the intent extras.
+   *
+   * @param intent The intent containing the file URI
+   * @return The resolved file path, or null if not found
+   */
   private fun parsePathFromIntent(intent: Intent): String? =
     when (intent.action) {
       Intent.ACTION_VIEW -> intent.data?.resolveUri(this)
@@ -788,6 +1068,14 @@ class PlayerActivity :
       else -> intent.getStringExtra("uri")
     }
 
+  /**
+   * Parses the file path from a SEND intent.
+   *
+   * This method checks the intent extras for the file path.
+   *
+   * @param intent The SEND intent
+   * @return The resolved file path, or null if not found
+   */
   private fun parsePathFromSendIntent(intent: Intent): String? =
     if (intent.hasExtra(Intent.EXTRA_STREAM)) {
       intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this@PlayerActivity)
@@ -802,15 +1090,26 @@ class PlayerActivity :
       }
     }
 
+  /**
+   * Extracts and resolves the file name from the intent.
+   *
+   * @param intent The intent containing the file URI
+   * @return The display name of the file, or empty string if not found
+   */
   private fun getFileName(intent: Intent): String {
     val uri = extractUriFromIntent(intent) ?: return ""
 
     getDisplayNameFromUri(uri)?.let { return it }
 
-    // Fallback: just get whatever we can from the URI
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
   }
 
+  /**
+   * Extracts the URI from the intent based on intent type.
+   *
+   * @param intent The intent to extract URI from
+   * @return The extracted URI, or null if not found
+   */
   @Suppress("DEPRECATION")
   private fun extractUriFromIntent(intent: Intent): Uri? =
     if (intent.type == "text/plain") {
@@ -819,6 +1118,12 @@ class PlayerActivity :
       intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
     }
 
+  /**
+   * Queries the content resolver to get the display name for a URI.
+   *
+   * @param uri The URI to query
+   * @return The display name, or null if not found
+   */
   private fun getDisplayNameFromUri(uri: Uri): String? =
     runCatching {
       contentResolver
@@ -835,6 +1140,12 @@ class PlayerActivity :
       Log.e(TAG, "Error getting display name from URI", e)
     }.getOrNull()
 
+  /**
+   * Converts the intent URI to a playable URI string for MPV.
+   *
+   * @param intent The intent containing the file URI
+   * @return A playable URI string, or null if unable to resolve
+   */
   private fun getPlayableUri(intent: Intent): String? {
     val uri = parsePathFromIntent(intent) ?: return null
     return if (uri.startsWith("content://")) {
@@ -844,14 +1155,21 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Handles device configuration changes.
+   *
+   * @param newConfig The new configuration
+   */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    // Guard against rotation during initialization because shit breaks
     if (!isInitializing && hasVideoLoaded) {
       handleConfigurationChange()
     }
   }
 
+  /**
+   * Handles configuration changes by updating video aspect ratio.
+   */
   private fun handleConfigurationChange() {
     if (!isInPictureInPictureMode) {
       viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
@@ -862,11 +1180,30 @@ class PlayerActivity :
 
   // ==================== MPV Event Observers ====================
 
-  override fun onObserverEvent() {
+  /**
+   * Observer callback for MPV property changes (Long values).
+   *
+   * This method is called when an MPV property (with Long value) changes.
+   * Extend this method to handle properties as needed.
+   *
+   * @param property The property name that changed
+   * @param value The new Long value
+   */
+  internal fun onObserverEvent(
+    property: String,
+    value: Long,
+  ) {
     if (player.isExiting) return
   }
 
-  override fun onObserverEvent(
+  /**
+   * Observer callback for MPV property changes (Boolean values).
+   * Handles pause state and end-of-file events.
+   *
+   * @param property The property name that changed
+   * @param value The new Boolean value
+   */
+  internal fun onObserverEvent(
     property: String,
     value: Boolean,
   ) {
@@ -878,35 +1215,44 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Handles pause state changes by managing screen-on flag and MediaSession state.
+   *
+   * @param isPaused true if playback is paused, false if playing
+   */
   private fun handlePauseStateChange(isPaused: Boolean) {
-    // Manage screen-on flag and audio focus because Android won't do it for us
     if (isPaused) {
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-      abandonAudioFocusIfHeld()
     } else {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-      val hasFocus = requestAudioFocusForPlayback()
-      if (!hasFocus) {
-        // Can't play without audio focus, fuck you very much
-        viewModel.pause()
-      }
     }
     updateMediaSessionPlaybackState(!isPaused)
-    // Update PiP UI because it needs constant hand-holding
     runCatching {
       if (isInPictureInPictureMode && pipHelper.isPipSupported) {
         pipHelper.updatePictureInPictureParams()
       }
-    }.onFailure { /* no-op */ }
+    }.onFailure { /* Silently ignore PiP update failures */ }
   }
 
+  /**
+   * Handles end-of-file event by finishing activity if configured.
+   *
+   * @param isEof true if end of file reached
+   */
   private fun handleEndOfFile(isEof: Boolean) {
     if (isEof && playerPreferences.closeAfterReachingEndOfVideo.get()) {
       finishAndRemoveTask()
     }
   }
 
-  override fun onObserverEvent(
+  /**
+   * Observer callback for MPV property changes (String values).
+   * Handles Lua script invocations.
+   *
+   * @param property The property name that changed
+   * @param value The new String value
+   */
+  internal fun onObserverEvent(
     property: String,
     value: String,
   ) {
@@ -917,7 +1263,47 @@ class PlayerActivity :
     }
   }
 
-  override fun onObserverEvent(property: String) {
+  /**
+   * Observer callback for MPV property changes (MPVNode values).
+   *
+   * This method is called when an MPV property (with MPVNode value) changes.
+   * Extend this method to handle properties as needed.
+   *
+   * @param property The property name that changed
+   * @param value The new MPVNode value
+   */
+  @Suppress("UnusedParameter")
+  internal fun onObserverEvent(
+    property: String,
+    value: MPVNode,
+  ) {
+    if (player.isExiting) return
+  }
+
+  /**
+   * Observer callback for MPV property changes (Double values).
+   *
+   * This method is called when an MPV property (with Double value) changes.
+   * Extend this method to handle properties as needed.
+   *
+   * @param property The property name that changed
+   * @param value The new Double value
+   */
+  @Suppress("UnusedParameter")
+  internal fun onObserverEvent(
+    property: String,
+    value: Double,
+  ) {
+    if (player.isExiting) return
+  }
+
+  /**
+   * Observer callback for MPV property changes (no value parameter).
+   * Handles video aspect ratio changes.
+   *
+   * @param property The property name that changed
+   */
+  internal fun onObserverEvent(property: String) {
     if (player.isExiting) return
 
     when (property) {
@@ -929,20 +1315,25 @@ class PlayerActivity :
     }
   }
 
-  override fun event(eventId: Int) {
+  /**
+   * Handles MPV core events such as file loaded and playback restart.
+   *
+   * Called by the player when critical playback events occur.
+   *
+   * @param eventId The MPV event ID
+   */
+  internal fun event(eventId: Int) {
     if (player.isExiting) return
 
     when (eventId) {
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
         handleFileLoaded()
-        // Mark initialization complete when file is loaded
         isInitializing = false
         hasVideoLoaded = true
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
         player.isExiting = false
-        // Also mark as not initializing on playback restart
         if (!hasVideoLoaded) {
           isInitializing = false
           hasVideoLoaded = true
@@ -951,6 +1342,11 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Handles the file loaded event from MPV.
+   * Initializes playback state, loads saved playback data, restores custom settings,
+   * applies user preferences, and sets up metadata and media session.
+   */
   @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
     fileName = getFileName(intent)
@@ -960,7 +1356,6 @@ class PlayerActivity :
       loadVideoPlaybackState(fileName)
     }
 
-    // GlobalScope because we NEED this to complete even if activity dies
     GlobalScope.launch(Dispatchers.IO) {
       saveRecentlyPlayed()
     }
@@ -969,18 +1364,15 @@ class PlayerActivity :
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
     viewModel.restoreCustomAspectRatio()
 
-    // Initialize zoom from preferences (ignore mpv.conf because it's unreliable)
     val zoomPreference = playerPreferences.defaultVideoZoom.get()
     MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
     viewModel.setVideoZoom(zoomPreference)
 
-    // Set title BEFORE unpause to avoid subtitle restoration race conditions
     MPVLib.setPropertyString("force-media-title", fileName)
     viewModel.setMediaTitle(fileName)
 
     viewModel.unpause()
 
-    // Autoload subtitles if user enabled it (and pray they're named correctly)
     if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
       lifecycleScope.launch {
         val videoFilePath = parsePathFromIntent(intent)
@@ -993,7 +1385,6 @@ class PlayerActivity :
       }
     }
 
-    // Update MediaSession for Android Auto users (all 3 of them)
     updateMediaSessionMetadata(
       title = fileName,
       durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
@@ -1001,11 +1392,17 @@ class PlayerActivity :
     updateMediaSessionPlaybackState(isPlaying = true)
   }
 
+  /**
+   * Saves the current playback state to the database.
+   *
+   * Uses GlobalScope to ensure save completes even if activity is destroyed.
+   *
+   * @param mediaTitle The title of the media being played
+   */
   @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
-    // GlobalScope because fuck activity lifecycle, this NEEDS to save
     GlobalScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
@@ -1038,6 +1435,15 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Calculates the position to save based on user preferences.
+   *
+   * If "savePositionOnQuit" is not enabled, returns the previous saved position or 0.
+   * If enabled, saves the current playback position unless at end of video.
+   *
+   * @param oldState Previous playback state if it exists
+   * @return Position in seconds to save
+   */
   private fun calculateSavePosition(oldState: PlaybackStateEntity?): Int {
     if (!playerPreferences.savePositionOnQuit.get()) {
       return oldState?.lastPosition ?: 0
@@ -1048,6 +1454,11 @@ class PlayerActivity :
     return if (pos < duration - 1) pos else 0
   }
 
+  /**
+   * Loads and applies saved playback state from the database.
+   *
+   * @param mediaTitle The title of the media being played
+   */
   private suspend fun loadVideoPlaybackState(mediaTitle: String) {
     if (mediaTitle.isBlank()) return
 
@@ -1061,6 +1472,14 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Applies saved playback state to MPV.
+   *
+   * Restores subtitle delay, audio delay, audio and track selections, and playback speed.
+   * Also restores saved time position if enabled.
+   *
+   * @param state The saved playback state entity
+   */
   private fun applyPlaybackState(state: PlaybackStateEntity?) {
     if (state == null) return
 
@@ -1083,14 +1502,26 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Applies default settings when no saved state exists.
+   *
+   * Sets subtitle speed to user default if not present in saved state.
+   *
+   * @param state The saved playback state entity (null if no saved state)
+   */
   private fun applyDefaultSettings(state: PlaybackStateEntity?) {
-    // Set default sub speed if no state exists
     if (state == null) {
       val defaultSubSpeed = subtitlesPreferences.defaultSubSpeed.get().toDouble()
       MPVLib.setPropertyDouble("sub-speed", defaultSubSpeed)
     }
   }
 
+  /**
+   * Saves the currently playing file to recently played history.
+   *
+   * Uses GlobalScope to ensure save completes even if activity is destroyed.
+   * Handles various URI schemes and infers launch source.
+   */
   @OptIn(DelicateCoroutinesApi::class)
   private suspend fun saveRecentlyPlayed() {
     runCatching {
@@ -1106,7 +1537,6 @@ class PlayerActivity :
         return@runCatching
       }
 
-      // Figure out what the hell to save based on URI scheme
       val filePath =
         when (uri.scheme) {
           "file" -> {
@@ -1114,7 +1544,6 @@ class PlayerActivity :
           }
 
           "content" -> {
-            // Try to resolve to actual path or just save the URI
             contentResolver
               .query(
                 uri,
@@ -1158,6 +1587,10 @@ class PlayerActivity :
 
   // ==================== Intent and Result Management ====================
 
+  /**
+   * Sets the result intent with current playback position and duration.
+   * Called when activity is finishing to return data to caller.
+   */
   private fun setReturnIntent() {
     Log.d(TAG, "Setting return intent")
 
@@ -1170,6 +1603,11 @@ class PlayerActivity :
     setResult(RESULT_OK, resultIntent)
   }
 
+  /**
+   * Handles new intents to load a different file without recreating the activity.
+   *
+   * @param intent The new intent
+   */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     getPlayableUri(intent)?.let { uri ->
@@ -1180,6 +1618,13 @@ class PlayerActivity :
 
   // ==================== Picture-in-Picture Management ====================
 
+  /**
+   * Called when Picture-in-Picture mode changes.
+   * Updates UI visibility and window configuration.
+   *
+   * @param isInPictureInPictureMode true if entering PiP, false if exiting
+   * @param newConfig The new configuration
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onPictureInPictureModeChanged(
     isInPictureInPictureMode: Boolean,
@@ -1202,6 +1647,10 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Configures window for Picture-in-Picture mode.
+   * Shows system UI and navigation bars.
+   */
   private fun enterPipUIMode() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -1210,6 +1659,10 @@ class PlayerActivity :
     windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
   }
 
+  /**
+   * Restores window configuration when exiting Picture-in-Picture mode.
+   * Hides system UI for immersive playback.
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun exitPipUIMode() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -1227,6 +1680,9 @@ class PlayerActivity :
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
+  /**
+   * Enters Picture-in-Picture mode and hides all overlay controls.
+   */
   fun enterPipModeHidingOverlay() {
     runCatching {
       enterPipUIMode()
@@ -1239,11 +1695,17 @@ class PlayerActivity :
     pipHelper.enterPipMode()
   }
 
+  /**
+   * Indicates whether Picture-in-Picture mode is supported on this device.
+   */
   val isPipSupported: Boolean
     get() = pipHelper.isPipSupported
 
   // ==================== Orientation Management ====================
 
+  /**
+   * Sets the screen orientation based on user preferences.
+   */
   private fun setOrientation() {
     requestedOrientation =
       when (playerPreferences.orientation.get()) {
@@ -1258,6 +1720,11 @@ class PlayerActivity :
       }
   }
 
+  /**
+   * Determines the appropriate orientation based on video aspect ratio.
+   *
+   * @return Orientation constant for landscape (if aspect > 1.0) or portrait
+   */
   private fun determineVideoOrientation(): Int {
     val aspect = player.getVideoOutAspect() ?: 0.0
     return if (aspect > 1.0) {
@@ -1269,6 +1736,14 @@ class PlayerActivity :
 
   // ==================== Key Event Handling ====================
 
+  /**
+   * Handles hardware key down events for player control.
+   * Supports D-pad navigation, media keys, and volume controls.
+   *
+   * @param keyCode The key code
+   * @param event The key event
+   * @return true if event was handled, false otherwise
+   */
   @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod")
   override fun onKeyDown(
     keyCode: Int,
@@ -1354,6 +1829,13 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Handles hardware key up events for player control.
+   *
+   * @param keyCode The key code
+   * @param event The key event
+   * @return true if event was handled, false otherwise
+   */
   override fun onKeyUp(
     keyCode: Int,
     event: KeyEvent?,
@@ -1366,16 +1848,18 @@ class PlayerActivity :
 
   // ==================== System UI Management ====================
 
+  /**
+   * Restores system UI to normal state (shows status and navigation bars).
+   * Called when finishing the activity to return to normal Android UI.
+   */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
-    // Check multiple guards because Android lifecycle is a shitshow
     if (systemUIRestored || isFinishing || isDestroyed) {
       systemUIRestored = true
       return
     }
 
     runCatching {
-      // RESTORE IMMEDIATELY OR USERS WILL BITCH ABOUT BLACK BARS
       window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -1391,12 +1875,17 @@ class PlayerActivity :
       systemUIRestored = true
     }.onFailure { e ->
       Log.e(TAG, "Error restoring system UI", e)
-      systemUIRestored = true // Mark as restored even on failure to prevent loops
+      systemUIRestored = true
     }
   }
 
+  // ==================== MediaSession ====================
+
+  /**
+   * Initializes MediaSession for integration with system media controls.
+   * Supports Android Auto, Wear OS, Bluetooth controls, and notification controls.
+   */
   private fun setupMediaSession() {
-    // MediaSession for Android Auto/Wear - Google mandates it, users ignore it
     runCatching {
       mediaSession =
         MediaSession(this, TAG).apply {
@@ -1436,6 +1925,11 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Updates MediaSession playback state (playing/paused).
+   *
+   * @param isPlaying true if currently playing, false if paused
+   */
   private fun updateMediaSessionPlaybackState(isPlaying: Boolean) {
     if (!mediaSessionInitialized) return
     runCatching {
@@ -1449,6 +1943,12 @@ class PlayerActivity :
     }.onFailure { e -> Log.e(TAG, "Error updating playback state", e) }
   }
 
+  /**
+   * Updates MediaSession metadata (title, duration, etc.).
+   *
+   * @param title The media title
+   * @param durationMs The media duration in milliseconds
+   */
   private fun updateMediaSessionMetadata(
     title: String,
     durationMs: Long,
@@ -1465,6 +1965,10 @@ class PlayerActivity :
     }.onFailure { e -> Log.e(TAG, "Error updating metadata", e) }
   }
 
+  /**
+   * Releases MediaSession resources.
+   * Called during activity cleanup.
+   */
   private fun releaseMediaSession() {
     if (!mediaSessionInitialized) return
     runCatching {
@@ -1472,6 +1976,76 @@ class PlayerActivity :
       mediaSession.release()
     }.onFailure { e -> Log.e(TAG, "Error releasing MediaSession", e) }
     mediaSessionInitialized = false
+  }
+
+  // ==================== Background Playback Service ====================
+
+  /**
+   * Service connection for binding to background playback service.
+   */
+  private val serviceConnection =
+    object : ServiceConnection {
+      override fun onServiceConnected(
+        name: ComponentName?,
+        service: IBinder?,
+      ) {
+        val binder = service as? MediaPlaybackService.MediaPlaybackBinder ?: return
+        mediaPlaybackService = binder.getService()
+        serviceBound = true
+
+        Log.d(TAG, "Service connected, setting media info for: $fileName")
+
+        if (fileName.isNotBlank()) {
+          val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
+          val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
+          mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
+        }
+      }
+
+      override fun onServiceDisconnected(name: ComponentName?) {
+        Log.d(TAG, "Service disconnected")
+        mediaPlaybackService = null
+        serviceBound = false
+      }
+    }
+
+  /**
+   * Starts the background playback service and binds to it.
+   *
+   * This should only be called if a video is loaded and playback is initialized.
+   * Responsible for starting and binding to the MediaPlaybackService, which
+   * handles background playback.
+   */
+  private fun startBackgroundPlayback() {
+    if (fileName.isBlank() || !hasVideoLoaded) return
+
+    Log.d(TAG, "Starting background playback")
+    val intent = Intent(this, MediaPlaybackService::class.java)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      startForegroundService(intent)
+    } else {
+      startService(intent)
+    }
+    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+  }
+
+  /**
+   * Stops the background playback service and unbinds from it.
+   *
+   * Ensures that the background service is properly stopped when no longer needed,
+   * such as when playback ends or the user leaves the activity.
+   */
+  private fun endBackgroundPlayback() {
+    if (serviceBound) {
+      try {
+        unbindService(serviceConnection)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error unbinding service", e)
+      }
+      serviceBound = false
+    }
+    stopService(Intent(this, MediaPlaybackService::class.java))
+    mediaPlaybackService = null
   }
 
   // ==================== PlayerHost ====================
@@ -1494,30 +2068,68 @@ class PlayerActivity :
     }
 
   companion object {
+    /**
+     * Intent action used to return playback result data to the calling activity.
+     */
     private const val RESULT_INTENT = "app.marlboroadvance.mpvex.ui.player.PlayerActivity.result"
 
-    // Constants for actual useful values, not for stupid sleep delays
+    /**
+     * Constant for "brightness not set".
+     */
     private const val BRIGHTNESS_NOT_SET = -1f
+
+    /**
+     * Constant used when playback position is not set.
+     */
     private const val POSITION_NOT_SET = 0
+
+    /**
+     * Maximum volume for MPV in percent.
+     */
     private const val MAX_MPV_VOLUME = 100
+
+    /**
+     * Milliseconds-to-seconds conversion factor.
+     */
     private const val MILLISECONDS_TO_SECONDS = 1000
+
+    /**
+     * Factor to divide subtitle and audio delays to convert from ms to seconds.
+     */
     private const val DELAY_DIVISOR = 1000.0
+
+    /**
+     * Default playback speed (1.0 = normal).
+     */
     private const val DEFAULT_PLAYBACK_SPEED = 1.0
+
+    /**
+     * Default subtitle speed (1.0 = normal).
+     */
     private const val DEFAULT_SUB_SPEED = 1.0
+
+    /**
+     * General tag for logging from PlayerActivity.
+     */
     const val TAG = "mpvex"
   }
 
   /**
-   * Safe finish method that handles rapid back presses and initialization states.
+   * Safely finishes the activity with proper cleanup.
    *
-   * Called "safe" but it's really just a bunch of try-catch blocks hoping nothing explodes.
+   * Handles rapid back presses, initialization states, and ensures:
+   * - System UI is restored
+   * - Background playback service is stopped if user is finishing
+   * - Return intent is set with playback data
+   * - All flags are reset
+   *
+   * Multiple guards and try-catch blocks prevent crashes during edge cases.
    */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun finishSafely() {
     runCatching {
       if (isFinishing) return
 
-      // RESTORE UI FIRST OR DIE TRYING
       if (!systemUIRestored) {
         restoreSystemUI()
       }
@@ -1525,11 +2137,15 @@ class PlayerActivity :
       isInitializing = false
       hasVideoLoaded = false
 
+      if (isUserFinishing) {
+        endBackgroundPlayback()
+      }
+
       setReturnIntent()
       finish()
     }.onFailure { e ->
       Log.e(TAG, "Error during finishSafely", e)
-      // Hail Mary: just finish and hope for the best
+      // Attempt basic cleanup even if error occurred
       try {
         if (!systemUIRestored) {
           restoreSystemUI()

@@ -313,4 +313,14 @@
     <string name="clear_font_directory">Clear font directory</string>
     <string name="reset_to_default_font">Reset to default font</string>
     <string name="set_as_default">Set as default</string>
+
+    <!-- Notification strings -->
+    <string name="notification_channel_name">Media Playback</string>
+    <string name="notification_channel_description">Media playback controls</string>
+    <string name="notification_playing">Playing</string>
+    <string name="notification_play">Play</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_rewind">Rewind</string>
+    <string name="notification_forward">Forward</string>
+    <string name="notification_stop">Stop</string>
 </resources>
