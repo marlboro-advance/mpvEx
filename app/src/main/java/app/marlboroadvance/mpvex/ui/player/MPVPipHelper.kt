@@ -101,7 +101,7 @@ class MPVPipHelper(
 
   @SuppressLint("NewApi")
   fun onUserLeaveHint(isControlsLocked: Boolean = false) {
-    if (Build.VERSION.SDK_INT in Build.VERSION_CODES.O..<Build.VERSION_CODES.S &&
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
       isPipSupported &&
       autoPipEnabled &&
       isPlaying() &&

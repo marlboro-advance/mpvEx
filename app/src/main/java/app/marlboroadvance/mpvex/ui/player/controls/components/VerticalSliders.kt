@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.theme.spacing
@@ -173,6 +176,8 @@ fun VolumeSlider(
     Text(
       getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage),
       style = MaterialTheme.typography.bodySmall,
+      modifier = Modifier.width(48.dp),
+      textAlign = TextAlign.Center,
     )
     VerticalSlider(
       if (displayAsPercentage) percentage else volume,
@@ -195,35 +200,35 @@ fun VolumeSlider(
 
 val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
   { volume, mpvVolume, boostVolume, percentage, displayAsPercentage ->
-    when (mpvVolume - 100) {
-      0 ->
+    when {
+      mpvVolume == 100 ->
         if (displayAsPercentage) {
           stringResource(R.string.value_percentage_int, percentage)
         } else {
           "$volume"
         }
 
-      in 0..1000 -> {
+      mpvVolume > 100 -> {
         if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_positive_boost, percentage, boostVolume)
+          stringResource(R.string.value_percentage_int, percentage + boostVolume)
         } else {
-          stringResource(R.string.volume_slider_steps_positive_boost, volume, boostVolume)
+          stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
         }
       }
 
-      in -100..-1 -> {
+      mpvVolume < 100 -> {
         if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_negative_boost, percentage, abs(boostVolume))
+          stringResource(R.string.value_percentage_int, percentage + boostVolume)
         } else {
-          stringResource(R.string.volume_slider_steps_negative_boost, volume, abs(boostVolume))
+          stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
         }
       }
 
       else -> {
         if (displayAsPercentage) {
-          stringResource(R.string.volume_slider_percentage_other, percentage, boostVolume)
+          stringResource(R.string.value_percentage_int, percentage)
         } else {
-          stringResource(R.string.volume_slider_steps_other, volume, boostVolume)
+          "$volume"
         }
       }
     }

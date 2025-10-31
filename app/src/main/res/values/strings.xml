@@ -250,6 +250,7 @@
     <string name="volume_slider_steps_positive_boost" translatable="false">%d + %d</string>
     <string name="volume_slider_steps_negative_boost" translatable="false">%d - %d</string>
     <string name="volume_slider_steps_other" translatable="false">%d (%d)</string>
+    <string name="volume_slider_absolute_value" translatable="false">%d</string>
 
     <string name="value_percentage_int" translatable="false">%d%%</string>
     <string name="value_percentage_float" translatable="false">%.2f\%%</string>
