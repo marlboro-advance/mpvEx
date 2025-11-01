@@ -745,6 +745,31 @@ class PlayerViewModel(
   fun playPrevious() {
     (host as? PlayerActivity)?.playPrevious()
   }
+
+  /**
+   * Get the current media title
+   */
+  fun getCurrentMediaTitle(): String = currentMediaTitle
+
+  /**
+   * Add a downloaded subtitle from OpenSubtitles
+   */
+  fun addDownloadedSubtitle(
+    filePath: String,
+    fileName: String,
+  ) {
+    viewModelScope.launch {
+      runCatching {
+        MPVLib.command("sub-add", filePath, "select")
+        _externalSubtitleMetadata.update { it + (filePath to fileName) }
+
+        val displayName = if (fileName.length > 30) "${fileName.take(27)}..." else fileName
+        showToast("$displayName added")
+      }.onFailure {
+        showToast("Failed to add subtitle")
+      }
+    }
+  }
 }
 
 fun Float.normalize(

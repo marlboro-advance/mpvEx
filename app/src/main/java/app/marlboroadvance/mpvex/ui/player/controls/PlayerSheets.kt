@@ -17,6 +17,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.FrameNavigationSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitleDownloadSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
@@ -58,6 +59,7 @@ fun PlayerSheets(
   sleepTimerTimeRemaining: Int,
   onStartSleepTimer: (Int) -> Unit,
   onOpenPanel: (Panels) -> Unit,
+  onShowSheet: (Sheets) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
   val externalSubtitleMetadata by viewModel.externalSubtitleMetadata.composeCollectAsState()
@@ -91,8 +93,20 @@ fun PlayerSheets(
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
+        onOpenOnlineSearch = { onShowSheet(Sheets.SubDL) },
         onDismissRequest = onDismissRequest,
         externalSubtitleMetadata = externalSubtitleMetadata,
+      )
+    }
+
+    Sheets.SubDL -> {
+      // Get the current media title for search query
+      val mediaTitle = viewModel.getCurrentMediaTitle()
+      SubtitleDownloadSheet(
+        visible = true,
+        onDismissRequest = onDismissRequest,
+        viewModel = viewModel,
+        initialQuery = mediaTitle,
       )
     }
 

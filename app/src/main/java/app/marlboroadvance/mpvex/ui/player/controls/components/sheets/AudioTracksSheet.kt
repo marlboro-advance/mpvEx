@@ -67,7 +67,7 @@ fun AudioTracksSheet(
     },
     track = {
       AudioTrackRow(
-        title = getTrackTitle(it, emptyMap()),
+        title = getTrackTitle(it, tracks, emptyMap()),
         isSelected = it.isSelected,
         onClick = { onSelect(it) },
       )

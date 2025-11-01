@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,7 +62,7 @@ import java.io.File
  * The dialog also provides a simple Share action that generates a text report using
  * MediaInfoOps and shares it via ShareOps.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MediaInfoDialog(
   isOpen: Boolean,
@@ -94,10 +95,11 @@ fun MediaInfoDialog(
         CardDefaults.cardElevation(
           defaultElevation = 6.dp,
         ),
+      shape = MaterialTheme.shapes.extraLarge,
     ) {
       Column(
-        modifier = Modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        modifier = Modifier.padding(28.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
       ) {
         // Header
         DialogHeader(fileName = fileName)
@@ -191,18 +193,19 @@ fun MediaInfoDialog(
 @Composable
 private fun DialogHeader(fileName: String) {
   Column(
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text(
       text = "Media Information",
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Medium,
+      style = MaterialTheme.typography.headlineMedium,
+      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onSurface,
     )
 
     Text(
       text = fileName,
       style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       maxLines = 2,
       overflow = TextOverflow.Ellipsis,
@@ -229,16 +232,18 @@ private fun LoadingState() {
     modifier =
       Modifier
         .fillMaxWidth()
-        .padding(40.dp),
+        .padding(48.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(16.dp),
+    verticalArrangement = Arrangement.spacedBy(20.dp),
   ) {
     CircularProgressIndicator(
       color = MaterialTheme.colorScheme.primary,
+      strokeWidth = 4.dp,
     )
     Text(
       text = "Analyzing media...",
       style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
@@ -251,14 +256,14 @@ private fun ErrorState(error: String) {
       CardDefaults.cardColors(
         containerColor = MaterialTheme.colorScheme.errorContainer,
       ),
-    shape = MaterialTheme.shapes.medium,
+    shape = MaterialTheme.shapes.extraLarge,
   ) {
     Text(
       text = "Error: $error",
       style = MaterialTheme.typography.bodyLarge,
       fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onErrorContainer,
-      modifier = Modifier.padding(16.dp),
+      modifier = Modifier.padding(20.dp),
     )
   }
 }
@@ -277,7 +282,7 @@ private fun DialogFooter(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Row(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       if (showShareButton) {
         FilledTonalIconButton(
@@ -287,6 +292,7 @@ private fun DialogFooter(
               containerColor = MaterialTheme.colorScheme.secondaryContainer,
               contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ),
+          shape = MaterialTheme.shapes.extraLarge,
         ) {
           Icon(
             imageVector = Icons.Filled.Share,
@@ -302,6 +308,7 @@ private fun DialogFooter(
               containerColor = MaterialTheme.colorScheme.secondaryContainer,
               contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ),
+          shape = MaterialTheme.shapes.extraLarge,
         ) {
           Icon(
             imageVector = Icons.Filled.ContentCopy,
@@ -317,10 +324,11 @@ private fun DialogFooter(
         ButtonDefaults.buttonColors(
           containerColor = MaterialTheme.colorScheme.primary,
         ),
+      shape = MaterialTheme.shapes.extraLarge,
     ) {
       Text(
         text = "Close",
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
       )
     }
   }
@@ -336,7 +344,7 @@ private fun MediaInfoContent(mediaInfo: MediaInfoOps.MediaInfoData) {
           .heightIn(max = 380.dp)
           .verticalScroll(rememberScrollState())
           .padding(vertical = 8.dp),
-      verticalArrangement = Arrangement.spacedBy(20.dp),
+      verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
       StreamInfoSection(
         title = "General",
@@ -373,16 +381,16 @@ private fun StreamInfoSection(
   content: @Composable () -> Unit,
 ) {
   Column(
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     Text(
       text = title,
-      style = MaterialTheme.typography.titleMedium,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.primary,
-      fontWeight = FontWeight.SemiBold,
+      fontWeight = FontWeight.Bold,
     )
     HorizontalDivider(
-      thickness = 1.dp,
+      thickness = 2.dp,
       color = MaterialTheme.colorScheme.outlineVariant,
     )
     content()

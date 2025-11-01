@@ -117,15 +117,8 @@ object SubtitlesPreferencesScreen : Screen {
           customFontEntries = customEntries
           val customFonts = customEntries.map { it.familyName }
 
-          // Add default Android system fonts
-          val defaultFonts =
-            listOf(
-              "Sans Serif (Default)",
-              "Serif",
-              "Monospace",
-              "Casual",
-              "Cursive",
-            )
+          // Add only default font, custom fonts can be added by user
+          val defaultFonts = listOf("Sans Serif (Default)")
 
           // Combine default fonts with custom fonts
           availableFonts = defaultFonts + customFonts
@@ -187,6 +180,33 @@ object SubtitlesPreferencesScreen : Screen {
             onValueChange = { preferences.autoloadMatchingSubtitles.set(it) },
             title = { Text(stringResource(R.string.pref_subtitles_autoload_title)) },
             summary = { Text(stringResource(R.string.pref_subtitles_autoload_summary)) },
+          )
+
+          val subdlApiKey by preferences.subdlApiKey.collectAsState()
+          TextFieldPreference(
+            value = subdlApiKey,
+            onValueChange = preferences.subdlApiKey::set,
+            textToValue = { it },
+            title = { Text("Subdl API Key") },
+            summary = {
+              if (subdlApiKey.isNotBlank()) {
+                Text("API key set (${subdlApiKey.take(8)}...)")
+              } else {
+                Text("Not set - Required for online subtitle downloads")
+              }
+            },
+            textField = { value, onValueChange, _ ->
+              Column {
+                Text("Get your free API key from subdl")
+                TextField(
+                  value,
+                  onValueChange,
+                  modifier = Modifier.fillMaxWidth(),
+                  placeholder = { Text("Enter API key") },
+                  singleLine = true,
+                )
+              }
+            },
           )
 
           // Directory picker preference with reload and clear icons on the right
@@ -355,21 +375,12 @@ object SubtitlesPreferencesScreen : Screen {
                       val typeface: Typeface? =
                         when (font) {
                           "Sans Serif (Default)" -> Typeface.SANS_SERIF
-                          "Serif" -> Typeface.SERIF
-                          "Monospace" -> Typeface.MONOSPACE
-                          "Casual" -> Typeface.create("casual", Typeface.NORMAL)
-                          "Cursive" -> Typeface.create("cursive", Typeface.NORMAL)
                           else -> {
-                            val entry =
-                              customFontEntries.firstOrNull {
-                                it.familyName ==
-                                  font
-                              }
+                            // Custom font from user directory
+                            val entry = customFontEntries.firstOrNull { it.familyName == font }
                             entry?.let {
                               runCatching {
-                                Typeface.createFromFile(
-                                  it.file,
-                                )
+                                Typeface.createFromFile(it.file)
                               }.getOrNull()
                             }
                           }

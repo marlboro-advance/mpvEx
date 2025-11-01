@@ -808,6 +808,7 @@ fun PlayerControls(
       sleepTimerTimeRemaining = sleepTimerTimeRemaining,
       onStartSleepTimer = viewModel::startTimer,
       onOpenPanel = onOpenPanel,
+      onShowSheet = onOpenSheet,
       onDismissRequest = { onOpenSheet(Sheets.None) },
     )
     val panel by viewModel.panelShown.collectAsState()

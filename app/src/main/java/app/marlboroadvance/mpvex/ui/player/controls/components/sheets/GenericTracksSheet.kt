@@ -87,18 +87,30 @@ fun AddTrackRow(
   }
 }
 
+/**
+ * Get a displayable title for a track node.
+ * For downloaded subtitles (from Subdl), displays as "External #N" where N is the sequential number.
+ * For other tracks, uses title, language, or a default substitute.
+ */
 @Composable
 fun getTrackTitle(
   track: TrackNode,
+  allTracks: ImmutableList<TrackNode>,
   externalSubtitleMetadata: Map<String, String> = emptyMap(),
 ): String {
-  // For external subtitles, use cached metadata for proper filename display
+  // Handle external subtitles with cached metadata
   if (track.isSubtitle && track.external == true && track.externalFilename != null) {
     externalSubtitleMetadata[track.externalFilename]?.let { cachedName ->
+      // Check if this is a downloaded subtitle (timestamp_name.ext pattern from Subdl)
+      if (isDownloadedSubtitle(cachedName)) {
+        val index = calculateExternalSubtitleIndex(track, allTracks, externalSubtitleMetadata)
+        return "External #$index"
+      }
       return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, cachedName)
     }
   }
 
+  // Build title from available metadata
   val hasTitle = !track.title.isNullOrBlank()
   val hasLang = !track.lang.isNullOrBlank()
 
@@ -116,4 +128,34 @@ fun getTrackTitle(
     track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
     else -> ""
   }
+}
+
+/**
+ * Check if a subtitle filename matches the downloaded subtitle pattern.
+ * Pattern: {timestamp}_{name}.{ext} (e.g., 1730456789_subtitle.srt)
+ */
+private fun isDownloadedSubtitle(filename: String): Boolean {
+  val supportedExtensions = setOf("srt", "ass", "vtt", "sub")
+  val extension = filename.substringAfterLast(".", "").lowercase()
+
+  return extension in supportedExtensions &&
+    filename.matches(Regex("^\\d+_.+\\.(?:${supportedExtensions.joinToString("|")})$"))
+}
+
+/**
+ * Calculate the sequential index for an external downloaded subtitle.
+ */
+private fun calculateExternalSubtitleIndex(
+  track: TrackNode,
+  allTracks: ImmutableList<TrackNode>,
+  externalSubtitleMetadata: Map<String, String>,
+): Int {
+  val downloadedSubtitles =
+    allTracks.filter { t ->
+      t.isSubtitle &&
+        t.external == true &&
+        t.externalFilename != null &&
+        externalSubtitleMetadata[t.externalFilename]?.let { isDownloadedSubtitle(it) } == true
+    }
+  return downloadedSubtitles.indexOf(track) + 1
 }
