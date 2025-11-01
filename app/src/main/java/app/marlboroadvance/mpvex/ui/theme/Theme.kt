@@ -5,7 +5,9 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.constraintlayout.compose.MotionScene
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -293,6 +296,7 @@ private val pureBlackColorScheme =
     surfaceContainerHighest = surfaceContainerHighestPureBlack,
   )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MpvexTheme(content: @Composable () -> Unit) {
   val preferences = koinInject<AppearancePreferences>()
@@ -366,6 +370,7 @@ fun MpvexTheme(content: @Composable () -> Unit) {
       colorScheme = colorScheme,
       typography = AppTypography,
       content = content,
+      motionScheme = MotionScheme.expressive()
     )
   }
 }
