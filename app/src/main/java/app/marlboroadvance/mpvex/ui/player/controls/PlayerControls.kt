@@ -88,6 +88,7 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import org.koin.compose.koinInject
@@ -625,7 +626,7 @@ fun PlayerControls(
             timersInverted = Pair(false, invertDuration),
             durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
             positionTimerOnClick = {},
-            chapters = chapters,
+            chapters = chapters.toImmutableList(),
             paused = paused ?: false,
           )
         }
@@ -774,11 +775,11 @@ fun PlayerControls(
     PlayerSheets(
       viewModel = viewModel,
       sheetShown = sheetShown,
-      subtitles = subtitles,
+      subtitles = subtitles.toImmutableList(),
       onAddSubtitle = viewModel::addSubtitle,
       onSelectSubtitle = viewModel::selectSub,
       onRemoveSubtitle = viewModel::removeSubtitle,
-      audioTracks = audioTracks,
+      audioTracks = audioTracks.toImmutableList(),
       onAddAudio = viewModel::addAudio,
       onSelectAudio = {
         if (MPVLib.getPropertyInt("aid") == it.id) {
@@ -788,7 +789,7 @@ fun PlayerControls(
         }
       },
       chapter = chapters.getOrNull(currentChapter ?: 0),
-      chapters = chapters,
+      chapters = chapters.toImmutableList(),
       onSeekToChapter = {
         MPVLib.setPropertyInt("chapter", it)
         viewModel.unpause()

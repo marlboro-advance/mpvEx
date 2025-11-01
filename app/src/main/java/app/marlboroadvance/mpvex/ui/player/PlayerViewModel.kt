@@ -28,8 +28,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,55 +69,50 @@ class PlayerViewModel(
   private val externalSubtitleRepository: ExternalSubtitleRepository by inject()
   private val json: Json by inject()
 
+  // MPV properties with efficient collection
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
   val pos by MPVLib.propInt["time-pos"].collectAsState(viewModelScope)
   val duration by MPVLib.propInt["duration"].collectAsState(viewModelScope)
 
+  // Audio state
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
+  val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
-  // Map to track external subtitle filenames by their cached path
+  // Subtitle and audio tracks using StateFlow for better performance
   private val _externalSubtitleMetadata = MutableStateFlow<Map<String, String>>(emptyMap())
-  val externalSubtitleMetadata = _externalSubtitleMetadata.asStateFlow()
+  val externalSubtitleMetadata: StateFlow<Map<String, String>> = _externalSubtitleMetadata.asStateFlow()
 
-  val subtitleTracks =
+  val subtitleTracks: StateFlow<List<TrackNode>> =
     MPVLib.propNode["track-list"]
-      .map { it ->
-        (
-          it
-            ?.toObject<List<TrackNode>>(
-              json,
-            )?.filter { it.isSubtitle } ?: persistentListOf()
-        ).toImmutableList()
-      }
+      .map { node ->
+        node?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle }?.toImmutableList()
+          ?: persistentListOf()
+      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
-  val audioTracks =
+  val audioTracks: StateFlow<List<TrackNode>> =
     MPVLib.propNode["track-list"]
-      .map { it ->
-        (
-          it
-            ?.toObject<List<TrackNode>>(
-              json,
-            )?.filter { it.isAudio } ?: persistentListOf()
-        ).toImmutableList()
-      }
+      .map { node ->
+        node?.toObject<List<TrackNode>>(json)?.filter { it.isAudio }?.toImmutableList()
+          ?: persistentListOf()
+      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
-  val chapters =
+  val chapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
     MPVLib.propNode["chapter-list"]
-      .map { it ->
-        (
-          it?.toObject<List<ChapterNode>>(
-            json,
-          ) ?: persistentListOf()
-        ).map { it.toSegment() }.toImmutableList()
-      }
+      .map { node ->
+        node?.toObject<List<ChapterNode>>(json)?.map { it.toSegment() }?.toImmutableList()
+          ?: persistentListOf()
+      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
+  // UI state
   private val _controlsShown = MutableStateFlow(false)
-  val controlsShown = _controlsShown.asStateFlow()
+  val controlsShown: StateFlow<Boolean> = _controlsShown.asStateFlow()
+
   private val _seekBarShown = MutableStateFlow(false)
-  val seekBarShown = _seekBarShown.asStateFlow()
+  val seekBarShown: StateFlow<Boolean> = _seekBarShown.asStateFlow()
+
   private val _areControlsLocked = MutableStateFlow(false)
-  val areControlsLocked = _areControlsLocked.asStateFlow()
+  val areControlsLocked: StateFlow<Boolean> = _areControlsLocked.asStateFlow()
 
   val playerUpdate = MutableStateFlow<PlayerUpdates>(PlayerUpdates.None)
   val isBrightnessSliderShown = MutableStateFlow(false)
@@ -131,36 +129,60 @@ class PlayerViewModel(
   val sheetShown = MutableStateFlow(Sheets.None)
   val panelShown = MutableStateFlow(Panels.None)
 
-  // Pair(startingPosition, seekAmount)
+  // Seek state
   val gestureSeekAmount = MutableStateFlow<Pair<Int, Int>?>(null)
-
   private val _seekText = MutableStateFlow<String?>(null)
-  val seekText = _seekText.asStateFlow()
-  private val _doubleTapSeekAmount = MutableStateFlow(0)
-  val doubleTapSeekAmount = _doubleTapSeekAmount.asStateFlow()
-  private val _isSeekingForwards = MutableStateFlow(false)
-  val isSeekingForwards = _isSeekingForwards.asStateFlow()
+  val seekText: StateFlow<String?> = _seekText.asStateFlow()
 
+  private val _doubleTapSeekAmount = MutableStateFlow(0)
+  val doubleTapSeekAmount: StateFlow<Int> = _doubleTapSeekAmount.asStateFlow()
+
+  private val _isSeekingForwards = MutableStateFlow(false)
+  val isSeekingForwards: StateFlow<Boolean> = _isSeekingForwards.asStateFlow()
+
+  // Frame navigation
   private val _currentFrame = MutableStateFlow(0)
-  val currentFrame = _currentFrame.asStateFlow()
+  val currentFrame: StateFlow<Int> = _currentFrame.asStateFlow()
 
   private val _totalFrames = MutableStateFlow(0)
-  val totalFrames = _totalFrames.asStateFlow()
+  val totalFrames: StateFlow<Int> = _totalFrames.asStateFlow()
 
+  // Video zoom
   private val _videoZoom = MutableStateFlow(0f)
-  val videoZoom = _videoZoom.asStateFlow()
+  val videoZoom: StateFlow<Float> = _videoZoom.asStateFlow()
 
+  // Timer
   private var timerJob: Job? = null
   private val _remainingTime = MutableStateFlow(0)
-  val remainingTime = _remainingTime.asStateFlow()
+  val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
 
-  // Store current media title for subtitle association
+  // Media title for subtitle association
   private var currentMediaTitle: String = ""
+
+  // Cached values
+  private val showStatusBar = playerPreferences.showSystemStatusBar.get()
+  private val doubleTapToSeekDuration by lazy { gesturePreferences.doubleTapToSeekDuration.get() }
+  private val inputMethodManager by lazy {
+    host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+  }
+
+  // Seek coalescing for smooth performance
+  private var pendingSeekOffset: Int = 0
+  private var seekCoalesceJob: Job? = null
+
+  private companion object {
+    const val SEEK_COALESCE_DELAY_MS = 60L
+    val VALID_SUBTITLE_EXTENSIONS =
+      setOf("srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "txt", "pgs")
+  }
+
+  // ==================== Timer ====================
 
   fun startTimer(seconds: Int) {
     timerJob?.cancel()
     _remainingTime.value = seconds
     if (seconds < 1) return
+
     timerJob =
       viewModelScope.launch {
         for (time in seconds downTo 0) {
@@ -168,36 +190,32 @@ class PlayerViewModel(
           delay(1000)
         }
         MPVLib.setPropertyBoolean("pause", true)
-        Toast
-          .makeText(
-            host.context,
-            host.context.getString(R.string.toast_sleep_timer_ended),
-            Toast.LENGTH_SHORT,
-          ).show()
+        showToast(host.context.getString(R.string.toast_sleep_timer_ended))
       }
   }
 
+  // ==================== Decoder ====================
+
   fun cycleDecoders() {
-    MPVLib.setPropertyString(
-      "hwdec",
-      when (Decoder.getDecoderFromValue(MPVLib.getPropertyString("hwdec-current") ?: return)) {
-        Decoder.HWPlus -> Decoder.SW.value
-        Decoder.SW -> Decoder.HW.value
-        Decoder.HW -> Decoder.HWPlus.value
-        Decoder.AutoCopy -> Decoder.HWPlus.value
-        Decoder.Auto -> Decoder.HWPlus.value
-      },
-    )
+    val currentDecoder = MPVLib.getPropertyString("hwdec-current") ?: return
+    val nextDecoder =
+      when (Decoder.getDecoderFromValue(currentDecoder)) {
+        Decoder.HWPlus -> Decoder.SW
+        Decoder.SW -> Decoder.HW
+        Decoder.HW -> Decoder.HWPlus
+        Decoder.AutoCopy, Decoder.Auto -> Decoder.HWPlus
+      }
+    MPVLib.setPropertyString("hwdec", nextDecoder.value)
   }
+
+  // ==================== Audio/Subtitle Management ====================
 
   fun addAudio(uri: Uri) {
     viewModelScope.launch {
       runCatching {
-        val path = uri.resolveUri(host.context)
-        if (path == null) {
-          showToast("Failed to load audio file: Invalid URI")
-          return@launch
-        }
+        val path =
+          uri.resolveUri(host.context)
+            ?: return@launch showToast("Failed to load audio file: Invalid URI")
 
         MPVLib.command("audio-add", path, "cached")
         showToast("Audio track added")
@@ -214,22 +232,18 @@ class PlayerViewModel(
         val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
 
         if (!isValidSubtitleFile(fileName)) {
-          showToast("Invalid subtitle file format")
-          return@launch
+          return@launch showToast("Invalid subtitle file format")
         }
 
         val cachedPath =
           externalSubtitleRepository
             .cacheSubtitle(uri, fileName, currentMediaTitle)
-            .getOrElse {
-              showToast("Failed to cache subtitle")
-              return@launch
-            }
+            .getOrElse { return@launch showToast("Failed to cache subtitle") }
 
         MPVLib.command("sub-add", cachedPath, "select")
         _externalSubtitleMetadata.update { it + (cachedPath to fileName) }
 
-        val displayName = if (fileName.length > 30) "${fileName.take(27)}..." else fileName
+        val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
         showToast("$displayName added")
       }.onFailure {
         showToast("Failed to load subtitle")
@@ -237,9 +251,6 @@ class PlayerViewModel(
     }
   }
 
-  /**
-   * Set the current media title and restore cached subtitles
-   */
   fun setMediaTitle(mediaTitle: String) {
     currentMediaTitle = mediaTitle
     viewModelScope.launch {
@@ -248,9 +259,6 @@ class PlayerViewModel(
     }
   }
 
-  /**
-   * Restore previously cached subtitles for a media file
-   */
   private suspend fun restoreCachedSubtitles(mediaTitle: String) {
     val subtitles = externalSubtitleRepository.getSubtitlesForMedia(mediaTitle)
     val metadata = mutableMapOf<String, String>()
@@ -269,25 +277,9 @@ class PlayerViewModel(
     _externalSubtitleMetadata.update { metadata }
   }
 
-  private fun getFileNameFromUri(uri: Uri): String? =
-    when (uri.scheme) {
-      "content" ->
-        host.context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-          val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-          if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
-        }
-      "file" -> uri.lastPathSegment
-      else -> uri.lastPathSegment
-    }
-
-  private fun isValidSubtitleFile(fileName: String): Boolean {
-    val extension = fileName.substringAfterLast('.', "").lowercase()
-    return extension in VALID_SUBTITLE_EXTENSIONS
-  }
-
   fun removeSubtitle(id: Int) {
     viewModelScope.launch {
-      val tracks = MPVLib.propNode["track-list"].value?.toObject<List<TrackNode>>(json) ?: emptyList()
+      val tracks = MPVLib.propNode["track-list"].value?.toObject<List<TrackNode>>(json) ?: return@launch
       val track = tracks.find { it.id == id && it.isSubtitle && it.external == true }
 
       track?.externalFilename?.let { filename ->
@@ -299,27 +291,59 @@ class PlayerViewModel(
     }
   }
 
-  private fun showToast(message: String) {
-    Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
-  }
+  fun addDownloadedSubtitle(
+    filePath: String,
+    fileName: String,
+  ) {
+    viewModelScope.launch {
+      runCatching {
+        MPVLib.command("sub-add", filePath, "select")
+        _externalSubtitleMetadata.update { it + (filePath to fileName) }
 
-  companion object {
-    private val VALID_SUBTITLE_EXTENSIONS =
-      setOf("srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "txt", "pgs")
+        val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
+        showToast("$displayName added")
+      }.onFailure {
+        showToast("Failed to add subtitle")
+      }
+    }
   }
 
   fun selectSub(id: Int) {
-    val selectedSubs = Pair(MPVLib.getPropertyInt("sid"), MPVLib.getPropertyInt("secondary-sid"))
-    when (id) {
-      selectedSubs.first -> Pair(selectedSubs.second, null)
-      selectedSubs.second -> Pair(selectedSubs.first, null)
-      else -> if (selectedSubs.first != null) Pair(selectedSubs.first, id) else Pair(id, null)
-    }.let { it ->
-      it.second?.let { MPVLib.setPropertyInt("secondary-sid", it) }
-        ?: MPVLib.setPropertyBoolean("secondary-sid", false)
-      it.first?.let { MPVLib.setPropertyInt("sid", it) } ?: MPVLib.setPropertyBoolean("sid", false)
-    }
+    val (primarySid, secondarySid) =
+      Pair(
+        MPVLib.getPropertyInt("sid"),
+        MPVLib.getPropertyInt("secondary-sid"),
+      )
+
+    val (newPrimary, newSecondary) =
+      when (id) {
+        primarySid -> Pair(secondarySid, null)
+        secondarySid -> Pair(primarySid, null)
+        else -> if (primarySid != null) Pair(primarySid, id) else Pair(id, null)
+      }
+
+    newSecondary?.let { MPVLib.setPropertyInt("secondary-sid", it) }
+      ?: MPVLib.setPropertyBoolean("secondary-sid", false)
+    newPrimary?.let { MPVLib.setPropertyInt("sid", it) }
+      ?: MPVLib.setPropertyBoolean("sid", false)
   }
+
+  private fun getFileNameFromUri(uri: Uri): String? =
+    when (uri.scheme) {
+      "content" ->
+        host.context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+          val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+        }
+
+      "file" -> uri.lastPathSegment
+      else -> uri.lastPathSegment
+    }
+
+  private fun isValidSubtitleFile(fileName: String): Boolean =
+    fileName.substringAfterLast('.', "").lowercase() in VALID_SUBTITLE_EXTENSIONS
+
+  // ==================== Playback Control ====================
 
   fun pauseUnpause() = MPVLib.command("cycle", "pause")
 
@@ -327,59 +351,61 @@ class PlayerViewModel(
 
   fun unpause() = MPVLib.setPropertyBoolean("pause", false)
 
-  private val showStatusBar = playerPreferences.showSystemStatusBar.get()
+  // ==================== UI Control ====================
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (showStatusBar) host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
-    _controlsShown.update { true }
+    if (showStatusBar) {
+      host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+    }
+    _controlsShown.value = true
   }
 
   fun hideControls() {
     host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-    _controlsShown.update { false }
-  }
-
-  fun hideSeekBar() {
-    _seekBarShown.update { false }
+    _controlsShown.value = false
   }
 
   fun showSeekBar() {
-    if (sheetShown.value != Sheets.None) return
-    _seekBarShown.update { true }
+    if (sheetShown.value == Sheets.None) {
+      _seekBarShown.value = true
+    }
+  }
+
+  fun hideSeekBar() {
+    _seekBarShown.value = false
   }
 
   fun lockControls() {
-    _areControlsLocked.update { true }
+    _areControlsLocked.value = true
   }
 
   fun unlockControls() {
-    _areControlsLocked.update { false }
+    _areControlsLocked.value = false
   }
+
+  // ==================== Seeking ====================
 
   fun seekBy(offset: Int) {
     coalesceSeek(offset)
   }
 
   fun seekTo(position: Int) {
-    if (position !in 0..(MPVLib.getPropertyInt("duration") ?: 0)) return
-    // Cancel any pending relative coalesced seek before absolute seek
+    val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
+    if (position !in 0..maxDuration) return
+
+    // Cancel pending relative seek before absolute seek
     seekCoalesceJob?.cancel()
     pendingSeekOffset = 0
     MPVLib.command("seek", position.toString(), "absolute+exact")
   }
-
-  // --- Seek coalescing for ultra-smooth user experience ---
-  private var pendingSeekOffset: Int = 0
-  private var seekCoalesceJob: Job? = null
-  private val seekCoalesceDelayMs: Long = 60
 
   private fun coalesceSeek(offset: Int) {
     pendingSeekOffset += offset
     seekCoalesceJob?.cancel()
     seekCoalesceJob =
       viewModelScope.launch {
-        delay(seekCoalesceDelayMs)
+        delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
         if (toApply != 0) {
@@ -388,35 +414,91 @@ class PlayerViewModel(
       }
   }
 
+  fun leftSeek() {
+    if ((pos ?: 0) > 0) {
+      _doubleTapSeekAmount.value -= doubleTapToSeekDuration
+    }
+    _isSeekingForwards.value = false
+    seekBy(-doubleTapToSeekDuration)
+    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+  }
+
+  fun rightSeek() {
+    if ((pos ?: 0) < (duration ?: 0)) {
+      _doubleTapSeekAmount.value += doubleTapToSeekDuration
+    }
+    _isSeekingForwards.value = true
+    seekBy(doubleTapToSeekDuration)
+    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+  }
+
+  fun updateSeekAmount(amount: Int) {
+    _doubleTapSeekAmount.value = amount
+  }
+
+  fun updateSeekText(text: String?) {
+    _seekText.value = text
+  }
+
+  private fun seekToWithText(
+    seekValue: Int,
+    text: String?,
+  ) {
+    val currentPos = pos ?: return
+    _isSeekingForwards.value = seekValue > currentPos
+    _doubleTapSeekAmount.value = seekValue - currentPos
+    _seekText.value = text
+    seekTo(seekValue)
+    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+  }
+
+  private fun seekByWithText(
+    value: Int,
+    text: String?,
+  ) {
+    val currentPos = pos ?: return
+    val maxDuration = duration ?: return
+
+    _doubleTapSeekAmount.update {
+      if ((value < 0 && it < 0) || currentPos + value > maxDuration) 0 else it + value
+    }
+    _seekText.value = text
+    _isSeekingForwards.value = value > 0
+    seekBy(value)
+    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+  }
+
+  // ==================== Brightness & Volume ====================
+
   fun changeBrightnessTo(brightness: Float) {
     val coercedBrightness = brightness.coerceIn(0f, 1f)
     host.hostWindow.attributes =
       host.hostWindow.attributes.apply {
-        screenBrightness =
-          coercedBrightness.also {
-            currentBrightness.update { _ -> it }
-          }
+        screenBrightness = coercedBrightness
       }
-    // Save brightness to preferences if remember brightness is enabled
+    currentBrightness.value = coercedBrightness
+
+    // Save brightness to preferences if enabled
     if (playerPreferences.rememberBrightness.get()) {
       playerPreferences.defaultBrightness.set(coercedBrightness)
     }
   }
 
   fun displayBrightnessSlider() {
-    isBrightnessSliderShown.update { true }
+    isBrightnessSliderShown.value = true
   }
-
-  val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
   fun changeVolumeBy(change: Int) {
     val mpvVolume = MPVLib.getPropertyInt("volume")
-    if ((volumeBoostCap ?: audioPreferences.volumeBoostCap.get()) > 0 && currentVolume.value == maxVolume) {
-      if (mpvVolume == 100 && change < 0) changeVolumeTo(currentVolume.value + change)
+    val boostCap = volumeBoostCap ?: audioPreferences.volumeBoostCap.get()
+
+    if (boostCap > 0 && currentVolume.value == maxVolume) {
+      if (mpvVolume == 100 && change < 0) {
+        changeVolumeTo(currentVolume.value + change)
+      }
       val finalMPVVolume = (mpvVolume?.plus(change))?.coerceAtLeast(100) ?: 100
-      if (finalMPVVolume in 100..(volumeBoostCap ?: audioPreferences.volumeBoostCap.get()) + 100) {
-        changeMPVVolumeTo(finalMPVVolume)
-        return
+      if (finalMPVVolume in 100..(boostCap + 100)) {
+        return changeMPVVolumeTo(finalMPVVolume)
       }
     }
     changeVolumeTo(currentVolume.value + change)
@@ -424,12 +506,8 @@ class PlayerViewModel(
 
   fun changeVolumeTo(volume: Int) {
     val newVolume = volume.coerceIn(0..maxVolume)
-    host.audioManager.setStreamVolume(
-      AudioManager.STREAM_MUSIC,
-      newVolume,
-      0,
-    )
-    currentVolume.update { newVolume }
+    host.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+    currentVolume.value = newVolume
   }
 
   fun changeMPVVolumeTo(volume: Int) {
@@ -437,39 +515,39 @@ class PlayerViewModel(
   }
 
   fun displayVolumeSlider() {
-    isVolumeSliderShown.update { true }
+    isVolumeSliderShown.value = true
   }
+
+  // ==================== Video Aspect ====================
 
   fun changeVideoAspect(
     aspect: VideoAspect,
     showUpdate: Boolean = true,
   ) {
     var ratio = -1.0
-    var pan: Double
-    when (aspect) {
-      VideoAspect.Crop -> {
-        pan = 1.0
+    val pan =
+      when (aspect) {
+        VideoAspect.Crop -> 1.0
+        VideoAspect.Fit -> {
+          MPVLib.setPropertyDouble("panscan", 0.0)
+          0.0
+        }
+        VideoAspect.Stretch -> {
+          @Suppress("DEPRECATION")
+          val dm = DisplayMetrics()
+          @Suppress("DEPRECATION")
+          host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
+          ratio = dm.widthPixels / dm.heightPixels.toDouble()
+          0.0
+        }
       }
 
-      VideoAspect.Fit -> {
-        pan = 0.0
-        MPVLib.setPropertyDouble("panscan", 0.0)
-      }
-
-      VideoAspect.Stretch -> {
-        @Suppress("DEPRECATION")
-        val dm = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
-        ratio = dm.widthPixels / dm.heightPixels.toDouble()
-        pan = 0.0
-      }
-    }
     MPVLib.setPropertyDouble("panscan", pan)
     MPVLib.setPropertyDouble("video-aspect-override", ratio)
     playerPreferences.videoAspect.set(aspect)
+
     if (showUpdate) {
-      playerUpdate.update { PlayerUpdates.AspectRatio }
+      playerUpdate.value = PlayerUpdates.AspectRatio
     }
   }
 
@@ -477,7 +555,7 @@ class PlayerViewModel(
     MPVLib.setPropertyDouble("panscan", 0.0)
     MPVLib.setPropertyDouble("video-aspect-override", ratio)
     playerPreferences.currentAspectRatio.set(ratio.toFloat())
-    playerUpdate.update { PlayerUpdates.AspectRatio }
+    playerUpdate.value = PlayerUpdates.AspectRatio
   }
 
   fun restoreCustomAspectRatio() {
@@ -487,6 +565,8 @@ class PlayerViewModel(
       MPVLib.setPropertyDouble("video-aspect-override", savedRatio.toDouble())
     }
   }
+
+  // ==================== Screen Rotation ====================
 
   fun cycleScreenRotations() {
     host.hostRequestedOrientation =
@@ -498,7 +578,6 @@ class PlayerViewModel(
           playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
-
         else -> {
           playerPreferences.orientation.set(PlayerOrientation.SensorLandscape)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -506,69 +585,70 @@ class PlayerViewModel(
       }
   }
 
-  @Suppress("CyclomaticComplexMethod", "LongMethod")
+  // ==================== Lua Invocation Handling ====================
+
   fun handleLuaInvocation(
     property: String,
     value: String,
   ) {
-    val data =
-      value
-        .removePrefix("\"")
-        .removeSuffix("\"")
-        .ifEmpty { return }
+    val data = value.removeSurrounding("\"").ifEmpty { return }
 
     when (property.substringAfterLast("/")) {
-      "show_text" -> playerUpdate.update { PlayerUpdates.ShowText(data) }
-      "toggle_ui" -> {
-        when (data) {
-          "show" -> showControls()
-          "toggle" -> {
-            if (controlsShown.value) hideControls() else showControls()
-          }
-
-          "hide" -> {
-            sheetShown.update { Sheets.None }
-            panelShown.update { Panels.None }
-            hideControls()
-          }
-        }
-      }
-
-      "show_panel" -> {
-        when (data) {
-          "subtitle_settings" -> panelShown.update { Panels.SubtitleSettings }
-          "subtitle_delay" -> panelShown.update { Panels.SubtitleDelay }
-          "audio_delay" -> panelShown.update { Panels.AudioDelay }
-          "video_filters" -> panelShown.update { Panels.VideoFilters }
-          "frame_navigation" -> panelShown.update { Panels.FrameNavigation }
-        }
-      }
-
+      "show_text" -> playerUpdate.value = PlayerUpdates.ShowText(data)
+      "toggle_ui" -> handleToggleUI(data)
+      "show_panel" -> handleShowPanel(data)
       "seek_to_with_text" -> {
         val (seekValue, text) = data.split("|", limit = 2)
         seekToWithText(seekValue.toInt(), text)
       }
-
       "seek_by_with_text" -> {
         val (seekValue, text) = data.split("|", limit = 2)
         seekByWithText(seekValue.toInt(), text)
       }
-
       "seek_by" -> seekByWithText(data.toInt(), null)
       "seek_to" -> seekToWithText(data.toInt(), null)
-      "software_keyboard" ->
-        when (data) {
-          "show" -> forceShowSoftwareKeyboard()
-          "hide" -> forceHideSoftwareKeyboard()
-          "toggle" if !inputMethodManager.isActive -> forceShowSoftwareKeyboard()
-          else -> forceHideSoftwareKeyboard()
-        }
+      "software_keyboard" -> handleSoftwareKeyboard(data)
     }
 
     MPVLib.setPropertyString(property, "")
   }
 
-  private val inputMethodManager = host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+  private fun handleToggleUI(data: String) {
+    when (data) {
+      "show" -> showControls()
+      "toggle" -> if (controlsShown.value) hideControls() else showControls()
+      "hide" -> {
+        sheetShown.value = Sheets.None
+        panelShown.value = Panels.None
+        hideControls()
+      }
+    }
+  }
+
+  private fun handleShowPanel(data: String) {
+    panelShown.value =
+      when (data) {
+        "subtitle_settings" -> Panels.SubtitleSettings
+        "subtitle_delay" -> Panels.SubtitleDelay
+        "audio_delay" -> Panels.AudioDelay
+        "video_filters" -> Panels.VideoFilters
+        "frame_navigation" -> Panels.FrameNavigation
+        else -> Panels.None
+      }
+  }
+
+  private fun handleSoftwareKeyboard(data: String) {
+    when (data) {
+      "show" -> forceShowSoftwareKeyboard()
+      "hide" -> forceHideSoftwareKeyboard()
+      "toggle" ->
+        if (!inputMethodManager.isActive) {
+          forceShowSoftwareKeyboard()
+        } else {
+          forceHideSoftwareKeyboard()
+        }
+    }
+  }
 
   @Suppress("DEPRECATION")
   private fun forceShowSoftwareKeyboard() {
@@ -580,203 +660,92 @@ class PlayerViewModel(
     inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0)
   }
 
-  private fun seekToWithText(
-    seekValue: Int,
-    text: String?,
-  ) {
-    _isSeekingForwards.value = seekValue > 0
-    _doubleTapSeekAmount.value = seekValue - (pos ?: return)
-    _seekText.update { text }
-    seekTo(seekValue)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
-  }
-
-  private fun seekByWithText(
-    value: Int,
-    text: String?,
-  ) {
-    _doubleTapSeekAmount.update {
-      if (value < 0 && it < 0 || (pos ?: return) + value > (duration ?: return)) 0 else it + value
-    }
-    _seekText.update { text }
-    _isSeekingForwards.value = value > 0
-    seekBy(value)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
-  }
-
-  private val doubleTapToSeekDuration = gesturePreferences.doubleTapToSeekDuration.get()
-
-  fun updateSeekAmount(amount: Int) {
-    _doubleTapSeekAmount.update { amount }
-  }
-
-  fun updateSeekText(text: String?) {
-    _seekText.update { text }
-  }
-
-  fun leftSeek() {
-    if ((pos ?: return) > 0) _doubleTapSeekAmount.value -= doubleTapToSeekDuration
-    _isSeekingForwards.value = false
-    seekBy(-doubleTapToSeekDuration)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
-  }
-
-  fun rightSeek() {
-    if ((pos ?: return) < (duration ?: return)) {
-      _doubleTapSeekAmount.value += doubleTapToSeekDuration
-    }
-    _isSeekingForwards.value = true
-    seekBy(doubleTapToSeekDuration)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
-  }
+  // ==================== Gesture Handling ====================
 
   fun handleLeftDoubleTap() {
     when (gesturePreferences.leftSingleActionGesture.get()) {
-      SingleActionGesture.Seek -> {
-        leftSeek()
-      }
-
-      SingleActionGesture.PlayPause -> {
-        pauseUnpause()
-      }
-
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
-      }
-
+      SingleActionGesture.Seek -> leftSeek()
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
       SingleActionGesture.None -> {}
     }
   }
 
   fun handleCenterDoubleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
-      SingleActionGesture.PlayPause -> {
-        pauseUnpause()
-      }
-
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
-      }
-
-      SingleActionGesture.Seek -> {}
-      SingleActionGesture.None -> {}
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      SingleActionGesture.Seek, SingleActionGesture.None -> {}
     }
   }
 
   fun handleRightDoubleTap() {
     when (gesturePreferences.rightSingleActionGesture.get()) {
-      SingleActionGesture.Seek -> {
-        rightSeek()
-      }
-
-      SingleActionGesture.PlayPause -> {
-        pauseUnpause()
-      }
-
-      SingleActionGesture.Custom -> {
-        MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
-      }
-
+      SingleActionGesture.Seek -> rightSeek()
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
       SingleActionGesture.None -> {}
     }
   }
 
-  /**
-   * Sets the video zoom level.
-   * This updates both the local state and MPV's video-zoom property.
-   *
-   * @param zoom The zoom level to set (typically between -2.0 and 3.0).
-   *             Positive values zoom in, negative values zoom out.
-   *             0 is the default/no zoom.
-   */
+  // ==================== Video Zoom ====================
+
   fun setVideoZoom(zoom: Float) {
-    _videoZoom.update { zoom }
+    _videoZoom.value = zoom
     MPVLib.setPropertyDouble("video-zoom", zoom.toDouble())
   }
 
+  // ==================== Frame Navigation ====================
+
   fun updateFrameInfo() {
-    // Get current frame from estimated-frame-number property
-    val currentFrameValue = MPVLib.getPropertyInt("estimated-frame-number") ?: 0
-    _currentFrame.update { currentFrameValue }
+    _currentFrame.value = MPVLib.getPropertyInt("estimated-frame-number") ?: 0
 
-    // Calculate total frames from duration and fps
     val durationValue = MPVLib.getPropertyDouble("duration") ?: 0.0
-    val fps = MPVLib.getPropertyDouble("container-fps") ?: MPVLib.getPropertyDouble("estimated-vf-fps") ?: 0.0
+    val fps =
+      MPVLib.getPropertyDouble("container-fps")
+        ?: MPVLib.getPropertyDouble("estimated-vf-fps")
+        ?: 0.0
 
-    if (durationValue > 0 && fps > 0) {
-      val totalFramesValue = (durationValue * fps).toInt()
-      _totalFrames.update { totalFramesValue }
-    } else {
-      _totalFrames.update { 0 }
-    }
+    _totalFrames.value =
+      if (durationValue > 0 && fps > 0) {
+        (durationValue * fps).toInt()
+      } else {
+        0
+      }
   }
 
   // ==================== Playlist Management ====================
 
-  /**
-   * Check if playlist navigation is available
-   */
   fun hasPlaylistSupport(): Boolean = (host as? PlayerActivity)?.playlist?.isNotEmpty() ?: false
 
-  /**
-   * Get playlist info string for display (e.g., "2/5")
-   */
   fun getPlaylistInfo(): String? {
     val activity = host as? PlayerActivity ?: return null
     if (activity.playlist.isEmpty()) return null
     return "${activity.playlistIndex + 1}/${activity.playlist.size}"
   }
 
-  /**
-   * Check if there's a next video in the playlist
-   */
   fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false
 
-  /**
-   * Check if there's a previous video in the playlist
-   */
   fun hasPrevious(): Boolean = (host as? PlayerActivity)?.hasPrevious() ?: false
 
-  /**
-   * Play the next video in the playlist
-   */
   fun playNext() {
     (host as? PlayerActivity)?.playNext()
   }
 
-  /**
-   * Play the previous video in the playlist
-   */
   fun playPrevious() {
     (host as? PlayerActivity)?.playPrevious()
   }
 
-  /**
-   * Get the current media title
-   */
   fun getCurrentMediaTitle(): String = currentMediaTitle
 
-  /**
-   * Add a downloaded subtitle from OpenSubtitles
-   */
-  fun addDownloadedSubtitle(
-    filePath: String,
-    fileName: String,
-  ) {
-    viewModelScope.launch {
-      runCatching {
-        MPVLib.command("sub-add", filePath, "select")
-        _externalSubtitleMetadata.update { it + (filePath to fileName) }
+  // ==================== Utility ====================
 
-        val displayName = if (fileName.length > 30) "${fileName.take(27)}..." else fileName
-        showToast("$displayName added")
-      }.onFailure {
-        showToast("Failed to add subtitle")
-      }
-    }
+  private fun showToast(message: String) {
+    Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
   }
 }
 
+// Extension functions
 fun Float.normalize(
   inMin: Float,
   inMax: Float,
