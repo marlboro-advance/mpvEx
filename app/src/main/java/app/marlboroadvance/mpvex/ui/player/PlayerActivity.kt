@@ -399,16 +399,6 @@ class PlayerActivity :
       return
     }
 
-    // Attempt to enter PiP mode if available and enabled
-    val shouldEnterPip =
-      pipHelper.isPipSupported &&
-        viewModel.paused != true &&
-        playerPreferences.automaticallyEnterPip.get()
-    if (shouldEnterPip) {
-      pipHelper.enterPipMode()
-      return
-    }
-
     // Restore system UI before finishing
     restoreSystemUI()
 
@@ -439,30 +429,7 @@ class PlayerActivity :
    * Initializes the Picture-in-Picture helper.
    */
   private fun setupPipHelper() {
-    pipHelper =
-      MPVPipHelper(
-        activity = this,
-        mpvView = player,
-        autoPipEnabled = playerPreferences.automaticallyEnterPip.get(),
-        onPipModeChanged = { isInPipMode ->
-          if (isInPipMode) {
-            hideAllUIElements()
-          }
-        },
-      )
-  }
-
-  /**
-   * Hides all UI elements (controls, sliders, sheets, panels).
-   * Typically called when entering PiP mode.
-   */
-  private fun hideAllUIElements() {
-    viewModel.hideControls()
-    viewModel.hideSeekBar()
-    viewModel.isBrightnessSliderShown.update { false }
-    viewModel.isVolumeSliderShown.update { false }
-    viewModel.sheetShown.update { Sheets.None }
-    viewModel.panelShown.update { Panels.None }
+    pipHelper = MPVPipHelper(activity = this, mpvView = player)
   }
 
   /**
@@ -729,11 +696,6 @@ class PlayerActivity :
     }
   }
 
-  override fun onUserLeaveHint() {
-    pipHelper.onUserLeaveHint()
-    super.onUserLeaveHint()
-  }
-
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onStart() {
     super.onStart()
@@ -755,9 +717,7 @@ class PlayerActivity :
    * Configures window flags for immersive playback.
    */
   private fun setupWindowFlags() {
-    if (pipHelper.isPipSupported) {
-      pipHelper.updatePictureInPictureParams()
-    }
+    pipHelper.updatePictureInPictureParams()
 
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
@@ -1239,7 +1199,7 @@ class PlayerActivity :
     }
     updateMediaSessionPlaybackState(!isPaused)
     runCatching {
-      if (isInPictureInPictureMode && pipHelper.isPipSupported) {
+      if (isInPictureInPictureMode) {
         pipHelper.updatePictureInPictureParams()
       }
     }.onFailure { /* Silently ignore PiP update failures */ }
@@ -1321,9 +1281,7 @@ class PlayerActivity :
   internal fun onObserverEvent(property: String) {
     when (property) {
       "video-params/aspect" -> {
-        if (pipHelper.isPipSupported) {
-          pipHelper.updatePictureInPictureParams()
-        }
+        pipHelper.updatePictureInPictureParams()
       }
     }
   }
@@ -1721,12 +1679,6 @@ class PlayerActivity :
 
     pipHelper.enterPipMode()
   }
-
-  /**
-   * Indicates whether Picture-in-Picture mode is supported on this device.
-   */
-  val isPipSupported: Boolean
-    get() = pipHelper.isPipSupported
 
   // ==================== Orientation Management ====================
 

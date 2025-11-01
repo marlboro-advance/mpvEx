@@ -37,7 +37,6 @@ class PlayerPreferences(
   val showLoadingCircle = preferenceStore.getBoolean("show_loading_circle", true)
   val savePositionOnQuit = preferenceStore.getBoolean("save_position", true)
 
-  val automaticallyEnterPip = preferenceStore.getBoolean("automatic_pip")
   val automaticBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
   val closeAfterReachingEndOfVideo = preferenceStore.getBoolean("close_after_eof", true)
 

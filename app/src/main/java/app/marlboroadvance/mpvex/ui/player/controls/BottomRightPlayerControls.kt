@@ -56,12 +56,10 @@ fun BottomRightPlayerControls(
         )
       }
 
-      if (activity.isPipSupported) {
-        ControlsButton(
-          Icons.Default.PictureInPictureAlt,
-          onClick = { activity.enterPipModeHidingOverlay() },
-        )
-      }
+      ControlsButton(
+        Icons.Default.PictureInPictureAlt,
+        onClick = { activity.enterPipModeHidingOverlay() },
+      )
       ControlsButton(
         Icons.Default.AspectRatio,
         onClick = {

@@ -78,14 +78,6 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.savePositionOnQuit::set,
             title = { Text(stringResource(R.string.pref_player_save_position_on_quit)) },
           )
-          if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            val enterPiPAutomatically by preferences.automaticallyEnterPip.collectAsState()
-            SwitchPreference(
-              value = enterPiPAutomatically,
-              onValueChange = preferences.automaticallyEnterPip::set,
-              title = { Text(text = stringResource(id = R.string.pref_player_automatically_enter_pip)) },
-            )
-          }
           val closeAfterEndOfVideo by preferences.closeAfterReachingEndOfVideo.collectAsState()
           SwitchPreference(
             value = closeAfterEndOfVideo,
