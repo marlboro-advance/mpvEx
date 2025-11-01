@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -15,10 +16,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.theme.spacing
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ConfirmDialog(
   title: String,
@@ -32,32 +35,47 @@ fun ConfirmDialog(
     modifier = modifier,
   ) {
     Surface(
-      shape = AlertDialogDefaults.shape,
+      shape = MaterialTheme.shapes.extraLarge,
       color = AlertDialogDefaults.containerColor,
       tonalElevation = AlertDialogDefaults.TonalElevation,
     ) {
       Column(
-        modifier = Modifier.padding(MaterialTheme.spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        modifier = Modifier.padding(28.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
       ) {
         Text(
           title,
           style = MaterialTheme.typography.headlineMedium,
+          fontWeight = FontWeight.Bold,
           color = AlertDialogDefaults.titleContentColor,
         )
         Text(
           subtitle,
+          style = MaterialTheme.typography.bodyLarge,
+          fontWeight = FontWeight.Medium,
           color = AlertDialogDefaults.textContentColor,
         )
         Row(
           Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.End,
         ) {
-          TextButton(onCancel) {
-            Text(stringResource(R.string.generic_cancel))
+          TextButton(
+            onCancel,
+            shape = MaterialTheme.shapes.extraLarge,
+          ) {
+            Text(
+              stringResource(R.string.generic_cancel),
+              fontWeight = FontWeight.Medium,
+            )
           }
-          TextButton(onConfirm) {
-            Text(stringResource(R.string.generic_confirm))
+          TextButton(
+            onConfirm,
+            shape = MaterialTheme.shapes.extraLarge,
+          ) {
+            Text(
+              stringResource(R.string.generic_confirm),
+              fontWeight = FontWeight.Bold,
+            )
           }
         }
       }

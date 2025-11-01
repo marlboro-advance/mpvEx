@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RenameDialog(
   isOpen: Boolean,
@@ -69,16 +71,16 @@ fun RenameDialog(
     title = {
       Text(
         text = "Rename $itemType",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
       )
     },
     text = {
       Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
       ) {
         // New name input
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
           OutlinedTextField(
             value = baseName.value,
             onValueChange = {
@@ -90,7 +92,7 @@ fun RenameDialog(
               Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
-            label = { Text("New name") },
+            label = { Text("New name", fontWeight = FontWeight.Medium) },
             singleLine = true,
             isError = isError.value,
             supportingText =
@@ -112,6 +114,7 @@ fun RenameDialog(
               KeyboardActions(
                 onDone = { validateAndConfirm() },
               ),
+            shape = MaterialTheme.shapes.extraLarge,
           )
         }
       }
@@ -124,19 +127,24 @@ fun RenameDialog(
           ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
           ),
+        shape = MaterialTheme.shapes.extraLarge,
       ) {
         Text(
           text = "Rename",
-          fontWeight = FontWeight.SemiBold,
+          fontWeight = FontWeight.Bold,
         )
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
+      TextButton(
+        onClick = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+      ) {
+        Text("Cancel", fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
     tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
   )
 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FileOperationProgressDialog(
   isOpen: Boolean,
@@ -56,14 +57,14 @@ fun FileOperationProgressDialog(
     title = {
       Text(
         text = "$operationName files",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
       )
     },
     text = {
       Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         // Status Messages
         when {
@@ -92,18 +93,19 @@ fun FileOperationProgressDialog(
 
         // Progress Section (only show during operation)
         if (!isOperationComplete) {
-          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+          Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // Current File Info
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
               Text(
                 text = "File ${progress.currentFileIndex} of ${progress.totalFiles}",
                 style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
               Text(
                 text = progress.currentFile,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -127,7 +129,8 @@ fun FileOperationProgressDialog(
               text = "${CopyPasteOps.formatBytes(
                 progress.bytesProcessed,
               )} of ${CopyPasteOps.formatBytes(progress.totalBytes)}",
-              style = MaterialTheme.typography.bodyMedium,
+              style = MaterialTheme.typography.bodyLarge,
+              fontWeight = FontWeight.Medium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.fillMaxWidth(),
             )
@@ -136,7 +139,7 @@ fun FileOperationProgressDialog(
 
         // Summary (when complete)
         if (isOperationComplete) {
-          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SummaryRow(
               label = "Files processed",
               value = "${progress.currentFileIndex} / ${progress.totalFiles}",
@@ -157,24 +160,27 @@ fun FileOperationProgressDialog(
             ButtonDefaults.buttonColors(
               containerColor = MaterialTheme.colorScheme.primary,
             ),
+          shape = MaterialTheme.shapes.extraLarge,
         ) {
-          Text("Done")
+          Text("Done", fontWeight = FontWeight.Bold)
         }
       } else {
         TextButton(
           onClick = onCancel,
+          shape = MaterialTheme.shapes.extraLarge,
         ) {
           Icon(
             imageVector = Icons.Default.Cancel,
             contentDescription = "Cancel",
             modifier = Modifier.padding(end = 4.dp),
           )
-          Text("Cancel")
+          Text("Cancel", fontWeight = FontWeight.Medium)
         }
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
     tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
 }
@@ -196,13 +202,14 @@ fun LoadingDialog(
         modifier =
           Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         Text(
           text = message,
           style = MaterialTheme.typography.bodyLarge,
+          fontWeight = FontWeight.Medium,
           color = MaterialTheme.colorScheme.onSurface,
           textAlign = TextAlign.Center,
         )
@@ -211,6 +218,7 @@ fun LoadingDialog(
     confirmButton = {},
     containerColor = MaterialTheme.colorScheme.surface,
     tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
   )
 }
 
@@ -225,14 +233,14 @@ private fun StatusCard(
       CardDefaults.cardColors(
         containerColor = containerColor,
       ),
-    shape = MaterialTheme.shapes.medium,
+    shape = MaterialTheme.shapes.extraLarge,
   ) {
     Text(
       text = message,
       style = MaterialTheme.typography.bodyLarge,
       color = contentColor,
-      fontWeight = FontWeight.Medium,
-      modifier = Modifier.padding(16.dp),
+      fontWeight = FontWeight.Bold,
+      modifier = Modifier.padding(20.dp),
     )
   }
 }
@@ -243,19 +251,20 @@ private fun ProgressSection(
   label: String,
   progress: Float,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(
         text = label,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Text(
         text = "${(progress * 100).toInt()}%",
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
       )
@@ -292,12 +301,13 @@ private fun SummaryRow(
     Text(
       text = label,
       style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.Medium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
       text = value,
       style = MaterialTheme.typography.bodyLarge,
-      fontWeight = FontWeight.SemiBold,
+      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onSurface,
     )
   }

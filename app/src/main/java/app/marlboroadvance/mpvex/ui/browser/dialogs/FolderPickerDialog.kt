@@ -18,10 +18,15 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,10 +36,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.io.File
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FolderPickerDialog(
   modifier: Modifier = Modifier,
@@ -68,11 +75,16 @@ fun FolderPickerDialog(
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
-      Column {
-        Text(text = "Select Folder")
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+          text = "Select Folder",
+          style = MaterialTheme.typography.headlineMedium,
+          fontWeight = FontWeight.Bold,
+        )
         Text(
           text = selectedPath,
-          style = MaterialTheme.typography.bodySmall,
+          style = MaterialTheme.typography.bodyMedium,
+          fontWeight = FontWeight.Medium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
@@ -81,7 +93,8 @@ fun FolderPickerDialog(
         if (isSameAsSource) {
           Text(
             text = "Cannot select the same folder",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(top = 4.dp),
           )
@@ -91,15 +104,23 @@ fun FolderPickerDialog(
     text = {
       Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         // Navigation buttons
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           if (currentDir.parent != null) {
-            IconButton(onClick = { currentDir.parent?.let { selectedPath = it } }) {
+            FilledTonalIconButton(
+              onClick = { currentDir.parent?.let { selectedPath = it } },
+              colors =
+                IconButtonDefaults.filledTonalIconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+              shape = MaterialTheme.shapes.extraLarge,
+            ) {
               Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
@@ -107,10 +128,16 @@ fun FolderPickerDialog(
             }
           }
 
-          IconButton(
+          FilledTonalIconButton(
             onClick = {
               selectedPath = Environment.getExternalStorageDirectory().absolutePath
             },
+            colors =
+              IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
+            shape = MaterialTheme.shapes.extraLarge,
           ) {
             Icon(
               imageVector = Icons.Default.Home,
@@ -118,7 +145,15 @@ fun FolderPickerDialog(
             )
           }
 
-          IconButton(onClick = { showCreateFolderDialog = true }) {
+          FilledTonalIconButton(
+            onClick = { showCreateFolderDialog = true },
+            colors =
+              IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+            shape = MaterialTheme.shapes.extraLarge,
+          ) {
             Icon(
               imageVector = Icons.Default.CreateNewFolder,
               contentDescription = "Create folder",
@@ -145,7 +180,8 @@ fun FolderPickerDialog(
             item {
               Text(
                 text = "No subfolders",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
               )
@@ -158,15 +194,26 @@ fun FolderPickerDialog(
       Button(
         onClick = { onFolderSelected(selectedPath) },
         enabled = !isSameAsSource,
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+          ),
+        shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Select")
+        Text("Select", fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
+      TextButton(
+        onClick = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+      ) {
+        Text("Cancel", fontWeight = FontWeight.Medium)
       }
     },
+    containerColor = MaterialTheme.colorScheme.surface,
+    tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
 
@@ -193,7 +240,7 @@ private fun FolderItem(
       modifier
         .fillMaxWidth()
         .clickable(onClick = onClick)
-        .padding(12.dp),
+        .padding(horizontal = 12.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -201,17 +248,19 @@ private fun FolderItem(
       imageVector = Icons.Default.Folder,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.primary,
-      modifier = Modifier.size(24.dp),
+      modifier = Modifier.size(28.dp),
     )
     Text(
       text = folder.name,
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.Medium,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
   }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CreateFolderDialog(
   parentPath: String,
@@ -223,24 +272,37 @@ private fun CreateFolderDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Create New Folder") },
+    title = {
+      Text(
+        "Create New Folder",
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+      )
+    },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
           value = folderName,
           onValueChange = {
             folderName = it
             error = null
           },
-          label = { Text("Folder name") },
+          label = { Text("Folder name", fontWeight = FontWeight.Medium) },
           singleLine = true,
           isError = error != null,
           modifier = Modifier.fillMaxWidth(),
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedBorderColor = MaterialTheme.colorScheme.primary,
+              focusedLabelColor = MaterialTheme.colorScheme.primary,
+            ),
+          shape = MaterialTheme.shapes.extraLarge,
         )
         if (error != null) {
           Text(
             text = error!!,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.error,
           )
         }
@@ -271,14 +333,25 @@ private fun CreateFolderDialog(
           }
         },
         enabled = folderName.isNotBlank(),
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+          ),
+        shape = MaterialTheme.shapes.extraLarge,
       ) {
-        Text("Create")
+        Text("Create", fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
+      TextButton(
+        onClick = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+      ) {
+        Text("Cancel", fontWeight = FontWeight.Medium)
       }
     },
+    containerColor = MaterialTheme.colorScheme.surface,
+    tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
   )
 }

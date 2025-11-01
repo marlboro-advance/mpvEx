@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -36,28 +35,27 @@ fun DeleteConfirmationDialog(
     title = {
       Text(
         text = "Delete $itemCount $itemText?",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
       )
     },
     text = {
       Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
         Card(
           colors =
             CardDefaults.cardColors(
               containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
             ),
-          shape = MaterialTheme.shapes.medium,
+          shape = MaterialTheme.shapes.extraLarge,
         ) {
           Text(
             text = "This action cannot be undone. The selected item${if (itemCount == 1) "" else "s"} will be permanently deleted.",
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
-            fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
           )
         }
       }
@@ -73,19 +71,24 @@ fun DeleteConfirmationDialog(
             containerColor = MaterialTheme.colorScheme.error,
             contentColor = MaterialTheme.colorScheme.onError,
           ),
+        shape = MaterialTheme.shapes.extraLarge,
       ) {
         Text(
           text = "Delete",
-          fontWeight = FontWeight.SemiBold,
+          fontWeight = FontWeight.Bold,
         )
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
+      TextButton(
+        onClick = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+      ) {
+        Text("Cancel", fontWeight = FontWeight.Medium)
       }
     },
     containerColor = MaterialTheme.colorScheme.surface,
     tonalElevation = 6.dp,
+    shape = MaterialTheme.shapes.extraLarge,
   )
 }
