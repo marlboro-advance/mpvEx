@@ -440,7 +440,10 @@ class PlayerViewModel(
     isVolumeSliderShown.update { true }
   }
 
-  fun changeVideoAspect(aspect: VideoAspect) {
+  fun changeVideoAspect(
+    aspect: VideoAspect,
+    showUpdate: Boolean = true,
+  ) {
     var ratio = -1.0
     var pan: Double
     when (aspect) {
@@ -465,7 +468,9 @@ class PlayerViewModel(
     MPVLib.setPropertyDouble("panscan", pan)
     MPVLib.setPropertyDouble("video-aspect-override", ratio)
     playerPreferences.videoAspect.set(aspect)
-    playerUpdate.update { PlayerUpdates.AspectRatio }
+    if (showUpdate) {
+      playerUpdate.update { PlayerUpdates.AspectRatio }
+    }
   }
 
   fun setCustomAspectRatio(ratio: Double) {

@@ -25,10 +25,8 @@ import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 
 /**
- * Background playback service that keeps mpv alive when the activity is in background.
- * Uses MediaSession for notification - MediaSession handles all the button callbacks.
+ * Background playback service for mpv with MediaSession integration.
  */
-@Suppress("TooManyFunctions")
 class MediaPlaybackService :
   MediaBrowserServiceCompat(),
   MPVLib.EventObserver {
@@ -37,7 +35,6 @@ class MediaPlaybackService :
     private const val NOTIFICATION_ID = 1
     private const val NOTIFICATION_CHANNEL_ID = "mpvex_playback_channel"
 
-    // Shared thumbnail for MediaSession
     var thumbnail: Bitmap? = null
 
     fun createNotificationChannel(context: Context) {
@@ -53,47 +50,38 @@ class MediaPlaybackService :
           enableVibration(false)
         }
 
-      val notificationManager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-      notificationManager.createNotificationChannel(channel)
+      (context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+        .createNotificationChannel(channel)
     }
   }
 
   private val binder = MediaPlaybackBinder()
+  private lateinit var mediaSession: MediaSessionCompat
 
   private var mediaTitle = ""
   private var mediaArtist = ""
-  private var paused: Boolean = false
-
-  private lateinit var mediaSession: MediaSessionCompat
-
-  init {
-    MPVLib.addObserver(this)
-  }
+  private var paused = false
 
   inner class MediaPlaybackBinder : Binder() {
-    fun getService(): MediaPlaybackService = this@MediaPlaybackService
+    fun getService() = this@MediaPlaybackService
   }
 
-  @SuppressLint("ForegroundServiceType")
   override fun onCreate() {
     super.onCreate()
-
     Log.d(TAG, "Service created")
 
     setupMediaSession()
-
     MPVLib.addObserver(this)
-    mapOf(
-      "pause" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
-      "media-title" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
-      "metadata/artist" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
-    ).onEach {
-      MPVLib.observeProperty(it.key, it.value)
-    }
+
+    // Observe properties
+    MPVLib.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
+    MPVLib.observeProperty("media-title", MPVLib.MpvFormat.MPV_FORMAT_STRING)
+    MPVLib.observeProperty("metadata/artist", MPVLib.MpvFormat.MPV_FORMAT_STRING)
   }
 
   override fun onBind(intent: Intent): IBinder = binder
 
+  @SuppressLint("ForegroundServiceType")
   override fun onStartCommand(
     intent: Intent?,
     flags: Int,
@@ -106,19 +94,15 @@ class MediaPlaybackService :
     mediaArtist = MPVLib.getPropertyString("metadata/artist") ?: ""
     paused = MPVLib.getPropertyBoolean("pause") == true
 
-    // Update MediaSession which will create the notification
-    updateMediaSessionMetadata()
-    updatePlaybackState()
+    updateMediaSession()
 
-    // Start as foreground - MediaSession notification will be used
-    val notification = createMediaStyleNotification()
     val type =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
       } else {
         0
       }
-    ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+    ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
 
     return START_NOT_STICKY
   }
@@ -144,17 +128,84 @@ class MediaPlaybackService :
     MediaPlaybackService.thumbnail = thumbnail
     mediaTitle = title
     mediaArtist = artist
-
-    updateMediaSessionMetadata()
-    updatePlaybackState()
+    updateMediaSession()
   }
 
-  private fun createMediaStyleNotification(): Notification {
+  private fun setupMediaSession() {
+    mediaSession =
+      MediaSessionCompat(this, TAG).apply {
+        setCallback(
+          object : MediaSessionCompat.Callback() {
+            override fun onPlay() = MPVLib.setPropertyBoolean("pause", false)
+
+            override fun onPause() = MPVLib.setPropertyBoolean("pause", true)
+
+            override fun onStop() = stopSelf()
+
+            override fun onSkipToNext() = MPVLib.command("seek", "10", "relative")
+
+            override fun onSkipToPrevious() = MPVLib.command("seek", "-10", "relative")
+
+            override fun onSeekTo(pos: Long) = MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
+          },
+        )
+
+        setFlags(
+          MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
+        )
+        isActive = true
+      }
+    sessionToken = mediaSession.sessionToken
+  }
+
+  private fun updateMediaSession() {
+    try {
+      // Update metadata
+      val duration = MPVLib.getPropertyDouble("duration")?.times(1000)?.toLong() ?: 0L
+      val metadataBuilder =
+        MediaMetadataCompat
+          .Builder()
+          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, mediaTitle)
+          .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, mediaArtist)
+          .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, mediaTitle)
+          .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+
+      thumbnail?.let {
+        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
+        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it)
+      }
+      mediaSession.setMetadata(metadataBuilder.build())
+
+      // Update playback state
+      val position = MPVLib.getPropertyDouble("time-pos")?.times(1000)?.toLong() ?: 0L
+      val state = if (paused) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING
+
+      mediaSession.setPlaybackState(
+        PlaybackStateCompat
+          .Builder()
+          .setActions(
+            PlaybackStateCompat.ACTION_PLAY or
+              PlaybackStateCompat.ACTION_PAUSE or
+              PlaybackStateCompat.ACTION_PLAY_PAUSE or
+              PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+              PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+              PlaybackStateCompat.ACTION_STOP or
+              PlaybackStateCompat.ACTION_SEEK_TO,
+          ).setState(state, position, 1.0f)
+          .build(),
+      )
+    } catch (e: Exception) {
+      Log.e(TAG, "Error updating MediaSession", e)
+    }
+  }
+
+  private fun buildNotification(): Notification {
     val openAppIntent =
       Intent(this, PlayerActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
       }
-    val pendingOpenAppIntent =
+    val pendingIntent =
       PendingIntent.getActivity(
         this,
         0,
@@ -168,7 +219,7 @@ class MediaPlaybackService :
       .setContentText(mediaArtist.ifBlank { getString(R.string.notification_playing) })
       .setSmallIcon(R.drawable.ic_launcher_foreground)
       .setLargeIcon(thumbnail)
-      .setContentIntent(pendingOpenAppIntent)
+      .setContentIntent(pendingIntent)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
       .setOngoing(!paused)
@@ -181,123 +232,22 @@ class MediaPlaybackService :
       .build()
   }
 
-  private fun setupMediaSession() {
-    mediaSession =
-      MediaSessionCompat(this, TAG).apply {
-        setCallback(
-          object : MediaSessionCompat.Callback() {
-            override fun onPlay() {
-              MPVLib.setPropertyBoolean("pause", false)
-            }
-
-            override fun onPause() {
-              MPVLib.setPropertyBoolean("pause", true)
-            }
-
-            override fun onStop() {
-              stopSelf()
-            }
-
-            override fun onSkipToNext() {
-              // Seek forward
-              val seekAmount = 10
-              MPVLib.command("seek", seekAmount.toString(), "relative")
-            }
-
-            override fun onSkipToPrevious() {
-              // Seek backward
-              val seekAmount = -10
-              MPVLib.command("seek", seekAmount.toString(), "relative")
-            }
-
-            override fun onSeekTo(pos: Long) {
-              MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
-            }
-          },
-        )
-
-        setFlags(
-          MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
-        )
-        setSessionToken(sessionToken)
-        isActive = true
-      }
-  }
-
-  private fun getAvailableActions(): Long =
-    PlaybackStateCompat.ACTION_PLAY or
-      PlaybackStateCompat.ACTION_PAUSE or
-      PlaybackStateCompat.ACTION_PLAY_PAUSE or
-      PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-      PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-      PlaybackStateCompat.ACTION_STOP or
-      PlaybackStateCompat.ACTION_SEEK_TO
-
-  private fun updateMediaSessionMetadata() {
-    try {
-      val duration = MPVLib.getPropertyDouble("duration")?.times(1000)?.toLong() ?: 0L
-
-      val metadataBuilder =
-        MediaMetadataCompat
-          .Builder()
-          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, mediaTitle)
-          .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, mediaArtist)
-          .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, mediaTitle)
-          .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-
-      thumbnail?.let {
-        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
-        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it)
-      }
-
-      mediaSession.setMetadata(metadataBuilder.build())
-    } catch (e: Exception) {
-      Log.e(TAG, "Error updating metadata", e)
-    }
-  }
-
-  private fun updatePlaybackState() {
-    try {
-      val position = MPVLib.getPropertyDouble("time-pos")?.times(1000)?.toLong() ?: 0L
-
-      val stateBuilder =
-        PlaybackStateCompat
-          .Builder()
-          .setActions(getAvailableActions())
-          .setState(
-            if (paused) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING,
-            position,
-            1.0f,
-          )
-
-      mediaSession.setPlaybackState(stateBuilder.build())
-    } catch (e: Exception) {
-      Log.e(TAG, "Error updating playback state", e)
-    }
-  }
-
   // ==================== MPV Event Observers ====================
 
-  @Suppress("EmptyFunctionBlock")
-  override fun eventProperty(property: String) {
-  }
+  override fun eventProperty(property: String) {}
 
   override fun eventProperty(
     property: String,
     value: Long,
-  ) {
-  }
+  ) {}
 
   override fun eventProperty(
     property: String,
     value: Boolean,
   ) {
-    when (property) {
-      "pause" -> {
-        paused = value
-        updatePlaybackState()
-      }
+    if (property == "pause") {
+      paused = value
+      updateMediaSession()
     }
   }
 
@@ -306,34 +256,24 @@ class MediaPlaybackService :
     value: String,
   ) {
     when (property) {
-      "media-title" -> {
-        mediaTitle = value
-        updateMediaSessionMetadata()
-      }
-      "metadata/artist" -> {
-        mediaArtist = value
-        updateMediaSessionMetadata()
-      }
+      "media-title" -> mediaTitle = value
+      "metadata/artist" -> mediaArtist = value
     }
+    updateMediaSession()
   }
 
-  @Suppress("EmptyFunctionBlock")
   override fun eventProperty(
     property: String,
     value: Double,
-  ) {
-  }
+  ) {}
 
   override fun eventProperty(
     property: String,
     value: MPVNode,
-  ) {
-  }
+  ) {}
 
   override fun event(eventId: Int) {
-    if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) {
-      stopSelf()
-    }
+    if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) stopSelf()
   }
 
   override fun onDestroy() {
@@ -343,7 +283,6 @@ class MediaPlaybackService :
       MPVLib.removeObserver(this)
       mediaSession.isActive = false
       mediaSession.release()
-
       super.onDestroy()
     } catch (e: Exception) {
       Log.e(TAG, "Error in onDestroy", e)

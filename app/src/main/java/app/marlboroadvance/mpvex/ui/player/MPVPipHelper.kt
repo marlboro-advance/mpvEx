@@ -74,24 +74,25 @@ class MPVPipHelper(
   fun updatePictureInPictureParams() {
     if (activity.isFinishing || activity.isDestroyed) return
 
-    val params =
-      PictureInPictureParams
-        .Builder()
-        .apply {
-          getVideoAspectRatio()?.let { aspectRatio ->
-            setAspectRatio(aspectRatio)
-            setSourceRectHint(calculateSourceRect(aspectRatio))
-          }
-
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            setAutoEnterEnabled(false)
-          }
-
-          setActions(createPipActions())
-        }.build()
-
+    val params = buildPipParams()
     runCatching { activity.setPictureInPictureParams(params) }
   }
+
+  private fun buildPipParams(): PictureInPictureParams =
+    PictureInPictureParams
+      .Builder()
+      .apply {
+        getVideoAspectRatio()?.let { aspectRatio ->
+          setAspectRatio(aspectRatio)
+          setSourceRectHint(calculateSourceRect(aspectRatio))
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          setAutoEnterEnabled(false)
+        }
+
+        setActions(createPipActions())
+      }.build()
 
   private fun getVideoAspectRatio(): Rational? {
     val width = MPVLib.getPropertyInt("video-out-params/dw") ?: 0
@@ -99,9 +100,7 @@ class MPVPipHelper(
 
     if (width == 0 || height == 0) return null
 
-    return Rational(width, height).takeIf {
-      it.toFloat() in 0.5f..2.39f
-    }
+    return Rational(width, height).takeIf { it.toFloat() in 0.5f..2.39f }
   }
 
   private fun calculateSourceRect(aspectRatio: Rational): Rect {
@@ -166,14 +165,7 @@ class MPVPipHelper(
 
   fun enterPipMode() {
     runCatching {
-      activity.enterPictureInPictureMode(
-        PictureInPictureParams
-          .Builder()
-          .apply {
-            getVideoAspectRatio()?.let { setAspectRatio(it) }
-            setActions(createPipActions())
-          }.build(),
-      )
+      activity.enterPictureInPictureMode(buildPipParams())
     }.onFailure {
       Log.e("MPVPipHelper", "Failed to enter PiP mode", it)
     }

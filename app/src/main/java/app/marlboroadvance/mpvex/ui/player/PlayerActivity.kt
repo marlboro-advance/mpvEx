@@ -158,27 +158,10 @@ class PlayerActivity :
    */
   private lateinit var pipHelper: MPVPipHelper
 
-  /**
-   * Tracks whether system UI has been restored to prevent multiple restoration attempts.
-   */
-  private var systemUIRestored = false
-
-  /**
-   * Tracks whether the noisy audio receiver is currently registered.
-   */
+  private var isReady = false // Single flag: true when video loaded and ready
+  private var isUserFinishing = false
   private var noisyReceiverRegistered = false
-
-  /**
-   * Guard flag to prevent operations during initialization that could cause crashes.
-   * Set to true during onCreate, set to false when video loads.
-   */
-  private var isInitializing = false
-
-  /**
-   * Tracks whether video has been loaded successfully.
-   * Used to prevent operations before playback is ready.
-   */
-  private var hasVideoLoaded = false
+  private var mpvInitialized = false // Track MPV initialization state
 
   // ==================== Background Playback ====================
 
@@ -191,12 +174,6 @@ class PlayerActivity :
    * Tracks whether we're currently bound to the background playback service.
    */
   private var serviceBound = false
-
-  /**
-   * Tracks if user explicitly wants to exit (e.g., via back button).
-   * When true, background playback service will be stopped.
-   */
-  private var isUserFinishing = false
 
   // ==================== MediaSession ====================
 
@@ -239,7 +216,8 @@ class PlayerActivity :
         intent: Intent?,
       ) {
         if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-          pausePlayback()
+          viewModel.pause()
+          window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
       }
     }
@@ -289,11 +267,6 @@ class PlayerActivity :
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
 
-    // Prevent operations during initialization
-    isInitializing = true
-    hasVideoLoaded = false
-
-    // Initialize components
     setupMPV()
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
@@ -302,63 +275,37 @@ class PlayerActivity :
     setupPipHelper()
     setupMediaSession()
 
-    // Extract playlist info from intent
     playlist = intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     playlistIndex = intent.getIntExtra("playlist_index", 0)
 
-    // Start playback
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
-    // Configure display cutout handling for devices with notches
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
-  /**
-   * Enforces a default font scale to maintain consistent UI across different system settings.
-   *
-   * @param newBase The new base context
-   */
   override fun attachBaseContext(newBase: Context?) {
     if (newBase == null) {
       super.attachBaseContext(null)
       return
     }
 
-    val contextWithDefaultFontScale = enforceDefaultFontScale(newBase)
-    super.attachBaseContext(contextWithDefaultFontScale)
-  }
-
-  /**
-   * Creates a context with default font scale to prevent UI layout issues.
-   *
-   * @param baseContext The original context
-   * @return Context with enforced font scale of 1.0
-   */
-  private fun enforceDefaultFontScale(baseContext: Context): Context {
-    val originalConfiguration = baseContext.resources.configuration
-    if (originalConfiguration.fontScale == 1f) {
-      return baseContext
-    }
-
-    val updatedConfiguration =
-      Configuration(originalConfiguration).apply {
-        fontScale = 1f
+    val originalConfiguration = newBase.resources.configuration
+    val contextToUse =
+      if (originalConfiguration.fontScale == 1f) {
+        newBase
+      } else {
+        val updatedConfiguration = Configuration(originalConfiguration).apply { fontScale = 1f }
+        val configurationContext = newBase.createConfigurationContext(updatedConfiguration)
+        val configurationDisplayMetrics = configurationContext.resources.displayMetrics
+        configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * configurationDisplayMetrics.density
+        configurationContext
       }
 
-    val configurationContext = baseContext.createConfigurationContext(updatedConfiguration)
-    val configurationResources = configurationContext.resources
-    val configurationDisplayMetrics = configurationResources.displayMetrics
-    val density = configurationDisplayMetrics.density
-    configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * density
-
-    return configurationContext
+    super.attachBaseContext(contextToUse)
   }
 
-  /**
-   * Sets up the back press handler to manage navigation and cleanup.
-   */
   private fun setupBackPressHandler() {
     onBackPressedDispatcher.addCallback(
       this,
@@ -373,42 +320,28 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
-    // Allow exit during initialization if video hasn't loaded yet
-    if (isInitializing && !hasVideoLoaded) {
-      finishSafely()
-      return
-    }
-
-    // Dismiss overlays first (sheets)
+    // Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
       viewModel.sheetShown.update { Sheets.None }
       viewModel.showControls()
       return
     }
 
-    // Dismiss panels
     if (viewModel.panelShown.value != Panels.None) {
       viewModel.panelShown.update { Panels.None }
       viewModel.showControls()
       return
     }
 
-    // Show controls if hidden
     if (!viewModel.controlsShown.value) {
       viewModel.showControls()
       return
     }
 
-    // Restore system UI before finishing
-    restoreSystemUI()
-
     isUserFinishing = true
-    finishSafely()
+    finish()
   }
 
-  /**
-   * Initializes the Compose-based player controls UI.
-   */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
@@ -417,7 +350,7 @@ class PlayerActivity :
           viewModel = viewModel,
           onBackPress = {
             isUserFinishing = true
-            finishSafely()
+            finish()
           },
           modifier = Modifier,
         )
@@ -432,15 +365,11 @@ class PlayerActivity :
     pipHelper = MPVPipHelper(activity = this, mpvView = player)
   }
 
-  /**
-   * Configures audio settings and requests audio focus.
-   * Audio focus is only requested if not bound to background service.
-   */
   private fun setupAudio() {
     audioPreferences.audioChannels.get().let {
       MPVLib.setPropertyString(it.property, it.value)
     }
-    // Only request focus if background service is not bound
+
     if (!serviceBound) {
       audioFocusRequest =
         AudioFocusRequest
@@ -497,32 +426,19 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
-    Log.d(TAG, "PlayerActivity onDestroy - isUserFinishing: $isUserFinishing")
+    Log.d(TAG, "PlayerActivity onDestroy")
 
     runCatching {
-      // Stop background service if user explicitly finished
       if (isUserFinishing || isFinishing) {
         if (serviceBound) {
-          try {
-            unbindService(serviceConnection)
-          } catch (e: Exception) {
-            Log.e(TAG, "Error unbinding service in onDestroy", e)
-          }
+          runCatching { unbindService(serviceConnection) }
           serviceBound = false
         }
         stopService(Intent(this, MediaPlaybackService::class.java))
         mediaPlaybackService = null
       }
 
-      // Restore system UI at the start of cleanup
-      if (isFinishing && !systemUIRestored) {
-        restoreSystemUI()
-      }
-
-      // Mark as not initializing to prevent further operations
-      isInitializing = false
-      hasVideoLoaded = false
-
+      isReady = false
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
@@ -534,88 +450,58 @@ class PlayerActivity :
     super.onDestroy()
   }
 
-  /**
-   * Cleans up MPV resources.
-   * Must be done on a background thread to avoid blocking the main thread.
-   */
   private fun cleanupMPV() {
+    if (!mpvInitialized) return
+
     player.isExiting = true
 
-    if (!isFinishing) {
-      return
+    if (!isFinishing) return
+
+    // Cleanup on main thread - it's fast enough and safer
+    runCatching {
+      MPVLib.removeObserver(playerObserver)
+      if (isReady) {
+        MPVLib.command("quit")
+      }
+      MPVLib.destroy()
+      mpvInitialized = false
+    }.onFailure { e ->
+      Log.e(TAG, "Error cleaning up MPV", e)
     }
-
-    // Cleanup MPV on background thread to prevent blocking
-    Thread {
-      try {
-        if (hasVideoLoaded) {
-          MPVLib.setPropertyString("pause", "yes")
-        }
-      } catch (_: Throwable) {
-        // MPV may already be destroyed
-      }
-      try {
-        if (hasVideoLoaded) {
-          MPVLib.command("quit")
-        }
-      } catch (e: Throwable) {
-        Log.e(TAG, "Error quitting MPV", e)
-      }
-      try {
-        MPVLib.removeObserver(playerObserver)
-      } catch (e: Throwable) {
-        Log.e(TAG, "Error removing MPV observer", e)
-      }
-      try {
-        MPVLib.destroy()
-      } catch (e: Throwable) {
-        Log.e(TAG, "Error destroying MPV", e)
-      }
-    }.start()
   }
 
-  /**
-   * Cleans up audio focus resources.
-   */
   private fun cleanupAudio() {
-    abandonAudioFocusIfHeld()
+    if (restoreAudioFocus != {}) {
+      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+      restoreAudioFocus = {}
+    }
   }
 
-  /**
-   * Unregisters broadcast receivers.
-   */
   private fun cleanupReceivers() {
     if (noisyReceiverRegistered) {
       runCatching {
         unregisterReceiver(noisyReceiver)
         noisyReceiverRegistered = false
-      }.onFailure { e ->
-        Log.e(TAG, "Error unregistering noisy receiver", e)
       }
     }
   }
 
-  /**
-   * Called when activity is paused.
-   * Pauses playback (unless in PiP or background playback enabled) and saves state.
-   */
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
-
-      // Only pause if not in background playback mode or user is finishing
       val shouldPause = !playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing
+
       if (!isInPip && shouldPause) {
         viewModel.pause()
       }
 
-      saveVideoPlaybackState(fileName)
-
-      // Restore UI if finishing and not in PiP
-      if (isFinishing && !isInPip && !systemUIRestored) {
+      // Restore UI immediately when user is finishing for instant feedback
+      if (isUserFinishing && !isInPip) {
         restoreSystemUI()
       }
+
+      saveVideoPlaybackState(fileName)
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -623,21 +509,14 @@ class PlayerActivity :
     super.onPause()
   }
 
-  /**
-   * Called when activity is finishing.
-   * Restores system UI and sets return intent with playback position.
-   */
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
-      // Restore UI if not already restored
-      if (!systemUIRestored) {
+      // Restore UI immediately for responsive exit
+      if (!isInPictureInPictureMode) {
         restoreSystemUI()
       }
-
-      isInitializing = false
-      hasVideoLoaded = false
-
+      isReady = false
       setReturnIntent()
     }.onFailure { e ->
       Log.e(TAG, "Error during finish", e)
@@ -646,31 +525,25 @@ class PlayerActivity :
     super.finish()
   }
 
-  /**
-   * Called when activity is stopped.
-   * Manages background playback service and saves state.
-   */
   override fun onStop() {
     runCatching {
       pipHelper.onStop()
       saveVideoPlaybackState(fileName)
-      unregisterNoisyReceiver()
 
-      // Start background playback if enabled, not already bound, and not user finishing
+      if (noisyReceiverRegistered) {
+        unregisterReceiver(noisyReceiver)
+        noisyReceiverRegistered = false
+      }
+
       if (!serviceBound && playerPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
         startBackgroundPlayback()
       } else {
-        // Only pause if NOT background playback and not resuming
         if (!playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
           viewModel.pause()
         }
         if (serviceBound) {
-          try {
+          runCatching {
             unbindService(serviceConnection)
-            serviceBound = false
-          } catch (e: IllegalArgumentException) {
-            // Service was not registered
-            Log.w(TAG, "Service was not bound when trying to unbind", e)
             serviceBound = false
           }
         }
@@ -682,29 +555,27 @@ class PlayerActivity :
     super.onStop()
   }
 
-  /**
-   * Unregisters the noisy audio receiver if it's currently registered.
-   */
-  private fun unregisterNoisyReceiver() {
-    if (noisyReceiverRegistered) {
-      runCatching {
-        unregisterReceiver(noisyReceiver)
-        noisyReceiverRegistered = false
-      }.onFailure { e ->
-        Log.e(TAG, "Error unregistering noisy receiver in onStop", e)
-      }
-    }
-  }
-
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onStart() {
     super.onStart()
+
     runCatching {
       setupWindowFlags()
       setupSystemUI()
-      registerNoisyReceiver()
-      restoreBrightness()
-      // End background playback if service is bound
+
+      if (!noisyReceiverRegistered) {
+        val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+        registerReceiver(noisyReceiver, filter)
+        noisyReceiverRegistered = true
+      }
+
+      if (playerPreferences.rememberBrightness.get()) {
+        val brightness = playerPreferences.defaultBrightness.get()
+        if (brightness != BRIGHTNESS_NOT_SET) {
+          viewModel.changeBrightnessTo(brightness)
+        }
+      }
+
       if (serviceBound) {
         endBackgroundPlayback()
       }
@@ -713,12 +584,8 @@ class PlayerActivity :
     }
   }
 
-  /**
-   * Configures window flags for immersive playback.
-   */
   private fun setupWindowFlags() {
     pipHelper.updatePictureInPictureParams()
-
     WindowCompat.setDecorFitsSystemWindows(window, false)
     window.setFlags(
       WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -730,7 +597,6 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
-    // Deprecated flags that still work better than the "modern" API
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
@@ -738,123 +604,88 @@ class PlayerActivity :
       View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
       View.SYSTEM_UI_FLAG_LOW_PROFILE
 
-    // Also use new API because Android fragmentation is fun
-    windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-    windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    windowInsetsController.systemBarsBehavior =
-      WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-  }
 
-  private fun restoreBrightness() {
-    if (playerPreferences.rememberBrightness.get()) {
-      val brightness = playerPreferences.defaultBrightness.get()
-      if (brightness != BRIGHTNESS_NOT_SET) {
-        viewModel.changeBrightnessTo(brightness)
-      }
+    windowInsetsController.apply {
+      hide(WindowInsetsCompat.Type.systemBars())
+      hide(WindowInsetsCompat.Type.navigationBars())
+      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
   }
 
-  private fun registerNoisyReceiver() {
-    if (!noisyReceiverRegistered) {
-      val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-      registerReceiver(noisyReceiver, filter)
-      noisyReceiverRegistered = true
-    }
-  }
-
-  private fun pausePlayback() {
-    viewModel.pause()
+  @RequiresApi(Build.VERSION_CODES.P)
+  private fun restoreSystemUI() {
+    // Clear flags first for immediate effect
+    window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-  }
 
-  /**
-   * Copies MPV assets to the app's storage.
-   *
-   * This method is responsible for copying the necessary MPV assets,
-   * including fonts, scripts, and configuration files, to the app's
-   * storage directory. This is done asynchronously on app startup.
-   */
-  private fun copyMPVAssets() {
-    lifecycleScope.launch(Dispatchers.IO) {
-      runCatching {
-        val fontsPath = filesDir.path
-        val destDir = ensureFontsDirectory(fontsPath)
-        copyDefaultSubfont(fontsPath, destDir)
+    // Set cutout mode before showing bars for smoother transition
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
 
-        Utils.copyAssets(this@PlayerActivity)
-        copyMPVScripts()
-        copyMPVConfigFiles()
-        copyMPVFonts()
-      }.onFailure { e ->
-        Log.e(TAG, "Error copying MPV assets in background", e)
-      }
+    // Update window insets configuration
+    WindowCompat.setDecorFitsSystemWindows(window, true)
+
+    // Restore default behavior and show bars in one go
+    windowInsetsController.apply {
+      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+      show(WindowInsetsCompat.Type.systemBars())
+      show(WindowInsetsCompat.Type.navigationBars())
     }
   }
 
   /**
    * Initializes the MPV player with the necessary paths and observers.
-   *
-   * This method sets up the MPV player by providing it with the
-   * necessary paths and observers. It also copies the MPV assets
-   * to the app's storage directory.
+   * Fast synchronous initialization - assets are copied asynchronously.
    */
   private fun setupMPV() {
-    copyMPVAssets()
+    // Initialize player first (this is fast)
     player.initialize(filesDir.path, cacheDir.path)
-    MPVLib.addObserver(playerObserver)
-  }
+    mpvInitialized = true
 
-  /**
-   * Copies or creates the MPV configuration files.
-   *
-   * This method copies or creates the necessary MPV configuration
-   * files, including mpv.conf and input.conf, to the app's storage
-   * directory.
-   */
-  private fun copyMPVConfigFiles() {
-    val applicationPath = filesDir.path
-    runCatching {
-      createDefaultConfigFiles(applicationPath)
-    }.onFailure { e ->
-      Log.e(TAG, "Error ensuring config files exist: ${e.message}")
+    // Add observer after initialization
+    MPVLib.addObserver(playerObserver)
+
+    // Copy assets asynchronously (non-blocking)
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        Utils.copyAssets(this@PlayerActivity)
+        copyMPVConfigFiles()
+        copyMPVScripts()
+        copyMPVFonts()
+      }.onFailure { e ->
+        Log.e(TAG, "Error copying MPV assets", e)
+      }
     }
   }
 
   /**
-   * Creates default MPV configuration files with user preferences.
-   *
-   * @param applicationPath Path to the application's file directory
+   * Copies or creates the MPV configuration files.
    */
-  private fun createDefaultConfigFiles(applicationPath: String) {
+  private fun copyMPVConfigFiles() {
+    val applicationPath = filesDir.path
     runCatching {
-      val mpvConfFile = File("$applicationPath/mpv.conf")
-      if (!mpvConfFile.exists()) {
-        mpvConfFile.createNewFile()
-      }
-      val mpvConfContent = advancedPreferences.mpvConf.get()
-      if (mpvConfContent.isNotBlank()) {
-        mpvConfFile.writeText(mpvConfContent)
+      // Create mpv.conf
+      File("$applicationPath/mpv.conf").apply {
+        if (!exists()) createNewFile()
+        val content = advancedPreferences.mpvConf.get()
+        if (content.isNotBlank()) writeText(content)
       }
 
-      val inputConfFile = File("$applicationPath/input.conf")
-      if (!inputConfFile.exists()) {
-        inputConfFile.createNewFile()
-      }
-      val inputConfContent = advancedPreferences.inputConf.get()
-      if (inputConfContent.isNotBlank()) {
-        inputConfFile.writeText(inputConfContent)
+      // Create input.conf
+      File("$applicationPath/input.conf").apply {
+        if (!exists()) createNewFile()
+        val content = advancedPreferences.inputConf.get()
+        if (content.isNotBlank()) writeText(content)
       }
     }.onFailure { e ->
-      Log.e(TAG, "Error creating default config files", e)
+      Log.e(TAG, "Error creating config files", e)
     }
   }
 
   private fun copyMPVScripts() {
     runCatching {
-      val mpvexLua = assets.open("mpvex.lua")
       val applicationPath = filesDir.path
       val scriptsDir =
         fileManager.createDir(
@@ -864,10 +695,12 @@ class PlayerActivity :
 
       fileManager.deleteContent(scriptsDir)
 
-      File("$scriptsDir/mpvex.lua")
-        .apply {
+      assets.open("mpvex.lua").use { input ->
+        File("$scriptsDir/mpvex.lua").apply {
           if (!exists()) createNewFile()
-        }.writeText(mpvexLua.bufferedReader().readText())
+          writeText(input.bufferedReader().readText())
+        }
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error copying MPV scripts", e)
     }
@@ -876,21 +709,17 @@ class PlayerActivity :
   private fun copyMPVFonts() {
     runCatching {
       val persistentPath = filesDir.path
-      val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
-      val fontsDir =
-        fileManager.fromUri(fontsFolderUri)
-          ?: return@runCatching
-
-      if (!fileManager.exists(fontsDir)) {
-        return@runCatching
-      }
-
       val destDir = ensureFontsDirectory(persistentPath)
       copyDefaultSubfont(persistentPath, destDir)
 
-      fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
+      val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
+      val fontsDir = fileManager.fromUri(fontsFolderUri) ?: return@runCatching
+
+      if (fileManager.exists(fontsDir)) {
+        fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
+      }
     }.onFailure { e ->
-      Log.e(TAG, "Couldn't copy fonts to application directory: ${e.message}")
+      Log.e(TAG, "Error copying fonts: ${e.message}")
     }
   }
 
@@ -1134,7 +963,7 @@ class PlayerActivity :
    */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    if (!isInitializing && hasVideoLoaded) {
+    if (isReady) {
       handleConfigurationChange()
     }
   }
@@ -1144,7 +973,7 @@ class PlayerActivity :
    */
   private fun handleConfigurationChange() {
     if (!isInPictureInPictureMode) {
-      viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
+      viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     } else {
       viewModel.hideControls()
     }
@@ -1297,15 +1126,13 @@ class PlayerActivity :
     when (eventId) {
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
         handleFileLoaded()
-        isInitializing = false
-        hasVideoLoaded = true
+        isReady = true
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
         player.isExiting = false
-        if (!hasVideoLoaded) {
-          isInitializing = false
-          hasVideoLoaded = true
+        if (!isReady) {
+          isReady = true
         }
       }
     }
@@ -1341,7 +1168,7 @@ class PlayerActivity :
     }
 
     setOrientation()
-    viewModel.changeVideoAspect(playerPreferences.videoAspect.get())
+    viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
 
     val zoomPreference = playerPreferences.defaultVideoZoom.get()
@@ -1639,9 +1466,10 @@ class PlayerActivity :
   private fun enterPipUIMode() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     WindowCompat.setDecorFitsSystemWindows(window, true)
-    windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-    windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-    windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+    windowInsetsController.apply {
+      show(WindowInsetsCompat.Type.systemBars())
+      show(WindowInsetsCompat.Type.navigationBars())
+    }
   }
 
   /**
@@ -1650,19 +1478,8 @@ class PlayerActivity :
    */
   @RequiresApi(Build.VERSION_CODES.P)
   private fun exitPipUIMode() {
-    WindowCompat.setDecorFitsSystemWindows(window, false)
-    window.setFlags(
-      WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-      WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-    )
-    windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-    windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
-    windowInsetsController.systemBarsBehavior =
-      WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    setupWindowFlags()
+    setupSystemUI()
   }
 
   /**
@@ -1831,32 +1648,6 @@ class PlayerActivity :
    * Restores system UI to normal state (shows status and navigation bars).
    * Called when finishing the activity to return to normal Android UI.
    */
-  @RequiresApi(Build.VERSION_CODES.P)
-  private fun restoreSystemUI() {
-    if (systemUIRestored || isFinishing || isDestroyed) {
-      systemUIRestored = true
-      return
-    }
-
-    runCatching {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-      windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-      windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
-      windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-
-      WindowCompat.setDecorFitsSystemWindows(window, true)
-
-      window.attributes.layoutInDisplayCutoutMode =
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-
-      systemUIRestored = true
-    }.onFailure { e ->
-      Log.e(TAG, "Error restoring system UI", e)
-      systemUIRestored = true
-    }
-  }
 
   // ==================== MediaSession ====================
 
@@ -1996,7 +1787,7 @@ class PlayerActivity :
    * handles background playback.
    */
   private fun startBackgroundPlayback() {
-    if (fileName.isBlank() || !hasVideoLoaded) return
+    if (fileName.isBlank() || !isReady) return
 
     Log.d(TAG, "Starting background playback")
     val intent = Intent(this, MediaPlaybackService::class.java)
@@ -2214,48 +2005,5 @@ class PlayerActivity :
      * General tag for logging from PlayerActivity.
      */
     const val TAG = "mpvex"
-  }
-
-  /**
-   * Safely finishes the activity with proper cleanup.
-   *
-   * Handles rapid back presses, initialization states, and ensures:
-   * - System UI is restored
-   * - Background playback service is stopped if user is finishing
-   * - Return intent is set with playback data
-   * - All flags are reset
-   *
-   * Multiple guards and try-catch blocks prevent crashes during edge cases.
-   */
-  @RequiresApi(Build.VERSION_CODES.P)
-  private fun finishSafely() {
-    runCatching {
-      if (isFinishing) return
-
-      if (!systemUIRestored) {
-        restoreSystemUI()
-      }
-
-      isInitializing = false
-      hasVideoLoaded = false
-
-      if (isUserFinishing) {
-        endBackgroundPlayback()
-      }
-
-      setReturnIntent()
-      finish()
-    }.onFailure { e ->
-      Log.e(TAG, "Error during finishSafely", e)
-      // Attempt basic cleanup even if error occurred
-      try {
-        if (!systemUIRestored) {
-          restoreSystemUI()
-        }
-        finish()
-      } catch (e2: Exception) {
-        Log.e(TAG, "Critical error: could not finish activity", e2)
-      }
-    }
   }
 }
