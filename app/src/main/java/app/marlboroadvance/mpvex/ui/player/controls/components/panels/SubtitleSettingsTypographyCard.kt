@@ -70,7 +70,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   val preferences = koinInject<SubtitlesPreferences>()
   val fileManager = koinInject<FileManager>()
   var isExpanded by remember { mutableStateOf(true) }
-  val fonts by remember { mutableStateOf(mutableListOf(preferences.font.defaultValue())) }
+  val fonts by remember { mutableStateOf(mutableListOf<String>()) }
   var fontsLoadingIndicator: (@Composable () -> Unit)? by remember {
     val indicator: (@Composable () -> Unit) = {
       CircularProgressIndicator(Modifier.size(32.dp))

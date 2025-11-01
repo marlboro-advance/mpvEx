@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,7 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
@@ -76,6 +80,7 @@ data class VideoListScreen(
     val coroutineScope = rememberCoroutineScope()
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     // ViewModel
     val viewModel: VideoListViewModel =
@@ -137,6 +142,20 @@ data class VideoListScreen(
     // Predictive back: Only intercept when in selection mode
     BackHandler(enabled = selectionManager.isInSelectionMode) {
       selectionManager.clear()
+    }
+
+    // Listen for lifecycle resume events and refresh videos when coming into focus
+    DisposableEffect(lifecycleOwner) {
+      val observer =
+        LifecycleEventObserver { _, event ->
+          if (event == Lifecycle.Event.ON_RESUME) {
+            viewModel.refresh()
+          }
+        }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      onDispose {
+        lifecycleOwner.lifecycle.removeObserver(observer)
+      }
     }
 
     Scaffold(

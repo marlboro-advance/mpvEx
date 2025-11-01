@@ -196,11 +196,21 @@ object SubtitlesPreferencesScreen : Screen {
               }
             },
             textField = { value, onValueChange, _ ->
-              Column {
-                Text("Get your free API key from subdl")
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+              ) {
+                Text(
+                  text = "Get your free API key from subdl",
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 TextField(
-                  value,
-                  onValueChange,
+                  value = value,
+                  onValueChange = onValueChange,
                   modifier = Modifier.fillMaxWidth(),
                   placeholder = { Text("Enter API key") },
                   singleLine = true,

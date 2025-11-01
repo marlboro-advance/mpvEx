@@ -63,16 +63,15 @@ class VideoListViewModel(
       try {
         _isLoading.value = true
 
-        // Trigger media scan for the directory if no videos found
-        // This helps when MediaStore is out of sync
+        // First attempt to load videos
         val videoList = VideoRepository.getVideosInFolder(getApplication(), bucketId)
 
         if (videoList.isEmpty()) {
-          Log.d(tag, "No videos found for bucket $bucketId - MediaStore might be out of sync")
+          Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
           // Trigger a media scan to refresh MediaStore
           triggerMediaScan()
-          // Try loading again after a short delay
-          delay(500)
+          // Wait longer for MediaStore to update
+          delay(1000)
           val retryVideoList = VideoRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
@@ -119,19 +118,23 @@ class VideoListViewModel(
 
   private fun triggerMediaScan() {
     try {
-      // Trigger a media scan for all video directories
-      android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+      // Trigger a comprehensive media scan
+      val externalStorage = android.os.Environment.getExternalStorageDirectory()
+
       android.media.MediaScannerConnection.scanFile(
         getApplication(),
-        arrayOf(
-          android.os.Environment
-            .getExternalStorageDirectory()
-            .absolutePath,
-        ),
-        null,
+        arrayOf(externalStorage.absolutePath),
+        arrayOf("video/*"),
       ) { path, uri ->
-        Log.d(tag, "Media scan completed for: $path")
+        Log.d(tag, "Media scan completed for: $path -> $uri")
       }
+
+      // Also broadcast a media scan intent as a fallback
+      val scanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+      scanIntent.data = android.net.Uri.fromFile(externalStorage)
+      getApplication<Application>().sendBroadcast(scanIntent)
+
+      Log.d(tag, "Triggered media scan for: ${externalStorage.absolutePath}")
     } catch (e: Exception) {
       Log.e(tag, "Failed to trigger media scan", e)
     }

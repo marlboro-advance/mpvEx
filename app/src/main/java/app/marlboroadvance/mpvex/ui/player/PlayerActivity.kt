@@ -710,7 +710,6 @@ class PlayerActivity :
     runCatching {
       val persistentPath = filesDir.path
       val destDir = ensureFontsDirectory(persistentPath)
-      copyDefaultSubfont(persistentPath, destDir)
 
       val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
       val fontsDir = fileManager.fromUri(fontsFolderUri) ?: return@runCatching
@@ -729,23 +728,6 @@ class PlayerActivity :
       fileManager.createDir(fileManager.fromPath(basePath), "fonts")
     }
     return destDir
-  }
-
-  private fun copyDefaultSubfont(
-    basePath: String,
-    destDir: com.github.k1rakishou.fsaf.file.AbstractFile,
-  ) {
-    if (fileManager.findFile(destDir, "subfont.ttf") == null) {
-      resources.assets
-        .open("subfont.ttf")
-        .use { input ->
-          File("$basePath/fonts/subfont.ttf")
-            .outputStream()
-            .use { output ->
-              input.copyTo(output)
-            }
-        }
-    }
   }
 
   override fun onResume() {

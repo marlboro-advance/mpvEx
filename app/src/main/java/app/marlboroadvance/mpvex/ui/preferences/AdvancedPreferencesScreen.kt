@@ -340,12 +340,11 @@ object AdvancedPreferencesScreen : Screen {
                 val fontsDir = File(context.filesDir.path + "/fonts")
                 if (fontsDir.exists()) {
                   fontsDir.listFiles()?.forEach { file ->
-                    // Delete all font files but keep the default subfont.ttf
+                    // Delete all font files
                     if (file.isFile &&
                       file.name
                         .lowercase()
-                        .matches(".*\\.[ot]tf$".toRegex()) &&
-                      file.name != "subfont.ttf"
+                        .matches(".*\\.[ot]tf$".toRegex())
                     ) {
                       file.delete()
                     }
