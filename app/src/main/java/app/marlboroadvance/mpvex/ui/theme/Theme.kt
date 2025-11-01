@@ -370,7 +370,7 @@ fun MpvexTheme(content: @Composable () -> Unit) {
       colorScheme = colorScheme,
       typography = AppTypography,
       content = content,
-      motionScheme = MotionScheme.expressive()
+      motionScheme = MotionScheme.expressive(),
     )
   }
 }
