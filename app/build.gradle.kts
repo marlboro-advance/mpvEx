@@ -157,7 +157,7 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
-  implementation(libs.mwdiainfo.lib)
+  implementation(libs.mediainfo.lib)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD")
