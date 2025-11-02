@@ -1,4 +1,11 @@
 # mpvExtended
+
+> ⚠️ **Development Halted**  
+> Development of **mpvExtended** is currently on hold until further notice due to personal reasons and lack of time to maintain the project.  
+> hence no new updates are planned at the moment.
+
+---
+
 A media player for Android based on [mpv-android](https://github.com/mpv-android/mpv-android) and [mpvKt](https://github.com/abdallahmehiz/mpvKt) aiming to provide a **nicer** user interface and additional features over the original
 
 ---
