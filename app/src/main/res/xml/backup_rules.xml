@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude all SharedPreferences from Auto Backup to avoid restoring app settings after reinstall -->
+    <exclude
+        domain="sharedpref"
+        path="." />
+</full-backup-content>

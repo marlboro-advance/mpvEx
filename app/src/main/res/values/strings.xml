@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name" translatable="false">mpvEx</string>
+
+    <string name="generic_reset">Reset</string>
+    <string name="generic_share">Share</string>
+    <string name="generic_confirm">Confirm</string>
+    <string name="generic_cancel">Cancel</string>
+    <string name="generic_ok">OK</string>
+    <string name="generic_unit_ms">ms</string>
+    <string name="generic_disabled">Disabled</string>
+
+    <string name="home_pick_file">Pick a file</string>
+    <string name="home_open_file_picker">Open file picker</string>
+    <string name="home_open_url">Open url</string>
+    <string name="home_url_input_label">URL</string>
+    <string name="home_invalid_protocol">Invalid protocol</string>
+
+    <string name="pref_preferences">Preferences</string>
+
+    <string name="pref_appearance_title">Appearance</string>
+    <string name="pref_appearance_summary">Dark mode, Material You</string>
+    <string name="pref_appearance_category_theme">Theme</string>
+    <string name="pref_appearance_darkmode_system">System</string>
+    <string name="pref_appearance_darkmode_light">Light</string>
+    <string name="pref_appearance_darkmode_dark">Dark</string>
+    <string name="pref_appearance_high_contrast_title">High Contrast Mode</string>
+    <string name="pref_appearance_high_contrast_summary">Use pure black background for dark themes</string>
+    <string name="pref_appearance_material_you_title">Material You</string>
+    <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
+    <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
+    <string name="pref_appearance_unlimited_name_lines_title">Show full names</string>
+    <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
+    <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
+    <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
+
+    <string name="pref_player">Player</string>
+    <string name="pref_player_summary">Orientation, gestures and controls</string>
+    <string name="pref_player_orientation">Orientation</string>
+    <string name="pref_player_orientation_free">Free</string>
+    <string name="pref_player_orientation_video">Video</string>
+    <string name="pref_player_orientation_portrait">Portrait</string>
+    <string name="pref_player_orientation_reverse_portrait">Reverse portrait</string>
+    <string name="pref_player_orientation_sensor_portrait">Sensor portrait</string>
+    <string name="pref_player_orientation_landscape">Landscape</string>
+    <string name="pref_player_orientation_reverse_landscape">Reverse landscape</string>
+    <string name="pref_player_orientation_sensor_landscape">Sensor landscape</string>
+    <string name="pref_player_save_position_on_quit">Save position on quit</string>
+    <string name="pref_player_double_tap_to_pause">Double tap to pause</string>
+    <string name="pref_player_double_tap_to_seek">Double tap to seek</string>
+    <string name="pref_player_double_tap_seek_duration">Double tap seek duration</string>
+    <string name="pref_player_show_seekbar_when_seeking">Show seekbar when seeking</string>
+    <string name="pref_player_seeking_title">Seeking</string>
+    <string name="pref_player_automatically_enter_pip">Automatically switch to PiP</string>
+    <string name="pref_player_close_after_eof">Close after the end of playback</string>
+    <string name="pref_player_remember_brightness">Remember display brightness</string>
+
+    <string name="pref_player_gestures">Gestures</string>
+    <string name="pref_player_gestures_seek">Horizontal seek gestures</string>
+    <string name="pref_player_gestures_brightness">Brightness gestures</string>
+    <string name="pref_player_gestures_volume">Volume gestures</string>
+    <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
+    <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
+
+    <string name="pref_player_controls">Controls</string>
+    <string name="pref_player_controls_allow_gestures_in_panels">Allow gestures in panels</string>
+    <string name="pref_player_controls_display_volume_as_percentage">Display volume as percentage</string>
+    <string name="pref_player_controls_show_loading_circle">Show loading circle</string>
+    <string name="pref_player_controls_show_chapter_indicator">Show current chapter indicator</string>
+    <string name="pref_player_controls_show_chapters_button">Show chapters select button</string>
+    <string name="pref_player_controls_show_chapters_summary">Only appears if the video has chapters</string>
+    <string name="pref_player_display_show_status_bar">Show system status bar with controls</string>
+    
+    <string name="pref_player_display">Display</string>
+    <string name="pref_player_display_panel_opacity">Panel opacity</string>
+    <string name="pref_player_display_panel_transparency_summary" translatable="false">%d%%</string>
+
+    <string name="pref_gesture">Gestures</string>
+    <string name="pref_gesture_summary">Double tap, media controls</string>
+    <string name="pref_gesture_double_tap_title">Double tap</string>
+    <string name="pref_gesture_double_tap_none">None</string>
+    <string name="pref_gesture_double_tap_seek">Seek</string>
+    <string name="pref_gesture_double_tap_play">Play/Pause</string>
+    <string name="pref_gesture_double_tap_custom">Custom</string>
+    <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>
+    <string name="pref_gesture_double_tap_center_title">Double tap (center)</string>
+    <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
+    <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
+
+    <string name="pref_gesture_media_title">Media controls</string>
+    <string name="pref_gesture_media_previous">Previous</string>
+    <string name="pref_gesture_media_play">Play/Pause</string>
+    <string name="pref_gesture_media_next">Next</string>
+    <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
+
+    <string name="pref_decoder">Decoder</string>
+    <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
+    <string name="pref_decoder_try_hw_dec_title">Try hardware decoding</string>
+    <string name="pref_decoder_gpu_next_title">Use gpu-next</string>
+    <string name="pref_decoder_gpu_next_summary">A new rendering backend</string>
+    <string name="pref_decoder_debanding_title">Debanding</string>
+    <string name="pref_decoder_yuv420p_title">Use YUV420P pixel format</string>
+    <string name="pref_decoder_yuv420p_summary">May fix black screens on some video codecs, can also improve performance at the cost of quality</string>
+
+    <string name="pref_subtitles">Subtitles</string>
+    <string name="pref_subtitles_summary">Preferred languages, fonts</string>
+    <string name="pref_preferred_languages">Preferred languages</string>
+    <string name="pref_subtitles_fonts_dir">Fonts directory</string>
+    <string name="pref_subtitles_preferred_language">Subtitle language(s) to be selected by default on a video with multiple subtitles, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
+    <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
+    <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
+
+    <string name="pref_audio">Audio</string>
+    <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
+    <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
+    <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
+    <string name="pref_audio_channels">Audio channels</string>
+    <string name="pref_audio_channels_auto">Auto</string>
+    <string name="pref_audio_channels_auto_safe">Auto Safe</string>
+    <string name="pref_audio_channels_mono">Mono</string>
+    <string name="pref_audio_channels_stereo">Stereo</string>
+    <string name="pref_audio_channels_stereo_reversed">Reversed Stereo</string>
+    <string name="pref_audio_preferred_language">Audio language(s) to be selected by default on a video with multiple audio streams, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
+    <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
+
+    <string name="pref_advanced">Advanced</string>
+    <string name="pref_advanced_summary">Configuration location, mpv.conf</string>
+    <string name="pref_advanced_mpv_conf_storage_location">Pick configuration storage location</string>
+    <string name="pref_advanced_mpv_conf">Edit mpv.conf</string>
+    <string name="pref_advanced_input_conf">Edit input.conf</string>
+    <string name="pref_advanced_dump_logs_title">Dump logs</string>
+    <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>
+    <string name="pref_advanced_verbose_logging_title">Verbose logging</string>
+    <string name="pref_advanced_verbose_logging_summary">Helps in debugging but may hinder performance</string>
+    <string name="pref_advanced_clear_playback_history">Clear playback history</string>
+    <string name="pref_advanced_clear_playback_history_confirm_title">Are you sure you want to clear your playback history?</string>
+    <string name="pref_advanced_clear_playback_history_confirm_subtitle">This will clear all your previous media\'s playback positions, selected subtitles and audio tracks along with their delays and speeds</string>
+    <string name="pref_advanced_cleared_playback_history">Cleared playback history</string>
+    <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
+    <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
+    <string name="pref_advanced_clear_mpv_conf_cache">Clear cached mpv configurations</string>
+    <string name="pref_advanced_cleared_mpv_conf_cache">Cleared cached mpv configurations</string>
+
+    <string name="pref_about_title">About</string>
+    <string name="pref_about_summary">Acknowledgments, licenses</string>
+    <string name="pref_about_app_version">App version</string>
+    <string name="pref_about_app_version_formatted" translatable="false">%s %s</string>
+    <string name="pref_about_oss_libraries">Libraries</string>
+    <string name="pref_about_privacy_policy">Privacy policy</string>
+
+    <string name="player_sheets_add_ext_sub">Add external subtitles</string>
+    <string name="player_sheets_add_ext_audio">Add external audio tracks</string>
+    <string name="player_sheets_tracks_off">Off</string>
+    <string name="player_sheets_track_title_w_lang" translatable="false">#%d: %s (%s)</string>
+    <string name="player_sheets_track_title_wo_lang" translatable="false">#%d: %s</string>
+    <string name="player_sheets_track_lang_wo_title" translatable="false">#%d: %s</string>
+    <string name="player_sheets_chapter_title_substitute_audio" translatable="false">Audio #%d</string>
+    <string name="player_sheets_chapter_title_substitute_subtitle" translatable="false">Subtitle #%d</string>
+    <string name="player_sheets_subtitles_footer_secondary_sid_no_styles">Secondary subtitles will have no ASS/SSA Styling.</string>
+    <string name="player_sheets_subtitles_settings_title">Subtitles settings</string>
+    <string name="player_sheets_subtitles_color_text">Text</string>
+    <string name="player_sheets_subtitles_color_border">Border</string>
+    <string name="player_sheets_subtitles_color_background">Background</string>
+    <string name="player_sheets_subtitles_border_style">Border style</string>
+    <string name="player_sheets_subtitles_border_style_outline_and_shadow">Outline and shadow</string>
+    <string name="player_sheets_subtitles_border_style_opaque_box">Opaque box</string>
+    <string name="player_sheets_subtitles_border_style_background_box">Background box</string>
+    <string name="player_sheets_subtitles_shadow_offset">Shadow offset</string>
+    <string name="player_sheets_sub_color_red">Red</string>
+    <string name="player_sheets_sub_color_green">Green</string>
+    <string name="player_sheets_sub_color_blue">Blue</string>
+    <string name="player_sheets_sub_color_alpha">Alpha</string>
+    <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
+    <string name="player_sheets_sub_scale">Scale</string>
+    <string name="player_sheets_sub_position">Position</string>
+    <string name="player_sheets_sub_typography_card_title">Typography</string>
+    <string name="player_sheets_sub_typography_font">Font</string>
+    <string name="player_sheets_sub_typography_font_size">Font size</string>
+    <string name="player_sheets_sub_typography_border_size">Border size</string>
+    <string name="player_sheets_sub_colors_card_title">Colors</string>
+    <string name="player_sheets_sub_misc_card_title">Miscellaneous</string>
+    <string name="player_sheets_sub_delay_card_title">Subtitle delay</string>
+    <string name="player_sheets_sub_delay_card_delay">Delay</string>
+    <string name="player_sheets_sub_delay_card_speed">Speed</string>
+    <string name="player_sheets_sub_delay_affected_subtitle">Affected subtitle</string>
+    <string name="player_sheets_sub_delay_subtitle_type_primary">Primary</string>
+    <string name="player_sheets_sub_delay_subtitle_type_secondary">Secondary</string>
+    <string name="player_sheets_sub_delay_subtitle_type_primary_and_secondary">Both</string>
+    <string name="player_sheets_sub_delay_subtitle_voice_heard">Voice heard</string>
+    <string name="player_sheets_sub_delay_subtitle_text_seen">Text seen</string>
+    <string name="player_sheets_delay_set_as_default">Set as default</string>
+    <string name="player_sheets_audio_delay_card_title">Audio delay</string>
+    <string name="player_sheets_sub_delay_audio_sound_heard">Sound heard</string>
+    <string name="player_sheets_sub_delay_sound_sound_spotted">Sound spotted</string>
+
+    <string name="player_sheets_video_settings_title">Video settings</string>
+    <string name="player_sheets_deband_title">Deband</string>
+    <string name="player_sheets_deband_none">None</string>
+    <string name="player_sheets_deband_cpu">CPU</string>
+    <string name="player_sheets_deband_gpu">GPU</string>
+    <string name="player_sheets_deband_iterations">Iterations</string>
+    <string name="player_sheets_deband_threshold">Threshold</string>
+    <string name="player_sheets_deband_range">Range</string>
+    <string name="player_sheets_deband_grain">Grain</string>
+    <string name="player_sheets_filters_title">Filters</string>
+    <string name="player_sheets_filters_brightness">Brightness</string>
+    <string name="player_sheets_filters_contrast">Contrast</string>
+    <string name="player_sheets_filters_gamma">Gamma</string>
+    <string name="player_sheets_filters_Saturation">Saturation</string>
+    <string name="player_sheets_filters_hue">Hue</string>
+    <string name="player_sheets_filters_warning">Some filters may not work on your current video driver</string>
+
+    <string name="player_sheets_speed_slider_label">Speed</string>
+    <string name="player_sheets_speed_make_default">Make default speed</string>
+
+    <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
+
+    <string name="numeric_chooser_value_too_big">Value too big</string>
+    <string name="numeric_chooser_value_too_small">Value too small</string>
+
+    <string name="player_sheets_more_title">More</string>
+    <string name="player_sheets_stats_page_title">Default statistics page</string>
+    <string name="player_sheets_stats_page_chip">Page %d</string>
+    <string name="player_seek_n_seconds">%d seconds</string>
+    <string name="player_speed" translatable="false">%.2fx</string>
+    <string name="player_gesture_seek_indicator" translatable="false">%c%s\n[%s]</string>
+
+    <string name="player_aspect_fit">Fit Screen</string>
+    <string name="player_aspect_crop">Crop</string>
+    <string name="player_aspect_stretch">Stretch</string>
+
+    <string name="crash_screen_title">Oops</string>
+    <string name="crash_screen_subtitle">Looks like %s experienced an unexpected error. Consider sharing the crash logs in a GitHub issue.</string>
+    <string name="crash_screen_logs_title">Crash logs:</string>
+    <string name="crash_screen_share">Share crash logs</string>
+    <string name="crash_screen_restart">Restart the app</string>
+    <string name="crash_screen_fix_crash">Fix Crash (Delete Database)</string>
+    <string name="crash_screen_database_deleted">Database deleted successfully. Please restart the app.</string>
+    <string name="crash_screen_database_hint">This crash appears to be database-related. Try deleting the database to fix it.</string>
+
+    <string name="timer_picker_enter_timer">Enter time</string>
+    <string name="timer_picker_pick_time">Pick time</string>
+    <string name="timer_title">Sleep timer</string>
+    <string name="timer_remaining">%s remaining</string>
+
+    <string name="toast_sleep_timer_ended">Sleep timer ended</string>
+
+    <string name="volume_slider_percentage_positive_boost" translatable="false">%d%% + %d</string>
+    <string name="volume_slider_percentage_negative_boost" translatable="false">%d%% - %d</string>
+    <string name="volume_slider_percentage_other" translatable="false">%d%% (%d)</string>
+    <string name="volume_slider_steps_positive_boost" translatable="false">%d + %d</string>
+    <string name="volume_slider_steps_negative_boost" translatable="false">%d - %d</string>
+    <string name="volume_slider_steps_other" translatable="false">%d (%d)</string>
+    <string name="volume_slider_absolute_value" translatable="false">%d</string>
+
+    <string name="value_percentage_int" translatable="false">%d%%</string>
+    <string name="value_percentage_float" translatable="false">%.2f\%%</string>
+
+    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvEx</string>
+    <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvEx/privacy_policy.html</string>
+    <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
+    <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
+    <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
+    <string name="show_splash_ovals_on_double_tap_to_seek">Show ripple when double tap seeking</string>
+    <string name="show_time_on_double_tap_to_seek">Show seek time</string>
+    <string name="show_icon_on_double_tap_to_seek">Show seek icon</string>
+
+    <string name="player_sheets_frame_navigation_title">Frame Navigation</string>
+    <string name="player_sheets_frame_navigation_snapshot_saved" translatable="false">Saved to Pictures/mpvSnaps</string>
+
+    <string name="player_sheets_zoom_slider_label">Video Zoom</string>
+
+    <plurals name="plural_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <plurals name="seconds">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
+
+    <!-- Background Playback -->
+    <string name="background_playback_title">Background playback</string>
+    <string name="pref_audio_background_playback_summary">Continue playing audio in the background when app is minimized</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="select_all">Select All</string>
+    <string name="invert_selection">Invert Selection</string>
+    <string name="selected_items">%1$d / %2$d Selected</string>
+    <string name="selection_options">Selection options</string>
+    <string name="back">Back</string>
+    <string name="sort">Sort</string>
+    <string name="settings">Settings</string>
+    <string name="rename">Rename</string>
+    <string name="info">Info</string>
+    <string name="delete">Delete</string>
+    <string name="got_it">Got it</string>
+    <string name="play_link">Play Link</string>
+    <string name="enter_url">Enter URL</string>
+    <string name="invalid_url_protocol">Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.</string>
+    <string name="valid_url">Valid URL</string>
+    <string name="invalid_url">Invalid URL</string>
+    <string name="no_videos_found">No videos found in this folder.</string>
+    <string name="general">General</string>
+    <string name="not_set_video_default">Not set (will use video default)</string>
+    <string name="enter_language_codes">Enter language codes separated by commas (e.g., eng,jpn,spa)</string>
+    <string name="language_codes_placeholder">eng,jpn,spa</string>
+    <string name="not_set_system_fonts">Not set (using system fonts)</string>
+    <string name="fonts_loaded">%1$d fonts loaded</string>
+    <string name="reload_fonts">Reload fonts</string>
+    <string name="clear_font_directory">Clear font directory</string>
+    <string name="reset_to_default_font">Reset to default font</string>
+    <string name="set_as_default">Set as default</string>
+
+    <!-- Notification strings -->
+    <string name="notification_channel_name">Media Playback</string>
+    <string name="notification_channel_description">Media playback controls</string>
+    <string name="notification_playing">Playing</string>
+    <string name="notification_play">Play</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_rewind">Rewind</string>
+    <string name="notification_forward">Forward</string>
+    <string name="notification_stop">Stop</string>
+</resources>
