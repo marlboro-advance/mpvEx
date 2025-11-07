@@ -296,6 +296,8 @@ private val pureBlackColorScheme =
     surfaceContainerHighest = surfaceContainerHighestPureBlack,
   )
 
+internal var darkColorScheme = darkColorScheme()
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MpvexTheme(content: @Composable () -> Unit) {
@@ -360,6 +362,30 @@ fun MpvexTheme(content: @Composable () -> Unit) {
         } else {
           lightScheme
         }
+      }
+    }
+
+  darkColorScheme =
+    when {
+      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        if (highContrastMode) {
+          dynamicDarkColorScheme(context).copy(
+            background = backgroundPureBlack,
+            surface = surfacePureBlack,
+            surfaceDim = surfaceDimPureBlack,
+            surfaceBright = surfaceBrightPureBlack,
+            surfaceContainerLowest = surfaceContainerLowestPureBlack,
+            surfaceContainerLow = surfaceContainerLowPureBlack,
+            surfaceContainer = surfaceContainerPureBlack,
+            surfaceContainerHigh = surfaceContainerHighPureBlack,
+            surfaceContainerHighest = surfaceContainerHighestPureBlack,
+          )
+        } else {
+          dynamicDarkColorScheme(context)
+        }
+      }
+      else -> {
+        if (highContrastMode) pureBlackColorScheme else darkScheme
       }
     }
 

@@ -54,6 +54,7 @@ fun VideoCard(
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   timeRemainingFormatted: String? = null,
+  onThumbClick: () -> Unit = {},
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -76,6 +77,8 @@ fun VideoCard(
           .background(
             if (isSelected) {
               MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+            } else if (isRecentlyPlayed) {
+              MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
             } else {
               Color.Transparent
             },
@@ -117,7 +120,10 @@ fun VideoCard(
             .width(thumbWidthDp)
             .aspectRatio(aspect)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .debouncedCombinedClickable(
+              onClick = onThumbClick,
+            ),
         contentAlignment = Alignment.Center,
       ) {
         thumbnail?.let {

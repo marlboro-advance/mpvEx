@@ -20,6 +20,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsGroup
+import app.marlboroadvance.mpvex.ui.theme.controlColor
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import org.koin.compose.koinInject
 
@@ -41,6 +42,8 @@ fun TopLeftPlayerControls(
       ControlsButton(
         icon = Icons.AutoMirrored.Default.ArrowBack,
         onClick = onBackClick,
+        //mod by sfsakhawat999
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
       )
       Surface(
         shape = CircleShape,
@@ -52,7 +55,7 @@ fun TopLeftPlayerControls(
               alpha = 0.55f,
             )
           },
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         tonalElevation = if (hideBackground) 0.dp else 2.dp,
         shadowElevation = 0.dp,
         border =

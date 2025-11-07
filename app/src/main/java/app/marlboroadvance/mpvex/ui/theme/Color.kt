@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val controlColor = Color(0xFFCCCCCC)
 val primaryLight = Color(0xFF794F81)
 val onPrimaryLight = Color(0xFFFFFFFF)
 val primaryContainerLight = Color(0xFFFCD6FF)

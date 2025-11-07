@@ -35,6 +35,7 @@ import me.zhanghai.compose.preference.FooterPreference
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
+import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
 
 @Serializable
@@ -45,6 +46,7 @@ object GesturePreferencesScreen : Screen {
     val preferences = koinInject<GesturePreferences>()
     val context = LocalContext.current
     val backstack = LocalBackStack.current
+    val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
     Scaffold(
       topBar = {
         TopAppBar(
@@ -101,7 +103,7 @@ object GesturePreferencesScreen : Screen {
                 SingleActionGesture.Custom,
               ),
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(R.string.pref_gesture_double_tap_center_title)) },
+            title = { Text(text = stringResource(if (useSingleTapForCenter) R.string.pref_gesture_single_tap_center_title else R.string.pref_gesture_double_tap_center_title)) },
             summary = { Text(text = stringResource(centerDoubleTap.titleRes)) },
           )
 
@@ -113,6 +115,22 @@ object GesturePreferencesScreen : Screen {
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
             title = { Text(text = stringResource(R.string.pref_gesture_double_tap_right_title)) },
             summary = { Text(text = stringResource(rightDoubleTap.titleRes)) },
+          )
+
+          val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
+          SwitchPreference(
+            value = useSingleTapForCenter,
+            onValueChange = { preferences.useSingleTapForCenter.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_use_single_tap_for_center_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_use_single_tap_for_center_summary),
+              )
+            },
           )
 
           val doubleTapKeyCodes =

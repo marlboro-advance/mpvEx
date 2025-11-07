@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.LeftSideOvalShape
 import app.marlboroadvance.mpvex.presentation.components.RightSideOvalShape
@@ -64,6 +65,7 @@ fun GestureHandler(
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
+  val gesturePreferences = koinInject<GesturePreferences>()
   val panelShown by viewModel.panelShown.collectAsState()
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
   val paused by MPVLib.propBoolean["pause"].collectAsState()
@@ -74,6 +76,7 @@ fun GestureHandler(
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val isSeekingForwards by viewModel.isSeekingForwards.collectAsState()
+  val useSingleTapForCenter by gesturePreferences.useSingleTapForCenter.collectAsState()
   var isDoubleTapSeeking by remember { mutableStateOf(false) }
   LaunchedEffect(seekAmount) {
     delay(800)
@@ -103,33 +106,55 @@ fun GestureHandler(
         .windowInsetsPadding(WindowInsets.safeGestures)
         .pointerInput(Unit) {
           var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
+
+          var tapHandledInPress by mutableStateOf(false)
+
+          // NEW: Flag to track if a long press has occurred
+          var isLongPress by mutableStateOf(false)
+
           detectTapGestures(
             onTap = {
-              if (controlsShown) viewModel.hideControls() else viewModel.showControls()
+              if (tapHandledInPress) {
+                tapHandledInPress = false
+                return@detectTapGestures
+              }
+
+              if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
+                viewModel.handleCenterSingleTap()
+              } else {
+                if (controlsShown) viewModel.hideControls() else viewModel.showControls()
+              }
             },
             onDoubleTap = {
+              tapHandledInPress = false
               if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
-              if (it.x > size.width * 3 / 5) {
+              if (it.x > size.width * 3 / 4) {
                 if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleRightDoubleTap()
                 isDoubleTapSeeking = true
-              } else if (it.x < size.width * 2 / 5) {
+              } else if (it.x < size.width * 1 / 4) {
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
                 isDoubleTapSeeking = true
-              } else {
+              } else if (!useSingleTapForCenter){
                 viewModel.handleCenterDoubleTap()
               }
             },
             onPress = {
+              tapHandledInPress = false
+
+              // NEW: Reset the long press flag on every new press
+              isLongPress = false
+
+              // ... (original onPress logic) ...
               if (panelShown != Panels.None && !allowGesturesInPanels) {
                 viewModel.panelShown.update { Panels.None }
               }
               if (!areControlsLocked && isDoubleTapSeeking && seekAmount != 0) {
-                if (it.x > size.width * 3 / 5) {
+                if (it.x > size.width * 3 / 4) {
                   if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                   viewModel.handleRightDoubleTap()
-                } else if (it.x < size.width * 2 / 5) {
+                } else if (it.x < size.width * 1 / 4) {
                   if (isSeekingForwards) viewModel.updateSeekAmount(0)
                   viewModel.handleLeftDoubleTap()
                 } else {
@@ -140,10 +165,18 @@ fun GestureHandler(
               }
               val press =
                 PressInteraction.Press(
-                  it.copy(x = if (it.x > size.width * 3 / 5) it.x - size.width * 0.6f else it.x),
+                  it.copy(x = if (it.x > size.width * 3 / 4) it.x - size.width * 0.6f else it.x),
                 )
               interactionSource.emit(press)
-              tryAwaitRelease()
+
+              val released = tryAwaitRelease()
+
+              if (released && !isLongPress) {
+                if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
+                  viewModel.handleCenterSingleTap()
+                  tapHandledInPress = true
+                }
+              }
               if (isLongPressing) {
                 isLongPressing = false
                 MPVLib.setPropertyFloat("speed", originalSpeed)
@@ -152,6 +185,11 @@ fun GestureHandler(
               interactionSource.emit(PressInteraction.Release(press))
             },
             onLongPress = {
+              // NEW: Set the long press flag to true
+              isLongPress = true
+
+              tapHandledInPress = true
+
               if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
               if (!isLongPressing && paused == false) {
                 originalSpeed = playbackSpeed ?: return@detectTapGestures

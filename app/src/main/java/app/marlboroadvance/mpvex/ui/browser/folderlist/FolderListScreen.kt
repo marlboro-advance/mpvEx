@@ -335,6 +335,7 @@ private fun FolderListContent(
           isRecentlyPlayed = isRecentlyPlayed,
           onClick = { onFolderClick(folder) },
           onLongClick = { onFolderLongClick(folder) },
+          onThumbClick = { onFolderLongClick(folder) }
         )
       }
 

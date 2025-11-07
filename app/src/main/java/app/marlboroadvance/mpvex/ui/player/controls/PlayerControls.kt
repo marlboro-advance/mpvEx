@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import app.marlboroadvance.mpvex.ui.theme.controlColor
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -353,6 +354,7 @@ fun PlayerControls(
           ControlsButton(
             Icons.Filled.Lock,
             onClick = { viewModel.unlockControls() },
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           )
         }
         AnimatedVisibility(
@@ -691,12 +693,18 @@ fun PlayerControls(
             onDecoderLongClick = { onOpenSheet(Sheets.Decoders) },
             isChaptersVisible = showChaptersButton && chapters.isNotEmpty(),
             onChaptersClick = { onOpenSheet(Sheets.Chapters) },
-            onSubtitlesClick = { onOpenSheet(Sheets.SubtitleTracks) },
-            onSubtitlesLongClick = { onOpenPanel(Panels.SubtitleSettings) },
-            onAudioClick = { onOpenSheet(Sheets.AudioTracks) },
-            onAudioLongClick = { onOpenPanel(Panels.AudioDelay) },
             onMoreClick = { onOpenSheet(Sheets.More) },
             onMoreLongClick = { onOpenPanel(Panels.VideoFilters) },
+            // New parameters
+            playbackSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+            onPlaybackSpeedClick = {
+              val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
+              val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
+              MPVLib.setPropertyFloat("speed", newSpeed)
+              playerPreferences.defaultSpeed.set(newSpeed)
+            },
+            onPlaybackSpeedLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+            onRotationClick = viewModel::cycleScreenRotations,
           )
         }
         // Bottom right controls (above seekbar)
@@ -753,16 +761,15 @@ fun PlayerControls(
         ) {
           val showChapterIndicator by playerPreferences.currentChaptersIndicator.collectAsState()
           BottomLeftPlayerControls(
-            playbackSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
             showChapterIndicator = showChapterIndicator,
             currentChapter = chapters.getOrNull(currentChapter ?: 0),
             onLockControls = viewModel::lockControls,
-            onCycleRotation = viewModel::cycleScreenRotations,
-            onPlaybackSpeedChange = {
-              MPVLib.setPropertyFloat("speed", it)
-              playerPreferences.defaultSpeed.set(it)
-            },
             onOpenSheet = onOpenSheet,
+            // New parameters
+            onAudioClick = { onOpenSheet(Sheets.AudioTracks) },
+            onAudioLongClick = { onOpenPanel(Panels.AudioDelay) },
+            onSubtitlesClick = { onOpenSheet(Sheets.SubtitleTracks) },
+            onSubtitlesLongClick = { onOpenPanel(Panels.SubtitleSettings) },
           )
         }
       }

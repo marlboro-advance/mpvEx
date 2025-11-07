@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Row
@@ -33,11 +34,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.theme.DarkMode
+import org.koin.compose.koinInject
 
 /**
  * Unified top bar for browser screens that switches between normal and selection modes
@@ -109,16 +115,44 @@ private fun NormalTopBar(
   modifier: Modifier = Modifier,
   onTitleLongPress: (() -> Unit)?,
 ) {
+  val preferences = koinInject<AppearancePreferences>()
+  val darkMode by preferences.darkMode.collectAsState()
+  val context = LocalContext.current
+
   TopAppBar(
     title = {
       val titleModifier =
         if (onTitleLongPress != null) {
           Modifier.combinedClickable(
-            onClick = {},
+            onClick = {
+              if (darkMode == DarkMode.System) {
+                preferences.darkMode.set(DarkMode.Light)
+                Toast.makeText(context, "Switched to Light Mode", Toast.LENGTH_SHORT).show()
+              } else if (darkMode == DarkMode.Light) {
+                preferences.darkMode.set(DarkMode.Dark)
+                Toast.makeText(context, "Switched to Dark Mode", Toast.LENGTH_SHORT).show()
+              } else {
+                preferences.darkMode.set(DarkMode.System)
+                Toast.makeText(context, "Switched to System Default", Toast.LENGTH_SHORT).show()
+              }
+            },
             onLongClick = onTitleLongPress,
           )
         } else {
-          Modifier
+          Modifier.combinedClickable(
+            onClick = {
+              if (darkMode == DarkMode.System) {
+                preferences.darkMode.set(DarkMode.Light)
+                Toast.makeText(context, "Switched to Light Mode", Toast.LENGTH_SHORT).show()
+              } else if (darkMode == DarkMode.Light) {
+                preferences.darkMode.set(DarkMode.Dark)
+                Toast.makeText(context, "Switched to Dark Mode", Toast.LENGTH_SHORT).show()
+              } else {
+                preferences.darkMode.set(DarkMode.System)
+                Toast.makeText(context, "Switched to System Default", Toast.LENGTH_SHORT).show()
+              }
+            }
+          )
         }
 
       Text(
