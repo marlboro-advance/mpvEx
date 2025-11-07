@@ -16,6 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -29,9 +32,11 @@ import app.sfsakhawat999.mpvrex.ui.utils.LocalBackStack
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
+import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
+import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
 
 @Serializable
@@ -127,6 +132,58 @@ object AppearancePreferencesScreen : Screen {
               Text(
                 text = stringResource(id = R.string.pref_appearance_hide_player_buttons_background_summary),
               )
+            },
+          )
+
+          // --- New Player Control Settings ---
+          PreferenceCategory(
+            title = { Text(text = "Player Controls") }, // TODO: Add to strings.xml
+          )
+          Preference(
+            title = { Text(text = "Available Buttons") }, // TODO: Add to strings.xml
+            summary = {
+              Text(
+                text = "Use these values (comma-separated, max 4 per section): \n" +
+                  preferences.allPlayerButtons.joinToString(),
+              )
+            },
+          )
+
+          // Top Right Controls
+          var topRightControls by remember { mutableStateOf(preferences.topRightControls.get()) }
+          TextFieldPreference(
+            value = topRightControls,
+            onValueChange = { topRightControls = it },
+            title = { Text(text = "Top Right Controls") }, // TODO: Add to strings.xml
+            summary = { Text(text = "Fixed: MORE_OPTIONS") },
+            textToValue = {
+              preferences.topRightControls.set(it)
+              it // Return the value to commit it
+            },
+          )
+
+          // Bottom Right Controls
+          var bottomRightControls by remember { mutableStateOf(preferences.bottomRightControls.get()) }
+          TextFieldPreference(
+            value = bottomRightControls,
+            onValueChange = { bottomRightControls = it },
+            title = { Text(text = "Bottom Right Controls") }, // TODO: Add to strings.xml
+            textToValue = {
+              preferences.bottomRightControls.set(it)
+              it
+            },
+          )
+
+          // Bottom Left Controls
+          var bottomLeftControls by remember { mutableStateOf(preferences.bottomLeftControls.get()) }
+          TextFieldPreference(
+            value = bottomLeftControls,
+            onValueChange = { bottomLeftControls = it },
+            title = { Text(text = "Bottom Left Controls") }, // TODO: Add to strings.xml
+            summary = { Text(text = "Fixed: CURRENT_CHAPTER") },
+            textToValue = {
+              preferences.bottomLeftControls.set(it)
+              it
             },
           )
         }
