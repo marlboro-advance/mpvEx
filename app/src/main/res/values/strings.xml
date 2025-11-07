@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">mpvEx</string>
+    <string name="app_name" translatable="false">mpvRex</string>
 
     <string name="generic_reset">Reset</string>
     <string name="generic_share">Share</string>
@@ -259,8 +259,8 @@
     <string name="value_percentage_int" translatable="false">%d%%</string>
     <string name="value_percentage_float" translatable="false">%.2f\%%</string>
 
-    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvEx</string>
-    <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvEx/privacy_policy.html</string>
+    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvRex</string>
+    <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvRex/privacy_policy.html</string>
     <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
     <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
     <string name="pref_player_display_hide_player_control_time">Hide player control time</string>

@@ -13,11 +13,11 @@ plugins {
 }
 
 android {
-  namespace = "app.marlboroadvance.mpvex"
+  namespace = "app.sfsakhawat999.mpvrex"
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "app.marlboroadvance.mpvex"
+    applicationId = "app.sfsakhawat999.mpvrex"
     minSdk = 26
     targetSdk = 36
     versionCode = 11
