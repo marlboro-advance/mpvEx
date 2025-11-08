@@ -257,44 +257,44 @@ private val mediumContrastDarkColorScheme =
     surfaceContainerHighest = surfaceContainerHighestDarkMediumContrast,
   )
 
-private val pureBlackColorScheme =
-  darkColorScheme(
-    primary = primaryPureBlack,
-    onPrimary = onPrimaryPureBlack,
-    primaryContainer = primaryContainerPureBlack,
-    onPrimaryContainer = onPrimaryContainerPureBlack,
-    secondary = secondaryPureBlack,
-    onSecondary = onSecondaryPureBlack,
-    secondaryContainer = secondaryContainerPureBlack,
-    onSecondaryContainer = onSecondaryContainerPureBlack,
-    tertiary = tertiaryPureBlack,
-    onTertiary = onTertiaryPureBlack,
-    tertiaryContainer = tertiaryContainerPureBlack,
-    onTertiaryContainer = onTertiaryContainerPureBlack,
-    error = errorPureBlack,
-    onError = onErrorPureBlack,
-    errorContainer = errorContainerPureBlack,
-    onErrorContainer = onErrorContainerPureBlack,
-    background = backgroundPureBlack,
-    onBackground = onBackgroundPureBlack,
-    surface = surfacePureBlack,
-    onSurface = onSurfacePureBlack,
-    surfaceVariant = surfaceVariantPureBlack,
-    onSurfaceVariant = onSurfaceVariantPureBlack,
-    outline = outlinePureBlack,
-    outlineVariant = outlineVariantPureBlack,
-    scrim = scrimPureBlack,
-    inverseSurface = inverseSurfacePureBlack,
-    inverseOnSurface = inverseOnSurfacePureBlack,
-    inversePrimary = inversePrimaryPureBlack,
-    surfaceDim = surfaceDimPureBlack,
-    surfaceBright = surfaceBrightPureBlack,
-    surfaceContainerLowest = surfaceContainerLowestPureBlack,
-    surfaceContainerLow = surfaceContainerLowPureBlack,
-    surfaceContainer = surfaceContainerPureBlack,
-    surfaceContainerHigh = surfaceContainerHighPureBlack,
-    surfaceContainerHighest = surfaceContainerHighestPureBlack,
-  )
+private val pureBlackColorScheme = highContrastDarkColorScheme
+//  darkColorScheme(
+//    primary = primaryPureBlack,
+//    onPrimary = onPrimaryPureBlack,
+//    primaryContainer = primaryContainerPureBlack,
+//    onPrimaryContainer = onPrimaryContainerPureBlack,
+//    secondary = secondaryPureBlack,
+//    onSecondary = onSecondaryPureBlack,
+//    secondaryContainer = secondaryContainerPureBlack,
+//    onSecondaryContainer = onSecondaryContainerPureBlack,
+//    tertiary = tertiaryPureBlack,
+//    onTertiary = onTertiaryPureBlack,
+//    tertiaryContainer = tertiaryContainerPureBlack,
+//    onTertiaryContainer = onTertiaryContainerPureBlack,
+//    error = errorPureBlack,
+//    onError = onErrorPureBlack,
+//    errorContainer = errorContainerPureBlack,
+//    onErrorContainer = onErrorContainerPureBlack,
+//    background = backgroundPureBlack,
+//    onBackground = onBackgroundPureBlack,
+//    surface = surfacePureBlack,
+//    onSurface = onSurfacePureBlack,
+//    surfaceVariant = surfaceVariantPureBlack,
+//    onSurfaceVariant = onSurfaceVariantPureBlack,
+//    outline = outlinePureBlack,
+//    outlineVariant = outlineVariantPureBlack,
+//    scrim = scrimPureBlack,
+//    inverseSurface = inverseSurfacePureBlack,
+//    inverseOnSurface = inverseOnSurfacePureBlack,
+//    inversePrimary = inversePrimaryPureBlack,
+//    surfaceDim = surfaceDimPureBlack,
+//    surfaceBright = surfaceBrightPureBlack,
+//    surfaceContainerLowest = surfaceContainerLowestPureBlack,
+//    surfaceContainerLow = surfaceContainerLowPureBlack,
+//    surfaceContainer = surfaceContainerPureBlack,
+//    surfaceContainerHigh = surfaceContainerHighPureBlack,
+//    surfaceContainerHighest = surfaceContainerHighestPureBlack,
+//  )
 
 internal var darkColorScheme = darkColorScheme()
 
@@ -315,15 +315,15 @@ fun MpvrexTheme(content: @Composable () -> Unit) {
           DarkMode.Dark -> {
             if (highContrastMode) {
               dynamicDarkColorScheme(context).copy(
-                background = backgroundPureBlack,
-                surface = surfacePureBlack,
-                surfaceDim = surfaceDimPureBlack,
-                surfaceBright = surfaceBrightPureBlack,
-                surfaceContainerLowest = surfaceContainerLowestPureBlack,
-                surfaceContainerLow = surfaceContainerLowPureBlack,
-                surfaceContainer = surfaceContainerPureBlack,
-                surfaceContainerHigh = surfaceContainerHighPureBlack,
-                surfaceContainerHighest = surfaceContainerHighestPureBlack,
+                background = backgroundDarkHighContrast,
+                surface = surfaceDarkHighContrast,
+                surfaceDim = surfaceDimDarkHighContrast,
+                surfaceBright = surfaceBrightDarkHighContrast,
+                surfaceContainerLowest = surfaceContainerLowestDarkHighContrast,
+                surfaceContainerLow = surfaceContainerLowDarkHighContrast,
+                surfaceContainer = surfaceContainerDarkHighContrast,
+                surfaceContainerHigh = surfaceContainerHighDarkHighContrast,
+                surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
               )
             } else {
               dynamicDarkColorScheme(context)
@@ -334,15 +334,15 @@ fun MpvrexTheme(content: @Composable () -> Unit) {
             if (darkTheme) {
               if (highContrastMode) {
                 dynamicDarkColorScheme(context).copy(
-                  background = backgroundPureBlack,
-                  surface = surfacePureBlack,
-                  surfaceDim = surfaceDimPureBlack,
-                  surfaceBright = surfaceBrightPureBlack,
-                  surfaceContainerLowest = surfaceContainerLowestPureBlack,
-                  surfaceContainerLow = surfaceContainerLowPureBlack,
-                  surfaceContainer = surfaceContainerPureBlack,
-                  surfaceContainerHigh = surfaceContainerHighPureBlack,
-                  surfaceContainerHighest = surfaceContainerHighestPureBlack,
+                  background = backgroundDarkHighContrast,
+                  surface = surfaceDarkHighContrast,
+                  surfaceDim = surfaceDimDarkHighContrast,
+                  surfaceBright = surfaceBrightDarkHighContrast,
+                  surfaceContainerLowest = surfaceContainerLowestDarkHighContrast,
+                  surfaceContainerLow = surfaceContainerLowDarkHighContrast,
+                  surfaceContainer = surfaceContainerDarkHighContrast,
+                  surfaceContainerHigh = surfaceContainerHighDarkHighContrast,
+                  surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
                 )
               } else {
                 dynamicDarkColorScheme(context)
@@ -370,15 +370,15 @@ fun MpvrexTheme(content: @Composable () -> Unit) {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         if (highContrastMode) {
           dynamicDarkColorScheme(context).copy(
-            background = backgroundPureBlack,
-            surface = surfacePureBlack,
-            surfaceDim = surfaceDimPureBlack,
-            surfaceBright = surfaceBrightPureBlack,
-            surfaceContainerLowest = surfaceContainerLowestPureBlack,
-            surfaceContainerLow = surfaceContainerLowPureBlack,
-            surfaceContainer = surfaceContainerPureBlack,
-            surfaceContainerHigh = surfaceContainerHighPureBlack,
-            surfaceContainerHighest = surfaceContainerHighestPureBlack,
+            background = backgroundDarkHighContrast,
+            surface = surfaceDarkHighContrast,
+            surfaceDim = surfaceDimDarkHighContrast,
+            surfaceBright = surfaceBrightDarkHighContrast,
+            surfaceContainerLowest = surfaceContainerLowestDarkHighContrast,
+            surfaceContainerLow = surfaceContainerLowDarkHighContrast,
+            surfaceContainer = surfaceContainerDarkHighContrast,
+            surfaceContainerHigh = surfaceContainerHighDarkHighContrast,
+            surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
           )
         } else {
           dynamicDarkColorScheme(context)

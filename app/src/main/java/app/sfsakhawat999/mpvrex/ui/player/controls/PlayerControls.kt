@@ -69,12 +69,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import app.sfsakhawat999.mpvrex.ui.theme.controlColor
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -104,6 +104,7 @@ import app.sfsakhawat999.mpvrex.ui.player.controls.components.SeekbarWithTimers
 import app.sfsakhawat999.mpvrex.ui.player.controls.components.TextPlayerUpdate
 import app.sfsakhawat999.mpvrex.ui.player.controls.components.VolumeSlider
 import app.sfsakhawat999.mpvrex.ui.player.controls.components.sheets.toFixed
+import app.sfsakhawat999.mpvrex.ui.theme.controlColor
 import app.sfsakhawat999.mpvrex.ui.theme.playerRippleConfiguration
 import app.sfsakhawat999.mpvrex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
@@ -442,6 +443,11 @@ fun PlayerControls(
             }
 
             controlsShown && !areControlsLocked -> {
+              val buttonShadow = Brush.radialGradient(
+                0.0f to Color.Black.copy(alpha = 0.3f),
+                0.7f to Color.Transparent,
+                1.0f to Color.Transparent,
+              )
               // Show playlist controls (previous, play/pause, next) if in playlist mode
               if (viewModel.hasPlaylistSupport()) {
                 Row(
@@ -459,6 +465,16 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasPrevious(),
                           onClick = { if (viewModel.hasPrevious()) viewModel.playPrevious() },
+                        )
+                        .then(
+                          if (hideBackground) {
+                            Modifier.background(
+                              brush = buttonShadow,
+                              shape = CircleShape,
+                            )
+                          } else {
+                            Modifier
+                          },
                         ),
                     shape = CircleShape,
                     color =
@@ -487,9 +503,15 @@ fun PlayerControls(
                       contentDescription = "Previous",
                       tint =
                         if (viewModel.hasPrevious()) {
-                          if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface
+                          if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
                         } else {
-                          if (hideBackground) Color.White.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          if (hideBackground) {
+                            controlColor.copy(
+                              alpha = 0.38f,
+                            )
+                          } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          }
                         },
                       modifier =
                         Modifier
@@ -508,6 +530,16 @@ fun PlayerControls(
                           interaction,
                           ripple(),
                           onClick = viewModel::pauseUnpause,
+                        )
+                        .then(
+                          if (hideBackground) {
+                            Modifier.background(
+                              brush = buttonShadow,
+                              shape = CircleShape,
+                            )
+                          } else {
+                            Modifier
+                          },
                         ),
                     shape = CircleShape,
                     color =
@@ -518,7 +550,7 @@ fun PlayerControls(
                       } else {
                         Color.Transparent
                       },
-                    contentColor = if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface,
+                    contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     tonalElevation = 2.dp,
                     shadowElevation = 0.dp,
                     border =
@@ -538,6 +570,7 @@ fun PlayerControls(
                           .fillMaxSize()
                           .padding(MaterialTheme.spacing.medium),
                       contentDescription = null,
+                      colorFilter = ColorFilter.tint(LocalContentColor.current),
                     )
                   }
 
@@ -550,6 +583,16 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasNext(),
                           onClick = { if (viewModel.hasNext()) viewModel.playNext() },
+                        )
+                        .then(
+                          if (hideBackground) {
+                            Modifier.background(
+                              brush = buttonShadow,
+                              shape = CircleShape,
+                            )
+                          } else {
+                            Modifier
+                          },
                         ),
                     shape = CircleShape,
                     color =
@@ -578,9 +621,15 @@ fun PlayerControls(
                       contentDescription = "Next",
                       tint =
                         if (viewModel.hasNext()) {
-                          if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface
+                          if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
                         } else {
-                          if (hideBackground) Color.White.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          if (hideBackground) {
+                            controlColor.copy(
+                              alpha = 0.38f,
+                            )
+                          } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          }
                         },
                       modifier =
                         Modifier
@@ -600,6 +649,16 @@ fun PlayerControls(
                         interaction,
                         ripple(),
                         onClick = viewModel::pauseUnpause,
+                      )
+                      .then(
+                        if (hideBackground) {
+                          Modifier.background(
+                            brush = buttonShadow,
+                            shape = CircleShape,
+                          )
+                        } else {
+                          Modifier
+                        },
                       ),
                   shape = CircleShape,
                   color =
@@ -610,7 +669,7 @@ fun PlayerControls(
                     } else {
                       Color.Transparent
                     },
-                  contentColor = if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface,
+                  contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                   tonalElevation = 2.dp,
                   shadowElevation = 0.dp,
                   border =
@@ -630,6 +689,7 @@ fun PlayerControls(
                         .fillMaxSize()
                         .padding(MaterialTheme.spacing.medium),
                     contentDescription = null,
+                    colorFilter = ColorFilter.tint(LocalContentColor.current),
                   )
                 }
               }
@@ -738,14 +798,11 @@ fun PlayerControls(
               topRightButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-//                    if (showChaptersButton && chapters.isNotEmpty()) {
-                      ControlsButton(
-                        Icons.Default.Bookmarks,
-                        onClick = { onOpenSheet(Sheets.Chapters) },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-//                    }
+                    ControlsButton(
+                      Icons.Default.Bookmarks,
+                      onClick = { onOpenSheet(Sheets.Chapters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -888,14 +945,11 @@ fun PlayerControls(
               bottomRightButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-//                    if (showChaptersButton && chapters.isNotEmpty()) {
-                      ControlsButton(
-                        Icons.Default.Bookmarks,
-                        onClick = { onOpenSheet(Sheets.Chapters) },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-//                    }
+                    ControlsButton(
+                      Icons.Default.Bookmarks,
+                      onClick = { onOpenSheet(Sheets.Chapters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -1043,14 +1097,11 @@ fun PlayerControls(
               bottomLeftButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-//                    if (showChaptersButton && chapters.isNotEmpty()) {
-                      ControlsButton(
-                        Icons.Default.Bookmarks,
-                        onClick = { onOpenSheet(Sheets.Chapters) },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-//                    }
+                    ControlsButton(
+                      Icons.Default.Bookmarks,
+                      onClick = { onOpenSheet(Sheets.Chapters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -1163,7 +1214,6 @@ fun PlayerControls(
                 }
               }
 
-              // --- FIXED "Current Chapter" Indicator RE-ADDED ---
               val showChapterIndicator by playerPreferences.currentChaptersIndicator.collectAsState()
               AnimatedVisibility(
                 showChapterIndicator && chapters.getOrNull(currentChapter ?: 0) != null,

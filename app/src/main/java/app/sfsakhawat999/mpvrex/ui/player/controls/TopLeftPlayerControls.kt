@@ -42,7 +42,6 @@ fun TopLeftPlayerControls(
       ControlsButton(
         icon = Icons.AutoMirrored.Default.ArrowBack,
         onClick = onBackClick,
-        //mod by sfsakhawat999
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
       )
       Surface(
@@ -88,7 +87,7 @@ fun TopLeftPlayerControls(
               " • $playlistInfo",
               maxLines = 1,
               style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.primary,
+//              color = primaryDark,
             )
           }
         }

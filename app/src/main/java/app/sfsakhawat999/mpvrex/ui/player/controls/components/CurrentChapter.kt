@@ -1,5 +1,6 @@
 package app.sfsakhawat999.mpvrex.ui.player.controls.components
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -20,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,10 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.sfsakhawat999.mpvrex.R
 import app.sfsakhawat999.mpvrex.preferences.AppearancePreferences
 import app.sfsakhawat999.mpvrex.preferences.preference.collectAsState
 import app.sfsakhawat999.mpvrex.ui.theme.controlColor
-import app.sfsakhawat999.mpvrex.ui.theme.darkColorScheme
 import app.sfsakhawat999.mpvrex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
@@ -48,6 +48,7 @@ fun CurrentChapter(
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
+
 
   Surface(
     modifier =
@@ -110,7 +111,7 @@ fun CurrentChapter(
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = Color.White,
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
         currentChapter.name.let {
           Text(
