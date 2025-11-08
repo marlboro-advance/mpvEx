@@ -487,9 +487,9 @@ fun PlayerControls(
                       contentDescription = "Previous",
                       tint =
                         if (viewModel.hasPrevious()) {
-                          MaterialTheme.colorScheme.onSurface
+                          if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface
                         } else {
-                          MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          if (hideBackground) Color.White.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         },
                       modifier =
                         Modifier
@@ -518,7 +518,7 @@ fun PlayerControls(
                       } else {
                         Color.Transparent
                       },
-                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    contentColor = if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface,
                     tonalElevation = 2.dp,
                     shadowElevation = 0.dp,
                     border =
@@ -578,9 +578,9 @@ fun PlayerControls(
                       contentDescription = "Next",
                       tint =
                         if (viewModel.hasNext()) {
-                          MaterialTheme.colorScheme.onSurface
+                          if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface
                         } else {
-                          MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                          if (hideBackground) Color.White.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                         },
                       modifier =
                         Modifier
@@ -610,7 +610,7 @@ fun PlayerControls(
                     } else {
                       Color.Transparent
                     },
-                  contentColor = MaterialTheme.colorScheme.onSurface,
+                  contentColor = if (hideBackground) Color.White else MaterialTheme.colorScheme.onSurface,
                   tonalElevation = 2.dp,
                   shadowElevation = 0.dp,
                   border =
@@ -730,7 +730,6 @@ fun PlayerControls(
               end.linkTo(parent.end)
             },
         ) {
-          // --- Replaced TopRightPlayerControls call ---
           Row(
             verticalAlignment = Alignment.CenterVertically,
           ) {
@@ -739,14 +738,14 @@ fun PlayerControls(
               topRightButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-                    if (showChaptersButton && chapters.isNotEmpty()) {
+//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
+//                    if (showChaptersButton && chapters.isNotEmpty()) {
                       ControlsButton(
                         Icons.Default.Bookmarks,
                         onClick = { onOpenSheet(Sheets.Chapters) },
                         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                       )
-                    }
+//                    }
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -847,20 +846,19 @@ fun PlayerControls(
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
+                  PlayerButton.MORE_OPTIONS -> {
+                    ControlsButton(
+                      Icons.Default.MoreVert,
+                      onClick = { onOpenSheet(Sheets.More) },
+                      onLongClick = { onOpenPanel(Panels.VideoFilters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  }
                   PlayerButton.NONE -> { /* Do nothing */ }
                 }
               }
-
-              // 2. Fixed "More" Button
-              ControlsButton(
-                Icons.Default.MoreVert,
-                onClick = { onOpenSheet(Sheets.More) },
-                onLongClick = { onOpenPanel(Panels.VideoFilters) },
-                color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-              )
             }
           }
-          // --- End of replacement ---
         }
         // Bottom right controls - DYNAMIC
         AnimatedVisibility(
@@ -885,20 +883,19 @@ fun PlayerControls(
               end.linkTo(parent.end)
             },
         ) {
-          // --- Replaced BottomRightPlayerControls call ---
           Row(verticalAlignment = Alignment.CenterVertically) {
             ControlsGroup {
               bottomRightButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-                    if (showChaptersButton && chapters.isNotEmpty()) {
+//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
+//                    if (showChaptersButton && chapters.isNotEmpty()) {
                       ControlsButton(
                         Icons.Default.Bookmarks,
                         onClick = { onOpenSheet(Sheets.Chapters) },
                         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                       )
-                    }
+//                    }
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -999,12 +996,19 @@ fun PlayerControls(
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
+                  PlayerButton.MORE_OPTIONS -> {
+                    ControlsButton(
+                      Icons.Default.MoreVert,
+                      onClick = { onOpenSheet(Sheets.More) },
+                      onLongClick = { onOpenPanel(Panels.VideoFilters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  }
                   PlayerButton.NONE -> { /* Do nothing */ }
                 }
               }
             }
           }
-          // --- End of replacement ---
         }
         // Bottom left controls - DYNAMIC
         AnimatedVisibility(
@@ -1031,7 +1035,6 @@ fun PlayerControls(
               end.linkTo(bottomRightControls.start)
             },
         ) {
-          // --- Replaced BottomLeftPlayerControls call ---
           Row(
             verticalAlignment = Alignment.CenterVertically,
           ) {
@@ -1040,14 +1043,14 @@ fun PlayerControls(
               bottomLeftButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BOOKMARKS_CHAPTERS -> {
-                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
-                    if (showChaptersButton && chapters.isNotEmpty()) {
+//                    val showChaptersButton by playerPreferences.showChaptersButton.collectAsState()
+//                    if (showChaptersButton && chapters.isNotEmpty()) {
                       ControlsButton(
                         Icons.Default.Bookmarks,
                         onClick = { onOpenSheet(Sheets.Chapters) },
                         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                       )
-                    }
+//                    }
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
@@ -1148,11 +1151,19 @@ fun PlayerControls(
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
+                  PlayerButton.MORE_OPTIONS -> {
+                    ControlsButton(
+                      Icons.Default.MoreVert,
+                      onClick = { onOpenSheet(Sheets.More) },
+                      onLongClick = { onOpenPanel(Panels.VideoFilters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  }
                   PlayerButton.NONE -> { /* Do nothing */ }
                 }
               }
 
-              // 2. Fixed "Current Chapter" Indicator
+              // --- FIXED "Current Chapter" Indicator RE-ADDED ---
               val showChapterIndicator by playerPreferences.currentChaptersIndicator.collectAsState()
               AnimatedVisibility(
                 showChapterIndicator && chapters.getOrNull(currentChapter ?: 0) != null,
@@ -1168,7 +1179,6 @@ fun PlayerControls(
               }
             }
           }
-          // --- End of replacement ---
         }
       }
     }

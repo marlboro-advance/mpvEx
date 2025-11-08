@@ -15,24 +15,7 @@ import app.sfsakhawat999.mpvrex.ui.theme.DarkMode
 import app.sfsakhawat999.mpvrex.ui.theme.spacing
 import kotlinx.collections.immutable.ImmutableList
 
-/**
- * Represents a customizable button in the player controls.
- * The enum name is used as the key in the preference string.
- */
-enum class PlayerButton {
-  BOOKMARKS_CHAPTERS,
-  PLAYBACK_SPEED,
-  DECODER,
-  SCREEN_ROTATION,
-  FRAME_NAVIGATION,
-  VIDEO_ZOOM,
-  PICTURE_IN_PICTURE,
-  ASPECT_RATIO,
-  LOCK_CONTROLS,
-  AUDIO_TRACK,
-  SUBTITLES,
-  NONE,
-}
+// PlayerButton enum is now in PlayerButton.kt
 
 class AppearancePreferences(
   private val preferenceStore: PreferenceStore,
@@ -44,15 +27,14 @@ class AppearancePreferences(
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
   val hidePlayerButtonsBackground = preferenceStore.getBoolean("hide_player_buttons_background", false)
 
-  // --- New Player Control Preferences ---
+  // --- Player Control Preferences ---
 
   /**
    * Comma-separated list of [PlayerButton] enum names for the top right controls.
-   * "MORE_OPTIONS" is fixed and added automatically.
    */
   val topRightControls = preferenceStore.getString(
     "top_right_controls",
-    "BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,DECODER,SCREEN_ROTATION",
+    "BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,DECODER,SCREEN_ROTATION,MORE_OPTIONS",
   )
 
   /**
@@ -65,22 +47,14 @@ class AppearancePreferences(
 
   /**
    * Comma-separated list of [PlayerButton] enum names for the bottom left controls.
-   * "CURRENT_CHAPTER" is fixed and added automatically.
    */
   val bottomLeftControls = preferenceStore.getString(
     "bottom_left_controls",
-    "LOCK_CONTROLS,AUDIO_TRACK,SUBTITLES",
+    "LOCK_CONTROLS,AUDIO_TRACK,SUBTITLES", // <-- CURRENT_CHAPTER removed
   )
 
   /**
-   * A helper list of all available button names to display in settings.
-   */
-  val allPlayerButtons: List<String> = PlayerButton.entries
-    .filter { it != PlayerButton.NONE }
-    .map { it.name }
-
-  /**
-   * Parses a comma-separated string of button names, filters duplicates, and limits to 4.
+   * Parses a comma-separated string of button names and filters duplicates.
    *
    * @param csv The comma-separated string from preferences.
    * @param usedButtons A [MutableSet] to track buttons already used in other regions
@@ -99,7 +73,6 @@ class AppearancePreferences(
       }
       .filter { it != PlayerButton.NONE }
       .filter { usedButtons.add(it) } // add() returns true if item was added (i.e., not a duplicate)
-      .take(4)
       .toList()
   }
 }

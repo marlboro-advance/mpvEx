@@ -33,6 +33,19 @@
     <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
     <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
 
+    <string name="pref_layout_title">Player Layout</string>
+    <string name="pref_layout_summary">Customize player button layout</string>
+    <string name="pref_layout_reset_default">Reset to Default</string>
+    <string name="pref_layout_top_right_controls">Top Right Controls</string>
+    <string name="pref_layout_bottom_right_controls">Bottom Right Controls</string>
+    <string name="pref_layout_bottom_left_controls">Bottom Left Controls</string>
+    <string name="pref_layout_preview">Preview</string>
+    <string name="pref_layout_reset_title">Reset Layout?</string>
+    <string name="pref_layout_reset_summary">All custom player control layouts will be reset to their default positions.</string>
+    <string name="pref_layout_edit_top_right">Edit Top Right Controls</string>
+    <string name="pref_layout_edit_bottom_left">Edit Bottom Left Controls</string>
+    <string name="pref_layout_edit_bottom_right">Edit Bottom Right Controls</string>
+
     <string name="pref_player">Player</string>
     <string name="pref_player_summary">Orientation, gestures and controls</string>
     <string name="pref_player_orientation">Orientation</string>
