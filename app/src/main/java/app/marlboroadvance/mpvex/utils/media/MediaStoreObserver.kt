@@ -59,7 +59,10 @@ class MediaStoreObserver(
         onChange(selfChange, null)
       }
 
-      override fun onChange(selfChange: Boolean, uri: Uri?) {
+      override fun onChange(
+        selfChange: Boolean,
+        uri: Uri?,
+      ) {
         // Filter out rapid duplicate changes
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastChangeTimeMs < minChangeIntervalMs) {
@@ -72,24 +75,25 @@ class MediaStoreObserver(
 
         // Debounce the refresh to avoid multiple rapid calls
         debounceJob?.cancel()
-        debounceJob = scope.launch(Dispatchers.IO) {
-          // Double-check scope is still active before processing
-          if (!isActive) {
-            Log.d(tag, "Scope cancelled, skipping refresh notification")
-            return@launch
+        debounceJob =
+          scope.launch(Dispatchers.IO) {
+            // Double-check scope is still active before processing
+            if (!isActive) {
+              Log.d(tag, "Scope cancelled, skipping refresh notification")
+              return@launch
+            }
+
+            delay(debounceDelayMs)
+
+            // Triple-check after delay
+            if (!isActive) {
+              Log.d(tag, "Scope cancelled after delay, skipping refresh notification")
+              return@launch
+            }
+
+            Log.d(tag, "Notifying MediaLibraryEvents of external change from $volumeName")
+            MediaLibraryEvents.notifyChanged()
           }
-
-          delay(debounceDelayMs)
-
-          // Triple-check after delay
-          if (!isActive) {
-            Log.d(tag, "Scope cancelled after delay, skipping refresh notification")
-            return@launch
-          }
-
-          Log.d(tag, "Notifying MediaLibraryEvents of external change from $volumeName")
-          MediaLibraryEvents.notifyChanged()
-        }
       }
     }
   }
@@ -106,9 +110,10 @@ class MediaStoreObserver(
 
       try {
         // Create dedicated background thread for content observation
-        val thread = HandlerThread("MediaStoreObserver-${System.currentTimeMillis()}").apply {
-          start()
-        }
+        val thread =
+          HandlerThread("MediaStoreObserver-${System.currentTimeMillis()}").apply {
+            start()
+          }
         handlerThread = thread
         handler = Handler(thread.looper)
 
@@ -198,7 +203,10 @@ class MediaStoreObserver(
   /**
    * Register a ContentObserver for a specific URI
    */
-  private fun registerObserverForUri(uri: Uri, volumeName: String) {
+  private fun registerObserverForUri(
+    uri: Uri,
+    volumeName: String,
+  ) {
     try {
       val observer = createObserver(volumeName)
       context.contentResolver.registerContentObserver(

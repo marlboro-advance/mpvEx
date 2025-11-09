@@ -62,7 +62,7 @@ import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
-import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
+import app.marlboroadvance.mpvex.ui.theme.mpvexTheme
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +94,7 @@ class CrashActivity : ComponentActivity() {
           darkScrim = Color.Transparent.toArgb(),
         ) { isDarkMode },
       )
-      MpvexTheme {
+      mpvexTheme {
         CrashScreen(intent.getStringExtra("exception") ?: "")
       }
     }
@@ -139,7 +139,7 @@ class CrashActivity : ComponentActivity() {
         "sqlite",
         "room",
         "mpvex.db",
-        "MpvExDatabase",
+        "mpvexDatabase",
         "android.database",
         "androidx.room",
         "SQLiteException",

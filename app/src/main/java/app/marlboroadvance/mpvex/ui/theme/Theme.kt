@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.constraintlayout.compose.MotionScene
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -296,12 +295,14 @@ private val pureBlackColorScheme =
     surfaceContainerHighest = surfaceContainerHighestPureBlack,
   )
 
+internal var darkColorScheme = darkColorScheme()
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MpvexTheme(content: @Composable () -> Unit) {
+fun mpvexTheme(content: @Composable () -> Unit) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
-  val highContrastMode by preferences.highContrastMode.collectAsState()
+  val amoledMode by preferences.amoledMode.collectAsState()
   val darkTheme = isSystemInDarkTheme()
   val dynamicColor by preferences.materialYou.collectAsState()
   val context = LocalContext.current
@@ -311,7 +312,7 @@ fun MpvexTheme(content: @Composable () -> Unit) {
       dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
         when (darkMode) {
           DarkMode.Dark -> {
-            if (highContrastMode) {
+            if (amoledMode) {
               dynamicDarkColorScheme(context).copy(
                 background = backgroundPureBlack,
                 surface = surfacePureBlack,
@@ -330,7 +331,7 @@ fun MpvexTheme(content: @Composable () -> Unit) {
           DarkMode.Light -> dynamicLightColorScheme(context)
           DarkMode.System -> {
             if (darkTheme) {
-              if (highContrastMode) {
+              if (amoledMode) {
                 dynamicDarkColorScheme(context).copy(
                   background = backgroundPureBlack,
                   surface = surfacePureBlack,
@@ -352,14 +353,40 @@ fun MpvexTheme(content: @Composable () -> Unit) {
         }
       }
 
-      darkMode == DarkMode.Dark -> if (highContrastMode) pureBlackColorScheme else darkScheme
+      darkMode == DarkMode.Dark -> {
+        if (amoledMode) pureBlackColorScheme else darkScheme
+      }
       darkMode == DarkMode.Light -> lightScheme
       else -> {
         if (darkTheme) {
-          if (highContrastMode) pureBlackColorScheme else darkScheme
+          if (amoledMode) pureBlackColorScheme else darkScheme
         } else {
           lightScheme
         }
+      }
+    }
+
+  darkColorScheme =
+    when {
+      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        if (amoledMode) {
+          dynamicDarkColorScheme(context).copy(
+            background = backgroundPureBlack,
+            surface = surfacePureBlack,
+            surfaceDim = surfaceDimPureBlack,
+            surfaceBright = surfaceBrightPureBlack,
+            surfaceContainerLowest = surfaceContainerLowestPureBlack,
+            surfaceContainerLow = surfaceContainerLowPureBlack,
+            surfaceContainer = surfaceContainerPureBlack,
+            surfaceContainerHigh = surfaceContainerHighPureBlack,
+            surfaceContainerHighest = surfaceContainerHighestPureBlack,
+          )
+        } else {
+          dynamicDarkColorScheme(context)
+        }
+      }
+      else -> {
+        if (amoledMode) pureBlackColorScheme else darkScheme
       }
     }
 

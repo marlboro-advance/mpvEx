@@ -3,7 +3,7 @@ package app.marlboroadvance.mpvex.di
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.marlboroadvance.mpvex.database.Migrations
-import app.marlboroadvance.mpvex.database.MpvExDatabase
+import app.marlboroadvance.mpvex.database.mpvexDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
@@ -26,10 +26,10 @@ val DatabaseModule =
       }
     }
 
-    single<MpvExDatabase> {
+    single<mpvexDatabase> {
       val context = androidContext()
       Room
-        .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
+        .databaseBuilder(context, mpvexDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .addMigrations(*Migrations.ALL)
         .build()
@@ -38,13 +38,13 @@ val DatabaseModule =
     singleOf(::PlaybackStateRepositoryImpl).bind(PlaybackStateRepository::class)
 
     single<RecentlyPlayedRepository> {
-      RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
+      RecentlyPlayedRepositoryImpl(get<mpvexDatabase>().recentlyPlayedDao())
     }
 
     single<ExternalSubtitleRepository> {
       ExternalSubtitleRepository(
         context = androidContext(),
-        dao = get<MpvExDatabase>().externalSubtitleDao(),
+        dao = get<mpvexDatabase>().externalSubtitleDao(),
       )
     }
 

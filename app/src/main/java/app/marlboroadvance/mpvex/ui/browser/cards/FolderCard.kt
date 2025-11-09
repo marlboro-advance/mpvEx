@@ -40,6 +40,7 @@ fun FolderCard(
   isRecentlyPlayed: Boolean = false,
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
+  onThumbClick: () -> Unit = {},
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -72,7 +73,11 @@ fun FolderCard(
           Modifier
             .size(64.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .debouncedCombinedClickable(
+              onClick = onThumbClick,
+              onLongClick = onLongClick,
+            ),
         contentAlignment = Alignment.Center,
       ) {
         Icon(

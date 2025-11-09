@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -30,8 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.theme.controlColor
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
@@ -60,7 +63,7 @@ fun CurrentChapter(
           alpha = 0.5f,
         )
       },
-    contentColor = MaterialTheme.colorScheme.onSurface,
+    contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
     tonalElevation = if (hideBackground) 0.dp else 5.dp,
     border =
       if (hideBackground) {
@@ -74,7 +77,7 @@ fun CurrentChapter(
   ) {
     AnimatedContent(
       targetState = chapter,
-      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.small),
+      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
       transitionSpec = {
         if (targetState.start > initialState.start) {
           (slideInVertically { height -> height } + fadeIn())
@@ -99,6 +102,7 @@ fun CurrentChapter(
             Modifier
               .padding(end = MaterialTheme.spacing.extraSmall)
               .size(16.dp),
+          tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
@@ -106,7 +110,7 @@ fun CurrentChapter(
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = MaterialTheme.colorScheme.tertiary,
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
         currentChapter.name.let {
           Text(
@@ -114,7 +118,7 @@ fun CurrentChapter(
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             overflow = TextOverflow.Clip,
           )
           Text(
@@ -124,7 +128,7 @@ fun CurrentChapter(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           )
         }
       }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.ViewQuilt // <-- NEW IMPORT
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,6 +61,13 @@ object PreferencesScreen : Screen {
             summary = { Text(text = stringResource(id = R.string.pref_appearance_summary)) },
             icon = { Icon(Icons.Outlined.Palette, null) },
             onClick = { backstack.add(AppearancePreferencesScreen) },
+          )
+          preference(
+            key = "player_controls",
+            title = { Text(text = stringResource(id = R.string.pref_layout_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_layout_summary)) },
+            icon = { Icon(Icons.Outlined.ViewQuilt, null) },
+            onClick = { backstack.add(PlayerControlsPreferencesScreen) },
           )
           preference(
             key = "player",

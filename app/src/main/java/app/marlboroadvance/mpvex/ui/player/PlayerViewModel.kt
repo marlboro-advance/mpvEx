@@ -357,6 +357,7 @@ class PlayerViewModel(
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
     if (showStatusBar) {
       host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+      host.windowInsetsController.isAppearanceLightStatusBars = false
     }
     _controlsShown.value = true
   }
@@ -524,28 +525,32 @@ class PlayerViewModel(
     aspect: VideoAspect,
     showUpdate: Boolean = true,
   ) {
-    var ratio = -1.0
-    val pan =
-      when (aspect) {
-        VideoAspect.Crop -> 1.0
-        VideoAspect.Fit -> {
-          MPVLib.setPropertyDouble("panscan", 0.0)
-          0.0
-        }
-        VideoAspect.Stretch -> {
-          @Suppress("DEPRECATION")
-          val dm = DisplayMetrics()
-          @Suppress("DEPRECATION")
-          host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
-          ratio = dm.widthPixels / dm.heightPixels.toDouble()
-          0.0
-        }
+    when (aspect) {
+      VideoAspect.Fit -> {
+        // To FIT: Reset both properties to their defaults.
+        MPVLib.setPropertyDouble("panscan", 0.0)
+        MPVLib.setPropertyDouble("video-aspect-override", -1.0)
       }
+      VideoAspect.Crop -> {
+        // To CROP: Set panscan. MPV will auto-reset video-aspect-override.
+        MPVLib.setPropertyDouble("panscan", 1.0)
+      }
+      VideoAspect.Stretch -> {
+        // To STRETCH: Calculate ratio and set it. MPV will auto-reset panscan.
+        @Suppress("DEPRECATION")
+        val dm = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        host.hostWindowManager.defaultDisplay.getRealMetrics(dm)
+        val ratio = dm.widthPixels / dm.heightPixels.toDouble()
 
-    MPVLib.setPropertyDouble("panscan", pan)
-    MPVLib.setPropertyDouble("video-aspect-override", ratio)
+        MPVLib.setPropertyDouble("video-aspect-override", ratio)
+      }
+    }
+
+    // Save the preference
     playerPreferences.videoAspect.set(aspect)
 
+    // Notify the UI
     if (showUpdate) {
       playerUpdate.value = PlayerUpdates.AspectRatio
     }
@@ -672,6 +677,14 @@ class PlayerViewModel(
   }
 
   fun handleCenterDoubleTap() {
+    when (gesturePreferences.centerSingleActionGesture.get()) {
+      SingleActionGesture.PlayPause -> pauseUnpause()
+      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      SingleActionGesture.Seek, SingleActionGesture.None -> {}
+    }
+  }
+
+  fun handleCenterSingleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> pauseUnpause()
       SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)

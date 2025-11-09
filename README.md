@@ -1,8 +1,5 @@
 # mpvExtended
 
-> ⚠️ **Development Halted**  
-> Development of **mpvExtended** is currently on hold until further notice due to personal reasons and lack of time to maintain the project.  
-> hence no new updates are planned at the moment.
 
 ---
 

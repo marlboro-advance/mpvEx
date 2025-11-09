@@ -453,6 +453,7 @@ private fun VideoListContent(
               isSelected = selectionManager.isSelected(videoWithInfo.video),
               onClick = { onVideoClick(videoWithInfo.video) },
               onLongClick = { onVideoLongClick(videoWithInfo.video) },
+              onThumbClick = { onVideoLongClick(videoWithInfo.video) },
             )
           }
         }

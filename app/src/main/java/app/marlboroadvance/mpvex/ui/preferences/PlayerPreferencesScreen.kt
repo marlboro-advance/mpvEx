@@ -187,20 +187,6 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.showLoadingCircle::set,
             title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
           )
-          val showChaptersButton by preferences.showChaptersButton.collectAsState()
-          SwitchPreference(
-            value = showChaptersButton,
-            onValueChange = preferences.showChaptersButton::set,
-            title = { Text(stringResource(R.string.pref_player_controls_show_chapters_button)) },
-            summary = { Text(stringResource(R.string.pref_player_controls_show_chapters_summary)) },
-          )
-          val showChapterIndicator by preferences.currentChaptersIndicator.collectAsState()
-          SwitchPreference(
-            value = showChapterIndicator,
-            onValueChange = preferences.currentChaptersIndicator::set,
-            title = { Text(stringResource(R.string.pref_player_controls_show_chapter_indicator)) },
-            summary = { Text(stringResource(R.string.pref_player_controls_show_chapters_summary)) },
-          )
 
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_display)) },

@@ -17,7 +17,7 @@ import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
   ],
   version = 3,
 )
-abstract class MpvExDatabase : RoomDatabase() {
+abstract class mpvexDatabase : RoomDatabase() {
   abstract fun videoDataDao(): PlaybackStateDao
 
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao

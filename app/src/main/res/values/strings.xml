@@ -23,8 +23,8 @@
     <string name="pref_appearance_darkmode_system">System</string>
     <string name="pref_appearance_darkmode_light">Light</string>
     <string name="pref_appearance_darkmode_dark">Dark</string>
-    <string name="pref_appearance_high_contrast_title">High Contrast Mode</string>
-    <string name="pref_appearance_high_contrast_summary">Use pure black background for dark themes</string>
+    <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
+    <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
     <string name="pref_appearance_material_you_title">Material You</string>
     <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
     <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
@@ -32,6 +32,19 @@
     <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
     <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
     <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
+
+    <string name="pref_layout_title">Player Layout</string>
+    <string name="pref_layout_summary">Customize player button layout</string>
+    <string name="pref_layout_reset_default">Reset to Default</string>
+    <string name="pref_layout_top_right_controls">Top Right Controls</string>
+    <string name="pref_layout_bottom_right_controls">Bottom Right Controls</string>
+    <string name="pref_layout_bottom_left_controls">Bottom Left Controls</string>
+    <string name="pref_layout_preview">Preview</string>
+    <string name="pref_layout_reset_title">Reset Layout?</string>
+    <string name="pref_layout_reset_summary">All custom player control layouts will be reset to their default positions.</string>
+    <string name="pref_layout_edit_top_right">Edit Top Right Controls</string>
+    <string name="pref_layout_edit_bottom_left">Edit Bottom Left Controls</string>
+    <string name="pref_layout_edit_bottom_right">Edit Bottom Right Controls</string>
 
     <string name="pref_player">Player</string>
     <string name="pref_player_summary">Orientation, gestures and controls</string>
@@ -83,7 +96,11 @@
     <string name="pref_gesture_double_tap_custom">Custom</string>
     <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>
     <string name="pref_gesture_double_tap_center_title">Double tap (center)</string>
+    <string name="pref_gesture_single_tap_center_title">Single tap (center)</string>
     <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
+    <string name="pref_gesture_use_single_tap_for_center_title">Use single tap for center gesture</string>
+    <string name="pref_gesture_use_single_tap_for_center_summary">Use a single tap in the center for gestures (like play/pause) instead of a double tap.</string>
+
     <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
 
     <string name="pref_gesture_media_title">Media controls</string>
@@ -255,8 +272,7 @@
     <string name="value_percentage_int" translatable="false">%d%%</string>
     <string name="value_percentage_float" translatable="false">%.2f\%%</string>
 
-    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvEx</string>
-    <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvEx/privacy_policy.html</string>
+    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
     <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
     <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
     <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
