@@ -31,7 +31,7 @@
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.mpvrex"
+        android:theme="@style/Theme.mpvex"
         android:largeHeap="true"
         android:hardwareAccelerated="true"
         tools:targetApi="35">
@@ -39,7 +39,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.mpvrex">
+            android:theme="@style/Theme.mpvex">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -58,7 +58,7 @@
             android:documentLaunchMode="never"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:theme="@style/Theme.mpvrex">
+            android:theme="@style/Theme.mpvex">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 

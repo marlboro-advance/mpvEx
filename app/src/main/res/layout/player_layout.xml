@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="false">
 
-    <app.sfsakhawat999.mpvrex.ui.player.MPVView
+    <app.marlboroadvance.mpvex.ui.player.MPVView
         android:id="@+id/player"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

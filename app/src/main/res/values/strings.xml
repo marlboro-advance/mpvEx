@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">mpvRex</string>
+    <string name="app_name" translatable="false">mpvEx</string>
 
     <string name="generic_reset">Reset</string>
     <string name="generic_share">Share</string>
@@ -23,8 +23,8 @@
     <string name="pref_appearance_darkmode_system">System</string>
     <string name="pref_appearance_darkmode_light">Light</string>
     <string name="pref_appearance_darkmode_dark">Dark</string>
-    <string name="pref_appearance_high_contrast_title">High Contrast Mode</string>
-    <string name="pref_appearance_high_contrast_summary">Use pure black background for dark themes</string>
+    <string name="pref_appearance_amoled_mode_title">AMOLED Black Mode</string>
+    <string name="pref_appearance_amoled_mode_summary">Use pure black background for dark themes</string>
     <string name="pref_appearance_material_you_title">Material You</string>
     <string name="pref_appearance_material_you_summary">Enable dynamic colors</string>
     <string name="pref_appearance_material_you_summary_disabled">Only available for Android 12 and newer.</string>
@@ -272,8 +272,7 @@
     <string name="value_percentage_int" translatable="false">%d%%</string>
     <string name="value_percentage_float" translatable="false">%.2f\%%</string>
 
-    <string name="github_repo_url" translatable="false">https://github.com/sfsakhawat999/mpvRex</string>
-    <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvRex/privacy_policy.html</string>
+    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
     <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
     <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
     <string name="pref_player_display_hide_player_control_time">Hide player control time</string>

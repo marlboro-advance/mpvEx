@@ -1,62 +1,62 @@
-mpvrex = {}
-function mpvrex.show_text(text)
-    mp.set_property("user-data/mpvrex/show_text", text)
+mpvex = {}
+function mpvex.show_text(text)
+    mp.set_property("user-data/mpvex/show_text", text)
 end
-function mpvrex.hide_ui()
-    mp.set_property("user-data/mpvrex/toggle_ui", "hide")
+function mpvex.hide_ui()
+    mp.set_property("user-data/mpvex/toggle_ui", "hide")
 end
-function mpvrex.show_ui()
-    mp.set_property("user-data/mpvrex/toggle_ui", "show")
+function mpvex.show_ui()
+    mp.set_property("user-data/mpvex/toggle_ui", "show")
 end
-function mpvrex.toggle_ui()
-    mp.set_property("user-data/mpvrex/toggle_ui", "toggle")
+function mpvex.toggle_ui()
+    mp.set_property("user-data/mpvex/toggle_ui", "toggle")
 end
-function mpvrex.show_subtitle_settings()
-   mp.set_property("user-data/mpvrex/show_panel", "subtitle_settings")
+function mpvex.show_subtitle_settings()
+   mp.set_property("user-data/mpvex/show_panel", "subtitle_settings")
 end
-function mpvrex.show_subtitle_delay()
-    mp.set_property("user-data/mpvrex/show_panel", "subtitle_delay")
+function mpvex.show_subtitle_delay()
+    mp.set_property("user-data/mpvex/show_panel", "subtitle_delay")
 end
-function mpvrex.show_audio_delay()
-    mp.set_property("user-data/mpvrex/show_panel", "audio_delay")
+function mpvex.show_audio_delay()
+    mp.set_property("user-data/mpvex/show_panel", "audio_delay")
 end
-function mpvrex.show_video_filters()
-    mp.set_property("user-data/mpvrex/show_panel", "video_filters")
+function mpvex.show_video_filters()
+    mp.set_property("user-data/mpvex/show_panel", "video_filters")
 end
-function mpvrex.set_button_title(text)
-   mp.set_property("user-data/mpvrex/set_button_title", text)
+function mpvex.set_button_title(text)
+   mp.set_property("user-data/mpvex/set_button_title", text)
 end
-function mpvrex.reset_button_title(text)
-    mp.set_property("user-data/mpvrex/reset_button_title", "unused")
+function mpvex.reset_button_title(text)
+    mp.set_property("user-data/mpvex/reset_button_title", "unused")
 end
-function mpvrex.show_button()
-    mp.set_property("user-data/mpvrex/toggle_button", "show")
+function mpvex.show_button()
+    mp.set_property("user-data/mpvex/toggle_button", "show")
 end
-function mpvrex.hide_button()
-    mp.set_property("user-data/mpvrex/toggle_button", "hide")
+function mpvex.hide_button()
+    mp.set_property("user-data/mpvex/toggle_button", "hide")
 end
-function mpvrex.toggle_button()
-    mp.set_property("user-data/mpvrex/toggle_button", "toggle")
+function mpvex.toggle_button()
+    mp.set_property("user-data/mpvex/toggle_button", "toggle")
 end
-function mpvrex.seek_by(value)
-    mp.set_property("user-data/mpvrex/seek_by", value)
+function mpvex.seek_by(value)
+    mp.set_property("user-data/mpvex/seek_by", value)
 end
-function mpvrex.seek_to(value)
-    mp.set_property("user-data/mpvrex/seek_to", value)
+function mpvex.seek_to(value)
+    mp.set_property("user-data/mpvex/seek_to", value)
 end
-function mpvrex.seek_by_with_text(value, text)
-    mp.set_property("user-data/mpvrex/seek_by_with_text", value .. "|" .. text)
+function mpvex.seek_by_with_text(value, text)
+    mp.set_property("user-data/mpvex/seek_by_with_text", value .. "|" .. text)
 end
-function mpvrex.seek_to_with_text(value, text)
-    mp.set_property("user-data/mpvrex/seek_to_with_text", value .. "|" .. text)
+function mpvex.seek_to_with_text(value, text)
+    mp.set_property("user-data/mpvex/seek_to_with_text", value .. "|" .. text)
 end
-function mpvrex.show_software_keyboard()
-    mp.set_property("user-data/mpvrex/software_keyboard", "show")
+function mpvex.show_software_keyboard()
+    mp.set_property("user-data/mpvex/software_keyboard", "show")
 end
-function mpvrex.hide_software_keyboard()
-    mp.set_property("user-data/mpvrex/software_keyboard", "hide")
+function mpvex.hide_software_keyboard()
+    mp.set_property("user-data/mpvex/software_keyboard", "hide")
 end
-function mpvrex.toggle_software_keyboard()
-    mp.set_property("user-data/mpvrex/software_keyboard", "toggle")
+function mpvex.toggle_software_keyboard()
+    mp.set_property("user-data/mpvex/software_keyboard", "toggle")
 end
-return mpvrex
+return mpvex
