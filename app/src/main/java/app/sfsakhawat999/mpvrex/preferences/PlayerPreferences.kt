@@ -23,8 +23,6 @@ class PlayerPreferences(
   val videoAspect = preferenceStore.getEnum("video_aspect", VideoAspect.Fit)
   val customAspectRatios = preferenceStore.getStringSet("custom_aspect_ratios", emptySet())
   val currentAspectRatio = preferenceStore.getFloat("current_aspect_ratio", -1f)
-  val currentChaptersIndicator = preferenceStore.getBoolean("show_video_chapter_indicator", true)
-//  val showChaptersButton = preferenceStore.getBoolean("show_video_chapters_button")
 
   val defaultSpeed = preferenceStore.getFloat("default_speed", 1f)
   val speedPresets =
@@ -45,7 +43,7 @@ class PlayerPreferences(
 
   val allowGesturesInPanels = preferenceStore.getBoolean("allow_gestures_in_panels")
   val showSystemStatusBar = preferenceStore.getBoolean("show_system_status_bar")
-  val reduceMotion = preferenceStore.getBoolean("reduce_motion", true)
+  val reduceMotion = preferenceStore.getBoolean("reduce_motion", false)
   val playerTimeToDisappear = preferenceStore.getInt("player_time_to_disappear", 4000)
 
   val panelTransparency = preferenceStore.getFloat("panel_transparency", 0.6f)

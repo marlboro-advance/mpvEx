@@ -13,7 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.VideoLabel
+// import androidx.compose.material.icons.outlined.VideoLabel // No longer needed here
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.sfsakhawat999.mpvrex.R
 import app.sfsakhawat999.mpvrex.preferences.AppearancePreferences
 import app.sfsakhawat999.mpvrex.preferences.ControlLayoutPreview
@@ -49,6 +50,7 @@ import org.koin.compose.koinInject
 // Enum to identify which region we are editing
 @Serializable
 enum class ControlRegion {
+  TOP_LEFT,
   TOP_RIGHT,
   BOTTOM_RIGHT,
   BOTTOM_LEFT
@@ -62,10 +64,11 @@ object PlayerControlsPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val preferences = koinInject<AppearancePreferences>()
 
-    // Get the current state for all three regions
-    val topState by preferences.topRightControls.collectAsState()
-    val bottomState by preferences.bottomRightControls.collectAsState()
-    val leftState by preferences.bottomLeftControls.collectAsState()
+    // Get the current state for all four regions
+    val topLState by preferences.topLeftControls.collectAsState()
+    val topRState by preferences.topRightControls.collectAsState()
+    val bottomRState by preferences.bottomRightControls.collectAsState()
+    val bottomLState by preferences.bottomLeftControls.collectAsState()
 
     var showResetDialog by remember { mutableStateOf(false) }
 
@@ -74,6 +77,7 @@ object PlayerControlsPreferencesScreen : Screen {
         title = stringResource(id = R.string.pref_layout_reset_title),
         subtitle = stringResource(id = R.string.pref_layout_reset_summary),
         onConfirm = {
+          preferences.topLeftControls.delete()
           preferences.topRightControls.delete()
           preferences.bottomRightControls.delete()
           preferences.bottomLeftControls.delete()
@@ -85,12 +89,18 @@ object PlayerControlsPreferencesScreen : Screen {
       )
     }
 
-    val (topRightButtons, bottomRightButtons, bottomLeftButtons) = remember(topState, bottomState, leftState) {
+    val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) = remember(
+      topLState,
+      topRState,
+      bottomRState,
+      bottomLState
+    ) {
       val usedButtons = mutableSetOf<PlayerButton>()
-      val topR = preferences.parseButtons(topState, usedButtons)
-      val bottomR = preferences.parseButtons(bottomState, usedButtons)
-      val bottomL = preferences.parseButtons(leftState, usedButtons)
-      Triple(topR, bottomR, bottomL)
+      val topL = preferences.parseButtons(topLState, usedButtons)
+      val topR = preferences.parseButtons(topRState, usedButtons)
+      val bottomR = preferences.parseButtons(bottomRState, usedButtons)
+      val bottomL = preferences.parseButtons(bottomLState, usedButtons)
+      listOf(topL, topR, bottomR, bottomL)
     }
 
     Scaffold(
@@ -119,6 +129,16 @@ object PlayerControlsPreferencesScreen : Screen {
         ) {
           item {
             PreferenceCategoryWithEditButton(
+              title = "Top Left Controls", // TODO: strings
+              onClick = {
+                backstack.add(ControlLayoutEditorScreen(ControlRegion.TOP_LEFT))
+              },
+            )
+            PreferenceIconSummary(buttons = topLeftButtons)
+          }
+
+          item {
+            PreferenceCategoryWithEditButton(
               title = stringResource(id = R.string.pref_layout_top_right_controls),
               onClick = {
                 backstack.add(ControlLayoutEditorScreen(ControlRegion.TOP_RIGHT))
@@ -144,12 +164,13 @@ object PlayerControlsPreferencesScreen : Screen {
                 backstack.add(ControlLayoutEditorScreen(ControlRegion.BOTTOM_LEFT))
               },
             )
-            PreferenceIconSummary(buttons = bottomLeftButtons, showFixedChapter = false)
+            PreferenceIconSummary(buttons = bottomLeftButtons)
           }
 
           item {
             PreferenceCategory(title = { Text(stringResource(id = R.string.pref_layout_preview)) })
             ControlLayoutPreview(
+              topLeftButtons = topLeftButtons,
               topRightButtons = topRightButtons,
               bottomRightButtons = bottomRightButtons,
               bottomLeftButtons = bottomLeftButtons,
@@ -195,37 +216,57 @@ object PlayerControlsPreferencesScreen : Screen {
   @Composable
   private fun PreferenceIconSummary(
     buttons: List<PlayerButton>,
-    showFixedChapter: Boolean = false,
   ) {
     FlowRow(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 8.dp),
       horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased spacing
-      verticalArrangement = Arrangement.spacedBy(4.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically), // <-- FIXED
     ) {
-      if (buttons.isEmpty() && !showFixedChapter) {
+      if (buttons.isEmpty()) {
         Text(
           "None", // TODO: strings
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       } else {
-        buttons.forEach {
-          Icon(
-            imageVector = it.icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        if (showFixedChapter) {
-          Icon(
-            imageVector = Icons.Outlined.VideoLabel,
-            contentDescription = "Fixed Chapter",
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
+        buttons.forEach { button ->
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            if(button != PlayerButton.VIDEO_TITLE) {
+              Icon(
+                imageVector = button.icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+
+            // --- NEW LOGIC ---
+            when (button) {
+              PlayerButton.VIDEO_TITLE -> {
+                Text(
+                  "Video Title", // TODO: strings
+                  style = MaterialTheme.typography.bodyLarge,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              PlayerButton.CURRENT_CHAPTER -> {
+                Text(
+                  "1:06 • C1", // TODO: strings
+                  style = MaterialTheme.typography.bodyLarge,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              else -> {
+                // Do nothing, just show the icon
+              }
+            }
+            // --- END NEW LOGIC ---
+          }
         }
       }
     }

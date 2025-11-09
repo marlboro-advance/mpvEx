@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,11 +39,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.sfsakhawat999.mpvrex.preferences.AppearancePreferences
 import app.sfsakhawat999.mpvrex.preferences.PlayerButton
 import app.sfsakhawat999.mpvrex.preferences.allPlayerButtons
 import app.sfsakhawat999.mpvrex.preferences.getPlayerButtonLabel
+import app.sfsakhawat999.mpvrex.preferences.preference.Preference
 import app.sfsakhawat999.mpvrex.presentation.Screen
 import app.sfsakhawat999.mpvrex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
@@ -58,33 +63,55 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
     val backstack = LocalBackStack.current
     val preferences = koinInject<AppearancePreferences>()
 
-    // Get all 3 preferences
-    val (prefToEdit, otherPref1, otherPref2) = remember(region) {
+    // Get all 4 preferences as a List
+    val prefs = remember(region) {
       when (region) {
-        ControlRegion.TOP_RIGHT -> Triple(
+        ControlRegion.TOP_LEFT -> listOf(
+          preferences.topLeftControls,
           preferences.topRightControls,
           preferences.bottomRightControls,
           preferences.bottomLeftControls,
         )
-        ControlRegion.BOTTOM_RIGHT -> Triple(
+        ControlRegion.TOP_RIGHT -> listOf(
+          preferences.topRightControls,
+          preferences.topLeftControls,
           preferences.bottomRightControls,
+          preferences.bottomLeftControls,
+        )
+        ControlRegion.BOTTOM_RIGHT -> listOf(
+          preferences.bottomRightControls,
+          preferences.topLeftControls,
           preferences.topRightControls,
           preferences.bottomLeftControls,
         )
-        ControlRegion.BOTTOM_LEFT -> Triple(
+        ControlRegion.BOTTOM_LEFT -> listOf(
           preferences.bottomLeftControls,
+          preferences.topLeftControls,
           preferences.topRightControls,
           preferences.bottomRightControls,
         )
       }
     }
 
+    // Destructure the list correctly
+    val prefToEdit: Preference<String> = prefs[0]
+    val otherPref1: Preference<String> = prefs[1]
+    val otherPref2: Preference<String> = prefs[2]
+    val otherPref3: Preference<String> = prefs[3]
+
+
     // State for buttons used in *other* regions (these are disabled)
     val disabledButtons by remember {
       mutableStateOf(
-        (otherPref1.get().split(',') + otherPref2.get().split(','))
+        (otherPref1.get().split(',') + otherPref2.get().split(',') + otherPref3.get().split(','))
           .filter(String::isNotBlank)
-          .mapNotNull { try { PlayerButton.valueOf(it) } catch (e: Exception) { null } }
+          .mapNotNull {
+            try {
+              PlayerButton.valueOf(it)
+            } catch (e: Exception) {
+              null
+            }
+          }
           .toSet(),
       )
     }
@@ -94,7 +121,13 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
       mutableStateOf(
         prefToEdit.get().split(',')
           .filter(String::isNotBlank)
-          .mapNotNull { try { PlayerButton.valueOf(it) } catch (e: Exception) { null } },
+          .mapNotNull {
+            try {
+              PlayerButton.valueOf(it)
+            } catch (e: Exception) {
+              null
+            }
+          },
       )
     }
 
@@ -108,13 +141,12 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
     // --- Dynamic Title based on region ---
     val title = remember(region) {
       when (region) {
-        ControlRegion.TOP_RIGHT -> "Edit Top Right Controls" // TODO: strings
-        ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right Controls" // TODO: strings
-        ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left Controls" // TODO: strings
+        ControlRegion.TOP_LEFT -> "Edit Top Left" // TODO: strings
+        ControlRegion.TOP_RIGHT -> "Edit Top Right" // TODO: strings
+        ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right" // TODO: strings
+        ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left" // TODO: strings
       }
     }
-
-    // --- Live Preview Logic REMOVED ---
 
     Scaffold(
       topBar = {
@@ -135,9 +167,7 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
             .padding(padding)
             .verticalScroll(rememberScrollState()),
         ) {
-          // --- Live Preview REMOVED ---
-
-          // --- 1. Selected Controls --- (Was 2)
+          // --- 1. Selected Controls ---
           PreferenceCategory(title = { Text("Selected") })
           FlowRow(
             modifier = Modifier
@@ -168,7 +198,7 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
             }
           }
 
-          // --- 2. Available Controls --- (Was 3)
+          // --- 2. Available Controls ---
           PreferenceCategory(title = { Text("Available") })
           FlowRow(
             modifier = Modifier
@@ -200,7 +230,7 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
 
 /**
  * A simple "Quick Settings" style chip for a player button.
- * Now with no text, a larger icon, and a badge overlay.
+ * Renders text or icons based on the button type.
  */
 @Composable
 private fun PlayerButtonChip(
@@ -213,41 +243,64 @@ private fun PlayerButtonChip(
   val label = getPlayerButtonLabel(button) // Kept for accessibility
 
   Box(
-    modifier = Modifier
-      .size(width = 72.dp, height = 72.dp) // Total size including padding
-      .padding(4.dp), // Padding to make room for the badge
+    modifier = Modifier.padding(4.dp) // Padding for the badge
   ) {
     Card(
-      modifier = Modifier.fillMaxSize(), // Fills the box
+      modifier = Modifier, // Let the card wrap its content
       shape = MaterialTheme.shapes.medium,
       elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 1.dp else 0.dp),
       colors = CardDefaults.cardColors(
-        containerColor = if (enabled) {
-          MaterialTheme.colorScheme.surfaceVariant
-        } else {
-          MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        },
-        contentColor = if (enabled) {
-          MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-          MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-        },
+        containerColor = if (enabled) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        contentColor = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
       ),
+      onClick = onClick,
+      enabled = enabled
     ) {
-      Column(
+      // Use a Box to center content and set size constraints
+      Box(
         modifier = Modifier
-          .fillMaxSize()
-          .clickable(enabled = enabled, onClick = onClick)
-          .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+          .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp) // Smaller min size
+          .padding(horizontal = 12.dp, vertical = 8.dp), // Padding inside the card
+        contentAlignment = Alignment.Center
       ) {
-        Icon(
-          imageVector = button.icon,
-          contentDescription = label,
-          modifier = Modifier.size(32.dp), // Increased icon size
-        )
-        // Removed the Text label
+        when (button) {
+          PlayerButton.VIDEO_TITLE -> {
+            Text(
+              text = "Video Title", // TODO: strings
+              fontSize = 15.sp, // Increased font size
+              textAlign = TextAlign.Center,
+              lineHeight = 14.sp
+            )
+          }
+          PlayerButton.CURRENT_CHAPTER -> {
+            // --- UPDATED: Use a Row ---
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.Center,
+            ) {
+              Icon(
+                imageVector = button.icon, // This will now be Bookmarks
+                contentDescription = label,
+                modifier = Modifier.size(24.dp), // Smaller icon
+              )
+              Text(
+                text = "1:06 • C1", // TODO: strings
+                fontSize = 15.sp, // Increased font size
+                textAlign = TextAlign.Center,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(start = 8.dp) // Add padding between icon and text
+              )
+            }
+          }
+          else -> {
+            // Default: Icon only
+            Icon(
+              imageVector = button.icon,
+              contentDescription = label,
+              modifier = Modifier.size(24.dp), // Smaller icon
+            )
+          }
+        }
       }
     }
 
@@ -259,7 +312,7 @@ private fun PlayerButtonChip(
       modifier = Modifier
         .size(20.dp)
         .align(Alignment.BottomEnd)
-        .background(MaterialTheme.colorScheme.surface, CircleShape), // White circle background
+        .background(MaterialTheme.colorScheme.surface, CircleShape),
     )
   }
 }

@@ -272,7 +272,7 @@
     <string name="value_percentage_int" translatable="false">%d%%</string>
     <string name="value_percentage_float" translatable="false">%.2f\%%</string>
 
-    <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvRex</string>
+    <string name="github_repo_url" translatable="false">https://github.com/sfsakhawat999/mpvRex</string>
     <string name="privacy_policy_url" translatable="false">https://marlboro-advance.github.io/mpvRex/privacy_policy.html</string>
     <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
     <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>

@@ -123,6 +123,7 @@ fun VideoCard(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .debouncedCombinedClickable(
               onClick = onThumbClick,
+              onLongClick = onLongClick
             ),
         contentAlignment = Alignment.Center,
       ) {

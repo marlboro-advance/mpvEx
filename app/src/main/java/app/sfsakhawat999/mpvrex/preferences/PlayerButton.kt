@@ -1,6 +1,7 @@
 package app.sfsakhawat999.mpvrex.preferences
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Bookmarks
@@ -12,6 +13,8 @@ import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.Title
+// import androidx.compose.material.icons.outlined.VideoLabel // No longer needed
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,6 +25,8 @@ import app.sfsakhawat999.mpvrex.R
  * Now includes an icon for the preference UI.
  */
 enum class PlayerButton(val icon: ImageVector) {
+  BACK_ARROW(Icons.AutoMirrored.Outlined.ArrowBack),
+  VIDEO_TITLE(Icons.Outlined.Title),
   BOOKMARKS_CHAPTERS(Icons.Outlined.Bookmarks),
   PLAYBACK_SPEED(Icons.Outlined.Speed),
   DECODER(Icons.Outlined.Memory),
@@ -34,6 +39,7 @@ enum class PlayerButton(val icon: ImageVector) {
   AUDIO_TRACK(Icons.Outlined.Audiotrack),
   SUBTITLES(Icons.Outlined.Subtitles),
   MORE_OPTIONS(Icons.Outlined.MoreVert),
+  CURRENT_CHAPTER(Icons.Outlined.Bookmarks), // <-- CHANGED ICON
   NONE(Icons.Outlined.Bookmarks); // 'NONE' is filtered out, icon is irrelevant
 }
 
@@ -49,6 +55,8 @@ val allPlayerButtons = PlayerButton.entries.filter { it != PlayerButton.NONE }
 @Composable
 fun getPlayerButtonLabel(button: PlayerButton): String {
   return when (button) {
+    PlayerButton.BACK_ARROW -> "Back Arrow" // stringResource(R.string.btn_label_back)
+    PlayerButton.VIDEO_TITLE -> "Video Title" // stringResource(R.string.btn_label_title)
     PlayerButton.BOOKMARKS_CHAPTERS -> "Chapters / Bookmarks" // stringResource(R.string.btn_label_bookmarks)
     PlayerButton.PLAYBACK_SPEED -> "Playback Speed" // stringResource(R.string.btn_label_speed)
     PlayerButton.DECODER -> "Decoder" // stringResource(R.string.btn_label_decoder)
@@ -61,6 +69,7 @@ fun getPlayerButtonLabel(button: PlayerButton): String {
     PlayerButton.AUDIO_TRACK -> "Audio Track" // stringResource(R.string.btn_label_audio)
     PlayerButton.SUBTITLES -> "Subtitles" // stringResource(R.string.btn_label_subtitles)
     PlayerButton.MORE_OPTIONS -> "More Options" // stringResource(R.string.btn_label_more)
+    PlayerButton.CURRENT_CHAPTER -> "Current Chapter" // stringResource(R.string.btn_label_chapter)
     PlayerButton.NONE -> "None" // stringResource(R.string.btn_label_none)
   }
 }

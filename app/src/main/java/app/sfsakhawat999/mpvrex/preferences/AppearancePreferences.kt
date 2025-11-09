@@ -30,6 +30,14 @@ class AppearancePreferences(
   // --- Player Control Preferences ---
 
   /**
+   * Comma-separated list of [PlayerButton] enum names for the top left controls.
+   */
+  val topLeftControls = preferenceStore.getString(
+    "top_left_controls",
+    "BACK_ARROW,VIDEO_TITLE", // <-- NEW DEFAULT
+  )
+
+  /**
    * Comma-separated list of [PlayerButton] enum names for the top right controls.
    */
   val topRightControls = preferenceStore.getString(
@@ -50,7 +58,7 @@ class AppearancePreferences(
    */
   val bottomLeftControls = preferenceStore.getString(
     "bottom_left_controls",
-    "LOCK_CONTROLS,AUDIO_TRACK,SUBTITLES", // <-- CURRENT_CHAPTER removed
+    "LOCK_CONTROLS,AUDIO_TRACK,SUBTITLES,CURRENT_CHAPTER", // <-- Added CURRENT_CHAPTER
   )
 
   /**

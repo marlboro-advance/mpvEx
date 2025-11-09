@@ -3,6 +3,8 @@ package app.sfsakhawat999.mpvrex.ui.browser.components
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -117,6 +119,7 @@ private fun NormalTopBar(
 ) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
+  val darkTheme = isSystemInDarkTheme()
   val context = LocalContext.current
 
   TopAppBar(
@@ -125,33 +128,43 @@ private fun NormalTopBar(
         if (onTitleLongPress != null) {
           Modifier.combinedClickable(
             onClick = {
-              if (darkMode == DarkMode.System) {
+              if (darkMode == DarkMode.System && darkTheme) {
                 preferences.darkMode.set(DarkMode.Light)
-                Toast.makeText(context, "Switched to Light Mode", Toast.LENGTH_SHORT).show()
-              } else if (darkMode == DarkMode.Light) {
+              } else if (darkMode == DarkMode.System && !darkTheme) {
                 preferences.darkMode.set(DarkMode.Dark)
-                Toast.makeText(context, "Switched to Dark Mode", Toast.LENGTH_SHORT).show()
+              } else if (darkMode == DarkMode.Light && darkTheme) {
+                preferences.darkMode.set(DarkMode.System)
+              } else if (darkMode == DarkMode.Light && !darkTheme) {
+                preferences.darkMode.set(DarkMode.Dark)
+              } else if (darkMode == DarkMode.Dark && darkTheme) {
+                preferences.darkMode.set(DarkMode.Light)
               } else {
                 preferences.darkMode.set(DarkMode.System)
-                Toast.makeText(context, "Switched to System Default", Toast.LENGTH_SHORT).show()
               }
             },
             onLongClick = onTitleLongPress,
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
           )
         } else {
           Modifier.combinedClickable(
             onClick = {
-              if (darkMode == DarkMode.System) {
+              if (darkMode == DarkMode.System && darkTheme) {
                 preferences.darkMode.set(DarkMode.Light)
-                Toast.makeText(context, "Switched to Light Mode", Toast.LENGTH_SHORT).show()
-              } else if (darkMode == DarkMode.Light) {
+              } else if (darkMode == DarkMode.System && !darkTheme) {
                 preferences.darkMode.set(DarkMode.Dark)
-                Toast.makeText(context, "Switched to Dark Mode", Toast.LENGTH_SHORT).show()
+              } else if (darkMode == DarkMode.Light && darkTheme) {
+                preferences.darkMode.set(DarkMode.System)
+              } else if (darkMode == DarkMode.Light && !darkTheme) {
+                preferences.darkMode.set(DarkMode.Dark)
+              } else if (darkMode == DarkMode.Dark && darkTheme) {
+                preferences.darkMode.set(DarkMode.Light)
               } else {
                 preferences.darkMode.set(DarkMode.System)
-                Toast.makeText(context, "Switched to System Default", Toast.LENGTH_SHORT).show()
               }
-            }
+            },
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
           )
         }
 
