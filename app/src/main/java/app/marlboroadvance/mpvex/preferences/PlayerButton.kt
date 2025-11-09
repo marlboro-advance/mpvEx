@@ -47,14 +47,13 @@ enum class PlayerButton(
 
 /**
  * A list of all buttons that the user can choose from in the customization menu.
- * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE, MORE_OPTIONS).
+ * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE).
  */
 val allPlayerButtons =
   PlayerButton.values().filter {
     it != PlayerButton.NONE &&
       it != PlayerButton.BACK_ARROW &&
-      it != PlayerButton.VIDEO_TITLE &&
-      it != PlayerButton.MORE_OPTIONS
+      it != PlayerButton.VIDEO_TITLE
   }
 
 /**

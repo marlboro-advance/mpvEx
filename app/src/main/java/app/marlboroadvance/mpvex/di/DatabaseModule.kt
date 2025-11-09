@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.di
 
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import app.marlboroadvance.mpvex.database.Migrations
 import app.marlboroadvance.mpvex.database.mpvexDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl
@@ -31,7 +30,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, mpvexDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(*Migrations.ALL)
+        .fallbackToDestructiveMigration()
         .build()
     }
 

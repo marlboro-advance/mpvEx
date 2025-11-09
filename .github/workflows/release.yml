@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -27,29 +29,92 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build release with Gradle
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Get tag name
         if: startsWith(github.ref, 'refs/tags/')
         run: echo "VERSION_TAG=$(basename $GITHUB_REF)" >> $GITHUB_ENV
 
+      - name: List built APKs
+        run: |
+          echo "=== Checking build output directory ==="
+          if [ -d "app/build/outputs/apk/release" ]; then
+            echo "✓ Release directory exists"
+            echo ""
+            echo "Contents:"
+            ls -lah app/build/outputs/apk/release/
+          else
+            echo "✗ Release directory does NOT exist!"
+            echo "Searching for any APK files in build output:"
+            find app/build/outputs -name "*.apk" -type f 2>/dev/null || echo "No APKs found anywhere!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== APK files found ==="
+          find app/build/outputs/apk/release -name "*.apk" -type f || echo "No APK files found!"
+
       - name: Sign APKs
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE }}
-          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
+        run: |
+          set -e
+          
+          RELEASE_DIR="app/build/outputs/apk/release"
+          
+          # Decode keystore from secrets
+          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
+          
+          # Check if any APK files exist (they will have -unsigned suffix in CI)
+          APK_COUNT=$(find "$RELEASE_DIR" -name "app-*-release-unsigned.apk" -type f | wc -l)
+          
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "ERROR: No unsigned APK files found in $RELEASE_DIR"
+            echo ""
+            echo "Directory contents:"
+            ls -lah "$RELEASE_DIR"
+            rm release.keystore
+            exit 1
+          fi
+          
+          echo "Found $APK_COUNT APK file(s) to sign"
+          echo ""
+          
+          # Sign each APK and rename to remove -unsigned suffix
+          find "$RELEASE_DIR" -name "app-*-release-unsigned.apk" -type f | while read -r apk; do
+            # Calculate the signed APK name (remove -unsigned)
+            signed_apk="${apk/-unsigned/}"
+          
+            echo "Signing: $(basename "$apk") -> $(basename "$signed_apk")"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks release.keystore \
+              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --out "$signed_apk" \
+              "$apk"
+          
+            # Verify the signature
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
+            echo "✓ Successfully signed and verified: $(basename "$signed_apk")"
+          
+            # Remove the unsigned APK
+            rm "$apk"
+            echo ""
+          done
+          
+          # Clean up keystore
+          rm release.keystore
+          
+          echo "=== All APKs signed successfully ==="
+          echo "Final APKs:"
+          ls -lh "$RELEASE_DIR"/app-*-release.apk
 
       - name: Copy build artifacts
         run: |
           set -euo pipefail
           apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
           for abi in "${apks[@]}"; do
-            src="app/build/outputs/apk/release/app-${abi}-release-signed.apk"
+            src="app/build/outputs/apk/release/app-${abi}-release.apk"
             dst="mpvEx-${abi}-${VERSION_TAG}.apk"
             if [ ! -f "$src" ]; then
               echo "::error file=$src::Signed APK for $abi was not found"
@@ -60,6 +125,9 @@ jobs:
             varname="apk_${abi//-/_}_sha256"
             echo "$varname=$checksum" >> "$GITHUB_ENV"
           done
+          
+          echo "Created release APKs:"
+          ls -lah mpvEx-*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

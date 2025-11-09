@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -27,11 +29,81 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build preview APKs
-        run: ./gradlew assemblePreview
+        run: ./gradlew assemblePreview --stacktrace
 
       - name: Get tag name
         if: startsWith(github.ref, 'refs/tags/')
         run: echo "VERSION_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: List built APKs
+        run: |
+          echo "=== Checking build output directory ==="
+          if [ -d "app/build/outputs/apk/preview" ]; then
+            echo "✓ Preview directory exists"
+            echo ""
+            echo "Contents:"
+            ls -lah app/build/outputs/apk/preview/
+          else
+            echo "✗ Preview directory does NOT exist!"
+            echo "Searching for any APK files in build output:"
+            find app/build/outputs -name "*.apk" -type f 2>/dev/null || echo "No APKs found anywhere!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== APK files found ==="
+          find app/build/outputs/apk/preview -name "*.apk" -type f || echo "No APK files found!"
+
+      - name: Sign APKs
+        run: |
+          set -e
+          
+          PREVIEW_DIR="app/build/outputs/apk/preview"
+          
+          # Decode keystore from secrets
+          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
+          
+          # Check if any APK files exist
+          # Preview builds are signed with debug key by default, so they won't have -unsigned suffix
+          # But let's check for both patterns to be safe
+          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-*-preview.apk" -type f | wc -l)
+          
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "ERROR: No preview APK files found in $PREVIEW_DIR"
+            echo ""
+            echo "Directory contents:"
+            ls -lah "$PREVIEW_DIR"
+            rm release.keystore
+            exit 1
+          fi
+          
+          echo "Found $APK_COUNT APK file(s) to sign"
+          echo ""
+          
+          # Sign each APK
+          find "$PREVIEW_DIR" -name "app-*-preview.apk" -type f | while read -r apk; do
+            echo "Signing: $(basename "$apk")"
+          
+            # Preview builds already have debug signature, so we need to re-sign
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks release.keystore \
+              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              "$apk"
+          
+            # Verify the signature
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$apk"
+            echo "✓ Successfully signed and verified: $(basename "$apk")"
+            echo ""
+          done
+          
+          # Clean up keystore
+          rm release.keystore
+          
+          echo "=== All APKs signed successfully ==="
+          echo "Final APKs:"
+          ls -lh "$PREVIEW_DIR"/app-*-preview.apk
 
       - name: Copy built artifacts
         run: |
