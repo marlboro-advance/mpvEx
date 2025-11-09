@@ -143,7 +143,7 @@ fun PermissionDeniedState(
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
           Text(
-            text = "mpvex requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions.",
+            text = "mpvEx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -238,7 +238,7 @@ fun PermissionDeniedState(
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
           Text(
-            text = "mpvex has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
+            text = "mpvEx has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -256,7 +256,7 @@ fun PermissionDeniedState(
           )
 
           Text(
-            text = "mpvex is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
+            text = "mpvEx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
