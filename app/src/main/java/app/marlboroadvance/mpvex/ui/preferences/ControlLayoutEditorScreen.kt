@@ -55,8 +55,9 @@ import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
 @Serializable
-data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
-
+data class ControlLayoutEditorScreen(
+  val region: ControlRegion,
+) : Screen {
   @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
   @Composable
   override fun Content() {
@@ -64,41 +65,45 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
     val preferences = koinInject<AppearancePreferences>()
 
     // Get all 4 preferences as a List
-    val prefs = remember(region) {
-      when (region) {
-        ControlRegion.TOP_LEFT -> listOf(
-          preferences.topLeftControls,
-          preferences.topRightControls,
-          preferences.bottomRightControls,
-          preferences.bottomLeftControls,
-        )
-        ControlRegion.TOP_RIGHT -> listOf(
-          preferences.topRightControls,
-          preferences.topLeftControls,
-          preferences.bottomRightControls,
-          preferences.bottomLeftControls,
-        )
-        ControlRegion.BOTTOM_RIGHT -> listOf(
-          preferences.bottomRightControls,
-          preferences.topLeftControls,
-          preferences.topRightControls,
-          preferences.bottomLeftControls,
-        )
-        ControlRegion.BOTTOM_LEFT -> listOf(
-          preferences.bottomLeftControls,
-          preferences.topLeftControls,
-          preferences.topRightControls,
-          preferences.bottomRightControls,
-        )
+    val prefs =
+      remember(region) {
+        when (region) {
+          ControlRegion.TOP_LEFT ->
+            listOf(
+              preferences.topLeftControls,
+              preferences.topRightControls,
+              preferences.bottomRightControls,
+              preferences.bottomLeftControls,
+            )
+          ControlRegion.TOP_RIGHT ->
+            listOf(
+              preferences.topRightControls,
+              preferences.topLeftControls,
+              preferences.bottomRightControls,
+              preferences.bottomLeftControls,
+            )
+          ControlRegion.BOTTOM_RIGHT ->
+            listOf(
+              preferences.bottomRightControls,
+              preferences.topLeftControls,
+              preferences.topRightControls,
+              preferences.bottomLeftControls,
+            )
+          ControlRegion.BOTTOM_LEFT ->
+            listOf(
+              preferences.bottomLeftControls,
+              preferences.topLeftControls,
+              preferences.topRightControls,
+              preferences.bottomRightControls,
+            )
+        }
       }
-    }
 
     // Destructure the list correctly
     val prefToEdit: Preference<String> = prefs[0]
     val otherPref1: Preference<String> = prefs[1]
     val otherPref2: Preference<String> = prefs[2]
     val otherPref3: Preference<String> = prefs[3]
-
 
     // State for buttons used in *other* regions (these are disabled)
     val disabledButtons by remember {
@@ -111,15 +116,16 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
             } catch (e: Exception) {
               null
             }
-          }
-          .toSet(),
+          }.toSet(),
       )
     }
 
     // State for the *current* selection
     var selectedButtons by remember {
       mutableStateOf(
-        prefToEdit.get().split(',')
+        prefToEdit
+          .get()
+          .split(',')
           .filter(String::isNotBlank)
           .mapNotNull {
             try {
@@ -139,14 +145,15 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
     }
 
     // --- Dynamic Title based on region ---
-    val title = remember(region) {
-      when (region) {
-        ControlRegion.TOP_LEFT -> "Edit Top Left" // TODO: strings
-        ControlRegion.TOP_RIGHT -> "Edit Top Right" // TODO: strings
-        ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right" // TODO: strings
-        ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left" // TODO: strings
+    val title =
+      remember(region) {
+        when (region) {
+          ControlRegion.TOP_LEFT -> "Edit Top Left" // TODO: strings
+          ControlRegion.TOP_RIGHT -> "Edit Top Right" // TODO: strings
+          ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right" // TODO: strings
+          ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left" // TODO: strings
+        }
       }
-    }
 
     Scaffold(
       topBar = {
@@ -162,17 +169,19 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
     ) { padding ->
       ProvidePreferenceLocals {
         Column(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .verticalScroll(rememberScrollState()),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .padding(padding)
+              .verticalScroll(rememberScrollState()),
         ) {
           // --- 1. Selected Controls ---
           PreferenceCategory(title = { Text("Selected") })
           FlowRow(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -193,7 +202,7 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
                   selectedButtons = selectedButtons - button
                 },
                 badgeIcon = Icons.Default.RemoveCircle,
-                badgeColor = MaterialTheme.colorScheme.error,
+                badgeColor = Color(0xFFEF5350), // Material Design Red 400 - warning red
               )
             }
           }
@@ -201,9 +210,10 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
           // --- 2. Available Controls ---
           PreferenceCategory(title = { Text("Available") })
           FlowRow(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -218,7 +228,15 @@ data class ControlLayoutEditorScreen(val region: ControlRegion) : Screen {
                   selectedButtons = selectedButtons + button
                 },
                 badgeIcon = Icons.Default.AddCircle,
-                badgeColor = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                badgeColor =
+                  if (isEnabled) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurface
+                      .copy(
+                        alpha = 0.38f,
+                      )
+                  },
               )
             }
           }
@@ -243,25 +261,44 @@ private fun PlayerButtonChip(
   val label = getPlayerButtonLabel(button) // Kept for accessibility
 
   Box(
-    modifier = Modifier.padding(4.dp) // Padding for the badge
+    modifier = Modifier.padding(4.dp), // Padding for the badge
   ) {
     Card(
       modifier = Modifier, // Let the card wrap its content
       shape = MaterialTheme.shapes.medium,
       elevation = CardDefaults.cardElevation(defaultElevation = if (enabled) 1.dp else 0.dp),
-      colors = CardDefaults.cardColors(
-        containerColor = if (enabled) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        contentColor = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-      ),
+      colors =
+        CardDefaults.cardColors(
+          containerColor =
+            if (enabled) {
+              MaterialTheme.colorScheme.surfaceVariant
+            } else {
+              MaterialTheme.colorScheme.surfaceVariant
+                .copy(
+                  alpha = 0.4f,
+                )
+            },
+          contentColor =
+            if (enabled) {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+                .copy(
+                  alpha = 0.4f,
+                )
+            },
+        ),
       onClick = onClick,
-      enabled = enabled
+      enabled = enabled,
     ) {
       // Use a Box to center content and set size constraints
       Box(
-        modifier = Modifier
-          .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp) // Smaller min size
-          .padding(horizontal = 12.dp, vertical = 8.dp), // Padding inside the card
-        contentAlignment = Alignment.Center
+        modifier =
+          Modifier
+            .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp) // Smaller min size
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        // Padding inside the card
+        contentAlignment = Alignment.Center,
       ) {
         when (button) {
           PlayerButton.VIDEO_TITLE -> {
@@ -269,7 +306,7 @@ private fun PlayerButtonChip(
               text = "Video Title", // TODO: strings
               fontSize = 15.sp, // Increased font size
               textAlign = TextAlign.Center,
-              lineHeight = 14.sp
+              lineHeight = 14.sp,
             )
           }
           PlayerButton.CURRENT_CHAPTER -> {
@@ -288,7 +325,7 @@ private fun PlayerButtonChip(
                 fontSize = 15.sp, // Increased font size
                 textAlign = TextAlign.Center,
                 lineHeight = 14.sp,
-                modifier = Modifier.padding(start = 8.dp) // Add padding between icon and text
+                modifier = Modifier.padding(start = 8.dp), // Add padding between icon and text
               )
             }
           }
@@ -309,10 +346,11 @@ private fun PlayerButtonChip(
       imageVector = badgeIcon,
       contentDescription = null, // Decorative
       tint = badgeColor,
-      modifier = Modifier
-        .size(20.dp)
-        .align(Alignment.BottomEnd)
-        .background(MaterialTheme.colorScheme.surface, CircleShape),
+      modifier =
+        Modifier
+          .size(20.dp)
+          .align(Alignment.BottomEnd)
+          .background(MaterialTheme.colorScheme.surface, CircleShape),
     )
   }
 }

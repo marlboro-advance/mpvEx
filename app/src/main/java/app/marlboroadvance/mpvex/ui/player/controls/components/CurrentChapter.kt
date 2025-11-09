@@ -49,7 +49,6 @@ fun CurrentChapter(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
 
-
   Surface(
     modifier =
       modifier
@@ -78,7 +77,7 @@ fun CurrentChapter(
   ) {
     AnimatedContent(
       targetState = chapter,
-      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.small),
+      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
       transitionSpec = {
         if (targetState.start > initialState.start) {
           (slideInVertically { height -> height } + fadeIn())

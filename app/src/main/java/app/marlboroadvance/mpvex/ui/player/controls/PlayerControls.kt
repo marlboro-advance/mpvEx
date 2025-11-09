@@ -185,19 +185,20 @@ fun PlayerControls(
   val bottomLeftControlsPref by appearancePreferences.bottomLeftControls.collectAsState()
 
   // Priority: TL > TR > BR > BL
-  val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) = remember(
-    topLeftControlsPref,
-    topRightControlsPref,
-    bottomRightControlsPref,
-    bottomLeftControlsPref,
-  ) {
-    val usedButtons = mutableSetOf<PlayerButton>()
-    val topL = appearancePreferences.parseButtons(topLeftControlsPref, usedButtons)
-    val topR = appearancePreferences.parseButtons(topRightControlsPref, usedButtons)
-    val bottomR = appearancePreferences.parseButtons(bottomRightControlsPref, usedButtons)
-    val bottomL = appearancePreferences.parseButtons(bottomLeftControlsPref, usedButtons)
-    listOf(topL, topR, bottomR, bottomL)
-  }
+  val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) =
+    remember(
+      topLeftControlsPref,
+      topRightControlsPref,
+      bottomRightControlsPref,
+      bottomLeftControlsPref,
+    ) {
+      val usedButtons = mutableSetOf<PlayerButton>()
+      val topL = appearancePreferences.parseButtons(topLeftControlsPref, usedButtons)
+      val topR = appearancePreferences.parseButtons(topRightControlsPref, usedButtons)
+      val bottomR = appearancePreferences.parseButtons(bottomRightControlsPref, usedButtons)
+      val bottomL = appearancePreferences.parseButtons(bottomLeftControlsPref, usedButtons)
+      listOf(topL, topR, bottomR, bottomL)
+    }
   // --- End New Logic ---
 
   LaunchedEffect(
@@ -447,11 +448,12 @@ fun PlayerControls(
             }
 
             controlsShown && !areControlsLocked -> {
-              val buttonShadow = Brush.radialGradient(
-                0.0f to Color.Black.copy(alpha = 0.3f),
-                0.7f to Color.Transparent,
-                1.0f to Color.Transparent,
-              )
+              val buttonShadow =
+                Brush.radialGradient(
+                  0.0f to Color.Black.copy(alpha = 0.3f),
+                  0.7f to Color.Transparent,
+                  1.0f to Color.Transparent,
+                )
               // Show playlist controls (previous, play/pause, next) if in playlist mode
               if (viewModel.hasPlaylistSupport()) {
                 Row(
@@ -469,8 +471,7 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasPrevious(),
                           onClick = { if (viewModel.hasPrevious()) viewModel.playPrevious() },
-                        )
-                        .then(
+                        ).then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -534,8 +535,7 @@ fun PlayerControls(
                           interaction,
                           ripple(),
                           onClick = viewModel::pauseUnpause,
-                        )
-                        .then(
+                        ).then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -587,8 +587,7 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasNext(),
                           onClick = { if (viewModel.hasNext()) viewModel.playNext() },
-                        )
-                        .then(
+                        ).then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -653,8 +652,7 @@ fun PlayerControls(
                         interaction,
                         ripple(),
                         onClick = viewModel::pauseUnpause,
-                      )
-                      .then(
+                      ).then(
                         if (hideBackground) {
                           Modifier.background(
                             brush = buttonShadow,
@@ -840,7 +838,11 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text = stringResource(R.string.player_speed, playbackSpeed ?: playerPreferences.defaultSpeed.get()),
+                      text =
+                        stringResource(
+                          R.string.player_speed,
+                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+                        ),
                       onClick = {
                         val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
                         val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
@@ -898,11 +900,12 @@ fun PlayerControls(
                   }
                   PlayerButton.ASPECT_RATIO -> {
                     ControlsButton(
-                      icon = when (aspect) {
-                        VideoAspect.Fit -> Icons.Default.AspectRatio
-                        VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-                        VideoAspect.Crop -> Icons.Default.FitScreen
-                      },
+                      icon =
+                        when (aspect) {
+                          VideoAspect.Fit -> Icons.Default.AspectRatio
+                          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+                          VideoAspect.Crop -> Icons.Default.FitScreen
+                        },
                       onClick = {
                         when (aspect) {
                           VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)
@@ -1062,7 +1065,11 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text = stringResource(R.string.player_speed, playbackSpeed ?: playerPreferences.defaultSpeed.get()),
+                      text =
+                        stringResource(
+                          R.string.player_speed,
+                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+                        ),
                       onClick = {
                         val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
                         val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
@@ -1120,11 +1127,12 @@ fun PlayerControls(
                   }
                   PlayerButton.ASPECT_RATIO -> {
                     ControlsButton(
-                      icon = when (aspect) {
-                        VideoAspect.Fit -> Icons.Default.AspectRatio
-                        VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-                        VideoAspect.Crop -> Icons.Default.FitScreen
-                      },
+                      icon =
+                        when (aspect) {
+                          VideoAspect.Fit -> Icons.Default.AspectRatio
+                          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+                          VideoAspect.Crop -> Icons.Default.FitScreen
+                        },
                       onClick = {
                         when (aspect) {
                           VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)
@@ -1280,7 +1288,11 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text = stringResource(R.string.player_speed, playbackSpeed ?: playerPreferences.defaultSpeed.get()),
+                      text =
+                        stringResource(
+                          R.string.player_speed,
+                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+                        ),
                       onClick = {
                         val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
                         val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
@@ -1338,11 +1350,12 @@ fun PlayerControls(
                   }
                   PlayerButton.ASPECT_RATIO -> {
                     ControlsButton(
-                      icon = when (aspect) {
-                        VideoAspect.Fit -> Icons.Default.AspectRatio
-                        VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-                        VideoAspect.Crop -> Icons.Default.FitScreen
-                      },
+                      icon =
+                        when (aspect) {
+                          VideoAspect.Fit -> Icons.Default.AspectRatio
+                          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+                          VideoAspect.Crop -> Icons.Default.FitScreen
+                        },
                       onClick = {
                         when (aspect) {
                           VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)
@@ -1503,7 +1516,11 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text = stringResource(R.string.player_speed, playbackSpeed ?: playerPreferences.defaultSpeed.get()),
+                      text =
+                        stringResource(
+                          R.string.player_speed,
+                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+                        ),
                       onClick = {
                         val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
                         val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
@@ -1561,11 +1578,12 @@ fun PlayerControls(
                   }
                   PlayerButton.ASPECT_RATIO -> {
                     ControlsButton(
-                      icon = when (aspect) {
-                        VideoAspect.Fit -> Icons.Default.AspectRatio
-                        VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-                        VideoAspect.Crop -> Icons.Default.FitScreen
-                      },
+                      icon =
+                        when (aspect) {
+                          VideoAspect.Fit -> Icons.Default.AspectRatio
+                          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+                          VideoAspect.Crop -> Icons.Default.FitScreen
+                        },
                       onClick = {
                         when (aspect) {
                           VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)

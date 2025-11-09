@@ -103,7 +103,14 @@ object GesturePreferencesScreen : Screen {
                 SingleActionGesture.Custom,
               ),
             valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-            title = { Text(text = stringResource(if (useSingleTapForCenter) R.string.pref_gesture_single_tap_center_title else R.string.pref_gesture_double_tap_center_title)) },
+            title = {
+              Text(
+                text =
+                  stringResource(
+                    if (useSingleTapForCenter) R.string.pref_gesture_single_tap_center_title else R.string.pref_gesture_double_tap_center_title,
+                  ),
+              )
+            },
             summary = { Text(text = stringResource(centerDoubleTap.titleRes)) },
           )
 

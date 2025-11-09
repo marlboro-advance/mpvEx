@@ -53,7 +53,7 @@ enum class ControlRegion {
   TOP_LEFT,
   TOP_RIGHT,
   BOTTOM_RIGHT,
-  BOTTOM_LEFT
+  BOTTOM_LEFT,
 }
 
 @Serializable
@@ -77,7 +77,7 @@ object PlayerControlsPreferencesScreen : Screen {
         title = stringResource(id = R.string.pref_layout_reset_title),
         subtitle = stringResource(id = R.string.pref_layout_reset_summary),
         onConfirm = {
-          preferences.topLeftControls.delete()
+          // Don't reset topLeftControls as it contains constant buttons
           preferences.topRightControls.delete()
           preferences.bottomRightControls.delete()
           preferences.bottomLeftControls.delete()
@@ -89,19 +89,20 @@ object PlayerControlsPreferencesScreen : Screen {
       )
     }
 
-    val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) = remember(
-      topLState,
-      topRState,
-      bottomRState,
-      bottomLState
-    ) {
-      val usedButtons = mutableSetOf<PlayerButton>()
-      val topL = preferences.parseButtons(topLState, usedButtons)
-      val topR = preferences.parseButtons(topRState, usedButtons)
-      val bottomR = preferences.parseButtons(bottomRState, usedButtons)
-      val bottomL = preferences.parseButtons(bottomLState, usedButtons)
-      listOf(topL, topR, bottomR, bottomL)
-    }
+    val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) =
+      remember(
+        topLState,
+        topRState,
+        bottomRState,
+        bottomLState,
+      ) {
+        val usedButtons = mutableSetOf<PlayerButton>()
+        val topL = preferences.parseButtons(topLState, usedButtons)
+        val topR = preferences.parseButtons(topRState, usedButtons)
+        val bottomR = preferences.parseButtons(bottomRState, usedButtons)
+        val bottomL = preferences.parseButtons(bottomLState, usedButtons)
+        listOf(topL, topR, bottomR, bottomL)
+      }
 
     Scaffold(
       topBar = {
@@ -127,15 +128,8 @@ object PlayerControlsPreferencesScreen : Screen {
               .fillMaxSize()
               .padding(padding),
         ) {
-          item {
-            PreferenceCategoryWithEditButton(
-              title = "Top Left Controls", // TODO: strings
-              onClick = {
-                backstack.add(ControlLayoutEditorScreen(ControlRegion.TOP_LEFT))
-              },
-            )
-            PreferenceIconSummary(buttons = topLeftButtons)
-          }
+          // Top Left is not shown here since it only contains constant buttons (BACK_ARROW, VIDEO_TITLE)
+          // that cannot be customized
 
           item {
             PreferenceCategoryWithEditButton(
@@ -186,18 +180,23 @@ object PlayerControlsPreferencesScreen : Screen {
    * Custom composable for the category header with an Edit button.
    */
   @Composable
-  private fun PreferenceCategoryWithEditButton(title: String, onClick: () -> Unit) {
+  private fun PreferenceCategoryWithEditButton(
+    title: String,
+    onClick: () -> Unit,
+  ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(start = 16.dp, end = 4.dp, top = 24.dp, bottom = 8.dp), // Apply padding to Row
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(start = 16.dp, end = 4.dp, top = 24.dp, bottom = 8.dp),
+      // Apply padding to Row
       verticalAlignment = Alignment.CenterVertically, // Align items vertically
     ) {
       Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.weight(1f) // Text takes all available space, pushing button to end
+        modifier = Modifier.weight(1f), // Text takes all available space, pushing button to end
       )
       IconButton(onClick = onClick) {
         Icon(
@@ -214,13 +213,12 @@ object PlayerControlsPreferencesScreen : Screen {
    */
   @OptIn(ExperimentalLayoutApi::class)
   @Composable
-  private fun PreferenceIconSummary(
-    buttons: List<PlayerButton>,
-  ) {
+  private fun PreferenceIconSummary(buttons: List<PlayerButton>) {
     FlowRow(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 8.dp),
       horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased spacing
       verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically), // <-- FIXED
     ) {
@@ -234,9 +232,9 @@ object PlayerControlsPreferencesScreen : Screen {
         buttons.forEach { button ->
           Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
           ) {
-            if(button != PlayerButton.VIDEO_TITLE) {
+            if (button != PlayerButton.VIDEO_TITLE) {
               Icon(
                 imageVector = button.icon,
                 contentDescription = null,

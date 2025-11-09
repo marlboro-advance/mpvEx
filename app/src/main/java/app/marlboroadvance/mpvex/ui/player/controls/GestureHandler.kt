@@ -41,8 +41,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.LeftSideOvalShape
 import app.marlboroadvance.mpvex.presentation.components.RightSideOvalShape
@@ -136,7 +136,7 @@ fun GestureHandler(
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
                 isDoubleTapSeeking = true
-              } else if (!useSingleTapForCenter){
+              } else if (!useSingleTapForCenter) {
                 viewModel.handleCenterDoubleTap()
               }
             },

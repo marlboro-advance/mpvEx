@@ -24,7 +24,9 @@ import app.marlboroadvance.mpvex.R
  * Represents a customizable button in the player controls.
  * Now includes an icon for the preference UI.
  */
-enum class PlayerButton(val icon: ImageVector) {
+enum class PlayerButton(
+  val icon: ImageVector,
+) {
   BACK_ARROW(Icons.AutoMirrored.Outlined.ArrowBack),
   VIDEO_TITLE(Icons.Outlined.Title),
   BOOKMARKS_CHAPTERS(Icons.Outlined.Bookmarks),
@@ -40,21 +42,28 @@ enum class PlayerButton(val icon: ImageVector) {
   SUBTITLES(Icons.Outlined.Subtitles),
   MORE_OPTIONS(Icons.Outlined.MoreVert),
   CURRENT_CHAPTER(Icons.Outlined.Bookmarks), // <-- CHANGED ICON
-  NONE(Icons.Outlined.Bookmarks); // 'NONE' is filtered out, icon is irrelevant
+  NONE(Icons.Outlined.Bookmarks), // 'NONE' is filtered out, icon is irrelevant
 }
 
 /**
- * A list of all buttons that the user can choose from.
+ * A list of all buttons that the user can choose from in the customization menu.
+ * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE, MORE_OPTIONS).
  */
-val allPlayerButtons = PlayerButton.entries.filter { it != PlayerButton.NONE }
+val allPlayerButtons =
+  PlayerButton.values().filter {
+    it != PlayerButton.NONE &&
+      it != PlayerButton.BACK_ARROW &&
+      it != PlayerButton.VIDEO_TITLE &&
+      it != PlayerButton.MORE_OPTIONS
+  }
 
 /**
  * Gets the human-readable label for a player button.
  * TODO: You must add these string resources to your `strings.xml` file.
  */
 @Composable
-fun getPlayerButtonLabel(button: PlayerButton): String {
-  return when (button) {
+fun getPlayerButtonLabel(button: PlayerButton): String =
+  when (button) {
     PlayerButton.BACK_ARROW -> "Back Arrow" // stringResource(R.string.btn_label_back)
     PlayerButton.VIDEO_TITLE -> "Video Title" // stringResource(R.string.btn_label_title)
     PlayerButton.BOOKMARKS_CHAPTERS -> "Chapters / Bookmarks" // stringResource(R.string.btn_label_bookmarks)
@@ -72,4 +81,3 @@ fun getPlayerButtonLabel(button: PlayerButton): String {
     PlayerButton.CURRENT_CHAPTER -> "Current Chapter" // stringResource(R.string.btn_label_chapter)
     PlayerButton.NONE -> "None" // stringResource(R.string.btn_label_none)
   }
-}

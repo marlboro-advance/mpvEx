@@ -74,11 +74,12 @@ fun BottomRightPlayerControls(
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
       )
       ControlsButton(
-        icon = when (aspect) {
-          VideoAspect.Fit -> Icons.Default.AspectRatio
-          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-          VideoAspect.Crop -> Icons.Default.FitScreen
-        },
+        icon =
+          when (aspect) {
+            VideoAspect.Fit -> Icons.Default.AspectRatio
+            VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+            VideoAspect.Crop -> Icons.Default.FitScreen
+          },
         onClick = {
           when (aspect) {
             VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)

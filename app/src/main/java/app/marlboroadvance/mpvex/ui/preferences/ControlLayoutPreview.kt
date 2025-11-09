@@ -49,10 +49,12 @@ fun ControlLayoutPreview(
     colors = CardDefaults.cardColors(containerColor = Color.Black), // Black background
   ) {
     ConstraintLayout(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(12.dp)
-        .height(160.dp), // Set fixed height for landscape aspect
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(12.dp)
+          .height(160.dp),
+      // Set fixed height for landscape aspect
     ) {
       val (
         topLeft, topRight,
@@ -63,12 +65,13 @@ fun ControlLayoutPreview(
 
       // --- TOP BAR (LEFT) ---
       FlowRow(
-        modifier = Modifier.constrainAs(topLeft) {
-          start.linkTo(parent.start)
-          top.linkTo(parent.top)
-          end.linkTo(topRight.start, 8.dp)
-          width = Dimension.fillToConstraints
-        },
+        modifier =
+          Modifier.constrainAs(topLeft) {
+            start.linkTo(parent.start)
+            top.linkTo(parent.top)
+            end.linkTo(topRight.start, 8.dp)
+            width = Dimension.fillToConstraints
+          },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
       ) {
@@ -80,11 +83,12 @@ fun ControlLayoutPreview(
 
       // --- TOP BAR (RIGHT) ---
       FlowRow(
-        modifier = Modifier.constrainAs(topRight) {
-          end.linkTo(parent.end)
-          top.linkTo(parent.top) // Align with top
-          width = Dimension.preferredWrapContent // Don't grow
-        },
+        modifier =
+          Modifier.constrainAs(topRight) {
+            end.linkTo(parent.end)
+            top.linkTo(parent.top) // Align with top
+            width = Dimension.preferredWrapContent // Don't grow
+          },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
       ) {
@@ -95,13 +99,14 @@ fun ControlLayoutPreview(
 
       // --- CENTER CONTROLS ---
       Row(
-        modifier = Modifier.constrainAs(centerControls) {
-          start.linkTo(parent.start)
-          end.linkTo(parent.end)
-          top.linkTo(topRight.bottom, 12.dp)
-          bottom.linkTo(seekbar.top, 12.dp)
-          height = Dimension.fillToConstraints
-        },
+        modifier =
+          Modifier.constrainAs(centerControls) {
+            start.linkTo(parent.start)
+            end.linkTo(parent.end)
+            top.linkTo(topRight.bottom, 12.dp)
+            bottom.linkTo(seekbar.top, 12.dp)
+            height = Dimension.fillToConstraints
+          },
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
@@ -113,43 +118,47 @@ fun ControlLayoutPreview(
       // --- SEEKBAR ---
       Text(
         "1:23", // Demo Time
-        modifier = Modifier.constrainAs(positionTime) {
-          start.linkTo(parent.start)
-          bottom.linkTo(bottomLeft.top, 4.dp)
-        },
+        modifier =
+          Modifier.constrainAs(positionTime) {
+            start.linkTo(parent.start)
+            bottom.linkTo(bottomLeft.top, 4.dp)
+          },
         fontSize = 10.sp,
         color = Color.White,
       )
       Text(
         "4:56", // Demo Time
-        modifier = Modifier.constrainAs(durationTime) {
-          end.linkTo(parent.end)
-          bottom.linkTo(bottomRight.top, 4.dp)
-        },
+        modifier =
+          Modifier.constrainAs(durationTime) {
+            end.linkTo(parent.end)
+            bottom.linkTo(bottomRight.top, 4.dp)
+          },
         fontSize = 10.sp,
         color = Color.White,
       )
       LinearProgressIndicator(
         progress = { 0.3f }, // Demo Progress
-        modifier = Modifier.constrainAs(seekbar) {
-          start.linkTo(positionTime.end, 8.dp)
-          end.linkTo(durationTime.start, 8.dp)
-          bottom.linkTo(positionTime.bottom)
-          top.linkTo(positionTime.top)
-          width = Dimension.fillToConstraints
-        },
+        modifier =
+          Modifier.constrainAs(seekbar) {
+            start.linkTo(positionTime.end, 8.dp)
+            end.linkTo(durationTime.start, 8.dp)
+            bottom.linkTo(positionTime.bottom)
+            top.linkTo(positionTime.top)
+            width = Dimension.fillToConstraints
+          },
         color = Color.White,
         trackColor = Color.Gray,
       )
 
       // --- BOTTOM BAR (LEFT) ---
       FlowRow(
-        modifier = Modifier.constrainAs(bottomLeft) {
-          start.linkTo(parent.start)
-          bottom.linkTo(parent.bottom)
-          end.linkTo(bottomRight.start, 8.dp)
-          width = Dimension.fillToConstraints
-        },
+        modifier =
+          Modifier.constrainAs(bottomLeft) {
+            start.linkTo(parent.start)
+            bottom.linkTo(parent.bottom)
+            end.linkTo(bottomRight.start, 8.dp)
+            width = Dimension.fillToConstraints
+          },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
       ) {
@@ -160,11 +169,12 @@ fun ControlLayoutPreview(
 
       // --- BOTTOM BAR (RIGHT) ---
       FlowRow(
-        modifier = Modifier.constrainAs(bottomRight) {
-          end.linkTo(parent.end)
-          bottom.linkTo(parent.bottom)
-          width = Dimension.preferredWrapContent
-        },
+        modifier =
+          Modifier.constrainAs(bottomRight) {
+            end.linkTo(parent.end)
+            bottom.linkTo(parent.bottom)
+            width = Dimension.preferredWrapContent
+          },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
       ) {
@@ -180,13 +190,17 @@ fun ControlLayoutPreview(
  * A simple icon for the preview (play, next, etc.).
  */
 @Composable
-private fun PreviewIconButton(icon: ImageVector, size: Dp) {
+private fun PreviewIconButton(
+  icon: ImageVector,
+  size: Dp,
+) {
   Icon(
     imageVector = icon,
     contentDescription = null,
-    modifier = Modifier
-      .size(size)
-      .padding(horizontal = 2.dp),
+    modifier =
+      Modifier
+        .size(size)
+        .padding(horizontal = 2.dp),
     tint = Color.White,
   )
 }
@@ -202,7 +216,7 @@ private fun PreviewButton(button: PlayerButton) {
 
   Row(
     verticalAlignment = Alignment.CenterVertically,
-    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp) // Give each button some space
+    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp), // Give each button some space
   ) {
     when (button) {
       PlayerButton.VIDEO_TITLE -> {
@@ -211,7 +225,7 @@ private fun PreviewButton(button: PlayerButton) {
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
           style = MaterialTheme.typography.bodySmall.copy(fontSize = fontSize),
-          color = Color.White
+          color = Color.White,
         )
       }
       PlayerButton.CURRENT_CHAPTER -> {
@@ -219,14 +233,14 @@ private fun PreviewButton(button: PlayerButton) {
           imageVector = button.icon,
           contentDescription = null,
           modifier = Modifier.size(iconSize),
-          tint = Color.White
+          tint = Color.White,
         )
         Text(
           "1:06 • C1",
           maxLines = 1,
           style = MaterialTheme.typography.bodySmall.copy(fontSize = fontSize),
           modifier = Modifier.padding(start = 4.dp),
-          color = Color.White
+          color = Color.White,
         )
       }
       else -> {
@@ -235,7 +249,7 @@ private fun PreviewButton(button: PlayerButton) {
           imageVector = button.icon,
           contentDescription = null,
           modifier = Modifier.size(iconSize),
-          tint = Color.White
+          tint = Color.White,
         )
       }
     }
