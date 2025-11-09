@@ -34,9 +34,9 @@ class AppearancePreferences(
    * Change the order by rearranging button names in the comma-separated string.
    * Available buttons: BOOKMARKS_CHAPTERS, PLAYBACK_SPEED, DECODER, SCREEN_ROTATION,
    * FRAME_NAVIGATION, VIDEO_ZOOM, PICTURE_IN_PICTURE, ASPECT_RATIO, LOCK_CONTROLS,
-   * AUDIO_TRACK, SUBTITLES, CURRENT_CHAPTER
+   * AUDIO_TRACK, SUBTITLES, CURRENT_CHAPTER, MORE_OPTIONS
    *
-   * Note: BACK_ARROW, VIDEO_TITLE, and MORE_OPTIONS are constant and cannot be customized.
+   * Note: BACK_ARROW and VIDEO_TITLE are constant and cannot be customized.
    */
   val topLeftControls =
     preferenceStore.getString(

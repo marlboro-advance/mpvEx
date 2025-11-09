@@ -1,0 +1,1 @@
+A powerful media player built on mpv with an improved user interface

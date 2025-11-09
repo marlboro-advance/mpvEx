@@ -20,8 +20,8 @@ android {
     applicationId = "app.marlboroadvance.mpvex"
     minSdk = 26
     targetSdk = 36
-    versionCode = 11
-    versionName = "1.0.1"
+    versionCode = 10
+    versionName = "1.0.0"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -29,6 +29,10 @@ android {
 
     buildConfigField("String", "GIT_SHA", "\"${getCommitSha()}\"")
     buildConfigField("int", "GIT_COUNT", getCommitCount())
+  }
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = false
   }
   splits {
     abi {
@@ -47,7 +51,6 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
-      signingConfig = signingConfigs.getByName("debug")
       ndk {
         debugSymbolLevel = "none" // or 'minimal' if needed for crash reports
       }
@@ -168,21 +171,24 @@ dependencies {
   implementation(libs.mediainfo.lib)
 }
 
-fun getCommitCount(): String = runCommand("git rev-list --count HEAD")
+fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
 
-fun getCommitSha(): String = runCommand("git rev-parse --short HEAD")
+fun getCommitSha(): String = runCommand("git rev-parse --short HEAD") ?: "unknown"
 
-fun runCommand(command: String): String {
-  val parts = command.split(' ')
-  val process =
-    ProcessBuilder(parts)
-      .redirectErrorStream(true)
-      .start()
-  val output =
-    process.inputStream
-      .bufferedReader()
-      .readText()
-      .trim()
-  process.waitFor()
-  return output
-}
+fun runCommand(command: String): String? =
+  try {
+    val parts = command.split(' ')
+    val process =
+      ProcessBuilder(parts)
+        .redirectErrorStream(true)
+        .start()
+    val output =
+      process.inputStream
+        .bufferedReader()
+        .readText()
+        .trim()
+    process.waitFor()
+    output.ifEmpty { null }
+  } catch (e: Exception) {
+    null
+  }
