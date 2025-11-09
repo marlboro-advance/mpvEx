@@ -1,8 +1,6 @@
 # mpvExtended
 
 
----
-
 mpvExtended is a front-end for the versatile media player mpv, built on the libmpv library. It aims
 to combine the powerful features of mpv with an easier-to-use interface and additional
 functionality.
