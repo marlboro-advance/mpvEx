@@ -272,6 +272,7 @@ fun PlayerControls(
           delay(2000)
           if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
         }
+
         AnimatedVisibility(
           isBrightnessSliderShown,
           enter =
@@ -738,7 +739,14 @@ fun PlayerControls(
             paused = paused ?: false,
           )
         }
-        val mediaTitle by MPVLib.propString["media-title"].collectAsState()
+        val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
+        val mediaTitle by remember(rawMediaTitle, activity) {
+          derivedStateOf {
+            rawMediaTitle?.takeIf { it.isNotBlank() }
+              ?: activity.getTitleForControls()
+              ?: ""
+          }
+        }
 
         // --- TOP LEFT CONTROLS (DYNAMIC) ---
         AnimatedVisibility(
@@ -1440,7 +1448,7 @@ fun PlayerControls(
               bottom.linkTo(parent.bottom, spacing.medium)
               start.linkTo(parent.start)
               width = Dimension.fillToConstraints
-              end.linkTo(bottomRightControls.start)
+              end.linkTo(bottomRightControls.start, spacing.medium)
             },
         ) {
           Row(
