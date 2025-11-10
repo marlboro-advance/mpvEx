@@ -49,4 +49,6 @@ class PlayerPreferences(
   val panelTransparency = preferenceStore.getFloat("panel_transparency", 0.6f)
 
   val defaultVideoZoom = preferenceStore.getFloat("default_video_zoom", 0f)
+
+  val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 }
