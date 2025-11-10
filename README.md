@@ -104,6 +104,41 @@ The app generates multiple APK variants for different CPU architectures:
    ```
 2. GitHub Actions will create a pre-release automatically
 
+### Setting Up Release Signing
+
+To enable automatic signing for release builds in GitHub Actions, you need to configure the
+following secrets in your GitHub repository:
+
+1. Navigate to your repository on GitHub
+2. Go to **Settings** → **Secrets and variables** → **Actions**
+3. Add the following repository secrets:
+
+| Secret Name              | Description                                          |
+|--------------------------|------------------------------------------------------|
+| `SIGNING_KEYSTORE`       | Base64-encoded keystore file (`.jks` or `.keystore`) |
+| `SIGNING_KEY_ALIAS`      | The alias name used when creating the keystore       |
+| `SIGNING_STORE_PASSWORD` | Password for the keystore file                       |
+| `KEY_PASSWORD`           | Password for the key (can be same as store password) |
+
+#### Encoding Your Keystore
+
+To encode your keystore file to base64:
+
+**Linux/macOS:**
+
+```bash
+base64 -i your-keystore.jks | tr -d '\n' > keystore.txt
+```
+
+**Windows (PowerShell):**
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("your-keystore.jks")) | Out-File -FilePath keystore.txt -NoNewline
+```
+
+Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_KEYSTORE` secret.
+
+
 ---
 
 ## Acknowledgments

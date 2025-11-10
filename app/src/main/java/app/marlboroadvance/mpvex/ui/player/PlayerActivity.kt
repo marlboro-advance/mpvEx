@@ -278,6 +278,12 @@ class PlayerActivity :
     playlist = intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     playlistIndex = intent.getIntExtra("playlist_index", 0)
 
+    // Extract fileName early so it's available when video loads
+    fileName = getFileName(intent)
+    if (fileName.isBlank()) {
+      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+    }
+
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
@@ -1132,6 +1138,11 @@ class PlayerActivity :
       fileName = getFileName(intent)
     }
 
+    // Ensure fileName is not blank - use a fallback if necessary
+    if (fileName.isBlank()) {
+      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+    }
+
     setIntentExtras(intent.extras)
 
     lifecycleScope.launch(Dispatchers.IO) {
@@ -1892,6 +1903,12 @@ class PlayerActivity :
     getDisplayNameFromUri(uri)?.let { return it }
     return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
   }
+
+  /**
+   * Get the current video title for controls display.
+   * Used as a fallback when MPV hasn't set the media-title property yet.
+   */
+  fun getTitleForControls(): String = fileName
 
   /**
    * Save recently played for a specific URI

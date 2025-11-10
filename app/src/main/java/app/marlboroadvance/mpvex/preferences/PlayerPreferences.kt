@@ -43,10 +43,12 @@ class PlayerPreferences(
 
   val allowGesturesInPanels = preferenceStore.getBoolean("allow_gestures_in_panels")
   val showSystemStatusBar = preferenceStore.getBoolean("show_system_status_bar")
-  val reduceMotion = preferenceStore.getBoolean("reduce_motion", false)
+  val reduceMotion = preferenceStore.getBoolean("reduce_motion", true)
   val playerTimeToDisappear = preferenceStore.getInt("player_time_to_disappear", 4000)
 
   val panelTransparency = preferenceStore.getFloat("panel_transparency", 0.6f)
 
   val defaultVideoZoom = preferenceStore.getFloat("default_video_zoom", 0f)
+
+  val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 }
