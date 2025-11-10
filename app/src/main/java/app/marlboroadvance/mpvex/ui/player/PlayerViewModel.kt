@@ -631,15 +631,21 @@ class PlayerViewModel(
   }
 
   private fun handleShowPanel(data: String) {
-    panelShown.value =
-      when (data) {
-        "subtitle_settings" -> Panels.SubtitleSettings
-        "subtitle_delay" -> Panels.SubtitleDelay
-        "audio_delay" -> Panels.AudioDelay
-        "video_filters" -> Panels.VideoFilters
-        "frame_navigation" -> Panels.FrameNavigation
-        else -> Panels.None
+    when (data) {
+      "frame_navigation" -> {
+        sheetShown.value = Sheets.FrameNavigation
       }
+      else -> {
+        panelShown.value =
+          when (data) {
+            "subtitle_settings" -> Panels.SubtitleSettings
+            "subtitle_delay" -> Panels.SubtitleDelay
+            "audio_delay" -> Panels.AudioDelay
+            "video_filters" -> Panels.VideoFilters
+            else -> Panels.None
+          }
+      }
+    }
   }
 
   private fun handleSoftwareKeyboard(data: String) {

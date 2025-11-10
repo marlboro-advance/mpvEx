@@ -282,6 +282,7 @@
 
     <string name="player_sheets_frame_navigation_title">Frame Navigation</string>
     <string name="player_sheets_frame_navigation_snapshot_saved" translatable="false">Saved to Pictures/mpvSnaps</string>
+    <string name="player_sheets_frame_navigation_include_subtitles">Include subtitles in snapshot</string>
 
     <string name="player_sheets_zoom_slider_label">Video Zoom</string>
 
