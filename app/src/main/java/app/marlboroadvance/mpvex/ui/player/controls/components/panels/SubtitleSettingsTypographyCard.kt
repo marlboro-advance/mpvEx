@@ -79,6 +79,8 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   }
   LaunchedEffect(Unit) {
     withContext(Dispatchers.IO) {
+      // Add system font as the first option
+      fonts.add("sans-serif")
       // Read fonts from the app's persistent cache: filesDir/fonts
       val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
       if (fileManager.exists(fontsDir)) {
@@ -287,5 +289,4 @@ enum class SubtitlesBorderStyle(
 ) {
   OutlineAndShadow("outline-and-shadow", R.string.player_sheets_subtitles_border_style_outline_and_shadow),
   OpaqueBox("opaque-box", R.string.player_sheets_subtitles_border_style_opaque_box),
-  BackgroundBox("background-box", R.string.player_sheets_subtitles_border_style_background_box),
 }

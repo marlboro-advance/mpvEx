@@ -180,7 +180,6 @@
     <string name="player_sheets_subtitles_border_style">Border style</string>
     <string name="player_sheets_subtitles_border_style_outline_and_shadow">Outline and shadow</string>
     <string name="player_sheets_subtitles_border_style_opaque_box">Opaque box</string>
-    <string name="player_sheets_subtitles_border_style_background_box">Background box</string>
     <string name="player_sheets_subtitles_shadow_offset">Shadow offset</string>
     <string name="player_sheets_sub_color_red">Red</string>
     <string name="player_sheets_sub_color_green">Green</string>
