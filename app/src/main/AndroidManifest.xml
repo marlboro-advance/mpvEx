@@ -215,6 +215,52 @@
         </activity>
         <activity android:name=".presentation.crash.CrashActivity" />
 
+        <activity
+            android:name=".ui.mediainfo.MediaInfoActivity"
+            android:exported="true"
+            android:theme="@style/Theme.mpvex"
+            android:label="Media Info">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/x-subrip" />
+                <data android:mimeType="application/x-subtitle" />
+                <data android:mimeType="application/x-subtitle-srt" />
+                <data android:mimeType="application/x-subtitle-ssa" />
+                <data android:mimeType="application/x-subtitle-ass" />
+                <data android:mimeType="application/x-subtitle-vtt" />
+                <data android:mimeType="application/ogg" />
+                <data android:mimeType="application/x-matroska" />
+                <data android:mimeType="application/x-flac" />
+                <data android:mimeType="application/mp4" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:mimeType="application/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/x-subrip" />
+                <data android:mimeType="application/x-subtitle" />
+                <data android:mimeType="application/x-matroska" />
+                <data android:mimeType="application/x-flac" />
+                <data android:mimeType="application/mp4" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".ui.player.MediaPlaybackService"
             android:enabled="true"

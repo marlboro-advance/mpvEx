@@ -340,4 +340,12 @@
     <string name="notification_rewind">Rewind</string>
     <string name="notification_forward">Forward</string>
     <string name="notification_stop">Stop</string>
+
+    <!-- Media Info Activity -->
+    <string name="media_info_title">Media Info</string>
+    <string name="media_info_analyzing">Analyzing media file…</string>
+    <string name="media_info_error_no_file">No media file provided</string>
+    <string name="media_info_error_load_failed">Failed to load media information</string>
+    <string name="media_info_copied">Copied to clipboard</string>
+    <string name="media_info_share_failed">Failed to share</string>
 </resources>
