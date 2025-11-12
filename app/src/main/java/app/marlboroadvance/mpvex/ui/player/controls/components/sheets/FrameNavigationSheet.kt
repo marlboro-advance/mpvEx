@@ -172,7 +172,12 @@ fun FrameNavigationSheet(
       isPaused = isPaused,
       onSnapshot = {
         coroutineScope.launch {
-          takeSnapshot(context, includeSubtitlesInSnapshot)
+          isSnapshotLoading = true
+          try {
+            takeSnapshot(context, includeSubtitlesInSnapshot)
+          } finally {
+            isSnapshotLoading = false
+          }
         }
       },
       isSnapshotLoading = isSnapshotLoading,

@@ -5,18 +5,16 @@ mpvExtended is a front-end for the versatile media player mpv, built on the libm
 to combine the powerful features of mpv with an easier-to-use interface and additional
 functionality.
 
-- **Simpler and Easier to Use UI**: Designed to make navigation and playback smoother, especially
-  for those who want a straightforward media player experience.
-- **Advanced Configuration and Scripting**: Offers the full capabilities of mpv's scripting and
-  configuration for users who want to customize their playback.
-- **Enhanced Playback Features**: Frame-by-frame navigation, sleep timer, speed presets, and better
-  playback history implementation.
-- **Picture-in-Picture (PiP)**: Continue watching videos while using other apps.
-- **Multi-Modal Controls**: Includes customizable gestures for controlling volume, brightness, and
-  playback, along with keyboard input support.
-- **High-Quality Rendering**: Hardware and software video decoding with advanced rendering settings.
-- **Network Streaming**: Play network streams with the "Open URL" function.
-- **File Management**: Provides basic file operations like copy, move, rename, and delete.
+- **Simpler and Easier to Use UI**
+- **Material3 Expressive Design**
+- **Advanced Configuration and Scripting**
+- **Enhanced Playback Features**
+- **Picture-in-Picture (PiP)**
+- **Background Playback**
+- **Multi-Modal Controls**
+- **High-Quality Rendering**
+- **Network Streaming**
+- **File Management**
 
 mpvExtended aims to enhance the mpv experience by making it more accessible while retaining its
 flexibility and powerful playback capabilities.
