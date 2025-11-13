@@ -278,14 +278,16 @@ private fun FrameNavigationCard(
         Slider(
           value = animatedProgress.coerceIn(0f, 1f),
           onValueChange = { newValue ->
-            if (!isSeeking) {
-              isSeeking = true
-            }
-            // Seek immediately for responsive feedback
-            val newPosition = (newValue * duration).toInt()
+            if (!isSeeking) isSeeking = true
+            userSliderPosition = newValue.coerceIn(0f, 1f)
+            // Optional live-seek for responsiveness
+            val newPosition = (userSliderPosition * duration).toInt()
             onSeekTo(newPosition, false)
           },
           onValueChangeFinished = {
+            // Commit final seek and return control to player updates
+            val finalPosition = (userSliderPosition * duration).toInt()
+            onSeekTo(finalPosition, true)
             isSeeking = false
           },
           modifier = Modifier.fillMaxWidth(),

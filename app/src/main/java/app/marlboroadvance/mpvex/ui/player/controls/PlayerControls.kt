@@ -18,12 +18,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import android.content.res.Configuration
+import android.content.res.Configuration.ORIENTATION_PORTRAIT
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,12 +41,14 @@ import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -157,6 +163,9 @@ fun PlayerControls(
   val currentChapter by MPVLib.propInt["chapter"].collectAsState()
   val mpvDecoder by MPVLib.propString["hwdec-current"].collectAsState()
   val decoder by remember { derivedStateOf { getDecoderFromValue(mpvDecoder ?: "auto") } }
+  val isSpeedNonOne by remember(playbackSpeed) {
+    derivedStateOf { abs((playbackSpeed ?: 1f) - 1f) > 0.001f }
+  }
   val playerTimeToDisappear by playerPreferences.playerTimeToDisappear.collectAsState()
   val chapters by viewModel.chapters.collectAsState(persistentListOf())
   val onOpenSheet: (Sheets) -> Unit = {
@@ -178,13 +187,11 @@ fun PlayerControls(
     }
   }
 
-  // --- Updated Dynamic Button Logic (4 regions) ---
   val topLeftControlsPref by appearancePreferences.topLeftControls.collectAsState()
   val topRightControlsPref by appearancePreferences.topRightControls.collectAsState()
   val bottomRightControlsPref by appearancePreferences.bottomRightControls.collectAsState()
   val bottomLeftControlsPref by appearancePreferences.bottomLeftControls.collectAsState()
 
-  // Priority: TL > TR > BR > BL
   val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) =
     remember(
       topLeftControlsPref,
@@ -199,7 +206,15 @@ fun PlayerControls(
       val bottomL = appearancePreferences.parseButtons(bottomLeftControlsPref, usedButtons)
       listOf(topL, topR, bottomR, bottomL)
     }
-  // --- End New Logic ---
+
+  val isCurrentChapterEnabled by remember(topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) {
+    derivedStateOf {
+      PlayerButton.CURRENT_CHAPTER in topLeftButtons ||
+        PlayerButton.CURRENT_CHAPTER in topRightButtons ||
+        PlayerButton.CURRENT_CHAPTER in bottomRightButtons ||
+        PlayerButton.CURRENT_CHAPTER in bottomLeftButtons
+    }
+  }
 
   LaunchedEffect(
     controlsShown,
@@ -230,6 +245,11 @@ fun PlayerControls(
     CompositionLocalProvider(
       LocalLayoutDirection provides LayoutDirection.Ltr,
     ) {
+      val configuration = LocalConfiguration.current
+      val isPortrait by remember(configuration) {
+        derivedStateOf { configuration.orientation == ORIENTATION_PORTRAIT }
+      }
+
       ConstraintLayout(
         modifier =
           modifier
@@ -242,7 +262,8 @@ fun PlayerControls(
                 Pair(1f, Color.Black),
               ),
               alpha = transparentOverlay,
-            ).padding(horizontal = MaterialTheme.spacing.medium),
+            )
+            .padding(horizontal = MaterialTheme.spacing.medium),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -251,6 +272,7 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
+        val currentChapterButton = createRef() // New ref for standalone current chapter button
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -472,7 +494,8 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasPrevious(),
                           onClick = { if (viewModel.hasPrevious()) viewModel.playPrevious() },
-                        ).then(
+                        )
+                        .then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -536,7 +559,8 @@ fun PlayerControls(
                           interaction,
                           ripple(),
                           onClick = viewModel::pauseUnpause,
-                        ).then(
+                        )
+                        .then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -588,7 +612,8 @@ fun PlayerControls(
                         .clickable(
                           enabled = viewModel.hasNext(),
                           onClick = { if (viewModel.hasNext()) viewModel.playNext() },
-                        ).then(
+                        )
+                        .then(
                           if (hideBackground) {
                             Modifier.background(
                               brush = buttonShadow,
@@ -653,7 +678,8 @@ fun PlayerControls(
                         interaction,
                         ripple(),
                         onClick = viewModel::pauseUnpause,
-                      ).then(
+                      )
+                      .then(
                         if (hideBackground) {
                           Modifier.background(
                             brush = buttonShadow,
@@ -739,6 +765,39 @@ fun PlayerControls(
             paused = paused ?: false,
           )
         }
+
+        AnimatedVisibility(
+          visible = controlsShown && !areControlsLocked &&
+            isPortrait && isCurrentChapterEnabled &&
+            chapters.getOrNull(currentChapter ?: 0) != null,
+          enter =
+            if (!reduceMotion) {
+              slideInVertically(playerControlsEnterAnimationSpec()) { -it } +
+                fadeIn(playerControlsEnterAnimationSpec())
+            } else {
+              fadeIn(playerControlsEnterAnimationSpec())
+            },
+          exit =
+            if (!reduceMotion) {
+              slideOutVertically(playerControlsExitAnimationSpec()) { -it } +
+                fadeOut(playerControlsExitAnimationSpec())
+            } else {
+              fadeOut(playerControlsExitAnimationSpec())
+            },
+          modifier =
+            Modifier.constrainAs(currentChapterButton) {
+              bottom.linkTo(seekbar.top, spacing.medium)
+              start.linkTo(parent.start)
+              end.linkTo(parent.end)
+            },
+        ) {
+          chapters.getOrNull(currentChapter ?: 0)?.let { chapter ->
+            CurrentChapter(
+              chapter = chapter,
+              onClick = { onOpenSheet(Sheets.Chapters) },
+            )
+          }
+        }
         val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
         val mediaTitle by remember(rawMediaTitle, activity) {
           derivedStateOf {
@@ -748,7 +807,6 @@ fun PlayerControls(
           }
         }
 
-        // --- TOP LEFT CONTROLS (DYNAMIC) ---
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -846,26 +904,15 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text =
-                        stringResource(
-                          R.string.player_speed,
-                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
-                        ),
-                      onClick = {
-                        val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
-                        val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
-                        MPVLib.setPropertyFloat("speed", newSpeed)
-                        playerPreferences.defaultSpeed.set(newSpeed)
-                      },
-                      onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                      icon = Icons.Default.Speed,
+                      onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+                      color = if (isSpeedNonOne) MaterialTheme.colorScheme.primary else if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
                   PlayerButton.DECODER -> {
                     ControlsButton(
-                      decoder.title,
-                      onClick = { viewModel.cycleDecoders() },
-                      onLongClick = { onOpenSheet(Sheets.Decoders) },
+                      icon = Icons.Default.Memory,
+                      onClick = { onOpenSheet(Sheets.Decoders) },
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
@@ -958,7 +1005,8 @@ fun PlayerControls(
                   }
                   PlayerButton.CURRENT_CHAPTER -> {
                     AnimatedVisibility(
-                      chapters.getOrNull(currentChapter ?: 0) != null,
+                      chapters.getOrNull(currentChapter ?: 0) != null &&
+                        !isPortrait,
                       enter = fadeIn(),
                       exit = fadeOut(),
                     ) {
@@ -977,7 +1025,6 @@ fun PlayerControls(
           }
         }
 
-        // Top right controls - DYNAMIC
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -1000,210 +1047,226 @@ fun PlayerControls(
               end.linkTo(parent.end)
             },
         ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            ControlsGroup {
-              // 1. Dynamic Buttons
-              topRightButtons.forEach { button ->
-                when (button) {
-                  PlayerButton.BACK_ARROW -> {
-                    ControlsButton(
-                      icon = Icons.AutoMirrored.Default.ArrowBack,
-                      onClick = onBackPress,
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.VIDEO_TITLE -> {
-                    Surface(
-                      shape = CircleShape,
-                      color =
-                        if (hideBackground) {
-                          Color.Transparent
-                        } else {
-                          MaterialTheme.colorScheme.surfaceContainer.copy(
-                            alpha = 0.55f,
-                          )
-                        },
-                      contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      tonalElevation = if (hideBackground) 0.dp else 2.dp,
-                      shadowElevation = 0.dp,
-                      border =
-                        if (hideBackground) {
-                          null
-                        } else {
-                          BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                          )
-                        },
-                    ) {
-                      Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                          Modifier.padding(
-                            horizontal = MaterialTheme.spacing.medium,
-                            vertical = MaterialTheme.spacing.small,
-                          ),
-                      ) {
-                        Text(
-                          mediaTitle ?: "",
-                          maxLines = 1,
-                          overflow = TextOverflow.Ellipsis,
-                          style = MaterialTheme.typography.bodyMedium,
+          val TopRightButtonsContent: @Composable () -> Unit = {
+            topRightButtons.forEach { button ->
+              when (button) {
+                PlayerButton.BACK_ARROW -> {
+                  ControlsButton(
+                    icon = Icons.AutoMirrored.Default.ArrowBack,
+                    onClick = onBackPress,
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.VIDEO_TITLE -> {
+                  Surface(
+                    shape = CircleShape,
+                    color =
+                      if (hideBackground) {
+                        Color.Transparent
+                      } else {
+                        MaterialTheme.colorScheme.surfaceContainer.copy(
+                          alpha = 0.55f,
                         )
-                        viewModel.getPlaylistInfo()?.let { playlistInfo ->
-                          Text(
-                            " • $playlistInfo",
-                            maxLines = 1,
-                            style = MaterialTheme.typography.bodySmall,
-                          )
-                        }
-                      }
-                    }
-                  }
-                  PlayerButton.BOOKMARKS_CHAPTERS -> {
-                    if (chapters.isNotEmpty()) {
-                      ControlsButton(
-                        Icons.Default.Bookmarks,
-                        onClick = { onOpenSheet(Sheets.Chapters) },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-                    }
-                  }
-                  PlayerButton.PLAYBACK_SPEED -> {
-                    ControlsButton(
-                      text =
-                        stringResource(
-                          R.string.player_speed,
-                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
+                      },
+                    contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = if (hideBackground) 0.dp else 2.dp,
+                    shadowElevation = 0.dp,
+                    border =
+                      if (hideBackground) {
+                        null
+                      } else {
+                        BorderStroke(
+                          1.dp,
+                          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        )
+                      },
+                  ) {
+                    Row(
+                      verticalAlignment = Alignment.CenterVertically,
+                      modifier =
+                        Modifier.padding(
+                          horizontal = MaterialTheme.spacing.medium,
+                          vertical = MaterialTheme.spacing.small,
                         ),
-                      onClick = {
-                        val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
-                        val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
-                        MPVLib.setPropertyFloat("speed", newSpeed)
-                        playerPreferences.defaultSpeed.set(newSpeed)
-                      },
-                      onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.DECODER -> {
-                    ControlsButton(
-                      decoder.title,
-                      onClick = { viewModel.cycleDecoders() },
-                      onLongClick = { onOpenSheet(Sheets.Decoders) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.SCREEN_ROTATION -> {
-                    ControlsButton(
-                      icon = Icons.Default.ScreenRotation,
-                      onClick = viewModel::cycleScreenRotations,
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.FRAME_NAVIGATION -> {
-                    ControlsButton(
-                      Icons.Default.Camera,
-                      onClick = { viewModel.sheetShown.update { Sheets.FrameNavigation } },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.VIDEO_ZOOM -> {
-                    if (currentZoom != 0f) {
-                      ControlsButton(
-                        text = "%.2fx".format(currentZoom),
-                        onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
-                        onLongClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-                    } else {
-                      ControlsButton(
-                        Icons.Default.ZoomIn,
-                        onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
-                        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                      )
-                    }
-                  }
-                  PlayerButton.PICTURE_IN_PICTURE -> {
-                    ControlsButton(
-                      Icons.Default.PictureInPictureAlt,
-                      onClick = { activity.enterPipModeHidingOverlay() },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.ASPECT_RATIO -> {
-                    ControlsButton(
-                      icon =
-                        when (aspect) {
-                          VideoAspect.Fit -> Icons.Default.AspectRatio
-                          VideoAspect.Stretch -> Icons.Default.ZoomOutMap
-                          VideoAspect.Crop -> Icons.Default.FitScreen
-                        },
-                      onClick = {
-                        when (aspect) {
-                          VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)
-                          VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Stretch)
-                          VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Fit)
-                        }
-                      },
-                      onLongClick = { viewModel.sheetShown.update { Sheets.AspectRatios } },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.LOCK_CONTROLS -> {
-                    ControlsButton(
-                      Icons.Default.LockOpen,
-                      onClick = viewModel::lockControls,
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.AUDIO_TRACK -> {
-                    ControlsButton(
-                      Icons.Default.Audiotrack,
-                      onClick = { onOpenSheet(Sheets.AudioTracks) },
-                      onLongClick = { onOpenPanel(Panels.AudioDelay) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.SUBTITLES -> {
-                    ControlsButton(
-                      Icons.Default.Subtitles,
-                      onClick = { onOpenSheet(Sheets.SubtitleTracks) },
-                      onLongClick = { onOpenPanel(Panels.SubtitleSettings) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.MORE_OPTIONS -> {
-                    ControlsButton(
-                      Icons.Default.MoreVert,
-                      onClick = { onOpenSheet(Sheets.More) },
-                      onLongClick = { onOpenPanel(Panels.VideoFilters) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                  }
-                  PlayerButton.CURRENT_CHAPTER -> {
-                    AnimatedVisibility(
-                      chapters.getOrNull(currentChapter ?: 0) != null,
-                      enter = fadeIn(),
-                      exit = fadeOut(),
                     ) {
-                      chapters.getOrNull(currentChapter ?: 0)?.let { chapter ->
-                        CurrentChapter(
-                          chapter = chapter,
-                          onClick = { onOpenSheet(Sheets.Chapters) },
+                      Text(
+                        mediaTitle ?: "",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                      )
+                      viewModel.getPlaylistInfo()?.let { playlistInfo ->
+                        Text(
+                          " • $playlistInfo",
+                          maxLines = 1,
+                          style = MaterialTheme.typography.bodySmall,
                         )
                       }
                     }
                   }
-                  PlayerButton.NONE -> { /* Do nothing */ }
+                }
+
+                PlayerButton.BOOKMARKS_CHAPTERS -> {
+                  if (chapters.isNotEmpty()) {
+                    ControlsButton(
+                      Icons.Default.Bookmarks,
+                      onClick = { onOpenSheet(Sheets.Chapters) },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  }
+                }
+
+                PlayerButton.PLAYBACK_SPEED -> {
+                  ControlsButton(
+                    icon = Icons.Default.Speed,
+                    onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+                    color = if (isSpeedNonOne) MaterialTheme.colorScheme.primary else if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.DECODER -> {
+                  ControlsButton(
+                    icon = Icons.Default.Memory,
+                    onClick = { onOpenSheet(Sheets.Decoders) },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.SCREEN_ROTATION -> {
+                  ControlsButton(
+                    icon = Icons.Default.ScreenRotation,
+                    onClick = viewModel::cycleScreenRotations,
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.FRAME_NAVIGATION -> {
+                  ControlsButton(
+                    Icons.Default.Camera,
+                    onClick = { viewModel.sheetShown.update { Sheets.FrameNavigation } },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.VIDEO_ZOOM -> {
+                  if (currentZoom != 0f) {
+                    ControlsButton(
+                      text = "%.2fx".format(currentZoom),
+                      onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+                      onLongClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  } else {
+                    ControlsButton(
+                      Icons.Default.ZoomIn,
+                      onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    )
+                  }
+                }
+
+                PlayerButton.PICTURE_IN_PICTURE -> {
+                  ControlsButton(
+                    Icons.Default.PictureInPictureAlt,
+                    onClick = { activity.enterPipModeHidingOverlay() },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.ASPECT_RATIO -> {
+                  ControlsButton(
+                    icon =
+                      when (aspect) {
+                        VideoAspect.Fit -> Icons.Default.AspectRatio
+                        VideoAspect.Stretch -> Icons.Default.ZoomOutMap
+                        VideoAspect.Crop -> Icons.Default.FitScreen
+                      },
+                    onClick = {
+                      when (aspect) {
+                        VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Crop)
+                        VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Stretch)
+                        VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Fit)
+                      }
+                    },
+                    onLongClick = { viewModel.sheetShown.update { Sheets.AspectRatios } },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.LOCK_CONTROLS -> {
+                  ControlsButton(
+                    Icons.Default.LockOpen,
+                    onClick = viewModel::lockControls,
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.AUDIO_TRACK -> {
+                  ControlsButton(
+                    Icons.Default.Audiotrack,
+                    onClick = { onOpenSheet(Sheets.AudioTracks) },
+                    onLongClick = { onOpenPanel(Panels.AudioDelay) },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.SUBTITLES -> {
+                  ControlsButton(
+                    Icons.Default.Subtitles,
+                    onClick = { onOpenSheet(Sheets.SubtitleTracks) },
+                    onLongClick = { onOpenPanel(Panels.SubtitleSettings) },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.MORE_OPTIONS -> {
+                  ControlsButton(
+                    Icons.Default.MoreVert,
+                    onClick = { onOpenSheet(Sheets.More) },
+                    onLongClick = { onOpenPanel(Panels.VideoFilters) },
+                    color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                  )
+                }
+
+                PlayerButton.CURRENT_CHAPTER -> {
+                  AnimatedVisibility(
+                    chapters.getOrNull(currentChapter ?: 0) != null &&
+                      !isPortrait,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                  ) {
+                    chapters.getOrNull(currentChapter ?: 0)?.let { chapter ->
+                      CurrentChapter(
+                        chapter = chapter,
+                        onClick = { onOpenSheet(Sheets.Chapters) },
+                      )
+                    }
+                  }
+                }
+                PlayerButton.NONE -> { /* Do nothing */
                 }
               }
             }
           }
+
+          if (isPortrait) {
+            Column(
+              horizontalAlignment = Alignment.End,
+              verticalArrangement = Arrangement.spacedBy(spacing.extraSmall),
+            ) {
+              TopRightButtonsContent()
+            }
+          } else {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              ControlsGroup {
+                TopRightButtonsContent()
+              }
+            }
+          }
         }
-        // Bottom right controls - DYNAMIC
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -1296,26 +1359,15 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text =
-                        stringResource(
-                          R.string.player_speed,
-                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
-                        ),
-                      onClick = {
-                        val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
-                        val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
-                        MPVLib.setPropertyFloat("speed", newSpeed)
-                        playerPreferences.defaultSpeed.set(newSpeed)
-                      },
-                      onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                      icon = Icons.Default.Speed,
+                      onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+                      color = if (isSpeedNonOne) MaterialTheme.colorScheme.primary else if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
                   PlayerButton.DECODER -> {
                     ControlsButton(
-                      decoder.title,
-                      onClick = { viewModel.cycleDecoders() },
-                      onLongClick = { onOpenSheet(Sheets.Decoders) },
+                      icon = Icons.Default.Memory,
+                      onClick = { onOpenSheet(Sheets.Decoders) },
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
@@ -1408,7 +1460,8 @@ fun PlayerControls(
                   }
                   PlayerButton.CURRENT_CHAPTER -> {
                     AnimatedVisibility(
-                      chapters.getOrNull(currentChapter ?: 0) != null,
+                      chapters.getOrNull(currentChapter ?: 0) != null &&
+                        !isPortrait,
                       enter = fadeIn(),
                       exit = fadeOut(),
                     ) {
@@ -1426,7 +1479,6 @@ fun PlayerControls(
             }
           }
         }
-        // Bottom left controls - DYNAMIC
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -1455,7 +1507,6 @@ fun PlayerControls(
             verticalAlignment = Alignment.CenterVertically,
           ) {
             ControlsGroup {
-              // 1. Dynamic Buttons
               bottomLeftButtons.forEach { button ->
                 when (button) {
                   PlayerButton.BACK_ARROW -> {
@@ -1524,26 +1575,15 @@ fun PlayerControls(
                   }
                   PlayerButton.PLAYBACK_SPEED -> {
                     ControlsButton(
-                      text =
-                        stringResource(
-                          R.string.player_speed,
-                          playbackSpeed ?: playerPreferences.defaultSpeed.get(),
-                        ),
-                      onClick = {
-                        val currentSpeed = playbackSpeed ?: playerPreferences.defaultSpeed.get()
-                        val newSpeed = if (currentSpeed >= 2) 0.25f else currentSpeed + 0.25f
-                        MPVLib.setPropertyFloat("speed", newSpeed)
-                        playerPreferences.defaultSpeed.set(newSpeed)
-                      },
-                      onLongClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                      icon = Icons.Default.Speed,
+                      onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+                      color = if (isSpeedNonOne) MaterialTheme.colorScheme.primary else if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
                   PlayerButton.DECODER -> {
                     ControlsButton(
-                      decoder.title,
-                      onClick = { viewModel.cycleDecoders() },
-                      onLongClick = { onOpenSheet(Sheets.Decoders) },
+                      icon = Icons.Default.Memory,
+                      onClick = { onOpenSheet(Sheets.Decoders) },
                       color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                     )
                   }
@@ -1636,7 +1676,8 @@ fun PlayerControls(
                   }
                   PlayerButton.CURRENT_CHAPTER -> {
                     AnimatedVisibility(
-                      chapters.getOrNull(currentChapter ?: 0) != null,
+                      chapters.getOrNull(currentChapter ?: 0) != null &&
+                        !isPortrait,
                       enter = fadeIn(),
                       exit = fadeOut(),
                     ) {
