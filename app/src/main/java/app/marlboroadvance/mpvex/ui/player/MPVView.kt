@@ -107,8 +107,8 @@ class MPVView(
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
 
     // Improve seek responsiveness/smoothness on mobile
-    MPVLib.setOptionString("hr-seek", "no")
-    MPVLib.setOptionString("hr-seek-framedrop", "no")
+    MPVLib.setOptionString("hr-seek", if (playerPreferences.usePreciseSeeking.get()) "yes" else "no")
+    MPVLib.setOptionString("hr-seek-framedrop", if (playerPreferences.usePreciseSeeking.get()) "no" else "no")
     MPVLib.setOptionString("demuxer-readahead-secs", "8")
     MPVLib.setOptionString("demuxer-seekable-cache", "yes")
     MPVLib.setOptionString("cache", "yes")

@@ -398,7 +398,8 @@ class PlayerViewModel(
     // Cancel pending relative seek before absolute seek
     seekCoalesceJob?.cancel()
     pendingSeekOffset = 0
-    MPVLib.command("seek", position.toString(), "absolute+exact")
+    val seekMode = if (playerPreferences.usePreciseSeeking.get()) "absolute+exact" else "absolute+keyframes"
+    MPVLib.command("seek", position.toString(), seekMode)
   }
 
   private fun coalesceSeek(offset: Int) {
@@ -410,7 +411,8 @@ class PlayerViewModel(
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
         if (toApply != 0) {
-          MPVLib.command("seek", toApply.toString(), "relative+exact")
+          val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+          MPVLib.command("seek", toApply.toString(), seekMode)
         }
       }
   }

@@ -348,4 +348,6 @@
     <string name="media_info_error_load_failed">Failed to load media information</string>
     <string name="media_info_copied">Copied to clipboard</string>
     <string name="media_info_share_failed">Failed to share</string>
+
+    <string name="pref_player_use_precise_seeking">Use precise seeking</string>
 </resources>

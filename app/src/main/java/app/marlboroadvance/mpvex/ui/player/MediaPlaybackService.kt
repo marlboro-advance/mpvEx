@@ -23,13 +23,17 @@ import androidx.media.MediaBrowserServiceCompat
 import app.marlboroadvance.mpvex.R
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
  * Background playback service for mpv with MediaSession integration.
  */
 class MediaPlaybackService :
   MediaBrowserServiceCompat(),
-  MPVLib.EventObserver {
+  MPVLib.EventObserver,
+  KoinComponent {
   companion object {
     private const val TAG = "MediaPlaybackService"
     private const val NOTIFICATION_ID = 1
@@ -57,6 +61,7 @@ class MediaPlaybackService :
 
   private val binder = MediaPlaybackBinder()
   private lateinit var mediaSession: MediaSessionCompat
+  private val playerPreferences: PlayerPreferences by inject()
 
   private var mediaTitle = ""
   private var mediaArtist = ""
@@ -142,9 +147,15 @@ class MediaPlaybackService :
 
             override fun onStop() = stopSelf()
 
-            override fun onSkipToNext() = MPVLib.command("seek", "10", "relative")
+            override fun onSkipToNext() {
+              val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", "10", seekMode)
+            }
 
-            override fun onSkipToPrevious() = MPVLib.command("seek", "-10", "relative")
+            override fun onSkipToPrevious() {
+              val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", "-10", seekMode)
+            }
 
             override fun onSeekTo(pos: Long) = MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
           },

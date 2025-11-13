@@ -15,7 +15,10 @@ import android.util.Rational
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import `is`.xyz.mpv.MPVLib
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 private const val PIP_INTENTS_FILTER = "pip_action"
 private const val PIP_INTENT_ACTION = "pip_action_code"
@@ -27,7 +30,8 @@ private const val PIP_FORWARD = 4
 class MPVPipHelper(
   private val activity: AppCompatActivity,
   private val mpvView: MPVView,
-) {
+) : KoinComponent {
+  private val playerPreferences: PlayerPreferences by inject()
   private var pipReceiver: BroadcastReceiver? = null
 
   fun onPictureInPictureModeChanged(isInPipMode: Boolean) {
@@ -46,11 +50,12 @@ class MPVPipHelper(
           context: Context?,
           intent: Intent?,
         ) {
+          val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
           when (intent?.getIntExtra(PIP_INTENT_ACTION, 0)) {
             PIP_PLAY -> MPVLib.setPropertyBoolean("pause", false)
             PIP_PAUSE -> MPVLib.setPropertyBoolean("pause", true)
-            PIP_REWIND -> MPVLib.command("seek", "-10", "relative+exact")
-            PIP_FORWARD -> MPVLib.command("seek", "10", "relative+exact")
+            PIP_REWIND -> MPVLib.command("seek", "-10", seekMode)
+            PIP_FORWARD -> MPVLib.command("seek", "10", seekMode)
           }
           updatePictureInPictureParams()
         }

@@ -117,6 +117,12 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.showSeekTimeWhileSeeking::set,
             title = { Text(stringResource(R.string.show_time_on_double_tap_to_seek)) },
           )
+          val usePreciseSeeking by preferences.usePreciseSeeking.collectAsState()
+          SwitchPreference(
+            value = usePreciseSeeking,
+            onValueChange = preferences.usePreciseSeeking::set,
+            title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
+          )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_gestures)) },
           )
