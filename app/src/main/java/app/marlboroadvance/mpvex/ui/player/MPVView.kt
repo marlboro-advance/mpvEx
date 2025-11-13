@@ -226,6 +226,10 @@ class MPVView(
     val preferredFontFamily = subtitlesPreferences.font.get()
     MPVLib.setOptionString("sub-font", preferredFontFamily.ifBlank { "sans-serif" })
 
+    if (subtitlesPreferences.overrideAssSubs.get()) {
+      MPVLib.setOptionString("sub-ass-override", "force")
+      MPVLib.setOptionString("sub-ass-justify", "yes")
+    }
     // Removed SSA/ASS global override; rely on track styling and per-justify settings only
     MPVLib.setOptionString("sub-font-size", subtitlesPreferences.fontSize.get().toString())
     MPVLib.setOptionString("sub-bold", if (subtitlesPreferences.bold.get()) "yes" else "no")
