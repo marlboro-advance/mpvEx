@@ -2,19 +2,27 @@ package app.marlboroadvance.mpvex.ui.preferences
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -22,6 +30,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -47,6 +57,10 @@ object GesturePreferencesScreen : Screen {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val useSingleTapForCenter by preferences.useSingleTapForCenter.collectAsState()
+
+    var showCustomSeekDialog by remember { mutableStateOf(false) }
+    var customSeekValue by remember { mutableStateOf("") }
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -73,14 +87,79 @@ object GesturePreferencesScreen : Screen {
             title = { Text(text = stringResource(R.string.pref_gesture_double_tap_title)) },
           )
           val doubleTapSeekDuration by preferences.doubleTapToSeekDuration.collectAsState()
+          val predefinedValues = listOf(3, 5, 10, 15, 20, 25, 30)
+          val isCustomValue = !predefinedValues.contains(doubleTapSeekDuration)
+
           ListPreference(
-            value = doubleTapSeekDuration,
-            onValueChange = preferences.doubleTapToSeekDuration::set,
-            values = listOf(3, 5, 10, 15, 20, 25, 30),
-            valueToText = { AnnotatedString("${it}s") },
+            value = if (isCustomValue) -1 else doubleTapSeekDuration,
+            onValueChange = { newValue ->
+              if (newValue == -1) {
+                customSeekValue = doubleTapSeekDuration.toString()
+                showCustomSeekDialog = true
+              } else {
+                preferences.doubleTapToSeekDuration.set(newValue)
+              }
+            },
+            values = predefinedValues + listOf(-1),
+            valueToText = { value ->
+              if (value == -1) {
+                AnnotatedString("Custom")
+              } else {
+                AnnotatedString("${value}s")
+              }
+            },
             title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
-            summary = { Text(text = "${doubleTapSeekDuration}s") },
+            summary = {
+              Text(
+                text = if (isCustomValue) {
+                  "Custom (${doubleTapSeekDuration}s)"
+                } else {
+                  "${doubleTapSeekDuration}s"
+                },
+              )
+            },
           )
+
+          if (showCustomSeekDialog) {
+            AlertDialog(
+              onDismissRequest = { showCustomSeekDialog = false },
+              title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
+              text = {
+                Column {
+                  Text(
+                    text = "Enter custom seek duration in seconds (1-120)",
+                    modifier = Modifier.padding(bottom = 8.dp),
+                  )
+                  OutlinedTextField(
+                    value = customSeekValue,
+                    onValueChange = { customSeekValue = it },
+                    label = { Text("Seconds") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                  )
+                }
+              },
+              confirmButton = {
+                TextButton(
+                  onClick = {
+                    val value = customSeekValue.toIntOrNull()
+                    if (value != null && value in 1..120) {
+                      preferences.doubleTapToSeekDuration.set(value)
+                      showCustomSeekDialog = false
+                    }
+                  },
+                ) {
+                  Text(stringResource(R.string.generic_ok))
+                }
+              },
+              dismissButton = {
+                TextButton(onClick = { showCustomSeekDialog = false }) {
+                  Text(stringResource(R.string.generic_cancel))
+                }
+              },
+            )
+          }
 
           val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
           ListPreference(
