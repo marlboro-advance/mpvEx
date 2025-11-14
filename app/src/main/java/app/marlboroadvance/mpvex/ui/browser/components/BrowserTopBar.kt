@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +62,7 @@ fun BrowserTopBar(
   onBackClick: (() -> Unit)? = null,
   onSortClick: (() -> Unit)? = null,
   onSettingsClick: (() -> Unit)? = null,
+  onSearchClick: (() -> Unit)? = null,
   onDeleteClick: (() -> Unit)? = null,
   onRenameClick: (() -> Unit)? = null,
   isSingleSelection: Boolean = false,
@@ -96,6 +97,7 @@ fun BrowserTopBar(
       onBackClick = onBackClick,
       onSortClick = onSortClick,
       onSettingsClick = onSettingsClick,
+      onSearchClick = onSearchClick,
       additionalActions = additionalActions,
       modifier = modifier,
       onTitleLongPress = onTitleLongPress,
@@ -113,6 +115,7 @@ private fun NormalTopBar(
   onBackClick: (() -> Unit)?,
   onSortClick: (() -> Unit)?,
   onSettingsClick: (() -> Unit)?,
+  onSearchClick: (() -> Unit)?,
   additionalActions: @Composable RowScope.() -> Unit,
   modifier: Modifier = Modifier,
   onTitleLongPress: (() -> Unit)?,
@@ -120,7 +123,7 @@ private fun NormalTopBar(
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
   val darkTheme = isSystemInDarkTheme()
-  val context = LocalContext.current
+  LocalContext.current
 
   TopAppBar(
     title = {
@@ -128,18 +131,25 @@ private fun NormalTopBar(
         if (onTitleLongPress != null) {
           Modifier.combinedClickable(
             onClick = {
-              if (darkMode == DarkMode.System && darkTheme) {
-                preferences.darkMode.set(DarkMode.Light)
-              } else if (darkMode == DarkMode.System && !darkTheme) {
-                preferences.darkMode.set(DarkMode.Dark)
-              } else if (darkMode == DarkMode.Light && darkTheme) {
-                preferences.darkMode.set(DarkMode.System)
-              } else if (darkMode == DarkMode.Light && !darkTheme) {
-                preferences.darkMode.set(DarkMode.Dark)
-              } else if (darkMode == DarkMode.Dark && darkTheme) {
-                preferences.darkMode.set(DarkMode.Light)
-              } else {
-                preferences.darkMode.set(DarkMode.System)
+              when (darkMode) {
+                  DarkMode.System if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.Light)
+                  }
+                  DarkMode.System -> {
+                    preferences.darkMode.set(DarkMode.Dark)
+                  }
+                  DarkMode.Light if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.System)
+                  }
+                  DarkMode.Light -> {
+                    preferences.darkMode.set(DarkMode.Dark)
+                  }
+                  DarkMode.Dark if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.Light)
+                  }
+                  else -> {
+                    preferences.darkMode.set(DarkMode.System)
+                  }
               }
             },
             onLongClick = onTitleLongPress,
@@ -149,18 +159,25 @@ private fun NormalTopBar(
         } else {
           Modifier.combinedClickable(
             onClick = {
-              if (darkMode == DarkMode.System && darkTheme) {
-                preferences.darkMode.set(DarkMode.Light)
-              } else if (darkMode == DarkMode.System && !darkTheme) {
-                preferences.darkMode.set(DarkMode.Dark)
-              } else if (darkMode == DarkMode.Light && darkTheme) {
-                preferences.darkMode.set(DarkMode.System)
-              } else if (darkMode == DarkMode.Light && !darkTheme) {
-                preferences.darkMode.set(DarkMode.Dark)
-              } else if (darkMode == DarkMode.Dark && darkTheme) {
-                preferences.darkMode.set(DarkMode.Light)
-              } else {
-                preferences.darkMode.set(DarkMode.System)
+              when (darkMode) {
+                  DarkMode.System if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.Light)
+                  }
+                  DarkMode.System -> {
+                    preferences.darkMode.set(DarkMode.Dark)
+                  }
+                  DarkMode.Light if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.System)
+                  }
+                  DarkMode.Light -> {
+                    preferences.darkMode.set(DarkMode.Dark)
+                  }
+                  DarkMode.Dark if darkTheme -> {
+                    preferences.darkMode.set(DarkMode.Light)
+                  }
+                  else -> {
+                    preferences.darkMode.set(DarkMode.System)
+                  }
               }
             },
             interactionSource = remember { MutableInteractionSource() },
@@ -207,6 +224,19 @@ private fun NormalTopBar(
     },
     actions = {
       additionalActions()
+      if (onSearchClick != null) {
+        IconButton(
+          onClick = onSearchClick,
+          modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+          Icon(
+            Icons.Filled.Search,
+            contentDescription = "Search",
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
+        }
+      }
       if (onSortClick != null) {
         IconButton(
           onClick = onSortClick,

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOff
+import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -173,9 +174,9 @@ object FoldersPreferencesScreen : Screen {
         folders = availableFolders,
         blacklistedFolders = blacklistedFolders,
         isLoading = isLoading,
-        onDismiss = { },
-        onAddFolder = { folderPath ->
-          val updated = blacklistedFolders.toMutableSet().apply { add(folderPath) }
+        onDismiss = { showAddDialog = false },
+        onAddFolders = { folderPaths ->
+          val updated = blacklistedFolders.toMutableSet().apply { addAll(folderPaths) }
           preferences.blacklistedFolders.set(updated)
         },
       )
@@ -215,7 +216,7 @@ private fun BlacklistedFolderItem(
       }
       IconButton(onClick = onRemove) {
         Icon(
-          imageVector = Icons.Default.Delete,
+          imageVector = Icons.Default.RemoveCircle,
           contentDescription = stringResource(R.string.delete),
           tint = MaterialTheme.colorScheme.error,
         )
@@ -230,7 +231,7 @@ private fun AddFolderDialog(
   blacklistedFolders: Set<String>,
   isLoading: Boolean,
   onDismiss: () -> Unit,
-  onAddFolder: (String) -> Unit,
+  onAddFolders: (Set<String>) -> Unit,
 ) {
   val selectedFolders = remember { mutableStateOf<Set<String>>(emptySet()) }
 
@@ -298,9 +299,7 @@ private fun AddFolderDialog(
     confirmButton = {
       TextButton(
         onClick = {
-          selectedFolders.value.forEach { folderPath ->
-            onAddFolder(folderPath)
-          }
+          onAddFolders(selectedFolders.value)
           onDismiss()
         },
         enabled = selectedFolders.value.isNotEmpty() && !isLoading,

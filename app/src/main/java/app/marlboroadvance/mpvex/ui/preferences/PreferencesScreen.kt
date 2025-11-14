@@ -64,6 +64,13 @@ object PreferencesScreen : Screen {
             onClick = { backstack.add(AppearancePreferencesScreen) },
           )
           preference(
+            key = "player",
+            title = { Text(text = stringResource(id = R.string.pref_player)) },
+            summary = { Text(text = stringResource(id = R.string.pref_player_summary)) },
+            icon = { Icon(Icons.Outlined.PlayCircle, null) },
+            onClick = { backstack.add(PlayerPreferencesScreen) },
+          )
+          preference(
             key = "player_controls",
             title = { Text(text = stringResource(id = R.string.pref_layout_title)) },
             summary = { Text(text = stringResource(id = R.string.pref_layout_summary)) },
@@ -71,11 +78,11 @@ object PreferencesScreen : Screen {
             onClick = { backstack.add(PlayerControlsPreferencesScreen) },
           )
           preference(
-            key = "player",
-            title = { Text(text = stringResource(id = R.string.pref_player)) },
-            summary = { Text(text = stringResource(id = R.string.pref_player_summary)) },
-            icon = { Icon(Icons.Outlined.PlayCircle, null) },
-            onClick = { backstack.add(PlayerPreferencesScreen) },
+            key = "folders",
+            title = { Text(text = stringResource(id = R.string.pref_folders_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_folders_summary)) },
+            icon = { Icon(Icons.Outlined.Folder, null) },
+            onClick = { backstack.add(FoldersPreferencesScreen) },
           )
           preference(
             key = "gesture",
@@ -104,13 +111,6 @@ object PreferencesScreen : Screen {
             summary = { Text(text = stringResource(id = R.string.pref_audio_summary)) },
             icon = { Icon(Icons.Outlined.Audiotrack, null) },
             onClick = { backstack.add(AudioPreferencesScreen) },
-          )
-          preference(
-            key = "folders",
-            title = { Text(text = stringResource(id = R.string.pref_folders_title)) },
-            summary = { Text(text = stringResource(id = R.string.pref_folders_summary)) },
-            icon = { Icon(Icons.Outlined.Folder, null) },
-            onClick = { backstack.add(FoldersPreferencesScreen) },
           )
           preference(
             key = "advanced",

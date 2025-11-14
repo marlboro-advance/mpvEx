@@ -161,6 +161,79 @@ object PlayerPreferencesScreen : Screen {
             onSliderValueChange = { preferences.holdForMultipleSpeed.set(it.toFixed(2)) },
             sliderValue = holdForMultipleSpeed,
           )
+          PreferenceCategory(
+            title = { Text(stringResource(R.string.pref_player_controls)) },
+          )
+          val allowGesturesInPanels by preferences.allowGesturesInPanels.collectAsState()
+          SwitchPreference(
+            value = allowGesturesInPanels,
+            onValueChange = preferences.allowGesturesInPanels::set,
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_player_controls_allow_gestures_in_panels),
+              )
+            },
+          )
+          val displayVolumeAsPercentage by preferences.displayVolumeAsPercentage.collectAsState()
+          SwitchPreference(
+            value = displayVolumeAsPercentage,
+            onValueChange = preferences.displayVolumeAsPercentage::set,
+            title = { Text(stringResource(R.string.pref_player_controls_display_volume_as_percentage)) },
+          )
+          val swapVolumeAndBrightness by preferences.swapVolumeAndBrightness.collectAsState()
+          SwitchPreference(
+            value = swapVolumeAndBrightness,
+            onValueChange = preferences.swapVolumeAndBrightness::set,
+            title = { Text(stringResource(R.string.swap_the_volume_and_brightness_slider)) },
+          )
+          val showLoadingCircle by preferences.showLoadingCircle.collectAsState()
+          SwitchPreference(
+            value = showLoadingCircle,
+            onValueChange = preferences.showLoadingCircle::set,
+            title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
+          )
+          PreferenceCategory(
+            title = { Text(stringResource(R.string.pref_player_display)) },
+          )
+          val showSystemStatusBar by preferences.showSystemStatusBar.collectAsState()
+          SwitchPreference(
+            value = showSystemStatusBar,
+            onValueChange = preferences.showSystemStatusBar::set,
+            title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
+          )
+          val reduceMotion by preferences.reduceMotion.collectAsState()
+          SwitchPreference(
+            value = reduceMotion,
+            onValueChange = preferences.reduceMotion::set,
+            title = { Text(stringResource(R.string.pref_player_display_reduce_player_animation)) },
+          )
+          val playerTimeToDisappear by preferences.playerTimeToDisappear.collectAsState()
+          ListPreference(
+            value = playerTimeToDisappear,
+            onValueChange = preferences.playerTimeToDisappear::set,
+            values = listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000),
+            valueToText = { AnnotatedString("$it ms") },
+            title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
+            summary = { Text(text = "$playerTimeToDisappear ms") },
+          )
+          val panelTransparency by preferences.panelTransparency.collectAsState()
+          SliderPreference(
+            value = panelTransparency,
+            onValueChange = { preferences.panelTransparency.set(it) },
+            title = { Text(stringResource(R.string.pref_player_display_panel_opacity)) },
+            valueRange = 0f..1f,
+            summary = {
+              Text(
+                text =
+                  stringResource(
+                    id = R.string.pref_player_display_panel_transparency_summary,
+                    panelTransparency.times(100).toInt(),
+                  ),
+              )
+            },
+            onSliderValueChange = { preferences.panelTransparency.set(it) },
+            sliderValue = panelTransparency,
+          )
         }
       }
     }
