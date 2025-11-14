@@ -299,7 +299,7 @@ internal var darkColorScheme = darkColorScheme()
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun mpvexTheme(content: @Composable () -> Unit) {
+fun MpvexTheme(content: @Composable () -> Unit) {
   val preferences = koinInject<AppearancePreferences>()
   val darkMode by preferences.darkMode.collectAsState()
   val amoledMode by preferences.amoledMode.collectAsState()

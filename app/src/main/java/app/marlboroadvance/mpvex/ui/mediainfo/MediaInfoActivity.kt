@@ -65,7 +65,7 @@ import androidx.core.content.FileProvider
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
-import app.marlboroadvance.mpvex.ui.theme.mpvexTheme
+import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -92,7 +92,7 @@ class MediaInfoActivity : ComponentActivity() {
         ) { isDarkMode },
       )
 
-      mpvexTheme {
+      MpvexTheme {
         Surface {
           MediaInfoScreen(
             onBack = { finish() },

@@ -32,7 +32,7 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
-import app.marlboroadvance.mpvex.ui.theme.mpvexTheme
+import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import org.koin.android.ext.android.inject
 
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
         ) { isDarkMode },
       )
 
-      mpvexTheme {
+      MpvexTheme {
         Surface {
           Navigator()
         }
