@@ -75,6 +75,17 @@ class AppearancePreferences(
     )
 
   /**
+   * Comma-separated list of [PlayerButton] enum names for the portrait bottom controls.
+   * This is used exclusively in portrait mode, consolidating all controls at the bottom.
+   * Change the order by rearranging button names in the comma-separated string.
+   */
+  val portraitBottomControls =
+    preferenceStore.getString(
+      "portrait_bottom_controls",
+      "BOOKMARKS_CHAPTERS,LOCK_CONTROLS,SCREEN_ROTATION,PLAYBACK_SPEED,FRAME_NAVIGATION,VIDEO_ZOOM,PICTURE_IN_PICTURE,ASPECT_RATIO,DECODER,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS", // <-- Change default order here
+    )
+
+  /**
    * Parses a comma-separated string of button names and filters duplicates.
    *
    * @param csv The comma-separated string from preferences.

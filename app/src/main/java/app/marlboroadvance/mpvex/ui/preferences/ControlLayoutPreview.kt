@@ -1,13 +1,18 @@
 package app.marlboroadvance.mpvex.preferences
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -41,26 +46,62 @@ fun ControlLayoutPreview(
   topRightButtons: List<PlayerButton>,
   bottomRightButtons: List<PlayerButton>,
   bottomLeftButtons: List<PlayerButton>,
+  portraitBottomButtons: List<PlayerButton>,
   modifier: Modifier = Modifier,
 ) {
+  Column(modifier = modifier) {
+    // Landscape Preview
+    Text(
+      "Landscape Mode",
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier.padding(bottom = 8.dp),
+    )
+    LandscapePreview(
+      topLeftButtons = topLeftButtons,
+      topRightButtons = topRightButtons,
+      bottomLeftButtons = bottomLeftButtons,
+      bottomRightButtons = bottomRightButtons,
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Portrait Preview
+    Text(
+      "Portrait Mode",
+      style = MaterialTheme.typography.titleSmall,
+      modifier = Modifier.padding(bottom = 8.dp),
+    )
+    PortraitPreview(
+      topButtons = topLeftButtons, // Back + Title
+      bottomButtons = portraitBottomButtons,
+    )
+  }
+}
+
+@Composable
+private fun LandscapePreview(
+  topLeftButtons: List<PlayerButton>,
+  topRightButtons: List<PlayerButton>,
+  bottomLeftButtons: List<PlayerButton>,
+  bottomRightButtons: List<PlayerButton>,
+) {
   Card(
-    modifier = modifier.fillMaxWidth(),
+    modifier = Modifier.fillMaxWidth(),
     elevation = CardDefaults.cardElevation(2.dp),
-    colors = CardDefaults.cardColors(containerColor = Color.Black), // Black background
+    colors = CardDefaults.cardColors(containerColor = Color.Black),
   ) {
     ConstraintLayout(
       modifier =
         Modifier
           .fillMaxWidth()
           .padding(12.dp)
-          .height(160.dp),
-      // Set fixed height for landscape aspect
+          .height(180.dp), // Slightly taller
     ) {
       val (
         topLeft, topRight,
         centerControls,
-        positionTime, seekbar, durationTime,
         bottomLeft, bottomRight,
+        positionTime, seekbar, durationTime,
       ) = createRefs()
 
       // --- TOP BAR (LEFT) ---
@@ -69,15 +110,14 @@ fun ControlLayoutPreview(
           Modifier.constrainAs(topLeft) {
             start.linkTo(parent.start)
             top.linkTo(parent.top)
-            end.linkTo(topRight.start, 8.dp)
+            end.linkTo(topRight.start, 2.dp) // extraSmall spacing
             width = Dimension.fillToConstraints
           },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
       ) {
         topLeftButtons.forEach { button ->
-          // Use the simple PreviewButton for all
-          PreviewButton(button = button)
+          PreviewButton(button = button, size = 20.dp) // Scaled down from 45dp
         }
       }
 
@@ -86,14 +126,14 @@ fun ControlLayoutPreview(
         modifier =
           Modifier.constrainAs(topRight) {
             end.linkTo(parent.end)
-            top.linkTo(parent.top) // Align with top
-            width = Dimension.preferredWrapContent // Don't grow
+            top.linkTo(parent.top)
+            width = Dimension.preferredWrapContent
           },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
         verticalArrangement = Arrangement.spacedBy(2.dp),
       ) {
         topRightButtons.forEach { button ->
-          PreviewButton(button = button)
+          PreviewButton(button = button, size = 20.dp)
         }
       }
 
@@ -104,7 +144,7 @@ fun ControlLayoutPreview(
             start.linkTo(parent.start)
             end.linkTo(parent.end)
             top.linkTo(topRight.bottom, 12.dp)
-            bottom.linkTo(seekbar.top, 12.dp)
+            bottom.linkTo(bottomLeft.top, 12.dp)
             height = Dimension.fillToConstraints
           },
         horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -115,29 +155,62 @@ fun ControlLayoutPreview(
         PreviewIconButton(icon = Icons.Default.SkipNext, size = 28.dp)
       }
 
-      // --- SEEKBAR ---
+      // --- BOTTOM BAR (LEFT) ---
+      FlowRow(
+        modifier =
+          Modifier.constrainAs(bottomLeft) {
+            start.linkTo(parent.start)
+            bottom.linkTo(seekbar.top, 10.dp) // More spacing above seekbar
+            end.linkTo(bottomRight.start, 8.dp)
+            width = Dimension.fillToConstraints
+          },
+        horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+      ) {
+        bottomLeftButtons.forEach { button ->
+          PreviewButton(button = button, size = 20.dp)
+        }
+      }
+
+      // --- BOTTOM BAR (RIGHT) ---
+      FlowRow(
+        modifier =
+          Modifier.constrainAs(bottomRight) {
+            end.linkTo(parent.end)
+            bottom.linkTo(seekbar.top, 10.dp) // More spacing above seekbar
+            width = Dimension.preferredWrapContent
+          },
+        horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        bottomRightButtons.forEach { button ->
+          PreviewButton(button = button, size = 20.dp)
+        }
+      }
+
+      // --- SEEKBAR (Now at bottom) ---
       Text(
-        "1:23", // Demo Time
+        "1:23",
         modifier =
           Modifier.constrainAs(positionTime) {
             start.linkTo(parent.start)
-            bottom.linkTo(bottomLeft.top, 4.dp)
+            bottom.linkTo(parent.bottom)
           },
         fontSize = 10.sp,
         color = Color.White,
       )
       Text(
-        "4:56", // Demo Time
+        "4:56",
         modifier =
           Modifier.constrainAs(durationTime) {
             end.linkTo(parent.end)
-            bottom.linkTo(bottomRight.top, 4.dp)
+            bottom.linkTo(parent.bottom)
           },
         fontSize = 10.sp,
         color = Color.White,
       )
       LinearProgressIndicator(
-        progress = { 0.3f }, // Demo Progress
+        progress = { 0.3f },
         modifier =
           Modifier.constrainAs(seekbar) {
             start.linkTo(positionTime.end, 8.dp)
@@ -149,39 +222,122 @@ fun ControlLayoutPreview(
         color = Color.White,
         trackColor = Color.Gray,
       )
+    }
+  }
+}
 
-      // --- BOTTOM BAR (LEFT) ---
+@Composable
+private fun PortraitPreview(
+  topButtons: List<PlayerButton>,
+  bottomButtons: List<PlayerButton>,
+) {
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    elevation = CardDefaults.cardElevation(2.dp),
+    colors = CardDefaults.cardColors(containerColor = Color.Black),
+  ) {
+    ConstraintLayout(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(12.dp)
+          .height(260.dp), // Taller for better spacing
+    ) {
+      val (
+        topControls,
+        centerControls,
+        bottomControls,
+        positionTime, seekbar, durationTime,
+      ) = createRefs()
+
+      // --- TOP BAR (Full Width) ---
       FlowRow(
         modifier =
-          Modifier.constrainAs(bottomLeft) {
+          Modifier.constrainAs(topControls) {
             start.linkTo(parent.start)
-            bottom.linkTo(parent.bottom)
-            end.linkTo(bottomRight.start, 8.dp)
+            end.linkTo(parent.end)
+            top.linkTo(parent.top, 16.dp) // extraLarge spacing
             width = Dimension.fillToConstraints
           },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
       ) {
-        bottomLeftButtons.forEach { button ->
-          PreviewButton(button = button)
+        topButtons.forEach { button ->
+          PreviewButton(button = button, size = 20.dp)
         }
       }
 
-      // --- BOTTOM BAR (RIGHT) ---
-      FlowRow(
+      // --- CENTER CONTROLS ---
+      Row(
         modifier =
-          Modifier.constrainAs(bottomRight) {
+          Modifier.constrainAs(centerControls) {
+            start.linkTo(parent.start)
             end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom)
-            width = Dimension.preferredWrapContent
+            top.linkTo(topControls.bottom, 16.dp)
+            bottom.linkTo(bottomControls.top, 16.dp)
+            height = Dimension.fillToConstraints
           },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
       ) {
-        bottomRightButtons.forEach { button ->
-          PreviewButton(button = button)
+        PreviewIconButton(icon = Icons.Default.SkipPrevious, size = 28.dp)
+        PreviewIconButton(icon = Icons.Default.PlayArrow, size = 36.dp)
+        PreviewIconButton(icon = Icons.Default.SkipNext, size = 28.dp)
+      }
+
+      // --- BOTTOM BAR (Centered, Scrollable) ---
+      Row(
+        modifier =
+          Modifier
+            .constrainAs(bottomControls) {
+              start.linkTo(parent.start)
+              end.linkTo(parent.end)
+              bottom.linkTo(seekbar.top, 12.dp) // More spacing above seekbar
+              width = Dimension.fillToConstraints
+            }
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally), // extraSmall, centered
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        bottomButtons.forEach { button ->
+          PreviewButton(button = button, size = 22.dp) // Slightly larger (48dp scaled down)
         }
       }
+
+      // --- SEEKBAR (Now at bottom) ---
+      Text(
+        "1:23",
+        modifier =
+          Modifier.constrainAs(positionTime) {
+            start.linkTo(parent.start)
+            bottom.linkTo(parent.bottom)
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+      Text(
+        "4:56",
+        modifier =
+          Modifier.constrainAs(durationTime) {
+            end.linkTo(parent.end)
+            bottom.linkTo(parent.bottom)
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+      LinearProgressIndicator(
+        progress = { 0.3f },
+        modifier =
+          Modifier.constrainAs(seekbar) {
+            start.linkTo(positionTime.end, 8.dp)
+            end.linkTo(durationTime.start, 8.dp)
+            bottom.linkTo(positionTime.bottom)
+            top.linkTo(positionTime.top)
+            width = Dimension.fillToConstraints
+          },
+        color = Color.White,
+        trackColor = Color.Gray,
+      )
     }
   }
 }
@@ -209,22 +365,21 @@ private fun PreviewIconButton(
  * A simple button/icon for the preview that renders icons or text.
  */
 @Composable
-private fun PreviewButton(button: PlayerButton) {
-  // All icons are 20dp, text is 10sp
-  val iconSize = 14.dp
-  val fontSize = 10.sp
-
+private fun PreviewButton(
+  button: PlayerButton,
+  size: Dp,
+) {
   Row(
     verticalAlignment = Alignment.CenterVertically,
-    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp), // Give each button some space
+    modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
   ) {
     when (button) {
       PlayerButton.VIDEO_TITLE -> {
         Text(
-          "Video Title.mp4",
+          "Video Title",
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          style = MaterialTheme.typography.bodySmall.copy(fontSize = fontSize),
+          style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
           color = Color.White,
         )
       }
@@ -232,23 +387,22 @@ private fun PreviewButton(button: PlayerButton) {
         Icon(
           imageVector = button.icon,
           contentDescription = null,
-          modifier = Modifier.size(iconSize),
+          modifier = Modifier.size(size * 0.7f),
           tint = Color.White,
         )
         Text(
-          "1:06 • C1",
+          "1:06",
           maxLines = 1,
-          style = MaterialTheme.typography.bodySmall.copy(fontSize = fontSize),
-          modifier = Modifier.padding(start = 4.dp),
+          style = MaterialTheme.typography.bodySmall.copy(fontSize = 8.sp),
+          modifier = Modifier.padding(start = 2.dp),
           color = Color.White,
         )
       }
       else -> {
-        // Icon-only buttons
         Icon(
           imageVector = button.icon,
           contentDescription = null,
-          modifier = Modifier.size(iconSize),
+          modifier = Modifier.size(size * 0.7f),
           tint = Color.White,
         )
       }

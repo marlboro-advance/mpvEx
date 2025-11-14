@@ -12,8 +12,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -52,7 +55,9 @@ fun CurrentChapter(
   Surface(
     modifier =
       modifier
+        .height(45.dp)
         .clip(RoundedCornerShape(50))
+        .widthIn(max = 200.dp)
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
     color =
@@ -92,6 +97,7 @@ fun CurrentChapter(
       label = "Chapter",
     ) { currentChapter ->
       Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
@@ -101,7 +107,7 @@ fun CurrentChapter(
           modifier =
             Modifier
               .padding(end = MaterialTheme.spacing.extraSmall)
-              .size(16.dp),
+              .size(20.dp),
           tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
         Text(

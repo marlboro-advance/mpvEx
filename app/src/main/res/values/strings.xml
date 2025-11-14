@@ -39,6 +39,7 @@
     <string name="pref_layout_top_right_controls">Top Right Controls</string>
     <string name="pref_layout_bottom_right_controls">Bottom Right Controls</string>
     <string name="pref_layout_bottom_left_controls">Bottom Left Controls</string>
+    <string name="pref_layout_portrait_bottom_controls">Portrait Bottom Controls</string>
     <string name="pref_layout_preview">Preview</string>
     <string name="pref_layout_reset_title">Reset Layout?</string>
     <string name="pref_layout_reset_summary">All custom player control layouts will be reset to their default positions.</string>

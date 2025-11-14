@@ -68,13 +68,6 @@ data class ControlLayoutEditorScreen(
     val prefs =
       remember(region) {
         when (region) {
-          ControlRegion.TOP_LEFT ->
-            listOf(
-              preferences.topLeftControls,
-              preferences.topRightControls,
-              preferences.bottomRightControls,
-              preferences.bottomLeftControls,
-            )
           ControlRegion.TOP_RIGHT ->
             listOf(
               preferences.topRightControls,
@@ -96,27 +89,37 @@ data class ControlLayoutEditorScreen(
               preferences.topRightControls,
               preferences.bottomRightControls,
             )
+          ControlRegion.PORTRAIT_BOTTOM ->
+            listOf(
+              preferences.portraitBottomControls,
+              // Portrait bottom is independent - no cross-checking with other regions
+            )
         }
       }
 
     // Destructure the list correctly
     val prefToEdit: Preference<String> = prefs[0]
-    val otherPref1: Preference<String> = prefs[1]
-    val otherPref2: Preference<String> = prefs[2]
-    val otherPref3: Preference<String> = prefs[3]
 
     // State for buttons used in *other* regions (these are disabled)
+    // For PORTRAIT_BOTTOM, this will be empty since it's independent
     val disabledButtons by remember {
       mutableStateOf(
-        (otherPref1.get().split(',') + otherPref2.get().split(',') + otherPref3.get().split(','))
-          .filter(String::isNotBlank)
-          .mapNotNull {
-            try {
-              PlayerButton.valueOf(it)
-            } catch (e: Exception) {
-              null
-            }
-          }.toSet(),
+        if (region == ControlRegion.PORTRAIT_BOTTOM) {
+          emptySet() // Portrait bottom can use any button
+        } else {
+          val otherPref1: Preference<String> = prefs[1]
+          val otherPref2: Preference<String> = prefs[2]
+          val otherPref3: Preference<String> = prefs[3]
+          (otherPref1.get().split(',') + otherPref2.get().split(',') + otherPref3.get().split(','))
+            .filter(String::isNotBlank)
+            .mapNotNull {
+              try {
+                PlayerButton.valueOf(it)
+              } catch (e: Exception) {
+                null
+              }
+            }.toSet()
+        },
       )
     }
 
@@ -148,10 +151,10 @@ data class ControlLayoutEditorScreen(
     val title =
       remember(region) {
         when (region) {
-          ControlRegion.TOP_LEFT -> "Edit Top Left" // TODO: strings
           ControlRegion.TOP_RIGHT -> "Edit Top Right" // TODO: strings
           ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right" // TODO: strings
           ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left" // TODO: strings
+          ControlRegion.PORTRAIT_BOTTOM -> "Edit Portrait Bottom" // TODO: strings
         }
       }
 
