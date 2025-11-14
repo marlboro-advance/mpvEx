@@ -681,7 +681,7 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(seekbar) {
-              bottom.linkTo(parent.bottom, if (isPortrait) spacing.large else spacing.extraSmall)
+              bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
               start.linkTo(parent.start, spacing.small)
               end.linkTo(parent.end, spacing.small)
             },
