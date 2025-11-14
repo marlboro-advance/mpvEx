@@ -1,7 +1,6 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -115,7 +114,7 @@ data class ControlLayoutEditorScreen(
             .mapNotNull {
               try {
                 PlayerButton.valueOf(it)
-              } catch (e: Exception) {
+              } catch (_: Exception) {
                 null
               }
             }.toSet()
@@ -133,7 +132,7 @@ data class ControlLayoutEditorScreen(
           .mapNotNull {
             try {
               PlayerButton.valueOf(it)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
               null
             }
           },
