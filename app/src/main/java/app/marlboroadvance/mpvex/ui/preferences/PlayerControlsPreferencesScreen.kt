@@ -29,17 +29,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerButton
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
+import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
+import me.zhanghai.compose.preference.SliderPreference
+import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
 
 // Enum to identify which region we are editing
@@ -57,13 +62,14 @@ object PlayerControlsPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
-    val preferences = koinInject<AppearancePreferences>()
+    val appearancePrefs = koinInject<AppearancePreferences>()
+    val playerPrefs = koinInject<PlayerPreferences>()
 
     // Get the current state for all four regions
-    val topRState by preferences.topRightControls.collectAsState()
-    val bottomRState by preferences.bottomRightControls.collectAsState()
-    val bottomLState by preferences.bottomLeftControls.collectAsState()
-    val portraitBottomState by preferences.portraitBottomControls.collectAsState()
+    val topRState by appearancePrefs.topRightControls.collectAsState()
+    val bottomRState by appearancePrefs.bottomRightControls.collectAsState()
+    val bottomLState by appearancePrefs.bottomLeftControls.collectAsState()
+    val portraitBottomState by appearancePrefs.portraitBottomControls.collectAsState()
 
     var showResetDialog by remember { mutableStateOf(false) }
 
@@ -73,14 +79,12 @@ object PlayerControlsPreferencesScreen : Screen {
         subtitle = stringResource(id = R.string.pref_layout_reset_summary),
         onConfirm = {
           // Don't reset topLeftControls as it contains constant buttons
-          preferences.topRightControls.delete()
-          preferences.bottomRightControls.delete()
-          preferences.bottomLeftControls.delete()
-          preferences.portraitBottomControls.delete()
-          showResetDialog = false
+          appearancePrefs.topRightControls.delete()
+          appearancePrefs.bottomRightControls.delete()
+          appearancePrefs.bottomLeftControls.delete()
+          appearancePrefs.portraitBottomControls.delete()
         },
         onCancel = {
-          showResetDialog = false
         },
       )
     }
@@ -92,9 +96,9 @@ object PlayerControlsPreferencesScreen : Screen {
         bottomLState,
       ) {
         val usedButtons = mutableSetOf<PlayerButton>()
-        val topR = preferences.parseButtons(topRState, usedButtons)
-        val bottomR = preferences.parseButtons(bottomRState, usedButtons)
-        val bottomL = preferences.parseButtons(bottomLState, usedButtons)
+        val topR = appearancePrefs.parseButtons(topRState, usedButtons)
+        val bottomR = appearancePrefs.parseButtons(bottomRState, usedButtons)
+        val bottomL = appearancePrefs.parseButtons(bottomLState, usedButtons)
         listOf(topR, bottomR, bottomL)
       }
 
@@ -104,7 +108,7 @@ object PlayerControlsPreferencesScreen : Screen {
     }
 
     val portraitBottomButtons = remember(portraitBottomState) {
-      preferences.parseButtons(portraitBottomState, mutableSetOf())
+      appearancePrefs.parseButtons(portraitBottomState, mutableSetOf())
     }
 
     Scaffold(
@@ -117,7 +121,7 @@ object PlayerControlsPreferencesScreen : Screen {
             }
           },
           actions = {
-            IconButton(onClick = { showResetDialog = true }) {
+            IconButton(onClick = { }) {
               Icon(Icons.Outlined.Restore, contentDescription = stringResource(id = R.string.pref_layout_reset_default))
             }
           },
@@ -183,6 +187,109 @@ object PlayerControlsPreferencesScreen : Screen {
               bottomRightButtons = bottomRightButtons,
               bottomLeftButtons = bottomLeftButtons,
               portraitBottomButtons = portraitBottomButtons,
+            )
+          }
+
+          item {
+            PreferenceCategory(
+              title = { Text(stringResource(R.string.pref_player_controls)) },
+            )
+          }
+
+          item {
+            val allowGesturesInPanels by playerPrefs.allowGesturesInPanels.collectAsState()
+            SwitchPreference(
+              value = allowGesturesInPanels,
+              onValueChange = playerPrefs.allowGesturesInPanels::set,
+              title = {
+                Text(
+                  text = stringResource(id = R.string.pref_player_controls_allow_gestures_in_panels),
+                )
+              },
+            )
+          }
+
+          item {
+            val displayVolumeAsPercentage by playerPrefs.displayVolumeAsPercentage.collectAsState()
+            SwitchPreference(
+              value = displayVolumeAsPercentage,
+              onValueChange = playerPrefs.displayVolumeAsPercentage::set,
+              title = { Text(stringResource(R.string.pref_player_controls_display_volume_as_percentage)) },
+            )
+          }
+
+          item {
+            val swapVolumeAndBrightness by playerPrefs.swapVolumeAndBrightness.collectAsState()
+            SwitchPreference(
+              value = swapVolumeAndBrightness,
+              onValueChange = playerPrefs.swapVolumeAndBrightness::set,
+              title = { Text(stringResource(R.string.swap_the_volume_and_brightness_slider)) },
+            )
+          }
+
+          item {
+            val showLoadingCircle by playerPrefs.showLoadingCircle.collectAsState()
+            SwitchPreference(
+              value = showLoadingCircle,
+              onValueChange = playerPrefs.showLoadingCircle::set,
+              title = { Text(stringResource(R.string.pref_player_controls_show_loading_circle)) },
+            )
+          }
+
+          item {
+            PreferenceCategory(
+              title = { Text(stringResource(R.string.pref_player_display)) },
+            )
+          }
+
+          item {
+            val showSystemStatusBar by playerPrefs.showSystemStatusBar.collectAsState()
+            SwitchPreference(
+              value = showSystemStatusBar,
+              onValueChange = playerPrefs.showSystemStatusBar::set,
+              title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
+            )
+          }
+
+          item {
+            val reduceMotion by playerPrefs.reduceMotion.collectAsState()
+            SwitchPreference(
+              value = reduceMotion,
+              onValueChange = playerPrefs.reduceMotion::set,
+              title = { Text(stringResource(R.string.pref_player_display_reduce_player_animation)) },
+            )
+          }
+
+          item {
+            val playerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()
+            ListPreference(
+              value = playerTimeToDisappear,
+              onValueChange = playerPrefs.playerTimeToDisappear::set,
+              values = listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000),
+              valueToText = { AnnotatedString("$it ms") },
+              title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
+              summary = { Text(text = "$playerTimeToDisappear ms") },
+            )
+          }
+
+          item {
+            val panelTransparency by playerPrefs.panelTransparency.collectAsState()
+            SliderPreference(
+              value = panelTransparency,
+              onValueChange = { playerPrefs.panelTransparency.set(it) },
+              title = { Text(stringResource(R.string.pref_player_display_panel_opacity)) },
+              valueRange = 0f..1f,
+              summary = {
+                Text(
+                  text =
+                    stringResource(
+                      id = R.string.pref_player_display_panel_transparency_summary,
+                      panelTransparency.times(100).toInt(),
+                    ),
+                )
+              },
+              onSliderValueChange = { playerPrefs.panelTransparency.set(it) },
+              sliderValue = panelTransparency,
             )
           }
         }

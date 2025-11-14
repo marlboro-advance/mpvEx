@@ -351,4 +351,14 @@
     <string name="media_info_share_failed">Failed to share</string>
 
     <string name="pref_player_use_precise_seeking">Use precise seeking</string>
+
+    <!-- Folders Preferences -->
+    <string name="pref_folders_title">Folders</string>
+    <string name="pref_folders_summary">Manage folder blacklist</string>
+    <string name="pref_folders_empty_title">No blacklisted folders</string>
+    <string name="pref_folders_empty_message">Tap the button below to add folders you want to hide from the folder list</string>
+    <string name="pref_folders_add_folder">Add Folder to Blacklist</string>
+    <string name="pref_folders_select_folders">Select folders to blacklist</string>
+    <string name="pref_folders_loading">Loading folders…</string>
+    <string name="pref_folders_no_folders">No folders found</string>
 </resources>
