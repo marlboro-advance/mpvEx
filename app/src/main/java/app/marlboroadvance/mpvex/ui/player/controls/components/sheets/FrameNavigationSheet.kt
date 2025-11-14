@@ -694,9 +694,12 @@ private suspend fun takeSnapshot(
         tempFile.delete()
 
         // Notify media scanner about the new file
-        val mediaScanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-        mediaScanIntent.data = android.net.Uri.fromFile(destFile)
-        context.sendBroadcast(mediaScanIntent)
+        android.media.MediaScannerConnection.scanFile(
+          context,
+          arrayOf(destFile.absolutePath),
+          arrayOf("image/png"),
+          null,
+        )
 
         withContext(Dispatchers.Main) {
           Toast

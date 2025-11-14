@@ -275,7 +275,12 @@ class PlayerActivity :
     setupPipHelper()
     setupMediaSession()
 
-    playlist = intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    }
     playlistIndex = intent.getIntExtra("playlist_index", 0)
 
     // Extract fileName early so it's available when video loads
@@ -857,7 +862,13 @@ class PlayerActivity :
    */
   private fun parsePathFromSendIntent(intent: Intent): String? =
     if (intent.hasExtra(Intent.EXTRA_STREAM)) {
-      intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this@PlayerActivity)
+      val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+      }
+      uri?.resolveUri(this@PlayerActivity)
     } else {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
         val uri = text.trim().toUri()
@@ -889,12 +900,16 @@ class PlayerActivity :
    * @param intent The intent to extract URI from
    * @return The extracted URI, or null if not found
    */
-  @Suppress("DEPRECATION")
   private fun extractUriFromIntent(intent: Intent): Uri? =
     if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
     } else {
-      intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
+      intent.data ?: if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra(Intent.EXTRA_STREAM)
+      }
     }
 
   /**

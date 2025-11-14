@@ -30,7 +30,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, mpvexDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration(true)
         .build()
     }
 

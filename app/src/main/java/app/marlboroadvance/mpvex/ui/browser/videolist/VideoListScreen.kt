@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -80,7 +79,7 @@ data class VideoListScreen(
     val coroutineScope = rememberCoroutineScope()
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // ViewModel
     val viewModel: VideoListViewModel =
@@ -314,7 +313,7 @@ data class VideoListScreen(
                   CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
                 }
 
-                null -> {}
+                else -> {}
               }
             }
           }

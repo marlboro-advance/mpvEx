@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.CatchingPokemon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -85,63 +84,6 @@ fun ControlsButton(
         Modifier
           .padding(MaterialTheme.spacing.small)
           .size(20.dp),
-    )
-  }
-}
-
-@Suppress("ModifierClickableOrder")
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun ControlsButton(
-  text: String,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
-  onLongClick: () -> Unit = {},
-  color: Color? = null,
-) {
-  val interactionSource = remember { MutableInteractionSource() }
-  val clickEvent = LocalPlayerButtonsClickEvent.current
-  val appearancePreferences = koinInject<AppearancePreferences>()
-  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
-
-  Surface(
-    modifier =
-      modifier
-        .clip(CircleShape)
-        .debouncedCombinedClickable(
-          debounceTime = 300L,
-          onClick = {
-            clickEvent()
-            onClick()
-          },
-          onLongClick = onLongClick,
-          interactionSource = interactionSource,
-          indication = ripple(),
-        ),
-    shape = CircleShape,
-    color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-    contentColor = color ?: MaterialTheme.colorScheme.onSurface,
-    tonalElevation = if (hideBackground) 0.dp else 2.dp,
-    shadowElevation = 0.dp,
-    border =
-      if (hideBackground) {
-        null
-      } else {
-        BorderStroke(
-          1.dp,
-          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-        )
-      },
-  ) {
-    Text(
-      text,
-      color = color ?: MaterialTheme.colorScheme.onSurface,
-      style = MaterialTheme.typography.bodyMedium,
-      modifier =
-        Modifier.padding(
-          horizontal = MaterialTheme.spacing.medium,
-          vertical = MaterialTheme.spacing.small,
-        ),
     )
   }
 }

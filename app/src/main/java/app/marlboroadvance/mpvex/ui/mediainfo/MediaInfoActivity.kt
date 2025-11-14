@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -127,7 +127,12 @@ class MediaInfoActivity : ComponentActivity() {
     LaunchedEffect(Unit) {
       val uri = when (intent?.action) {
         Intent.ACTION_SEND -> {
-          intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+          } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+          }
         }
 
         Intent.ACTION_VIEW -> {
@@ -207,7 +212,7 @@ class MediaInfoActivity : ComponentActivity() {
           },
           navigationIcon = {
             IconButton(onClick = onBack) {
-              Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+              Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
             }
           },
           actions = {
