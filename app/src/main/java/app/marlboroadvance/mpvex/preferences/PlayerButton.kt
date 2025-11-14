@@ -18,7 +18,6 @@ import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import app.marlboroadvance.mpvex.R
 
 /**
  * Represents a customizable button in the player controls.

@@ -276,13 +276,4 @@ class MediaStoreObserver(
     }
   }
 
-  /**
-   * Check if currently observing
-   */
-  fun isObserving(): Boolean = isObserving.get()
-
-  /**
-   * Get count of registered observers
-   */
-  fun getObserverCount(): Int = registeredObservers.size
 }

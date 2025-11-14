@@ -284,28 +284,6 @@ object StorageScanUtils {
     getAllStorageVolumes(context).filter { !it.isPrimary }
 
   /**
-   * Logs all available storage volumes for debugging
-   */
-  fun logStorageVolumes(context: Context) {
-    try {
-      val volumes = getAllStorageVolumes(context)
-      Log.d(TAG, "========================================")
-      Log.d(TAG, "Found ${volumes.size} mounted storage volumes:")
-      volumes.forEachIndexed { index, volume ->
-        Log.d(TAG, "Volume $index:")
-        Log.d(TAG, "  Description: ${volume.getDescription(context)}")
-        Log.d(TAG, "  UUID: ${volume.uuid}")
-        Log.d(TAG, "  Primary: ${volume.isPrimary}")
-        Log.d(TAG, "  Removable: ${volume.isRemovable}")
-        Log.d(TAG, "  Path: ${getVolumePath(volume)}")
-      }
-      Log.d(TAG, "========================================")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error logging storage volumes", e)
-    }
-  }
-
-  /**
    * Data class to hold video metadata
    */
   data class VideoMetadata(

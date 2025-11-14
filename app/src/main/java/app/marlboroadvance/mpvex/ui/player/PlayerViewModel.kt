@@ -196,18 +196,6 @@ class PlayerViewModel(
 
   // ==================== Decoder ====================
 
-  fun cycleDecoders() {
-    val currentDecoder = MPVLib.getPropertyString("hwdec-current") ?: return
-    val nextDecoder =
-      when (Decoder.getDecoderFromValue(currentDecoder)) {
-        Decoder.HWPlus -> Decoder.SW
-        Decoder.SW -> Decoder.HW
-        Decoder.HW -> Decoder.HWPlus
-        Decoder.AutoCopy, Decoder.Auto -> Decoder.HWPlus
-      }
-    MPVLib.setPropertyString("hwdec", nextDecoder.value)
-  }
-
   // ==================== Audio/Subtitle Management ====================
 
   fun addAudio(uri: Uri) {

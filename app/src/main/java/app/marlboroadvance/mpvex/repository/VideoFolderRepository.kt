@@ -22,35 +22,6 @@ object VideoFolderRepository {
   // Cache the external storage path to avoid repeated calls
   private val externalStoragePath: String by lazy { Environment.getExternalStorageDirectory().path }
 
-  // Video file extensions to look for
-  private val videoExtensions =
-    setOf(
-      "mp4",
-      "mkv",
-      "avi",
-      "mov",
-      "wmv",
-      "flv",
-      "webm",
-      "m4v",
-      "3gp",
-      "3g2",
-      "mpg",
-      "mpeg",
-      "m2v",
-      "ogv",
-      "ts",
-      "mts",
-      "m2ts",
-      "vob",
-      "divx",
-      "xvid",
-      "f4v",
-      "rm",
-      "rmvb",
-      "asf",
-    )
-
   suspend fun getVideoFolders(context: Context): List<VideoFolder> =
     withContext(Dispatchers.IO) {
       Log.d(TAG, "Starting video folder scan across all storage volumes")

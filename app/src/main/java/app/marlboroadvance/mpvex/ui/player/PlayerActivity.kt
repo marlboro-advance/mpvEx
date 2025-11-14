@@ -420,16 +420,6 @@ class PlayerActivity :
     }
   }
 
-  /**
-   * Abandons audio focus if currently held.
-   */
-  private fun abandonAudioFocusIfHeld() {
-    if (restoreAudioFocus != {}) {
-      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      restoreAudioFocus = {}
-    }
-  }
-
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
     Log.d(TAG, "PlayerActivity onDestroy")
