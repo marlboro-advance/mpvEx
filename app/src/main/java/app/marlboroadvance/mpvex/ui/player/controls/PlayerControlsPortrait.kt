@@ -1,9 +1,5 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,12 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,14 +45,12 @@ fun TopPlayerControlsPortrait(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       ControlsGroup {
-        // Back Arrow - Always shown
         ControlsButton(
           icon = Icons.AutoMirrored.Default.ArrowBack,
           onClick = onBackPress,
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
 
-        // Video Title - Always shown
         Surface(
           shape = CircleShape,
           color =
@@ -89,19 +81,20 @@ fun TopPlayerControlsPortrait(
                 .padding(
                   horizontal = MaterialTheme.spacing.medium,
                   vertical = MaterialTheme.spacing.small,
-                )
-                .fillMaxWidth(1f),
+                ),
           ) {
             Text(
               mediaTitle ?: "",
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
               style = MaterialTheme.typography.bodyMedium,
+              modifier = Modifier.weight(1f, fill = false),
             )
             viewModel.getPlaylistInfo()?.let { playlistInfo ->
               Text(
                 " • $playlistInfo",
                 maxLines = 1,
+                overflow = TextOverflow.Visible,
                 style = MaterialTheme.typography.bodySmall,
               )
             }
@@ -122,6 +115,8 @@ fun BottomPlayerControlsPortrait(
   aspect: VideoAspect,
   mediaTitle: String?,
   hideBackground: Boolean,
+  decoder: app.marlboroadvance.mpvex.ui.player.Decoder,
+  playbackSpeed: Float,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   onOpenPanel: (Panels) -> Unit,
@@ -137,7 +132,6 @@ fun BottomPlayerControlsPortrait(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     ControlsGroup {
-      // Render all buttons from the portrait bottom controls preference
       buttons.forEach { button ->
         RenderPlayerButton(
           button = button,
@@ -154,6 +148,8 @@ fun BottomPlayerControlsPortrait(
           onOpenPanel = onOpenPanel,
           viewModel = viewModel,
           activity = activity,
+          decoder = decoder,
+          playbackSpeed = playbackSpeed,
           buttonSize = 48.dp,
         )
       }
@@ -161,18 +157,3 @@ fun BottomPlayerControlsPortrait(
   }
 }
 
-fun portraitAnimationEnter(reduceMotion: Boolean) =
-  if (!reduceMotion) {
-    slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
-      fadeIn(playerControlsEnterAnimationSpec())
-  } else {
-    fadeIn(playerControlsEnterAnimationSpec())
-  }
-
-fun portraitAnimationExit(reduceMotion: Boolean) =
-  if (!reduceMotion) {
-    slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
-      fadeOut(playerControlsExitAnimationSpec())
-  } else {
-    fadeOut(playerControlsExitAnimationSpec())
-  }

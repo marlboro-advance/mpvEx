@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -12,11 +11,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -34,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.controlColor
@@ -57,7 +53,6 @@ fun CurrentChapter(
       modifier
         .height(45.dp)
         .clip(RoundedCornerShape(50))
-        .widthIn(max = 200.dp)
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
     color =
@@ -97,7 +92,6 @@ fun CurrentChapter(
       label = "Chapter",
     ) { currentChapter ->
       Row(
-        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {

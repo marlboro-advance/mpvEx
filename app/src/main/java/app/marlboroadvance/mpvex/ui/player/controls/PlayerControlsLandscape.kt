@@ -1,14 +1,9 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.PlayerButton
@@ -33,7 +27,6 @@ import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
-import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsGroup
 import app.marlboroadvance.mpvex.ui.theme.controlColor
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
@@ -50,7 +43,6 @@ fun TopLeftPlayerControlsLandscape(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
   ) {
-    // Back Arrow - Always shown
     ControlsButton(
       icon = Icons.AutoMirrored.Default.ArrowBack,
       onClick = onBackPress,
@@ -58,7 +50,6 @@ fun TopLeftPlayerControlsLandscape(
       modifier = Modifier.size(45.dp),
     )
 
-    // Video Title - Always shown
     Surface(
       shape = CircleShape,
       color =
@@ -92,20 +83,20 @@ fun TopLeftPlayerControlsLandscape(
               end = MaterialTheme.spacing.medium,
               top = MaterialTheme.spacing.small,
               bottom = MaterialTheme.spacing.small,
-            )
-            .fillMaxWidth(1f),
+            ),
       ) {
         Text(
           mediaTitle ?: "",
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          fontWeight = FontWeight.Bold,
           style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.weight(1f, fill = false),
         )
         viewModel.getPlaylistInfo()?.let { playlistInfo ->
           Text(
             " • $playlistInfo",
             maxLines = 1,
+            overflow = TextOverflow.Visible,
             style = MaterialTheme.typography.bodySmall,
           )
         }
@@ -124,6 +115,8 @@ fun TopRightPlayerControlsLandscape(
   aspect: VideoAspect,
   mediaTitle: String?,
   hideBackground: Boolean,
+  decoder: app.marlboroadvance.mpvex.ui.player.Decoder,
+  playbackSpeed: Float,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   onOpenPanel: (Panels) -> Unit,
@@ -145,6 +138,8 @@ fun TopRightPlayerControlsLandscape(
         aspect = aspect,
         mediaTitle = mediaTitle,
         hideBackground = hideBackground,
+        decoder = decoder,
+        playbackSpeed = playbackSpeed,
         onBackPress = onBackPress,
         onOpenSheet = onOpenSheet,
         onOpenPanel = onOpenPanel,
@@ -166,6 +161,8 @@ fun BottomRightPlayerControlsLandscape(
   aspect: VideoAspect,
   mediaTitle: String?,
   hideBackground: Boolean,
+  decoder: app.marlboroadvance.mpvex.ui.player.Decoder,
+  playbackSpeed: Float,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   onOpenPanel: (Panels) -> Unit,
@@ -187,6 +184,8 @@ fun BottomRightPlayerControlsLandscape(
         aspect = aspect,
         mediaTitle = mediaTitle,
         hideBackground = hideBackground,
+        decoder = decoder,
+        playbackSpeed = playbackSpeed,
         onBackPress = onBackPress,
         onOpenSheet = onOpenSheet,
         onOpenPanel = onOpenPanel,
@@ -208,6 +207,8 @@ fun BottomLeftPlayerControlsLandscape(
   aspect: VideoAspect,
   mediaTitle: String?,
   hideBackground: Boolean,
+  decoder: app.marlboroadvance.mpvex.ui.player.Decoder,
+  playbackSpeed: Float,
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   onOpenPanel: (Panels) -> Unit,
@@ -229,6 +230,8 @@ fun BottomLeftPlayerControlsLandscape(
         aspect = aspect,
         mediaTitle = mediaTitle,
         hideBackground = hideBackground,
+        decoder = decoder,
+        playbackSpeed = playbackSpeed,
         onBackPress = onBackPress,
         onOpenSheet = onOpenSheet,
         onOpenPanel = onOpenPanel,
@@ -241,18 +244,3 @@ fun BottomLeftPlayerControlsLandscape(
 }
 
 
-fun landscapeAnimationEnter(reduceMotion: Boolean) =
-  if (!reduceMotion) {
-    slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
-      fadeIn(playerControlsEnterAnimationSpec())
-  } else {
-    fadeIn(playerControlsEnterAnimationSpec())
-  }
-
-fun landscapeAnimationExit(reduceMotion: Boolean) =
-  if (!reduceMotion) {
-    slideOutHorizontally(playerControlsExitAnimationSpec()) { -it } +
-      fadeOut(playerControlsExitAnimationSpec())
-  } else {
-    fadeOut(playerControlsExitAnimationSpec())
-  }

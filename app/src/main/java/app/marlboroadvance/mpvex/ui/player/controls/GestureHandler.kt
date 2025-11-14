@@ -71,7 +71,6 @@ fun GestureHandler(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
   val position by MPVLib.propInt["time-pos"].collectAsState()
-  val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
@@ -99,23 +98,25 @@ fun GestureHandler(
   val currentBrightness by viewModel.currentBrightness.collectAsState()
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
   val haptics = LocalHapticFeedback.current
+
+  var lastSeekRegion by remember { mutableStateOf<String?>(null) }
+  var lastSeekTime by remember { mutableStateOf<Long?>(null) }
+  val multiTapContinueWindow = 650L
+
   Box(
     modifier =
       modifier
         .fillMaxSize()
         .windowInsetsPadding(WindowInsets.safeGestures)
         .pointerInput(Unit) {
-          var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
+          val originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
 
           var tapHandledInPress by mutableStateOf(false)
-
-          // NEW: Flag to track if a long press has occurred
           var isLongPress by mutableStateOf(false)
 
           detectTapGestures(
             onTap = {
               if (tapHandledInPress) {
-                tapHandledInPress = false
                 return@detectTapGestures
               }
 
@@ -126,43 +127,55 @@ fun GestureHandler(
               }
             },
             onDoubleTap = {
-              tapHandledInPress = false
               if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
+
               if (it.x > size.width * 3 / 4) {
                 if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleRightDoubleTap()
-                isDoubleTapSeeking = true
               } else if (it.x < size.width * 1 / 4) {
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
-                isDoubleTapSeeking = true
               } else if (!useSingleTapForCenter) {
                 viewModel.handleCenterDoubleTap()
               }
             },
             onPress = {
-              tapHandledInPress = false
-
-              // NEW: Reset the long press flag on every new press
               isLongPress = false
 
-              // ... (original onPress logic) ...
               if (panelShown != Panels.None && !allowGesturesInPanels) {
                 viewModel.panelShown.update { Panels.None }
               }
-              if (!areControlsLocked && isDoubleTapSeeking && seekAmount != 0) {
-                if (it.x > size.width * 3 / 4) {
-                  if (!isSeekingForwards) viewModel.updateSeekAmount(0)
-                  viewModel.handleRightDoubleTap()
-                } else if (it.x < size.width * 1 / 4) {
-                  if (isSeekingForwards) viewModel.updateSeekAmount(0)
-                  viewModel.handleLeftDoubleTap()
-                } else {
-                  viewModel.handleCenterDoubleTap()
-                }
-              } else {
-                isDoubleTapSeeking = false
+
+              val now = System.currentTimeMillis()
+              val region = when {
+                it.x > size.width * 3 / 4 -> "right"
+                it.x < size.width * 1 / 4 -> "left"
+                else -> "center"
               }
+              val shouldContinueSeek =
+                !areControlsLocked &&
+                  isDoubleTapSeeking &&
+                  seekAmount != 0 &&
+                  lastSeekRegion == region &&
+                  lastSeekTime != null &&
+                  now - lastSeekTime!! < multiTapContinueWindow
+
+              if (shouldContinueSeek) {
+                when (region) {
+                  "right" -> {
+                    if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+                    viewModel.handleRightDoubleTap()
+                  }
+
+                  "left" -> {
+                    if (isSeekingForwards) viewModel.updateSeekAmount(0)
+                    viewModel.handleLeftDoubleTap()
+                  }
+
+                  else -> viewModel.handleCenterDoubleTap()
+                }
+              }
+
               val press =
                 PressInteraction.Press(
                   it.copy(x = if (it.x > size.width * 3 / 4) it.x - size.width * 0.6f else it.x),
@@ -171,45 +184,35 @@ fun GestureHandler(
 
               val released = tryAwaitRelease()
 
-              if (released && !isLongPress) {
+              if (released && !isLongPress && !shouldContinueSeek) {
                 if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
                   viewModel.handleCenterSingleTap()
-                  tapHandledInPress = true
                 }
               }
               if (isLongPressing) {
-                isLongPressing = false
                 MPVLib.setPropertyFloat("speed", originalSpeed)
                 viewModel.playerUpdate.update { PlayerUpdates.None }
               }
               interactionSource.emit(PressInteraction.Release(press))
             },
             onLongPress = {
-              // NEW: Set the long press flag to true
-              isLongPress = true
-
-              tapHandledInPress = true
 
               if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
               if (!isLongPressing && paused == false) {
-                originalSpeed = playbackSpeed ?: return@detectTapGestures
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                isLongPressing = true
                 MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
                 viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
               }
             },
           )
-        }.pointerInput(areControlsLocked) {
+        }
+        .pointerInput(areControlsLocked) {
           if (!seekGesture || areControlsLocked) return@pointerInput
-          var startingPosition = position ?: 0
-          var startingX = 0f
-          var wasPlayerAlreadyPause = false
+          val startingPosition = position ?: 0
+          val startingX = 0f
+          val wasPlayerAlreadyPause = false
           detectHorizontalDragGestures(
             onDragStart = {
-              startingPosition = position ?: 0
-              startingX = it.x
-              wasPlayerAlreadyPause = paused ?: false
               viewModel.pause()
             },
             onDragEnd = {
@@ -238,13 +241,14 @@ fun GestureHandler(
 
             if (showSeekbarWhenSeeking) viewModel.showSeekBar()
           }
-        }.pointerInput(areControlsLocked) {
+        }
+        .pointerInput(areControlsLocked) {
           if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
           var startingY = 0f
           var mpvVolumeStartingY = 0f
-          var originalVolume = currentVolume
-          var originalMPVVolume = currentMPVVolume
-          var originalBrightness = currentBrightness
+          val originalVolume = currentVolume
+          val originalMPVVolume = currentMPVVolume
+          val originalBrightness = currentBrightness
           val brightnessGestureSens = 0.001f
           val volumeGestureSens = 0.03f
           val mpvVolumeGestureSens = 0.02f
@@ -260,21 +264,11 @@ fun GestureHandler(
               (currentMPVVolume ?: 100) - 100 in 1..volumeBoostingCap &&
               it > 0
           }
-          detectVerticalDragGestures(
-            onDragEnd = { startingY = 0f },
-            onDragStart = {
-              startingY = 0f
-              mpvVolumeStartingY = 0f
-              originalVolume = currentVolume
-              originalMPVVolume = currentMPVVolume
-              originalBrightness = currentBrightness
-            },
-          ) { change, amount ->
+          detectVerticalDragGestures { change, amount ->
             val changeVolume: () -> Unit = {
               if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
                 if (mpvVolumeStartingY == 0f) {
                   startingY = 0f
-                  originalVolume = currentVolume
                   mpvVolumeStartingY = change.position.y
                 }
                 viewModel.changeMPVVolumeTo(
@@ -287,8 +281,6 @@ fun GestureHandler(
                 )
               } else {
                 if (startingY == 0f) {
-                  mpvVolumeStartingY = 0f
-                  originalMPVVolume = currentMPVVolume
                   startingY = change.position.y
                 }
                 viewModel.changeVolumeTo(
@@ -324,32 +316,27 @@ fun GestureHandler(
               }
 
               brightnessGesture -> changeBrightness()
-              // it's not always true, AS is drunk
-              volumeGesture -> changeVolume()
-              else -> {}
+              else -> changeVolume()
             }
           }
-        }.pointerInput(areControlsLocked) {
+        }
+        .pointerInput(areControlsLocked) {
           if (areControlsLocked || !pinchToZoomGesture) return@pointerInput
 
           awaitEachGesture {
             var gestureStartZoom = 0f
             var isZoomGestureStarted = false
             var initialDistance = 0f
-            val minDistanceChangeThreshold = 20f // Minimum change in pixels to activate zoom
+            val minDistanceChangeThreshold = 20f
 
-            // Keep processing events until all pointers are up
             do {
               val event = awaitPointerEvent()
               val pointerCount = event.changes.count { it.pressed }
 
               if (pointerCount == 2) {
-                // Exactly two fingers - zoom gesture
                 val currentPointers = event.changes.filter { it.pressed }
 
-                // Ensure not empty and size == 2 before accessing by index
                 if (currentPointers.size == 2) {
-                  // Calculate current distance between the two fingers
                   val pointer1 = currentPointers[0].position
                   val pointer2 = currentPointers[1].position
                   val currentDistance =
@@ -358,20 +345,17 @@ fun GestureHandler(
                         (
                           (pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
                             (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)
-                        ).toDouble(),
+                          ).toDouble(),
                       ).toFloat()
 
-                  // Store initial distance on first detection
                   if (initialDistance == 0f) {
                     initialDistance = currentDistance
                   }
 
-                  // Check if distance changed enough to activate zoom
                   val distanceChange = kotlin.math.abs(currentDistance - initialDistance)
 
                   if (distanceChange > minDistanceChangeThreshold) {
                     if (!isZoomGestureStarted) {
-                      // Start of zoom gesture - only after threshold is passed
                       gestureStartZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
                       isZoomGestureStarted = true
                       viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
@@ -379,23 +363,18 @@ fun GestureHandler(
 
                     if (initialDistance > 0) {
                       val zoomScale = currentDistance / initialDistance
-                      // Use logarithmic scale for natural zoom feel
                       val zoomDelta = kotlin.math.ln(zoomScale.toDouble()).toFloat() * 1.5f
                       val newZoom = (gestureStartZoom + zoomDelta).coerceIn(-2f, 3f)
                       viewModel.setVideoZoom(newZoom)
 
-                      // Consume the event to prevent other gestures from processing it
                       currentPointers.forEach { it.consume() }
                     }
                   }
                 }
               } else if (pointerCount > 2 || (isZoomGestureStarted)) {
-                // If more than 2 fingers or zoom was active but now less than 2 fingers, end the zoom gesture
                 break
               }
             } while (event.changes.any { it.pressed })
-
-            // Gesture ended - variables will be reset on next gesture
           }
         },
   )
@@ -425,7 +404,6 @@ fun DoubleTapToSeekOvals(
             Modifier
               .fillMaxHeight()
               .fillMaxWidth(0.4f),
-          // 2 fifths
           contentAlignment = Alignment.Center,
         ) {
           if (showOvals) {

@@ -227,7 +227,7 @@ fun PlayerControls(
 
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
-    LocalPlayerButtonsClickEvent provides { resetControls = !resetControls },
+    LocalPlayerButtonsClickEvent provides { },
     LocalContentColor provides Color.White,
   ) {
     CompositionLocalProvider(
@@ -278,7 +278,6 @@ fun PlayerControls(
           derivedStateOf {
             rawMediaTitle?.takeIf { it.isNotBlank() }
               ?: activity.getTitleForControls()
-              ?: ""
           }
         }
 
@@ -292,7 +291,6 @@ fun PlayerControls(
           if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
         }
 
-        // Brightness Slider
         AnimatedVisibility(
           isBrightnessSliderShown,
           enter =
@@ -323,7 +321,6 @@ fun PlayerControls(
             },
         ) { BrightnessSlider(brightness, 0f..1f) }
 
-        // Volume Slider
         AnimatedVisibility(
           isVolumeSliderShown,
           enter =
@@ -364,7 +361,6 @@ fun PlayerControls(
           )
         }
 
-        // Player Updates
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
         val aspectRatio by playerPreferences.videoAspect.collectAsState()
@@ -407,7 +403,6 @@ fun PlayerControls(
           }
         }
 
-        // Unlock Controls Button
         AnimatedVisibility(
           visible = controlsShown && areControlsLocked,
           enter = fadeIn(),
@@ -425,7 +420,6 @@ fun PlayerControls(
           )
         }
 
-        // Center Play/Pause Button
         AnimatedVisibility(
           visible =
             (controlsShown && !areControlsLocked || gestureSeekAmount != null) || pausedForCache == true,
@@ -480,7 +474,6 @@ fun PlayerControls(
                   horizontalArrangement = Arrangement.spacedBy(24.dp),
                   verticalAlignment = Alignment.CenterVertically,
                 ) {
-                  // Previous button
                   Surface(
                     modifier =
                       Modifier
@@ -533,7 +526,6 @@ fun PlayerControls(
                     )
                   }
 
-                  // Play/Pause button
                   Surface(
                     modifier =
                       Modifier
@@ -574,7 +566,6 @@ fun PlayerControls(
                     )
                   }
 
-                  // Next button
                   Surface(
                     modifier =
                       Modifier
@@ -628,7 +619,6 @@ fun PlayerControls(
                   }
                 }
               } else {
-                // Single play/pause button
                 Surface(
                   modifier =
                     Modifier
@@ -673,7 +663,6 @@ fun PlayerControls(
           }
         }
 
-        // Seekbar
         AnimatedVisibility(
           visible = (controlsShown || seekBarShown) && !areControlsLocked,
           enter =
@@ -717,7 +706,6 @@ fun PlayerControls(
           )
         }
 
-        // Top Left Controls
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -764,7 +752,6 @@ fun PlayerControls(
           }
         }
 
-        // Top Right Controls (Landscape only)
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked && !isPortrait,
           enter =
@@ -796,6 +783,8 @@ fun PlayerControls(
             aspect = aspect,
             mediaTitle = mediaTitle,
             hideBackground = hideBackground,
+            decoder = decoder,
+            playbackSpeed = playbackSpeed ?: 1f,
             onBackPress = onBackPress,
             onOpenSheet = onOpenSheet,
             onOpenPanel = onOpenPanel,
@@ -804,7 +793,6 @@ fun PlayerControls(
           )
         }
 
-        // Bottom Controls  
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked,
           enter =
@@ -843,6 +831,8 @@ fun PlayerControls(
               aspect = aspect,
               mediaTitle = mediaTitle,
               hideBackground = hideBackground,
+              decoder = decoder,
+              playbackSpeed = playbackSpeed ?: 1f,
               onBackPress = onBackPress,
               onOpenSheet = onOpenSheet,
               onOpenPanel = onOpenPanel,
@@ -859,6 +849,8 @@ fun PlayerControls(
               aspect = aspect,
               mediaTitle = mediaTitle,
               hideBackground = hideBackground,
+              decoder = decoder,
+              playbackSpeed = playbackSpeed ?: 1f,
               onBackPress = onBackPress,
               onOpenSheet = onOpenSheet,
               onOpenPanel = onOpenPanel,
@@ -868,7 +860,6 @@ fun PlayerControls(
           }
         }
 
-        // Bottom Left Controls (Landscape only)
         AnimatedVisibility(
           visible = controlsShown && !areControlsLocked && !isPortrait,
           enter =
@@ -902,6 +893,8 @@ fun PlayerControls(
             aspect = aspect,
             mediaTitle = mediaTitle,
             hideBackground = hideBackground,
+            decoder = decoder,
+            playbackSpeed = playbackSpeed ?: 1f,
             onBackPress = onBackPress,
             onOpenSheet = onOpenSheet,
             onOpenPanel = onOpenPanel,
@@ -912,7 +905,6 @@ fun PlayerControls(
       }
     }
 
-    // Player Sheets
     val sheetShown by viewModel.sheetShown.collectAsState()
     val subtitles by viewModel.subtitleTracks.collectAsState(persistentListOf())
     val audioTracks by viewModel.audioTracks.collectAsState(persistentListOf())
