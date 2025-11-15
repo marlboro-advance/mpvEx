@@ -118,6 +118,10 @@ fun GestureHandler(
           detectTapGestures(
             onTap = {
               if (tapHandledInPress) {
+                tapHandledInPress = false
+                return@detectTapGestures
+              }
+              if (isLongPress) {
                 return@detectTapGestures
               }
 
@@ -187,12 +191,15 @@ fun GestureHandler(
 
               if (released && !isLongPress && !shouldContinueSeek) {
                 if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
+                  tapHandledInPress = true
                   viewModel.handleCenterSingleTap()
                 }
               }
               if (isLongPressing) {
                 MPVLib.setPropertyFloat("speed", originalSpeed)
                 viewModel.playerUpdate.update { PlayerUpdates.None }
+                isLongPressing = false
+                isLongPress = false
               }
               interactionSource.emit(PressInteraction.Release(press))
             },
@@ -200,9 +207,11 @@ fun GestureHandler(
 
               if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
               if (!isLongPressing && paused == false) {
+                isLongPress = true
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
                 viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
+                isLongPressing = true
               }
             },
           )
