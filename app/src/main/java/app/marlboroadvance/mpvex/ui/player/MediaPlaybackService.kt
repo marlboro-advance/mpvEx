@@ -20,6 +20,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.media.MediaBrowserServiceCompat
+import androidx.media.session.MediaButtonReceiver
 import app.marlboroadvance.mpvex.R
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -203,8 +204,20 @@ class MediaPlaybackService :
           ).setState(state, position, 1.0f)
           .build(),
       )
+
+      // Update notification
+      updateNotification()
     } catch (e: Exception) {
       Log.e(TAG, "Error updating MediaSession", e)
+    }
+  }
+
+  private fun updateNotification() {
+    try {
+      val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+      notificationManager.notify(NOTIFICATION_ID, buildNotification())
+    } catch (e: Exception) {
+      Log.e(TAG, "Error updating notification", e)
     }
   }
 
@@ -221,6 +234,37 @@ class MediaPlaybackService :
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
 
+    // Create notification actions
+    val previousAction =
+      NotificationCompat.Action(
+        android.R.drawable.ic_media_previous,
+        "Previous",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS,
+        ),
+      )
+
+    val playPauseAction =
+      NotificationCompat.Action(
+        if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+        if (paused) "Play" else "Pause",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_PLAY_PAUSE,
+        ),
+      )
+
+    val nextAction =
+      NotificationCompat.Action(
+        android.R.drawable.ic_media_next,
+        "Next",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_SKIP_TO_NEXT,
+        ),
+      )
+
     return NotificationCompat
       .Builder(this, NOTIFICATION_CHANNEL_ID)
       .setContentTitle(mediaTitle)
@@ -231,6 +275,9 @@ class MediaPlaybackService :
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
       .setOngoing(!paused)
+      .addAction(previousAction)
+      .addAction(playPauseAction)
+      .addAction(nextAction)
       .setStyle(
         androidx.media.app.NotificationCompat
           .MediaStyle()
