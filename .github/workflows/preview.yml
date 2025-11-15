@@ -6,10 +6,6 @@ permissions:
   id-token: write
 
 on:
-  push:
-    tags:
-      - 'v*.*.*-dev'
-
   workflow_dispatch: # Manual trigger
 
 jobs:
