@@ -95,6 +95,11 @@ class MediaPlaybackService :
   ): Int {
     Log.d(TAG, "Service starting")
 
+    // Handle media button events
+    intent?.let {
+      MediaButtonReceiver.handleIntent(mediaSession, it)
+    }
+
     // Read current state from MPV
     mediaTitle = MPVLib.getPropertyString("media-title") ?: ""
     mediaArtist = MPVLib.getPropertyString("metadata/artist") ?: ""
@@ -142,27 +147,46 @@ class MediaPlaybackService :
       MediaSessionCompat(this, TAG).apply {
         setCallback(
           object : MediaSessionCompat.Callback() {
-            override fun onPlay() = MPVLib.setPropertyBoolean("pause", false)
+            override fun onPlay() {
+              Log.d(TAG, "onPlay called")
+              MPVLib.setPropertyBoolean("pause", false)
+            }
 
-            override fun onPause() = MPVLib.setPropertyBoolean("pause", true)
+            override fun onPause() {
+              Log.d(TAG, "onPause called")
+              MPVLib.setPropertyBoolean("pause", true)
+            }
 
-            override fun onStop() = stopSelf()
+            override fun onStop() {
+              Log.d(TAG, "onStop called")
+              stopSelf()
+            }
 
             override fun onSkipToNext() {
+              Log.d(TAG, "onSkipToNext called")
               val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
               MPVLib.command("seek", "10", seekMode)
             }
 
             override fun onSkipToPrevious() {
+              Log.d(TAG, "onSkipToPrevious called")
               val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
               MPVLib.command("seek", "-10", seekMode)
             }
 
-            override fun onSeekTo(pos: Long) = MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
+            override fun onSeekTo(pos: Long) {
+              Log.d(TAG, "onSeekTo called: $pos")
+              MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
+            }
           },
         )
 
-        setMediaButtonReceiver(null)
+        // Set flags to handle media buttons and transport controls
+        setFlags(
+          MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
+        )
+
         isActive = true
       }
     sessionToken = mediaSession.sessionToken
