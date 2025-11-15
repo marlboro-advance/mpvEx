@@ -25,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -141,7 +144,8 @@ object AboutScreen : Screen {
                         ),
                     )
                   }
-                }.padding(20.dp),
+                }
+                .padding(20.dp),
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -266,6 +270,147 @@ object AboutScreen : Screen {
                   color = cs.onPrimaryContainer.copy(alpha = 0.85f),
                 )
               }
+            }
+          }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Donate Section
+        Text(
+          text = stringResource(id = R.string.pref_about_donate_title),
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+          color = cs.onSurface,
+          modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+
+        // Ko-fi
+        Surface(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .clickable {
+                context.startActivity(
+                  Intent(
+                    Intent.ACTION_VIEW,
+                    context.getString(R.string.pref_about_donate_kofi_url).toUri(),
+                  ),
+                )
+              },
+          shape = RoundedCornerShape(16.dp),
+          color = cs.surfaceContainerHigh,
+        ) {
+          Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              imageVector = Icons.Filled.MonetizationOn,
+              contentDescription = null,
+              modifier = Modifier.size(24.dp),
+              tint = cs.onSurface,
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_kofi),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface,
+              )
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_kofi_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
+              )
+            }
+          }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // PayPal
+        Surface(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .clickable {
+                context.startActivity(
+                  Intent(
+                    Intent.ACTION_VIEW,
+                    context.getString(R.string.pref_about_donate_paypal_url).toUri(),
+                  ),
+                )
+              },
+          shape = RoundedCornerShape(16.dp),
+          color = cs.surfaceContainerHigh,
+        ) {
+          Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              imageVector = Icons.Filled.AccountBalance,
+              contentDescription = null,
+              modifier = Modifier.size(24.dp),
+              tint = cs.onSurface,
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_paypal),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface,
+              )
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_paypal_summary),
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
+              )
+            }
+          }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // UPI
+        Surface(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .clickable {
+                clipboardManager.setText(
+                  AnnotatedString(context.getString(R.string.pref_about_donate_upi_id)),
+                )
+              },
+          shape = RoundedCornerShape(16.dp),
+          color = cs.surfaceContainerHigh,
+        ) {
+          Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              imageVector = Icons.Filled.CurrencyRupee,
+              contentDescription = null,
+              modifier = Modifier.size(24.dp),
+              tint = cs.onSurface,
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_upi),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface,
+              )
+              Text(
+                text = stringResource(id = R.string.pref_about_donate_upi_id),
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
+              )
             }
           }
         }
