@@ -7,29 +7,8 @@ permissions:
 
 on:
   push:
-    branches:
-      - dev
-    paths:
-      - 'app/**'
-      - 'build.gradle'
-      - 'build.gradle.kts'
-      - 'settings.gradle'
-      - 'settings.gradle.kts'
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-
-  pull_request:
-    paths:
-      - 'app/**'
-      - 'build.gradle'
-      - 'build.gradle.kts'
-      - 'settings.gradle'
-      - 'settings.gradle.kts'
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'gradlew.bat'
+    tags:
+      - 'v*.*.*-dev'
 
   workflow_dispatch: # Manual trigger
 
