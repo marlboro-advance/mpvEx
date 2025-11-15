@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -74,6 +75,7 @@ fun BrowserTopBar(
   onDeselectAll: (() -> Unit)? = null,
   additionalActions: @Composable RowScope.() -> Unit = { },
   onTitleLongPress: (() -> Unit)? = null,
+  useRemoveIcon: Boolean = false,
 ) {
   if (isInSelectionMode) {
     SelectionTopBar(
@@ -90,6 +92,7 @@ fun BrowserTopBar(
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
       modifier = modifier,
+      useRemoveIcon = useRemoveIcon,
     )
   } else {
     NormalTopBar(
@@ -287,6 +290,7 @@ private fun SelectionTopBar(
   onInvertSelection: (() -> Unit)?,
   onDeselectAll: (() -> Unit)?,
   modifier: Modifier = Modifier,
+  useRemoveIcon: Boolean = false,
 ) {
   var showDropdown by remember { mutableStateOf(false) }
 
@@ -430,14 +434,14 @@ private fun SelectionTopBar(
         }
       }
 
-      // Delete icon
+      // Delete/Remove icon
       if (onDelete != null) {
         IconButton(
           onClick = onDelete,
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Filled.Delete,
+            imageVector = if (useRemoveIcon) Icons.Filled.RemoveCircle else Icons.Filled.Delete,
             contentDescription = stringResource(R.string.delete),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.error,

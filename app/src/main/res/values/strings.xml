@@ -298,7 +298,10 @@
     <string name="pref_folders_empty_title">No blacklisted folders</string>
     <string name="pref_folders_empty_message">Tap the button below to add folders you want to hide from the folder list</string>
     <string name="pref_folders_add_folder">Add Folder to Blacklist</string>
-    <string name="pref_folders_select_folders">Select folders to blacklist</string>
+    <string name="pref_folders_select_folders">Select folder/s</string>
     <string name="pref_folders_loading">Loading folders…</string>
     <string name="pref_folders_no_folders">No folders found</string>
+    <string name="pref_folders_clear_all">Clear all blacklisted folders</string>
+    <string name="pref_folders_clear_all_confirm_title">Clear all blacklisted folders?</string>
+    <string name="pref_folders_clear_all_confirm_message">This will remove all folders from the blacklist. You can add them back later.</string>
 </resources>
