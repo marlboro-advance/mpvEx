@@ -28,21 +28,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
-import app.marlboroadvance.mpvex.preferences.ControlLayoutPreview
 import app.marlboroadvance.mpvex.preferences.PlayerButton
-import app.marlboroadvance.mpvex.preferences.getPlayerButtonLabel
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
-import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
@@ -50,10 +46,10 @@ import org.koin.compose.koinInject
 // Enum to identify which region we are editing
 @Serializable
 enum class ControlRegion {
-  TOP_LEFT,
   TOP_RIGHT,
   BOTTOM_RIGHT,
   BOTTOM_LEFT,
+  PORTRAIT_BOTTOM,
 }
 
 @Serializable
@@ -62,13 +58,14 @@ object PlayerControlsPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
-    val preferences = koinInject<AppearancePreferences>()
+    val appearancePrefs = koinInject<AppearancePreferences>()
+    val playerPrefs = koinInject<PlayerPreferences>()
 
     // Get the current state for all four regions
-    val topLState by preferences.topLeftControls.collectAsState()
-    val topRState by preferences.topRightControls.collectAsState()
-    val bottomRState by preferences.bottomRightControls.collectAsState()
-    val bottomLState by preferences.bottomLeftControls.collectAsState()
+    val topRState by appearancePrefs.topRightControls.collectAsState()
+    val bottomRState by appearancePrefs.bottomRightControls.collectAsState()
+    val bottomLState by appearancePrefs.bottomLeftControls.collectAsState()
+    val portraitBottomState by appearancePrefs.portraitBottomControls.collectAsState()
 
     var showResetDialog by remember { mutableStateOf(false) }
 
@@ -78,31 +75,37 @@ object PlayerControlsPreferencesScreen : Screen {
         subtitle = stringResource(id = R.string.pref_layout_reset_summary),
         onConfirm = {
           // Don't reset topLeftControls as it contains constant buttons
-          preferences.topRightControls.delete()
-          preferences.bottomRightControls.delete()
-          preferences.bottomLeftControls.delete()
-          showResetDialog = false
+          appearancePrefs.topRightControls.delete()
+          appearancePrefs.bottomRightControls.delete()
+          appearancePrefs.bottomLeftControls.delete()
+          appearancePrefs.portraitBottomControls.delete()
         },
         onCancel = {
-          showResetDialog = false
         },
       )
     }
 
-    val (topLeftButtons, topRightButtons, bottomRightButtons, bottomLeftButtons) =
+    val (topRightButtons, bottomRightButtons, bottomLeftButtons) =
       remember(
-        topLState,
         topRState,
         bottomRState,
         bottomLState,
       ) {
         val usedButtons = mutableSetOf<PlayerButton>()
-        val topL = preferences.parseButtons(topLState, usedButtons)
-        val topR = preferences.parseButtons(topRState, usedButtons)
-        val bottomR = preferences.parseButtons(bottomRState, usedButtons)
-        val bottomL = preferences.parseButtons(bottomLState, usedButtons)
-        listOf(topL, topR, bottomR, bottomL)
+        val topR = appearancePrefs.parseButtons(topRState, usedButtons)
+        val bottomR = appearancePrefs.parseButtons(bottomRState, usedButtons)
+        val bottomL = appearancePrefs.parseButtons(bottomLState, usedButtons)
+        listOf(topR, bottomR, bottomL)
       }
+
+    // Top left buttons are constant (BACK_ARROW, VIDEO_TITLE) and used only for preview
+    val topLeftButtons = remember {
+      listOf(PlayerButton.BACK_ARROW, PlayerButton.VIDEO_TITLE)
+    }
+
+    val portraitBottomButtons = remember(portraitBottomState) {
+      appearancePrefs.parseButtons(portraitBottomState, mutableSetOf())
+    }
 
     Scaffold(
       topBar = {
@@ -114,7 +117,7 @@ object PlayerControlsPreferencesScreen : Screen {
             }
           },
           actions = {
-            IconButton(onClick = { showResetDialog = true }) {
+            IconButton(onClick = { }) {
               Icon(Icons.Outlined.Restore, contentDescription = stringResource(id = R.string.pref_layout_reset_default))
             }
           },
@@ -162,13 +165,24 @@ object PlayerControlsPreferencesScreen : Screen {
           }
 
           item {
+            PreferenceCategoryWithEditButton(
+              title = stringResource(id = R.string.pref_layout_portrait_bottom_controls),
+              onClick = {
+                backstack.add(ControlLayoutEditorScreen(ControlRegion.PORTRAIT_BOTTOM))
+              },
+            )
+            PreferenceIconSummary(buttons = portraitBottomButtons)
+          }
+
+          item {
             PreferenceCategory(title = { Text(stringResource(id = R.string.pref_layout_preview)) })
             ControlLayoutPreview(
+              modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
               topLeftButtons = topLeftButtons,
               topRightButtons = topRightButtons,
               bottomRightButtons = bottomRightButtons,
               bottomLeftButtons = bottomLeftButtons,
-              modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+              portraitBottomButtons = portraitBottomButtons,
             )
           }
         }

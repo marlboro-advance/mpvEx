@@ -142,3 +142,14 @@ Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_K
 ## Acknowledgments
 - [mpv-android](https://github.com/mpv-android) for the base mpv library to use for this project.
 - [mpvKt](https://github.com/abdallahmehiz/mpvKt) for the modified version of mpv-android.
+
+---
+
+## Support the Project
+
+If you find mpvExtended useful, consider supporting the development:
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/adityanarvekar)
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/aadinarvekar)
+[![UPI](https://img.shields.io/badge/UPI-aadiinarvekar@upi-orange?style=for-the-badge&logo=google-pay&logoColor=white)](upi://pay?pa=aadiinarvekar@upi)
+

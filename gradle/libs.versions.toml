@@ -1,12 +1,12 @@
 [versions]
-agp = "8.13.0"
+agp = "8.13.1"
 kotlin = "2.2.21"
-composeBom = "2025.10.01"
-activityCompose = "1.12.0-beta01"
+composeBom = "2025.11.00"
+activityCompose = "1.12.0-rc01"
 koin = "4.1.1"
 room = "2.8.3"
 aboutLibraries = "13.1.0"
-navigation3 = "1.0.0-beta01"
+navigation3 = "1.0.0-rc01"
 kotlinx-serialization = "1.9.0"
 accompanist = "0.37.3"
 retrofit = "3.0.0"
@@ -21,7 +21,7 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-material3-android = { group = "androidx.compose.material3", name = "material3-android", version = "1.5.0-alpha07" }
+androidx-material3-android = { group = "androidx.compose.material3", name = "material3-android", version = "1.5.0-alpha08" }
 androidx-compose-material = { group = "androidx.compose.material", name = "material" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version = "1.7.1" }
 androidx-material3-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.7.8" }

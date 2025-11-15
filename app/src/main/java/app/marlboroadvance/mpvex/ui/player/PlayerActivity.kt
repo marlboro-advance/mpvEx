@@ -42,7 +42,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
-import app.marlboroadvance.mpvex.ui.theme.mpvexTheme
+import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
@@ -142,6 +142,12 @@ class PlayerActivity :
    * Current video file name being played.
    */
   private var fileName = ""
+
+  /**
+   * Unique identifier for the current media, used for saving/loading playback state.
+   * For network streams, this includes a hash of the URI to ensure uniqueness.
+   */
+  private var mediaIdentifier = ""
 
   /**
    * Playlist of URIs for sequential playback
@@ -275,7 +281,12 @@ class PlayerActivity :
     setupPipHelper()
     setupMediaSession()
 
-    playlist = intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    }
     playlistIndex = intent.getIntExtra("playlist_index", 0)
 
     // Extract fileName early so it's available when video loads
@@ -283,6 +294,7 @@ class PlayerActivity :
     if (fileName.isBlank()) {
       fileName = intent.data?.lastPathSegment ?: "Unknown Video"
     }
+    mediaIdentifier = getMediaIdentifier(intent, fileName)
 
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
@@ -351,7 +363,7 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
-      mpvexTheme {
+      MpvexTheme {
         PlayerControls(
           viewModel = viewModel,
           onBackPress = {
@@ -417,16 +429,6 @@ class PlayerActivity :
         restoreAudioFocus = {}
         false
       }
-    }
-  }
-
-  /**
-   * Abandons audio focus if currently held.
-   */
-  private fun abandonAudioFocusIfHeld() {
-    if (restoreAudioFocus != {}) {
-      audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-      restoreAudioFocus = {}
     }
   }
 
@@ -867,7 +869,13 @@ class PlayerActivity :
    */
   private fun parsePathFromSendIntent(intent: Intent): String? =
     if (intent.hasExtra(Intent.EXTRA_STREAM)) {
-      intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.resolveUri(this@PlayerActivity)
+      val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+      }
+      uri?.resolveUri(this@PlayerActivity)
     } else {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.let { text ->
         val uri = text.trim().toUri()
@@ -899,12 +907,16 @@ class PlayerActivity :
    * @param intent The intent to extract URI from
    * @return The extracted URI, or null if not found
    */
-  @Suppress("DEPRECATION")
   private fun extractUriFromIntent(intent: Intent): Uri? =
     if (intent.type == "text/plain") {
       intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri()
     } else {
-      intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
+      intent.data ?: if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra(Intent.EXTRA_STREAM)
+      }
     }
 
   /**
@@ -1133,14 +1145,18 @@ class PlayerActivity :
    */
   @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
-    // Only extract fileName from intent if not already set (i.e., not from playlist navigation)
+    // Extract fileName from intent only if not already set
+    // This preserves fileName set in onNewIntent or onCreate
     if (fileName.isBlank()) {
       fileName = getFileName(intent)
-    }
-
-    // Ensure fileName is not blank - use a fallback if necessary
-    if (fileName.isBlank()) {
-      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+      // Ensure fileName is not blank - use a fallback if necessary
+      if (fileName.isBlank()) {
+        fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+      }
+      mediaIdentifier = getMediaIdentifier(intent, fileName)
+    } else if (mediaIdentifier.isBlank()) {
+      // If fileName was already set, but mediaIdentifier is missing, set it for safety
+      mediaIdentifier = getMediaIdentifier(intent, fileName)
     }
 
     setIntentExtras(intent.extras)
@@ -1201,12 +1217,12 @@ class PlayerActivity :
    */
   @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
-    if (mediaTitle.isBlank()) return
+    if (mediaIdentifier.isBlank()) return
 
     GlobalScope.launch(Dispatchers.IO) {
       runCatching {
-        val oldState = playbackStateRepository.getVideoDataByTitle(fileName)
-        Log.d(TAG, "Saving playback state for: $mediaTitle")
+        val oldState = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
+        Log.d(TAG, "Saving playback state for: $mediaTitle (identifier: $mediaIdentifier)")
 
         val lastPosition = calculateSavePosition(oldState)
         val duration = viewModel.duration ?: 0
@@ -1214,7 +1230,7 @@ class PlayerActivity :
 
         playbackStateRepository.upsert(
           PlaybackStateEntity(
-            mediaTitle = mediaTitle,
+            mediaTitle = mediaIdentifier,
             lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
             sid = player.sid,
@@ -1265,10 +1281,10 @@ class PlayerActivity :
    * @param mediaTitle The title of the media being played
    */
   private suspend fun loadVideoPlaybackState(mediaTitle: String) {
-    if (mediaTitle.isBlank()) return
+    if (mediaIdentifier.isBlank()) return
 
     runCatching {
-      val state = playbackStateRepository.getVideoDataByTitle(mediaTitle)
+      val state = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
 
       applyPlaybackState(state)
       applyDefaultSettings(state)
@@ -1415,10 +1431,21 @@ class PlayerActivity :
    */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    
+    // Update the intent first so getFileName uses the new intent data
+    setIntent(intent)
+    
+    // Extract the new fileName before loading the file
+    fileName = getFileName(intent)
+    if (fileName.isBlank()) {
+      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
+    }
+    mediaIdentifier = getMediaIdentifier(intent, fileName)
+    
+    // Load the new file
     getPlayableUri(intent)?.let { uri ->
       MPVLib.command("loadfile", uri)
     }
-    setIntent(intent)
   }
 
   // ==================== Picture-in-Picture Management ====================
@@ -1877,6 +1904,8 @@ class PlayerActivity :
 
     // Extract and set the new file name
     fileName = getFileNameFromUri(uri)
+    // Generate new media identifier for playback state
+    mediaIdentifier = getMediaIdentifierFromUri(uri, fileName)
 
     // Load the new video
     MPVLib.command("loadfile", playableUri)
@@ -1956,6 +1985,37 @@ class PlayerActivity :
       Log.d(TAG, "Saved recently played: $filePath (source: playlist)")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played for playlist item", e)
+    }
+  }
+
+  /**
+   * Generate a unique identifier for this media for playback state/history.
+   *
+   * For local/offline files, uses fileName (display name or path).
+   * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
+   */
+  private fun getMediaIdentifier(intent: Intent, fileName: String): String {
+    val uri = extractUriFromIntent(intent)
+    return if (uri != null && (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms")) {
+      // For remoting protocols: hash the URI so position is per-episode or per-stream.
+      "${fileName}_${uri.toString().hashCode()}"
+    } else {
+      // For local/file uris and unknown: just use fileName.
+      fileName
+    }
+  }
+
+  /**
+   * Generate a unique identifier for this media from a URI and name.
+   *
+   * For local/offline files, uses fileName (display name or path).
+   * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
+   */
+  private fun getMediaIdentifierFromUri(uri: Uri, fileName: String): String {
+    return if (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms") {
+      "${fileName}_${uri.toString().hashCode()}"
+    } else {
+      fileName
     }
   }
 

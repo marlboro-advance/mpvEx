@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -250,7 +249,7 @@ object AdvancedPreferencesScreen : Screen {
             },
           )
           val activity = LocalActivity.current!!
-          val clipboard = LocalClipboardManager.current
+          val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
           Preference(
             title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
             summary = { Text(stringResource(R.string.pref_advanced_dump_logs_summary)) },

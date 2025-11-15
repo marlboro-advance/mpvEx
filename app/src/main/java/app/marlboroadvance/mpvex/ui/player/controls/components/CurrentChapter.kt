@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -12,6 +11,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.controlColor
@@ -52,6 +51,7 @@ fun CurrentChapter(
   Surface(
     modifier =
       modifier
+        .height(45.dp)
         .clip(RoundedCornerShape(50))
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
@@ -101,7 +101,7 @@ fun CurrentChapter(
           modifier =
             Modifier
               .padding(end = MaterialTheme.spacing.extraSmall)
-              .size(16.dp),
+              .size(20.dp),
           tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
         Text(

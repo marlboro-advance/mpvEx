@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
@@ -15,13 +16,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class FolderListViewModel(
   application: Application,
 ) : BaseBrowserViewModel(application),
   KoinComponent {
+  private val foldersPreferences: FoldersPreferences by inject()
+
+  private val _allVideoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
 
@@ -53,6 +59,15 @@ class FolderListViewModel(
         loadVideoFolders()
       }
     }
+
+    // Filter folders based on blacklist
+    viewModelScope.launch {
+      combine(_allVideoFolders, foldersPreferences.blacklistedFolders.changes()) { folders, blacklist ->
+        folders.filter { folder -> folder.path !in blacklist }
+      }.collectLatest { filteredFolders ->
+        _videoFolders.value = filteredFolders
+      }
+    }
   }
 
   override fun onCleared() {
@@ -71,10 +86,10 @@ class FolderListViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         val folders = VideoFolderRepository.getVideoFolders(getApplication())
-        _videoFolders.value = folders
+        _allVideoFolders.value = folders
       } catch (e: Exception) {
         Log.e(TAG, "Error loading video folders", e)
-        _videoFolders.value = emptyList()
+        _allVideoFolders.value = emptyList()
       }
     }
   }

@@ -145,11 +145,6 @@ class VideoListViewModel(
         Log.d(tag, "Media scan completed for: $path -> $uri")
       }
 
-      // Also broadcast a media scan intent as a fallback
-      val scanIntent = android.content.Intent(android.content.Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
-      scanIntent.data = android.net.Uri.fromFile(externalStorage)
-      getApplication<Application>().sendBroadcast(scanIntent)
-
       Log.d(tag, "Triggered media scan for: ${externalStorage.absolutePath}")
     } catch (e: Exception) {
       Log.e(tag, "Failed to trigger media scan", e)

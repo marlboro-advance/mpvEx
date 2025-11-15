@@ -20,16 +20,21 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.media.MediaBrowserServiceCompat
+import androidx.media.session.MediaButtonReceiver
 import app.marlboroadvance.mpvex.R
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
  * Background playback service for mpv with MediaSession integration.
  */
 class MediaPlaybackService :
   MediaBrowserServiceCompat(),
-  MPVLib.EventObserver {
+  MPVLib.EventObserver,
+  KoinComponent {
   companion object {
     private const val TAG = "MediaPlaybackService"
     private const val NOTIFICATION_ID = 1
@@ -57,6 +62,7 @@ class MediaPlaybackService :
 
   private val binder = MediaPlaybackBinder()
   private lateinit var mediaSession: MediaSessionCompat
+  private val playerPreferences: PlayerPreferences by inject()
 
   private var mediaTitle = ""
   private var mediaArtist = ""
@@ -88,6 +94,11 @@ class MediaPlaybackService :
     startId: Int,
   ): Int {
     Log.d(TAG, "Service starting")
+
+    // Handle media button events
+    intent?.let {
+      MediaButtonReceiver.handleIntent(mediaSession, it)
+    }
 
     // Read current state from MPV
     mediaTitle = MPVLib.getPropertyString("media-title") ?: ""
@@ -136,24 +147,46 @@ class MediaPlaybackService :
       MediaSessionCompat(this, TAG).apply {
         setCallback(
           object : MediaSessionCompat.Callback() {
-            override fun onPlay() = MPVLib.setPropertyBoolean("pause", false)
+            override fun onPlay() {
+              Log.d(TAG, "onPlay called")
+              MPVLib.setPropertyBoolean("pause", false)
+            }
 
-            override fun onPause() = MPVLib.setPropertyBoolean("pause", true)
+            override fun onPause() {
+              Log.d(TAG, "onPause called")
+              MPVLib.setPropertyBoolean("pause", true)
+            }
 
-            override fun onStop() = stopSelf()
+            override fun onStop() {
+              Log.d(TAG, "onStop called")
+              stopSelf()
+            }
 
-            override fun onSkipToNext() = MPVLib.command("seek", "10", "relative")
+            override fun onSkipToNext() {
+              Log.d(TAG, "onSkipToNext called")
+              val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", "10", seekMode)
+            }
 
-            override fun onSkipToPrevious() = MPVLib.command("seek", "-10", "relative")
+            override fun onSkipToPrevious() {
+              Log.d(TAG, "onSkipToPrevious called")
+              val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", "-10", seekMode)
+            }
 
-            override fun onSeekTo(pos: Long) = MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
+            override fun onSeekTo(pos: Long) {
+              Log.d(TAG, "onSeekTo called: $pos")
+              MPVLib.setPropertyDouble("time-pos", pos / 1000.0)
+            }
           },
         )
 
+        // Set flags to handle media buttons and transport controls
         setFlags(
           MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
             MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
         )
+
         isActive = true
       }
     sessionToken = mediaSession.sessionToken
@@ -195,8 +228,20 @@ class MediaPlaybackService :
           ).setState(state, position, 1.0f)
           .build(),
       )
+
+      // Update notification
+      updateNotification()
     } catch (e: Exception) {
       Log.e(TAG, "Error updating MediaSession", e)
+    }
+  }
+
+  private fun updateNotification() {
+    try {
+      val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+      notificationManager.notify(NOTIFICATION_ID, buildNotification())
+    } catch (e: Exception) {
+      Log.e(TAG, "Error updating notification", e)
     }
   }
 
@@ -213,6 +258,37 @@ class MediaPlaybackService :
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
 
+    // Create notification actions
+    val previousAction =
+      NotificationCompat.Action(
+        android.R.drawable.ic_media_previous,
+        "Previous",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS,
+        ),
+      )
+
+    val playPauseAction =
+      NotificationCompat.Action(
+        if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+        if (paused) "Play" else "Pause",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_PLAY_PAUSE,
+        ),
+      )
+
+    val nextAction =
+      NotificationCompat.Action(
+        android.R.drawable.ic_media_next,
+        "Next",
+        MediaButtonReceiver.buildMediaButtonPendingIntent(
+          this,
+          PlaybackStateCompat.ACTION_SKIP_TO_NEXT,
+        ),
+      )
+
     return NotificationCompat
       .Builder(this, NOTIFICATION_CHANNEL_ID)
       .setContentTitle(mediaTitle)
@@ -223,6 +299,9 @@ class MediaPlaybackService :
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
       .setOngoing(!paused)
+      .addAction(previousAction)
+      .addAction(playPauseAction)
+      .addAction(nextAction)
       .setStyle(
         androidx.media.app.NotificationCompat
           .MediaStyle()

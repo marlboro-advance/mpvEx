@@ -3,11 +3,7 @@ package app.marlboroadvance.mpvex.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
-import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.os.storage.StorageManager
-import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
@@ -21,35 +17,6 @@ import kotlin.math.pow
 
 object VideoRepository {
   private const val TAG = "VideoRepository"
-
-  // Video file extensions
-  private val videoExtensions =
-    setOf(
-      "mp4",
-      "mkv",
-      "avi",
-      "mov",
-      "wmv",
-      "flv",
-      "webm",
-      "m4v",
-      "3gp",
-      "3g2",
-      "mpg",
-      "mpeg",
-      "m2v",
-      "ogv",
-      "ts",
-      "mts",
-      "m2ts",
-      "vob",
-      "divx",
-      "xvid",
-      "f4v",
-      "rm",
-      "rmvb",
-      "asf",
-    )
 
   private val PROJECTION =
     arrayOf(

@@ -107,8 +107,8 @@ class MPVView(
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
 
     // Improve seek responsiveness/smoothness on mobile
-    MPVLib.setOptionString("hr-seek", "no")
-    MPVLib.setOptionString("hr-seek-framedrop", "no")
+    MPVLib.setOptionString("hr-seek", if (playerPreferences.usePreciseSeeking.get()) "yes" else "no")
+    MPVLib.setOptionString("hr-seek-framedrop", if (playerPreferences.usePreciseSeeking.get()) "no" else "no")
     MPVLib.setOptionString("demuxer-readahead-secs", "8")
     MPVLib.setOptionString("demuxer-seekable-cache", "yes")
     MPVLib.setOptionString("cache", "yes")
@@ -226,6 +226,10 @@ class MPVView(
     val preferredFontFamily = subtitlesPreferences.font.get()
     MPVLib.setOptionString("sub-font", preferredFontFamily.ifBlank { "sans-serif" })
 
+    if (subtitlesPreferences.overrideAssSubs.get()) {
+      MPVLib.setOptionString("sub-ass-override", "force")
+      MPVLib.setOptionString("sub-ass-justify", "yes")
+    }
     // Removed SSA/ASS global override; rely on track styling and per-justify settings only
     MPVLib.setOptionString("sub-font-size", subtitlesPreferences.fontSize.get().toString())
     MPVLib.setOptionString("sub-bold", if (subtitlesPreferences.bold.get()) "yes" else "no")
