@@ -83,20 +83,6 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.closeAfterReachingEndOfVideo::set,
             title = { Text(stringResource(id = R.string.pref_player_close_after_eof)) },
           )
-          val playlistMode by preferences.playlistMode.collectAsState()
-          SwitchPreference(
-            value = playlistMode,
-            onValueChange = preferences.playlistMode::set,
-            title = { Text(text = "Playlist Mode") },
-            summary = { 
-              Text(
-                text = if (playlistMode)
-                  "Automatically enable next/previous navigation for all videos in folder"
-                else
-                  "Play videos individually (select multiple for playlist)"
-              )
-            },
-          )
           val rememberBrightness by preferences.rememberBrightness.collectAsState()
           SwitchPreference(
             value = rememberBrightness,
