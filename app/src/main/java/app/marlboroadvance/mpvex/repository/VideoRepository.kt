@@ -8,6 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
+import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -97,7 +98,7 @@ object VideoRepository {
     }
   }
 
-  private fun queryByPath(
+  private suspend fun queryByPath(
     context: Context,
     folderPath: String,
     videos: MutableList<Video>,
@@ -144,13 +145,13 @@ object VideoRepository {
     }
 
     // Fallback: Try direct filesystem scan if MediaStore found nothing
-    // This is slower but catches unindexed files (like USB OTG)
+    // This is slower but catches unindexed files (like USB OTG, external SD cards)
     if (videos.isEmpty()) {
       scanDirectoryForVideos(context, folderPath, videos, processedPaths)
     }
   }
 
-  private fun scanDirectoryForVideos(
+  private suspend fun scanDirectoryForVideos(
     context: Context,
     folderPath: String,
     videos: MutableList<Video>,
@@ -170,7 +171,7 @@ object VideoRepository {
         try {
           val normalizedPath = normalizePath(videoFile.absolutePath)
           if (processedPaths.add(normalizedPath) && videoFile.exists()) {
-            val video = createVideoFromFile(videoFile, folderPath, directory.name)
+            val video = createVideoFromFile(context, videoFile, folderPath, directory.name)
             videos.add(video)
           }
         } catch (e: Exception) {
@@ -182,7 +183,8 @@ object VideoRepository {
     }
   }
 
-  private fun createVideoFromFile(
+  private suspend fun createVideoFromFile(
+    context: Context,
     file: File,
     bucketId: String,
     bucketDisplayName: String,
@@ -190,11 +192,30 @@ object VideoRepository {
     val path = file.absolutePath
     val displayName = file.name
     val title = file.nameWithoutExtension
-    val size = file.length()
     val dateModified = file.lastModified() / 1000
 
-    val metadata = StorageScanUtils.extractVideoMetadata(file)
+    val extension = file.extension.lowercase()
+    val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
     val uri = Uri.fromFile(file)
+
+    // Extract metadata using MediaInfo API for external storage videos
+    // This provides accurate duration and size information
+    var size = file.length()
+    var duration = 0L
+
+    MediaInfoOps.extractBasicMetadata(context, uri, displayName)
+      .onSuccess { metadata ->
+        // Use MediaInfo's file size if available (more accurate for some formats)
+        if (metadata.sizeBytes > 0) {
+          size = metadata.sizeBytes
+        }
+        duration = metadata.durationMs
+        Log.d(TAG, "Extracted metadata for $displayName: size=$size bytes, duration=$duration ms")
+      }
+      .onFailure { error ->
+        Log.w(TAG, "Failed to extract metadata for $displayName using MediaInfo, using file system size", error)
+        // Fallback to file system size, duration remains 0
+      }
 
     return Video(
       id = path.hashCode().toLong(),
@@ -202,13 +223,13 @@ object VideoRepository {
       displayName = displayName,
       path = path,
       uri = uri,
-      duration = metadata.duration,
-      durationFormatted = formatDuration(metadata.duration),
+      duration = duration,
+      durationFormatted = formatDuration(duration),
       size = size,
       sizeFormatted = formatFileSize(size),
       dateModified = dateModified,
       dateAdded = dateModified,
-      mimeType = metadata.mimeType,
+      mimeType = mimeType,
       bucketId = bucketId,
       bucketDisplayName = bucketDisplayName,
     )

@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
@@ -10,6 +11,7 @@ import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,71 +37,91 @@ object VideoFolderRepository {
       convertToVideoFolderList(folders)
     }
 
-  private fun scanFileSystemDirectly(
+  private suspend fun scanFileSystemDirectly(
     context: Context,
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     try {
-      // Scan ALL storage volumes (not just external), including USB OTG
-      val allVolumes = StorageScanUtils.getAllStorageVolumes(context)
-      Log.d(TAG, "Scanning ${allVolumes.size} volumes via filesystem")
+      // Only scan external volumes (USB OTG, SD cards) that might not be indexed
+      val externalVolumes = StorageScanUtils.getExternalStorageVolumes(context)
 
-      for (volume in allVolumes) {
+      for (volume in externalVolumes) {
         val volumePath = StorageScanUtils.getVolumePath(volume)
         if (volumePath != null) {
-          Log.d(TAG, "Filesystem scanning volume: ${volume.getDescription(context)} at $volumePath")
-
           val volumeDir = File(volumePath)
           if (!volumeDir.exists() || !volumeDir.canRead()) {
-            Log.w(TAG, "Volume not accessible: $volumePath")
             continue
           }
 
+          // Collect folders with their video files first
+          val foldersWithVideos = mutableListOf<Pair<File, List<File>>>()
           StorageScanUtils.scanDirectoryForVideos(
             volumeDir,
             { folder, videoFiles ->
-              val folderPath = normalizePath(folder.absolutePath)
-              val bucketId = folderPath
-              val folderName = folder.name
-              val totalSize = videoFiles.sumOf { it.length() }
-              val lastModified = videoFiles.maxOfOrNull { it.lastModified() } ?: 0L
-
-              Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath")
-
-              // Update existing folder info or create new
-              val existing = folders[bucketId]
-              if (existing != null) {
-                // Merge with existing entry from MediaStore
-                val allProcessedVideos = existing.processedVideos.toMutableSet()
-                videoFiles.forEach { allProcessedVideos.add(it.absolutePath) }
-
-                folders[bucketId] = existing.copy(
-                  videoCount = allProcessedVideos.size,
-                  totalSize = existing.totalSize + totalSize,
-                  processedVideos = allProcessedVideos,
-                )
-              } else {
-                // Create new entry
-                folders[bucketId] =
-                  VideoFolderInfo(
-                    bucketId = bucketId,
-                    name = folderName,
-                    path = folderPath,
-                    videoCount = videoFiles.size,
-                    totalSize = totalSize,
-                    totalDuration = 0L,
-                    lastModified = lastModified / 1000,
-                    processedVideos = videoFiles.map { it.absolutePath }.toMutableSet(),
-                  )
-              }
+              foldersWithVideos.add(folder to videoFiles)
             },
           )
-        } else {
-          Log.w(TAG, "Could not get path for volume: ${volume.getDescription(context)}")
+
+          // Now extract metadata for each folder's videos
+          for ((folder, videoFiles) in foldersWithVideos) {
+            val folderPath = normalizePath(folder.absolutePath)
+            val bucketId = folderPath
+            val folderName = folder.name
+            val totalSize = videoFiles.sumOf { it.length() }
+            val lastModified = videoFiles.maxOfOrNull { it.lastModified() } ?: 0L
+
+            // Extract duration metadata for each video file using MediaInfo API
+            var totalDuration = 0L
+            for (videoFile in videoFiles) {
+              try {
+                val uri = Uri.fromFile(videoFile)
+                MediaInfoOps.extractBasicMetadata(context, uri, videoFile.name)
+                  .onSuccess { metadata ->
+                    totalDuration += metadata.durationMs
+                  }
+                  .onFailure { error ->
+                    Log.w(TAG, "Failed to extract duration for ${videoFile.name}: ${error.message}")
+                  }
+              } catch (e: Exception) {
+                Log.w(TAG, "Failed to extract duration for ${videoFile.name}", e)
+              }
+            }
+
+            Log.d(
+              TAG,
+              "Scanned external folder: $folderPath, videos: ${videoFiles.size}, total duration: ${totalDuration}ms",
+            )
+
+            // Update existing folder info or create new
+            val existing = folders[bucketId]
+            if (existing != null) {
+              // Merge with existing entry from MediaStore
+              val allProcessedVideos = existing.processedVideos.toMutableSet()
+              videoFiles.forEach { allProcessedVideos.add(it.absolutePath) }
+
+              folders[bucketId] = existing.copy(
+                videoCount = allProcessedVideos.size,
+                totalSize = existing.totalSize + totalSize,
+                totalDuration = existing.totalDuration + totalDuration,
+                processedVideos = allProcessedVideos,
+              )
+            } else {
+              // Create new entry
+              folders[bucketId] =
+                VideoFolderInfo(
+                  bucketId = bucketId,
+                  name = folderName,
+                  path = folderPath,
+                  videoCount = videoFiles.size,
+                  totalSize = totalSize,
+                  totalDuration = totalDuration,
+                  lastModified = lastModified / 1000,
+                  processedVideos = videoFiles.map { it.absolutePath }.toMutableSet(),
+                )
+            }
+          }
         }
       }
-
-      Log.d(TAG, "Filesystem scan complete. Found ${folders.size} total folders")
     } catch (e: Exception) {
       Log.e(TAG, "Error in direct filesystem scan", e)
     }

@@ -156,6 +156,12 @@ object StorageScanUtils {
     return VIDEO_EXTENSIONS.contains(extension)
   }
 
+  // Folders to skip during scanning (system/cache folders)
+  private val SKIP_FOLDERS = setOf(
+    "android", "data", ".thumbnails", ".cache", "cache",
+    "lost.dir", "system", ".android_secure",
+  )
+
   /**
    * Recursively scans a directory for video files
    * @param directory The directory to scan
@@ -184,9 +190,14 @@ object StorageScanUtils {
         onFolderFound(directory, videoFiles)
       }
 
-      // Recursively scan subdirectories (skip hidden directories)
+      // Recursively scan subdirectories (skip hidden and system folders)
       files
-        .filter { it.isDirectory && it.canRead() && !it.name.startsWith(".") }
+        .filter {
+          it.isDirectory &&
+            it.canRead() &&
+            !it.name.startsWith(".") &&
+            !SKIP_FOLDERS.contains(it.name.lowercase())
+        }
         .forEach { subDir ->
           scanDirectoryForVideos(subDir, onFolderFound, maxDepth, currentDepth + 1)
         }
