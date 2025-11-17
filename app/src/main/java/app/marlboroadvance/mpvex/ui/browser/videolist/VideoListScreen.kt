@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.VideoSortType
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -79,6 +80,7 @@ data class VideoListScreen(
     val coroutineScope = rememberCoroutineScope()
     val backstack = LocalBackStack.current
     val browserPreferences = koinInject<BrowserPreferences>()
+    val playerPreferences = koinInject<PlayerPreferences>()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     // ViewModel
@@ -91,6 +93,7 @@ data class VideoListScreen(
     val videosWithPlaybackInfo by viewModel.videosWithPlaybackInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
+    val playlistMode by playerPreferences.playlistMode.collectAsState()
 
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
@@ -232,7 +235,14 @@ data class VideoListScreen(
           if (selectionManager.isInSelectionMode) {
             selectionManager.toggle(video)
           } else {
-            MediaUtils.playFile(video, context)
+            coroutineScope.launch {
+              MediaUtils.playFileWithAutoPlaylist(
+                video = video,
+                context = context,
+                playlistModeEnabled = playlistMode,
+                launchSource = "video_list"
+              )
+            }
           }
         },
         onVideoLongClick = { video -> selectionManager.toggle(video) },
