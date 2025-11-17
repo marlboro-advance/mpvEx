@@ -88,6 +88,7 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val videoRepository = koinInject<VideoRepository>()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
@@ -128,8 +129,9 @@ object FolderListScreen : Screen {
         onDeleteItems = { folders ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()
-          val videos = VideoRepository.getVideosForBuckets(context, ids)
+          val videos = videoRepository.getVideosForBuckets(context, ids)
           viewModel.deleteVideos(videos)
+          Pair(videos.size, 0) // Return (successCount, failureCount)
         },
         onOperationComplete = { viewModel.refresh() },
       )
@@ -175,7 +177,7 @@ object FolderListScreen : Screen {
       if (isSearching && !videosLoaded) {
         // Load all videos across all folders using all bucketIds
         val bucketIds = videoFolders.map { it.bucketId }.toSet()
-        allVideos = VideoRepository.getVideosForBuckets(context, bucketIds)
+        allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
         videosLoaded = true
       }
       if (!isSearching) {
@@ -271,7 +273,7 @@ object FolderListScreen : Screen {
               // Share all videos across selected folders with a single chooser
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = VideoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   MediaUtils.shareVideos(context, allVideos)
                 }
@@ -281,7 +283,7 @@ object FolderListScreen : Screen {
               // Play all videos from selected folders as a playlist
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = VideoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   if (allVideos.size == 1) {
                     // Single video - play normally

@@ -80,7 +80,8 @@ fun VideoCard(
             } else {
               Color.Transparent
             },
-          ).padding(12.dp),
+          )
+          .padding(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -179,9 +180,25 @@ fun VideoCard(
                 .background(
                   MaterialTheme.colorScheme.surfaceContainerHigh,
                   RoundedCornerShape(8.dp),
-                ).padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface,
           )
+          if (video.resolution != "--") {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              video.resolution,
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+          }
           if (timeRemainingFormatted != null) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -192,7 +209,8 @@ fun VideoCard(
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                     RoundedCornerShape(8.dp),
-                  ).padding(horizontal = 8.dp, vertical = 4.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
           }

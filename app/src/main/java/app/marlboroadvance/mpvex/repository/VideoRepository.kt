@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
@@ -17,8 +18,18 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
-object VideoRepository {
-  private const val TAG = "VideoRepository"
+class VideoRepository(
+  private val metadataCache: VideoMetadataCacheRepository,
+) {
+  companion object {
+    private const val TAG = "VideoRepository"
+    private const val SORT_ORDER = "${MediaStore.Video.Media.TITLE} COLLATE NOCASE ASC"
+  }
+
+  @SuppressLint("SdCardPath")
+  private fun normalizePath(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(path)
+
+  private val externalStoragePath: String by lazy { Environment.getExternalStorageDirectory().path }
 
   private val PROJECTION =
     arrayOf(
@@ -33,14 +44,9 @@ object VideoRepository {
       MediaStore.Video.Media.MIME_TYPE,
       MediaStore.Video.Media.BUCKET_ID,
       MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+      MediaStore.Video.Media.WIDTH,
+      MediaStore.Video.Media.HEIGHT,
     )
-
-  private const val SORT_ORDER = "${MediaStore.Video.Media.TITLE} COLLATE NOCASE ASC"
-
-  @SuppressLint("SdCardPath")
-  private fun normalizePath(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(path)
-
-  private val externalStoragePath: String by lazy { Environment.getExternalStorageDirectory().path }
 
   suspend fun getVideosInFolder(
     context: Context,
@@ -65,7 +71,7 @@ object VideoRepository {
       videos.sortedBy { it.displayName.lowercase() }
     }
 
-  private fun queryByBucketId(
+  private suspend fun queryByBucketId(
     context: Context,
     bucketId: String,
     videos: MutableList<Video>,
@@ -87,7 +93,7 @@ object VideoRepository {
           val columnIndices = getCursorColumnIndices(cursor)
 
           while (cursor.moveToNext()) {
-            extractVideoFromCursor(cursor, columnIndices)?.let { video ->
+            extractVideoFromCursor(context, cursor, columnIndices)?.let { video ->
               val normalizedPath = normalizePath(video.path)
               if (processedPaths.add(normalizedPath)) {
                 videos.add(video)
@@ -127,7 +133,7 @@ object VideoRepository {
                 val parentPath = File(videoPath).parent?.let { normalizePath(it) }
 
                 if (parentPath == folderPath) {
-                  extractVideoFromCursor(cursor, columnIndices)?.let { video ->
+                  extractVideoFromCursor(context, cursor, columnIndices)?.let { video ->
                     val normalizedPath = normalizePath(video.path)
                     if (processedPaths.add(normalizedPath)) {
                       videos.add(video)
@@ -198,24 +204,28 @@ object VideoRepository {
     val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
     val uri = Uri.fromFile(file)
 
-    // Extract metadata using MediaInfo API for external storage videos
-    // This provides accurate duration and size information
+    // Extract metadata using cache (with MediaInfo fallback)
+    // This provides accurate duration, size, and resolution information
     var size = file.length()
     var duration = 0L
+    var width = 0
+    var height = 0
 
-    MediaInfoOps.extractBasicMetadata(context, uri, displayName)
-      .onSuccess { metadata ->
-        // Use MediaInfo's file size if available (more accurate for some formats)
-        if (metadata.sizeBytes > 0) {
-          size = metadata.sizeBytes
-        }
-        duration = metadata.durationMs
-        Log.d(TAG, "Extracted metadata for $displayName: size=$size bytes, duration=$duration ms")
+    metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+      // Use MediaInfo's file size if available (more accurate for some formats)
+      if (metadata.sizeBytes > 0) {
+        size = metadata.sizeBytes
       }
-      .onFailure { error ->
-        Log.w(TAG, "Failed to extract metadata for $displayName using MediaInfo, using file system size", error)
-        // Fallback to file system size, duration remains 0
-      }
+      duration = metadata.durationMs
+      width = metadata.width
+      height = metadata.height
+      Log.d(
+        TAG,
+        "Metadata for $displayName: size=$size bytes, duration=$duration ms, resolution=${width}x${height}",
+      )
+    } ?: run {
+      Log.w(TAG, "Failed to extract metadata for $displayName, using file system size")
+    }
 
     return Video(
       id = path.hashCode().toLong(),
@@ -232,6 +242,9 @@ object VideoRepository {
       mimeType = mimeType,
       bucketId = bucketId,
       bucketDisplayName = bucketDisplayName,
+      width = width,
+      height = height,
+      resolution = formatResolution(width, height),
     )
   }
 
@@ -248,9 +261,12 @@ object VideoRepository {
       mimeType = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE),
       bucketId = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID),
       bucketDisplayName = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME),
+      width = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH),
+      height = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT),
     )
 
-  private fun extractVideoFromCursor(
+  private suspend fun extractVideoFromCursor(
+    context: Context,
     cursor: Cursor,
     indices: VideoColumnIndices,
   ): Video? {
@@ -265,6 +281,8 @@ object VideoRepository {
     val mimeType = cursor.getString(indices.mimeType) ?: ""
     val videoBucketId = cursor.getString(indices.bucketId) ?: ""
     val bucketDisplayName = cursor.getString(indices.bucketDisplayName) ?: ""
+    var width = cursor.getInt(indices.width)
+    var height = cursor.getInt(indices.height)
 
     val normalizedPath = if (path.isNotEmpty()) normalizePath(path) else path
 
@@ -276,6 +294,19 @@ object VideoRepository {
     val (finalBucketId, finalBucketDisplayName) = getFinalBucketInfo(videoBucketId, bucketDisplayName, normalizedPath)
 
     val uri = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
+
+    // Fallback to MediaInfo if MediaStore doesn't have resolution (unsupported format)
+    if (width <= 0 || height <= 0) {
+      Log.d(TAG, "MediaStore has no resolution for $displayName, trying MediaInfo fallback")
+      val file = File(normalizedPath)
+      metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+        width = metadata.width
+        height = metadata.height
+        Log.d(TAG, "MediaInfo fallback succeeded for $displayName: ${width}x${height}")
+      } ?: run {
+        Log.w(TAG, "MediaInfo fallback failed for $displayName")
+      }
+    }
 
     return Video(
       id = id,
@@ -292,6 +323,9 @@ object VideoRepository {
       mimeType = mimeType,
       bucketId = finalBucketId,
       bucketDisplayName = finalBucketDisplayName,
+      width = width,
+      height = height,
+      resolution = formatResolution(width, height),
     )
   }
 
@@ -320,6 +354,8 @@ object VideoRepository {
     val mimeType: Int,
     val bucketId: Int,
     val bucketDisplayName: Int,
+    val width: Int,
+    val height: Int,
   )
 
   private fun formatDuration(durationMs: Long): String {
@@ -340,6 +376,29 @@ object VideoRepository {
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
     val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt()
     return String.format(Locale.getDefault(), "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
+  }
+
+  private fun formatResolution(width: Int, height: Int): String {
+    if (width <= 0 || height <= 0) return "--"
+
+    // For non-standard aspect ratios, use width to determine quality tier
+    // This handles ultrawide/cinematic videos correctly (e.g., 1920x800, 1920x1036)
+    val label = when {
+      // Check width first for ultra-wide/cinematic content
+      width >= 7680 || height >= 4320 -> "8K" // 7680×4320
+      width >= 3840 || height >= 2160 -> "4K" // 3840×2160
+      width >= 2560 || height >= 1440 -> "1440p" // 2560×1440 (2K/QHD)
+      width >= 1920 || height >= 1080 -> "1080p" // 1920×1080 (Full HD) or ultrawide 1920x800
+      width >= 1280 || height >= 720 -> "720p" // 1280×720 (HD)
+      width >= 854 || height >= 480 -> "480p" // 854×480 or 720×480 (SD)
+      width >= 640 || height >= 360 -> "360p" // 640×360
+      width >= 426 || height >= 240 -> "240p" // 426×240
+      width >= 256 || height >= 144 -> "144p" // 256×144
+      else -> "${height}p" // For any other resolution, show height with 'p'
+    }
+
+    Log.d(TAG, "formatResolution: ${width}x${height} -> $label")
+    return label
   }
 
   suspend fun getVideosForBuckets(

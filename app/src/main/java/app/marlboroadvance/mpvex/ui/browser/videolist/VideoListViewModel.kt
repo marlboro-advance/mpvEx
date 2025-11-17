@@ -33,6 +33,7 @@ class VideoListViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val videoRepository: VideoRepository by inject()
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
@@ -80,7 +81,7 @@ class VideoListViewModel(
         _isLoading.value = true
 
         // First attempt to load videos
-        val videoList = VideoRepository.getVideosInFolder(getApplication(), bucketId)
+        val videoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
 
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
@@ -88,7 +89,7 @@ class VideoListViewModel(
           triggerMediaScan()
           // Wait longer for MediaStore to update
           delay(1000)
-          val retryVideoList = VideoRepository.getVideosInFolder(getApplication(), bucketId)
+          val retryVideoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
         } else {

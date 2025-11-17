@@ -291,14 +291,14 @@ object MediaInfoOps {
   )
 
   /**
-   * Quickly extract just size and duration metadata from a video file
+   * Quickly extract just size, duration, and resolution metadata from a video file
    * This is optimized for external storage videos where MediaStore doesn't have metadata.
    * Uses MediaInfo library which is faster and more reliable than MediaMetadataRetriever.
    *
    * @param context Android context
    * @param uri URI of the video file
    * @param fileName Name of the file (needed for MediaInfo to detect format correctly)
-   * @return Result containing VideoMetadata with size in bytes and duration in milliseconds
+   * @return Result containing VideoMetadata with size in bytes, duration in milliseconds, and resolution
    */
   suspend fun extractBasicMetadata(
     context: Context,
@@ -310,7 +310,7 @@ object MediaInfoOps {
         val contentResolver = context.contentResolver
         val pfd =
           contentResolver.openFileDescriptor(uri, "r")
-            ?: return@runCatching VideoMetadata(0L, 0L)
+            ?: return@runCatching VideoMetadata(0L, 0L, 0, 0)
 
         val fd = pfd.detachFd()
         val mi = MediaInfo()
@@ -326,7 +326,14 @@ object MediaInfoOps {
           val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
           val duration = durationStr.toLongOrNull() ?: 0L
 
-          VideoMetadata(fileSize, duration)
+          // Extract video resolution (width and height)
+          val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")
+          val width = widthStr.toIntOrNull() ?: 0
+
+          val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
+          val height = heightStr.toIntOrNull() ?: 0
+
+          VideoMetadata(fileSize, duration, width, height)
         } finally {
           mi.Close()
           pfd.close()
@@ -335,10 +342,12 @@ object MediaInfoOps {
     }
 
   /**
-   * Data class to hold basic video metadata (size and duration)
+   * Data class to hold basic video metadata (size, duration, and resolution)
    */
   data class VideoMetadata(
     val sizeBytes: Long,
     val durationMs: Long,
+    val width: Int,
+    val height: Int,
   )
 }
