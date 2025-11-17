@@ -116,6 +116,8 @@ kotlin {
       "-Xwhen-guards",
       "-Xcontext-parameters",
       "-Xannotation-default-target=param-property",
+      "-opt-in=com.google.accompanist.permissions.ExperimentalPermissionsApi",
+      "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
     )
     jvmTarget.set(JvmTarget.JVM_17)
   }

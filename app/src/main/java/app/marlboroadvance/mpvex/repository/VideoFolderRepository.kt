@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.repository
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
@@ -10,6 +11,7 @@ import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +26,6 @@ object VideoFolderRepository {
 
   suspend fun getVideoFolders(context: Context): List<VideoFolder> =
     withContext(Dispatchers.IO) {
-      Log.d(TAG, "Starting video folder scan across all storage volumes")
       val folders = mutableMapOf<String, VideoFolderInfo>()
 
       // First, scan via MediaStore (fast, indexed)
@@ -33,57 +34,92 @@ object VideoFolderRepository {
       // Then, scan file system directly for external volumes (catches unindexed files)
       scanFileSystemDirectly(context, folders)
 
-      Log.d(TAG, "Finished video folder scan")
-      val result = convertToVideoFolderList(folders)
-      Log.d(TAG, "Found ${result.size} folders across all storage")
-      result.forEach { folder ->
-        Log.d(TAG, "Folder: ${folder.name} at ${folder.path} with ${folder.videoCount} videos")
-      }
-      result
+      convertToVideoFolderList(folders)
     }
 
-  private fun scanFileSystemDirectly(
+  private suspend fun scanFileSystemDirectly(
     context: Context,
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     try {
+      // Only scan external volumes (USB OTG, SD cards) that might not be indexed
       val externalVolumes = StorageScanUtils.getExternalStorageVolumes(context)
 
       for (volume in externalVolumes) {
         val volumePath = StorageScanUtils.getVolumePath(volume)
         if (volumePath != null) {
-          Log.d(TAG, "Direct filesystem scan of ${volume.getDescription(context)} at $volumePath")
+          val volumeDir = File(volumePath)
+          if (!volumeDir.exists() || !volumeDir.canRead()) {
+            continue
+          }
 
+          // Collect folders with their video files first
+          val foldersWithVideos = mutableListOf<Pair<File, List<File>>>()
           StorageScanUtils.scanDirectoryForVideos(
-            File(volumePath),
+            volumeDir,
             { folder, videoFiles ->
-              val folderPath = folder.absolutePath
-              val bucketId = folderPath.hashCode().toString()
-              val folderName = folder.name
-              val totalSize = videoFiles.sumOf { it.length() }
-              val lastModified = videoFiles.maxOfOrNull { it.lastModified() } ?: 0L
-
-              Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath via filesystem scan")
-
-              // Update or create folder info
-              val existing = folders[bucketId]
-              if (existing == null) {
-                folders[bucketId] =
-                  VideoFolderInfo(
-                    bucketId = bucketId,
-                    name = folderName,
-                    path = folderPath,
-                    videoCount = videoFiles.size,
-                    totalSize = totalSize,
-                    totalDuration = 0L,
-                    lastModified = lastModified / 1000,
-                    processedVideos = videoFiles.map { it.absolutePath }.toMutableSet(),
-                  )
-              }
+              foldersWithVideos.add(folder to videoFiles)
             },
           )
-        } else {
-          Log.w(TAG, "Could not get path for volume: ${volume.getDescription(context)}")
+
+          // Now extract metadata for each folder's videos
+          for ((folder, videoFiles) in foldersWithVideos) {
+            val folderPath = normalizePath(folder.absolutePath)
+            val bucketId = folderPath
+            val folderName = folder.name
+            val totalSize = videoFiles.sumOf { it.length() }
+            val lastModified = videoFiles.maxOfOrNull { it.lastModified() } ?: 0L
+
+            // Extract duration metadata for each video file using MediaInfo API
+            var totalDuration = 0L
+            for (videoFile in videoFiles) {
+              try {
+                val uri = Uri.fromFile(videoFile)
+                MediaInfoOps.extractBasicMetadata(context, uri, videoFile.name)
+                  .onSuccess { metadata ->
+                    totalDuration += metadata.durationMs
+                  }
+                  .onFailure { error ->
+                    Log.w(TAG, "Failed to extract duration for ${videoFile.name}: ${error.message}")
+                  }
+              } catch (e: Exception) {
+                Log.w(TAG, "Failed to extract duration for ${videoFile.name}", e)
+              }
+            }
+
+            Log.d(
+              TAG,
+              "Scanned external folder: $folderPath, videos: ${videoFiles.size}, total duration: ${totalDuration}ms",
+            )
+
+            // Update existing folder info or create new
+            val existing = folders[bucketId]
+            if (existing != null) {
+              // Merge with existing entry from MediaStore
+              val allProcessedVideos = existing.processedVideos.toMutableSet()
+              videoFiles.forEach { allProcessedVideos.add(it.absolutePath) }
+
+              folders[bucketId] = existing.copy(
+                videoCount = allProcessedVideos.size,
+                totalSize = existing.totalSize + totalSize,
+                totalDuration = existing.totalDuration + totalDuration,
+                processedVideos = allProcessedVideos,
+              )
+            } else {
+              // Create new entry
+              folders[bucketId] =
+                VideoFolderInfo(
+                  bucketId = bucketId,
+                  name = folderName,
+                  path = folderPath,
+                  videoCount = videoFiles.size,
+                  totalSize = totalSize,
+                  totalDuration = totalDuration,
+                  lastModified = lastModified / 1000,
+                  processedVideos = videoFiles.map { it.absolutePath }.toMutableSet(),
+                )
+            }
+          }
         }
       }
     } catch (e: Exception) {
@@ -96,24 +132,12 @@ object VideoFolderRepository {
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     try {
-      // Get storage manager to enumerate all volumes
       val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
       val volumes = storageManager.storageVolumes
 
-      Log.d(TAG, "Found ${volumes.size} storage volumes to scan")
-
       for (volume in volumes) {
         if (volume.state == Environment.MEDIA_MOUNTED) {
-          val volumeName = volume.getDescription(context)
-          val volumeUuid = volume.uuid
-          Log.d(
-            TAG,
-            "Scanning volume: $volumeName (UUID: $volumeUuid, Primary: ${volume.isPrimary}, Removable: ${volume.isRemovable})",
-          )
-
           scanVolumeForVideos(context, volume, folders)
-        } else {
-          Log.d(TAG, "Skipping unmounted volume: ${volume.getDescription(context)}")
         }
       }
     } catch (e: Exception) {
@@ -149,8 +173,6 @@ object VideoFolderRepository {
           MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         }
 
-      Log.d(TAG, "Querying content URI: $contentUri for volume: ${volume.getDescription(context)}")
-
       val projection = getProjection()
       val cursor: Cursor? =
         context.contentResolver.query(
@@ -162,10 +184,12 @@ object VideoFolderRepository {
         )
 
       cursor?.use { c ->
-        val count = c.count
-        Log.d(TAG, "Found $count videos in volume: ${volume.getDescription(context)} via MediaStore")
         processFolderCursor(c, folders)
       }
+    } catch (e: IllegalArgumentException) {
+      // Volume not accessible via MediaStore (e.g., USB OTG not indexed)
+      // This is fine - filesystem scan will catch these volumes
+      Log.d(TAG, "Volume not indexed in MediaStore: ${volume.getDescription(context)}")
     } catch (e: Exception) {
       Log.e(TAG, "Error scanning volume: ${volume.getDescription(context)}", e)
     }
@@ -176,7 +200,6 @@ object VideoFolderRepository {
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     try {
-      Log.d(TAG, "Fallback: Scanning default external storage")
       val projection = getProjection()
       val cursor: Cursor? =
         context.contentResolver.query(
@@ -268,8 +291,6 @@ object VideoFolderRepository {
     val normalizedPath = normalizePath(File(filePath).parent ?: return)
     val (finalBucketId, finalBucketName) = getFinalBucketInfo(bucketId, bucketName, normalizedPath)
 
-    Log.d(TAG, "Processing video: $filePath in folder: $finalBucketName ($normalizedPath)")
-
     updateFolderInfo(finalBucketId, finalBucketName, normalizedPath, dateModified, size, duration, filePath, folders)
   }
 
@@ -278,14 +299,18 @@ object VideoFolderRepository {
     bucketName: String?,
     folderPath: String,
   ): Pair<String, String> {
-    val finalBucketId = bucketId?.takeIf { it.isNotBlank() } ?: folderPath.hashCode().toString()
+    // Always use path as bucket ID for consistency
+    // This ensures no duplicates and works for all storage types
+    val finalBucketId = folderPath
+
     val finalBucketName =
       when {
         !bucketName.isNullOrBlank() -> bucketName
-        folderPath.contains(externalStoragePath) && folderPath == externalStoragePath -> "Internal Storage"
-        folderPath.contains(externalStoragePath) -> File(folderPath).name
+        folderPath == externalStoragePath -> "Internal Storage"
+        folderPath.startsWith(externalStoragePath) -> File(folderPath).name
         else -> File(folderPath).name.takeIf { it.isNotBlank() } ?: "Unknown Folder"
       }
+
     return Pair(finalBucketId, finalBucketName)
   }
 
@@ -323,9 +348,6 @@ object VideoFolderRepository {
           lastModified = maxOf(folderInfo.lastModified, dateModified),
           processedVideos = folderInfo.processedVideos,
         )
-      Log.v(TAG, "Added video to folder $bucketName: $normalizedFilePath (count: ${folderInfo.videoCount + 1})")
-    } else {
-      Log.v(TAG, "Skipping duplicate: $normalizedFilePath")
     }
   }
 

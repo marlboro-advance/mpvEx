@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.repository.VideoFolderRepository
+import app.marlboroadvance.mpvex.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MediaStoreObserver

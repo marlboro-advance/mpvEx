@@ -48,4 +48,17 @@ val DatabaseModule =
     }
 
     single { ThumbnailRepository(androidContext()) }
+
+    single {
+      app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository(
+        context = androidContext(),
+        dao = get<mpvexDatabase>().videoMetadataDao(),
+      )
+    }
+
+    single {
+      app.marlboroadvance.mpvex.repository.VideoRepository(
+        metadataCache = get(),
+      )
+    }
   }

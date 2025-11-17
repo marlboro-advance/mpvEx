@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import kotlinx.coroutines.Dispatchers
@@ -53,11 +55,15 @@ fun VideoCard(
   isRecentlyPlayed: Boolean = false,
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
-  timeRemainingFormatted: String? = null,
+  progressPercentage: Float? = null,
   onThumbClick: () -> Unit = {},
 ) {
-  val preferences = koinInject<AppearancePreferences>()
-  val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
   Card(
@@ -80,7 +86,8 @@ fun VideoCard(
             } else {
               Color.Transparent
             },
-          ).padding(12.dp),
+          )
+          .padding(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -157,6 +164,33 @@ fun VideoCard(
             color = Color.White,
           )
         }
+
+        // Progress bar at bottom of thumbnail
+        if (progressPercentage != null && showProgressBar) {
+          Box(
+            modifier =
+              Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(4.dp),
+          ) {
+            // Background (unwatched portion)
+            Box(
+              modifier =
+                Modifier
+                  .matchParentSize()
+                  .background(Color.Black.copy(alpha = 0.6f)),
+            )
+            // Progress (watched portion)
+            Box(
+              modifier =
+                Modifier
+                  .fillMaxHeight()
+                  .fillMaxWidth(progressPercentage)
+                  .background(MaterialTheme.colorScheme.primary),
+            )
+          }
+        }
       }
       Spacer(modifier = Modifier.width(16.dp))
       Column(
@@ -171,28 +205,34 @@ fun VideoCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row {
-          Text(
-            video.sizeFormatted,
-            style = MaterialTheme.typography.labelSmall,
-            modifier =
-              Modifier
-                .background(
-                  MaterialTheme.colorScheme.surfaceContainerHigh,
-                  RoundedCornerShape(8.dp),
-                ).padding(horizontal = 8.dp, vertical = 4.dp),
-            color = MaterialTheme.colorScheme.onSurface,
-          )
-          if (timeRemainingFormatted != null) {
-            Spacer(modifier = Modifier.width(8.dp))
+          if (showSizeChip) {
             Text(
-              timeRemainingFormatted,
+              video.sizeFormatted,
               style = MaterialTheme.typography.labelSmall,
               modifier =
                 Modifier
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                     RoundedCornerShape(8.dp),
-                  ).padding(horizontal = 8.dp, vertical = 4.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+          }
+          if (showResolutionChip && video.resolution != "--") {
+            if (showSizeChip) {
+              Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+              video.resolution,
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
           }

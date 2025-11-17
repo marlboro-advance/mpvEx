@@ -38,6 +38,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
@@ -55,6 +56,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.LoadingDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -457,7 +459,7 @@ private fun VideoListContent(
 
             VideoCard(
               video = videoWithInfo.video,
-              timeRemainingFormatted = videoWithInfo.timeRemainingFormatted,
+              progressPercentage = videoWithInfo.progressPercentage,
               isRecentlyPlayed = isRecentlyPlayed,
               isSelected = selectionManager.isSelected(videoWithInfo.video),
               onClick = { onVideoClick(videoWithInfo.video) },
@@ -480,6 +482,13 @@ private fun VideoSortDialog(
   onSortTypeChange: (VideoSortType) -> Unit,
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
@@ -515,5 +524,28 @@ private fun VideoSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
+    visibilityToggles =
+      listOf(
+        VisibilityToggle(
+          label = "Full Name",
+          checked = unlimitedNameLines,
+          onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Size",
+          checked = showSizeChip,
+          onCheckedChange = { browserPreferences.showSizeChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Resolution",
+          checked = showResolutionChip,
+          onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Progress Bar",
+          checked = showProgressBar,
+          onCheckedChange = { browserPreferences.showProgressBar.set(it) },
+        ),
+      ),
   )
 }

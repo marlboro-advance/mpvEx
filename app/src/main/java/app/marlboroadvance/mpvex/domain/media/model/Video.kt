@@ -17,4 +17,7 @@ data class Video(
   val mimeType: String,
   val bucketId: String,
   val bucketDisplayName: String,
+  val width: Int,
+  val height: Int,
+  val resolution: String,
 )
