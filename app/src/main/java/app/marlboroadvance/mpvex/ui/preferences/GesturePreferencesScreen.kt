@@ -161,6 +161,22 @@ object GesturePreferencesScreen : Screen {
             )
           }
 
+          val doubleTapSeekAreaWidth by preferences.doubleTapSeekAreaWidth.collectAsState()
+          val seekAreaValues = listOf(20, 25, 30, 35, 40, 45)
+
+          ListPreference(
+            value = doubleTapSeekAreaWidth,
+            onValueChange = { preferences.doubleTapSeekAreaWidth.set(it) },
+            values = seekAreaValues,
+            valueToText = { AnnotatedString("${it}%") },
+            title = { Text(text = "Double Tap Seek Area Width") },
+            summary = {
+              Text(
+                text = "Current: ${doubleTapSeekAreaWidth}%",
+              )
+            },
+          )
+
           val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
           ListPreference(
             value = leftDoubleTap,

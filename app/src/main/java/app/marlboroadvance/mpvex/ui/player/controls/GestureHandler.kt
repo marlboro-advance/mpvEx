@@ -77,6 +77,7 @@ fun GestureHandler(
   val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val isSeekingForwards by viewModel.isSeekingForwards.collectAsState()
   val useSingleTapForCenter by gesturePreferences.useSingleTapForCenter.collectAsState()
+  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   var isDoubleTapSeeking by remember { mutableStateOf(false) }
   LaunchedEffect(seekAmount) {
     delay(800)
@@ -109,11 +110,16 @@ fun GestureHandler(
       modifier
         .fillMaxSize()
         .windowInsetsPadding(WindowInsets.safeGestures)
-        .pointerInput(Unit) {
+        .pointerInput(doubleTapSeekAreaWidth) {
           val originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
 
           var tapHandledInPress by mutableStateOf(false)
           var isLongPress by mutableStateOf(false)
+
+          // Calculate thresholds based on preference (percentage of screen width)
+          val seekAreaWidthFraction = doubleTapSeekAreaWidth / 100f
+          val rightThreshold = 1f - seekAreaWidthFraction
+          val leftThreshold = seekAreaWidthFraction
 
           detectTapGestures(
             onTap = {
@@ -125,7 +131,8 @@ fun GestureHandler(
                 return@detectTapGestures
               }
 
-              if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
+              val xFraction = it.x / size.width
+              if (xFraction > leftThreshold && xFraction < rightThreshold && useSingleTapForCenter) {
                 viewModel.handleCenterSingleTap()
               } else {
                 if (controlsShown) viewModel.hideControls() else viewModel.showControls()
@@ -134,10 +141,11 @@ fun GestureHandler(
             onDoubleTap = {
               if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
 
-              if (it.x > size.width * 3 / 4) {
+              val xFraction = it.x / size.width
+              if (xFraction > rightThreshold) {
                 if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleRightDoubleTap()
-              } else if (it.x < size.width * 1 / 4) {
+              } else if (xFraction < leftThreshold) {
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
               } else if (!useSingleTapForCenter) {
@@ -152,9 +160,10 @@ fun GestureHandler(
               }
 
               val now = System.currentTimeMillis()
+              val xFraction = it.x / size.width
               val region = when {
-                it.x > size.width * 3 / 4 -> "right"
-                it.x < size.width * 1 / 4 -> "left"
+                xFraction > rightThreshold -> "right"
+                xFraction < leftThreshold -> "left"
                 else -> "center"
               }
               val shouldContinueSeek =
@@ -183,14 +192,14 @@ fun GestureHandler(
 
               val press =
                 PressInteraction.Press(
-                  it.copy(x = if (it.x > size.width * 3 / 4) it.x - size.width * 0.6f else it.x),
+                  it.copy(x = if (xFraction > rightThreshold) it.x - size.width * 0.6f else it.x),
                 )
               interactionSource.emit(press)
 
               val released = tryAwaitRelease()
 
               if (released && !isLongPress && !shouldContinueSeek) {
-                if (it.x > size.width * 1 / 4 && it.x < size.width * 3 / 4 && useSingleTapForCenter) {
+                if (xFraction > leftThreshold && xFraction < rightThreshold && useSingleTapForCenter) {
                   tapHandledInPress = true
                   viewModel.handleCenterSingleTap()
                 }
@@ -500,6 +509,10 @@ fun DoubleTapToSeekOvals(
   interactionSource: MutableInteractionSource,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
+  val seekAreaWidthFraction = doubleTapSeekAreaWidth / 100f
+
   val alpha by animateFloatAsState(if (amount == 0) 0f else 0.2f, label = "double_tap_animation_alpha")
   Box(
     modifier = modifier.fillMaxSize(),
@@ -513,7 +526,7 @@ fun DoubleTapToSeekOvals(
           modifier =
             Modifier
               .fillMaxHeight()
-              .fillMaxWidth(0.4f),
+              .fillMaxWidth(seekAreaWidthFraction),
           contentAlignment = Alignment.Center,
         ) {
           if (showOvals) {

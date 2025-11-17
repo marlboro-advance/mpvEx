@@ -8,6 +8,7 @@ class GesturePreferences(
   preferenceStore: PreferenceStore,
 ) {
   val doubleTapToSeekDuration = preferenceStore.getInt("double_tap_to_seek_duration", 10)
+  val doubleTapSeekAreaWidth = preferenceStore.getInt("double_tap_seek_area_width", 35)
   val leftSingleActionGesture = preferenceStore.getEnum("left_double_tap_gesture", SingleActionGesture.Seek)
   val centerSingleActionGesture = preferenceStore.getEnum("center_drag_gesture", SingleActionGesture.PlayPause)
   val rightSingleActionGesture = preferenceStore.getEnum("right_drag_gesture", SingleActionGesture.Seek)
