@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
@@ -42,8 +43,12 @@ fun FolderCard(
   isSelected: Boolean = false,
   onThumbClick: () -> Unit = {},
 ) {
-  val preferences = koinInject<AppearancePreferences>()
-  val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
+  val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
   // Remove the redundant folder name from the path
@@ -65,7 +70,8 @@ fun FolderCard(
           .fillMaxWidth()
           .background(
             if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f) else Color.Transparent,
-          ).padding(16.dp),
+          )
+          .padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Box(
@@ -98,28 +104,36 @@ fun FolderCard(
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
         )
-        Text(
-          parentPath,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = maxLines,
-          overflow = TextOverflow.Ellipsis,
-        )
+        if (showFolderPath) {
+          Text(
+            parentPath,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Row {
-          Text(
-            if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
-            style = MaterialTheme.typography.labelSmall,
-            modifier =
-              Modifier
-                .background(
-                  MaterialTheme.colorScheme.surfaceContainerHigh,
-                  RoundedCornerShape(8.dp),
-                ).padding(horizontal = 8.dp, vertical = 4.dp),
-            color = MaterialTheme.colorScheme.onSurface,
-          )
-          if (folder.totalDuration > 0) {
-            Spacer(modifier = Modifier.width(4.dp))
+          // Hide chips at storage root level (when videoCount is 0)
+          if (showTotalVideosChip && folder.videoCount > 0) {
+            Text(
+              if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+          }
+          if (showTotalDurationChip && folder.totalDuration > 0) {
+            if (showTotalVideosChip && folder.videoCount > 0) {
+              Spacer(modifier = Modifier.width(4.dp))
+            }
             Text(
               formatDuration(folder.totalDuration),
               style = MaterialTheme.typography.labelSmall,
@@ -128,7 +142,8 @@ fun FolderCard(
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                     RoundedCornerShape(8.dp),
-                  ).padding(horizontal = 8.dp, vertical = 4.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
           }

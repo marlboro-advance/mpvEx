@@ -16,6 +16,19 @@ class BrowserPreferences(
   // Video sorting preferences
   val videoSortType = preferenceStore.getEnum("video_sort_type", VideoSortType.Title)
   val videoSortOrder = preferenceStore.getEnum("video_sort_order", SortOrder.Ascending)
+
+  // Browser mode preference
+  val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.MediaStore)
+
+  // Visibility preferences for video card chips
+  val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
+  val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
+  val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
+
+  // Visibility preferences for folder card chips
+  val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
+  val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
+  val showFolderPath = preferenceStore.getBoolean("show_folder_path", true)
 }
 
 /**
@@ -67,5 +80,21 @@ enum class VideoSortType {
         Duration -> "Duration"
         Date -> "Date"
         Size -> "Size"
+      }
+}
+
+/**
+ * Folder view mode options
+ */
+enum class FolderViewMode {
+  MediaStore,
+  FileManager,
+  ;
+
+  val displayName: String
+    get() =
+      when (this) {
+        MediaStore -> "Folder View"
+        FileManager -> "Tree View"
       }
 }

@@ -15,9 +15,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
+import app.marlboroadvance.mpvex.preferences.FolderViewMode
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -57,9 +62,13 @@ import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
+import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
+import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
+import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserScreen
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
@@ -80,6 +89,18 @@ object FolderListScreen : Screen {
   @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    val browserPreferences = koinInject<BrowserPreferences>()
+    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
+
+    // Switch between MediaStore and FileSystem views based on preference
+    when (folderViewMode) {
+      FolderViewMode.FileManager -> FileSystemBrowserRootScreen.Content()
+      FolderViewMode.MediaStore -> MediaStoreFolderListContent()
+    }
+  }
+
+  @Composable
+  private fun MediaStoreFolderListContent() {
     val context = LocalContext.current
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
@@ -108,6 +129,9 @@ object FolderListScreen : Screen {
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
+
+    // View mode
+    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val sortedFolders =
       remember(videoFolders, folderSortType, folderSortOrder) {
         SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
@@ -349,7 +373,7 @@ object FolderListScreen : Screen {
                   items(filteredVideos) { video ->
                     VideoCard(
                       video = video,
-                      timeRemainingFormatted = null,
+                      progressPercentage = null,
                       isRecentlyPlayed = false,
                       isSelected = false,
                       onClick = { MediaUtils.playFile(video, context, "search") },
@@ -382,6 +406,7 @@ object FolderListScreen : Screen {
             )
           }
         }
+
         is PermissionStatus.Denied -> {
           PermissionDeniedState(
             onRequestPermission = { permissionState.launchPermissionRequest() },
@@ -493,10 +518,24 @@ private fun FolderSortDialog(
   onSortTypeChange: (FolderSortType) -> Unit,
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
+  val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showFolderPath by browserPreferences.showFolderPath.collectAsState()
+  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val folderViewMode by browserPreferences.folderViewMode.collectAsState()
+
+  // Dynamic dialog based on view mode
+  val isAlbumView = folderViewMode == FolderViewMode.MediaStore
+
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort Folders",
+    title = if (isAlbumView) "Sort & View Options" else "View Options",
     sortType = sortType.displayName,
     onSortTypeChange = { typeName ->
       FolderSortType.entries.find { it.displayName == typeName }?.let(onSortTypeChange)
@@ -525,5 +564,58 @@ private fun FolderSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
+    showSortOptions = isAlbumView, // Only show sort options in Album view
+    viewModeSelector =
+      ViewModeSelector(
+        label = "View Mode",
+        firstOptionLabel = "Folder View",
+        secondOptionLabel = "Tree View",
+        firstOptionIcon = Icons.Filled.ViewModule,
+        secondOptionIcon = Icons.Filled.AccountTree,
+        isFirstOptionSelected = folderViewMode == FolderViewMode.MediaStore,
+        onViewModeChange = { isFirstOption ->
+          browserPreferences.folderViewMode.set(
+            if (isFirstOption) FolderViewMode.MediaStore else FolderViewMode.FileManager,
+          )
+        },
+      ),
+    visibilityToggles =
+      listOf(
+        VisibilityToggle(
+          label = "Full Name",
+          checked = unlimitedNameLines,
+          onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Path",
+          checked = showFolderPath,
+          onCheckedChange = { browserPreferences.showFolderPath.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Total Videos",
+          checked = showTotalVideosChip,
+          onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Total Duration",
+          checked = showTotalDurationChip,
+          onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Size",
+          checked = showSizeChip,
+          onCheckedChange = { browserPreferences.showSizeChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Resolution",
+          checked = showResolutionChip,
+          onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Progress Bar",
+          checked = showProgressBar,
+          onCheckedChange = { browserPreferences.showProgressBar.set(it) },
+        ),
+      ),
   )
 }

@@ -9,6 +9,8 @@ import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
+import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.Locale
 
@@ -256,35 +258,44 @@ object StorageScanUtils {
   }
 
   /**
-   * Extracts video metadata using MediaMetadataRetriever
-   * @return VideoMetadata object with duration and mime type
+   * Extracts video metadata using MediaInfo library
+   * @return VideoMetadata object with duration, mime type, width, and height
    */
-  fun extractVideoMetadata(file: File): VideoMetadata {
+  fun extractVideoMetadata(
+    context: Context,
+    file: File,
+  ): VideoMetadata {
     var duration = 0L
     var mimeType = "video/*"
+    var width = 0
+    var height = 0
 
     try {
-      val retriever = MediaMetadataRetriever()
-      retriever.setDataSource(file.absolutePath)
+      // Use MediaInfo library for better accuracy and performance
+      val uri = Uri.fromFile(file)
+      val result =
+        runBlocking {
+          MediaInfoOps.extractBasicMetadata(context, uri, file.name)
+        }
 
-      // Get duration in milliseconds
-      retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.let {
-        duration = it.toLongOrNull() ?: 0L
+      result.onSuccess { metadata ->
+        duration = metadata.durationMs
+        width = metadata.width
+        height = metadata.height
+        // Get mime type from extension since MediaInfo doesn't return it directly
+        mimeType = getMimeTypeFromExtension(file.extension.lowercase())
+      }.onFailure { e ->
+        Log.w(TAG, "Could not extract metadata for ${file.absolutePath}, using fallback", e)
+        // Fallback to mime type based on extension
+        mimeType = getMimeTypeFromExtension(file.extension.lowercase())
       }
-
-      // Get mime type
-      retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)?.let {
-        mimeType = it
-      }
-
-      retriever.release()
     } catch (e: Exception) {
       Log.w(TAG, "Could not extract metadata for ${file.absolutePath}, using fallback", e)
       // Fallback to mime type based on extension
       mimeType = getMimeTypeFromExtension(file.extension.lowercase())
     }
 
-    return VideoMetadata(duration, mimeType)
+    return VideoMetadata(duration, mimeType, width, height)
   }
 
   /**
@@ -317,5 +328,7 @@ object StorageScanUtils {
   data class VideoMetadata(
     val duration: Long,
     val mimeType: String,
+    val width: Int = 0,
+    val height: Int = 0,
   )
 }

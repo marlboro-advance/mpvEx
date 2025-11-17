@@ -24,7 +24,7 @@ import org.koin.core.component.inject
 data class VideoWithPlaybackInfo(
   val video: Video,
   val timeRemaining: Long? = null, // in seconds
-  val timeRemainingFormatted: String? = null,
+  val progressPercentage: Float? = null, // 0.0 to 1.0
 )
 
 class VideoListViewModel(
@@ -110,27 +110,28 @@ class VideoListViewModel(
     val videosWithInfo =
       videos.map { video ->
         val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
-        // Only show time remaining if it's more than 3 minutes (180 seconds)
-        val timeRemaining = playbackState?.timeRemaining?.takeIf { it > 180 }?.toLong()
+
+        // Calculate watch progress (0.0 to 1.0)
+        val progress = if (playbackState != null && video.duration > 0) {
+          // Duration is in milliseconds, convert to seconds
+          val durationSeconds = video.duration / 1000
+          val timeRemaining = playbackState.timeRemaining.toLong()
+          val watched = durationSeconds - timeRemaining
+          val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+
+          // Only show progress for videos that are 1-99% complete
+          if (progressValue in 0.01f..0.99f) progressValue else null
+        } else {
+          null
+        }
 
         VideoWithPlaybackInfo(
           video = video,
-          timeRemaining = timeRemaining,
-          timeRemainingFormatted = timeRemaining?.let { formatTimeRemaining(it) },
+          timeRemaining = playbackState?.timeRemaining?.toLong(),
+          progressPercentage = progress,
         )
       }
     _videosWithPlaybackInfo.value = videosWithInfo
-  }
-
-  private fun formatTimeRemaining(seconds: Long): String {
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-
-    return when {
-      hours > 0 -> "${hours}h ${minutes}m remaining"
-      minutes > 0 -> "${minutes}m remaining"
-      else -> "${seconds}s remaining"
-    }
   }
 
   private fun triggerMediaScan() {
