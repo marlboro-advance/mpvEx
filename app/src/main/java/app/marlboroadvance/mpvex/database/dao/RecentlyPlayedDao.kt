@@ -21,7 +21,7 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT * FROM RecentlyPlayedEntity 
-    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist'
+    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list'
     ORDER BY timestamp DESC 
     LIMIT 1
   """,
@@ -31,7 +31,7 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT * FROM RecentlyPlayedEntity 
-    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist'
+    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list'
     ORDER BY timestamp DESC 
     LIMIT 1
   """,

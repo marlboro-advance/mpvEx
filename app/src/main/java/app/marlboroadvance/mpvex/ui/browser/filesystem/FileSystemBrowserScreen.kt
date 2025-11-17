@@ -114,6 +114,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val backstack = LocalBackStack.current
   val coroutineScope = rememberCoroutineScope()
   val browserPreferences = koinInject<BrowserPreferences>()
+  val playerPreferences = koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
   // ViewModel - use path parameter if provided, otherwise show roots
@@ -134,6 +135,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val error by viewModel.error.collectAsState()
   val isAtRoot by viewModel.isAtRoot.collectAsState()
   val breadcrumbs by viewModel.breadcrumbs.collectAsState()
+  val playlistMode by playerPreferences.playlistMode.collectAsState()
 
   // UI State
   val listState = rememberLazyListState()
@@ -460,6 +462,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           error = error,
           isAtRoot = isAtRoot,
           breadcrumbs = breadcrumbs,
+          playlistMode = playlistMode,
           onRefresh = { viewModel.refresh() },
           onFolderClick = { folder ->
             if (isInSelectionMode) {
@@ -476,7 +479,30 @@ fun FileSystemBrowserScreen(path: String? = null) {
             if (isInSelectionMode) {
               videoSelectionManager.toggle(video)
             } else {
-              MediaUtils.playFile(video, context)
+              // If playlist mode is enabled, play all videos in current folder starting from clicked one
+              if (playlistMode) {
+                val allVideos = videos
+                val startIndex = allVideos.indexOfFirst { it.id == video.id }
+                if (startIndex >= 0) {
+                  if (allVideos.size == 1) {
+                    // Single video - play normally
+                    MediaUtils.playFile(video, context)
+                  } else {
+                    // Multiple videos - play as playlist starting from clicked video
+                    val intent = Intent(Intent.ACTION_VIEW, allVideos[startIndex].uri)
+                    intent.setClass(context, app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java)
+                    intent.putExtra("internal_launch", true)
+                    intent.putParcelableArrayListExtra("playlist", ArrayList(allVideos.map { it.uri }))
+                    intent.putExtra("playlist_index", startIndex)
+                    intent.putExtra("launch_source", "playlist")
+                    context.startActivity(intent)
+                  }
+                } else {
+                  MediaUtils.playFile(video, context)
+                }
+              } else {
+                MediaUtils.playFile(video, context)
+              }
             }
           },
           onVideoLongClick = { video ->
@@ -676,6 +702,7 @@ private fun FileSystemBrowserContent(
   error: String?,
   isAtRoot: Boolean,
   breadcrumbs: List<app.marlboroadvance.mpvex.domain.browser.PathComponent>,
+  playlistMode: Boolean,
   onRefresh: suspend () -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onFolderLongClick: (FileSystemItem.Folder) -> Unit,

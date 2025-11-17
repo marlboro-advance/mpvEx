@@ -6,13 +6,10 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import `is`.xyz.mpv.Utils
 import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Central entry point for video playback operations.
@@ -180,43 +177,4 @@ object MediaUtils {
     )
   }
 
-  /**
-   * Play a video with automatic playlist from directory if playlist mode is enabled.
-   *
-   * @param video Video to play
-   * @param context Android context
-   * @param playlistModeEnabled Whether playlist mode is enabled
-   * @param launchSource Analytics identifier
-   */
-  suspend fun playFileWithAutoPlaylist(
-    video: Video,
-    context: Context,
-    playlistModeEnabled: Boolean,
-    launchSource: String? = null,
-  ) {
-    if (playlistModeEnabled) {
-      // Get all videos from the same directory
-      val allVideosInFolder = withContext(Dispatchers.IO) {
-        VideoRepository.getVideosInFolder(context, video.bucketId)
-      }
-      
-      if (allVideosInFolder.size > 1) {
-        // Find the index of the current video
-        val currentIndex = allVideosInFolder.indexOfFirst { it.id == video.id }
-        
-        // Create playlist intent
-        val intent = Intent(Intent.ACTION_VIEW, video.uri)
-        intent.setClass(context, PlayerActivity::class.java)
-        intent.putExtra("internal_launch", true)
-        intent.putParcelableArrayListExtra("playlist", ArrayList(allVideosInFolder.map { it.uri }))
-        intent.putExtra("playlist_index", if (currentIndex >= 0) currentIndex else 0)
-        intent.putExtra("launch_source", launchSource ?: "auto_playlist")
-        context.startActivity(intent)
-        return
-      }
-    }
-    
-    // Fall back to normal single file playback
-    playFile(video, context, launchSource)
-  }
 }

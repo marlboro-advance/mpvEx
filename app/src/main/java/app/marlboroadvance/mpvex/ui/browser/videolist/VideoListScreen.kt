@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.videolist
 
+import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -60,6 +61,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
@@ -237,13 +239,29 @@ data class VideoListScreen(
           if (selectionManager.isInSelectionMode) {
             selectionManager.toggle(video)
           } else {
-            coroutineScope.launch {
-              MediaUtils.playFileWithAutoPlaylist(
-                video = video,
-                context = context,
-                playlistModeEnabled = playlistMode,
-                launchSource = "video_list"
-              )
+            // If playlist mode is enabled, play all videos starting from the clicked one
+            if (playlistMode) {
+              val allVideos = sortedVideosWithInfo.map { it.video }
+              val startIndex = allVideos.indexOfFirst { it.id == video.id }
+              if (startIndex >= 0) {
+                if (allVideos.size == 1) {
+                  // Single video - play normally
+                  MediaUtils.playFile(video, context, "video_list")
+                } else {
+                  // Multiple videos - play as playlist starting from clicked video
+                  val intent = Intent(Intent.ACTION_VIEW, allVideos[startIndex].uri)
+                  intent.setClass(context, PlayerActivity::class.java)
+                  intent.putExtra("internal_launch", true)
+                  intent.putParcelableArrayListExtra("playlist", ArrayList(allVideos.map { it.uri }))
+                  intent.putExtra("playlist_index", startIndex)
+                  intent.putExtra("launch_source", "playlist")
+                  context.startActivity(intent)
+                }
+              } else {
+                MediaUtils.playFile(video, context, "video_list")
+              }
+            } else {
+              MediaUtils.playFile(video, context, "video_list")
             }
           }
         },
