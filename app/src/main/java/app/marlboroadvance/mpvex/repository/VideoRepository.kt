@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
@@ -38,95 +39,146 @@ object VideoRepository {
   @SuppressLint("SdCardPath")
   private fun normalizePath(path: String): String = runCatching { File(path).canonicalPath }.getOrDefault(path)
 
+  private val externalStoragePath: String by lazy { Environment.getExternalStorageDirectory().path }
+
   suspend fun getVideosInFolder(
     context: Context,
     bucketId: String,
   ): List<Video> =
     withContext(Dispatchers.IO) {
-      Log.d(TAG, "========================================")
-      Log.d(TAG, "Starting to query videos for bucket: $bucketId")
       val videos = mutableListOf<Video>()
       val processedPaths = mutableSetOf<String>()
 
       try {
-        // First, try MediaStore queries across all volumes
-        queryAllStorageVolumes(context, bucketId, videos, processedPaths)
-        Log.d(TAG, "MediaStore queries returned ${videos.size} videos")
+        val isPath = bucketId.contains("/")
 
-        // Then, try direct filesystem scan using the bucket ID
-        scanFileSystemForBucket(context, bucketId, videos, processedPaths)
-        Log.d(TAG, "After filesystem scan: ${videos.size} total videos")
+        if (isPath) {
+          queryByPath(context, bucketId, videos, processedPaths)
+        } else {
+          queryByBucketId(context, bucketId, videos, processedPaths)
+        }
       } catch (e: Exception) {
         Log.e(TAG, "Error querying videos for bucket $bucketId", e)
       }
 
-      Log.d(TAG, "Final result: Returning ${videos.size} videos (${processedPaths.size} unique paths)")
-      Log.d(TAG, "========================================")
       videos.sortedBy { it.displayName.lowercase() }
     }
 
-  private fun queryAllStorageVolumes(
+  private fun queryByBucketId(
     context: Context,
     bucketId: String,
     videos: MutableList<Video>,
     processedPaths: MutableSet<String>,
   ) {
-    try {
-      val volumes = StorageScanUtils.getAllStorageVolumes(context)
+    val volumes = StorageScanUtils.getAllStorageVolumes(context)
 
-      for (volume in volumes) {
-        val contentUri = StorageScanUtils.getContentUriForVolume(context, volume)
-        Log.d(TAG, "Querying volume: ${volume.getDescription(context)} with URI: $contentUri")
-        queryMediaStoreBucket(context, contentUri, bucketId, videos, processedPaths)
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error querying storage volumes", e)
-      // Final fallback
-      queryMediaStoreBucket(context, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, bucketId, videos, processedPaths)
-    }
-  }
+    for (volume in volumes) {
+      val contentUri = StorageScanUtils.getContentUriForVolume(context, volume)
 
-  private fun scanFileSystemForBucket(
-    context: Context,
-    bucketId: String,
-    videos: MutableList<Video>,
-    processedPaths: MutableSet<String>,
-  ) {
-    try {
-      val externalVolumes = StorageScanUtils.getExternalStorageVolumes(context)
+      context.contentResolver
+        .query(
+          contentUri,
+          PROJECTION,
+          "${MediaStore.Video.Media.BUCKET_ID} = ?",
+          arrayOf(bucketId),
+          SORT_ORDER,
+        )?.use { cursor ->
+          val columnIndices = getCursorColumnIndices(cursor)
 
-      for (volume in externalVolumes) {
-        val volumePath = StorageScanUtils.getVolumePath(volume)
-        if (volumePath != null) {
-          Log.d(TAG, "Scanning ${volume.getDescription(context)} at $volumePath for bucket $bucketId")
-
-          val targetDirectory = StorageScanUtils.findDirectoryByBucketId(File(volumePath), bucketId)
-          if (targetDirectory != null) {
-            Log.d(TAG, "Found matching directory: ${targetDirectory.absolutePath}")
-            val videoFiles =
-              targetDirectory.listFiles()?.filter {
-                it.isFile && StorageScanUtils.isVideoFile(it)
-              } ?: emptyList()
-
-            Log.d(TAG, "Found ${videoFiles.size} video files in matching directory")
-
-            for (videoFile in videoFiles) {
-              try {
-                val normalizedPath = normalizePath(videoFile.absolutePath)
-                if (processedPaths.add(normalizedPath) && videoFile.exists()) {
-                  val video = createVideoFromFile(videoFile, bucketId, targetDirectory.name)
-                  videos.add(video)
-                  Log.d(TAG, "Added video from filesystem: ${video.displayName}")
-                }
-              } catch (e: Exception) {
-                Log.w(TAG, "Error processing video file: ${videoFile.absolutePath}", e)
+          while (cursor.moveToNext()) {
+            extractVideoFromCursor(cursor, columnIndices)?.let { video ->
+              val normalizedPath = normalizePath(video.path)
+              if (processedPaths.add(normalizedPath)) {
+                videos.add(video)
               }
             }
           }
         }
+    }
+  }
+
+  private fun queryByPath(
+    context: Context,
+    folderPath: String,
+    videos: MutableList<Video>,
+    processedPaths: MutableSet<String>,
+  ) {
+    // Strategy: Try MediaStore first (fast), fallback to filesystem (reliable but slow)
+    val volumes = StorageScanUtils.getAllStorageVolumes(context)
+
+    for (volume in volumes) {
+      try {
+        val contentUri = StorageScanUtils.getContentUriForVolume(context, volume)
+
+        context.contentResolver
+          .query(
+            contentUri,
+            PROJECTION,
+            null,
+            null,
+            SORT_ORDER,
+          )?.use { cursor ->
+            val columnIndices = getCursorColumnIndices(cursor)
+
+            while (cursor.moveToNext()) {
+              val videoPath = cursor.getString(columnIndices.data)
+              if (videoPath != null) {
+                val parentPath = File(videoPath).parent?.let { normalizePath(it) }
+
+                if (parentPath == folderPath) {
+                  extractVideoFromCursor(cursor, columnIndices)?.let { video ->
+                    val normalizedPath = normalizePath(video.path)
+                    if (processedPaths.add(normalizedPath)) {
+                      videos.add(video)
+                    }
+                  }
+                }
+              }
+            }
+          }
+      } catch (e: IllegalArgumentException) {
+        // Volume not accessible via MediaStore - will try filesystem scan
+      } catch (e: Exception) {
+        Log.e(TAG, "Error querying volume ${volume.getDescription(context)}", e)
+      }
+    }
+
+    // Fallback: Try direct filesystem scan if MediaStore found nothing
+    // This is slower but catches unindexed files (like USB OTG)
+    if (videos.isEmpty()) {
+      scanDirectoryForVideos(context, folderPath, videos, processedPaths)
+    }
+  }
+
+  private fun scanDirectoryForVideos(
+    context: Context,
+    folderPath: String,
+    videos: MutableList<Video>,
+    processedPaths: MutableSet<String>,
+  ) {
+    try {
+      val directory = File(folderPath)
+      if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
+        return
+      }
+
+      val videoFiles = directory.listFiles()?.filter {
+        it.isFile && StorageScanUtils.isVideoFile(it)
+      } ?: emptyList()
+
+      for (videoFile in videoFiles) {
+        try {
+          val normalizedPath = normalizePath(videoFile.absolutePath)
+          if (processedPaths.add(normalizedPath) && videoFile.exists()) {
+            val video = createVideoFromFile(videoFile, folderPath, directory.name)
+            videos.add(video)
+          }
+        } catch (e: Exception) {
+          Log.w(TAG, "Error processing video file: ${videoFile.absolutePath}", e)
+        }
       }
     } catch (e: Exception) {
-      Log.e(TAG, "Error in filesystem scan for bucket", e)
+      Log.e(TAG, "Error scanning directory: $folderPath", e)
     }
   }
 
@@ -141,10 +193,7 @@ object VideoRepository {
     val size = file.length()
     val dateModified = file.lastModified() / 1000
 
-    // Extract metadata using utility
     val metadata = StorageScanUtils.extractVideoMetadata(file)
-
-    // For filesystem-scanned videos, we create a file URI
     val uri = Uri.fromFile(file)
 
     return Video(
@@ -163,50 +212,6 @@ object VideoRepository {
       bucketId = bucketId,
       bucketDisplayName = bucketDisplayName,
     )
-  }
-
-  private fun queryMediaStoreBucket(
-    context: Context,
-    contentUri: Uri,
-    bucketId: String,
-    videos: MutableList<Video>,
-    processedPaths: MutableSet<String>,
-  ) {
-    try {
-      context.contentResolver
-        .query(
-          contentUri,
-          PROJECTION,
-          "${MediaStore.Video.Media.BUCKET_ID} = ?",
-          arrayOf(bucketId),
-          SORT_ORDER,
-        )?.use { cursor ->
-          Log.d(TAG, "MediaStore bucket query result: ${cursor.count} videos found in $contentUri")
-          processVideoCursor(cursor, videos, processedPaths)
-        }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error querying MediaStore bucket from $contentUri", e)
-    }
-  }
-
-  private fun processVideoCursor(
-    cursor: Cursor,
-    videos: MutableList<Video>,
-    processedPaths: MutableSet<String>,
-  ) {
-    val columnIndices = getCursorColumnIndices(cursor)
-
-    while (cursor.moveToNext()) {
-      extractVideoFromCursor(cursor, columnIndices)?.let { video ->
-        val normalizedPath = normalizePath(video.path)
-        if (processedPaths.add(normalizedPath)) {
-          videos.add(video)
-          Log.d(TAG, "Added video: ${video.displayName} at ${video.path}")
-        } else {
-          Log.d(TAG, "Skipping duplicate video from MediaStore: ${video.displayName}")
-        }
-      }
-    }
   }
 
   private fun getCursorColumnIndices(cursor: Cursor): VideoColumnIndices =
@@ -275,6 +280,7 @@ object VideoRepository {
     path: String,
   ): Pair<String, String> {
     val parentPath = File(path).parent?.let { normalizePath(it) } ?: ""
+    // Use MediaStore's BUCKET_ID if available, otherwise generate from path hash
     val finalBucketId = bucketId.ifEmpty { parentPath.hashCode().toString() }
     val finalBucketDisplayName =
       bucketDisplayName.ifEmpty { File(parentPath).name.takeIf { it.isNotEmpty() } ?: "Unknown Folder" }
@@ -326,4 +332,5 @@ object VideoRepository {
       }
       result
     }
+
 }

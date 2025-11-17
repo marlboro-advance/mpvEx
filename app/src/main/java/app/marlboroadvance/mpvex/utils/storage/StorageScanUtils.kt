@@ -87,28 +87,47 @@ object StorageScanUtils {
     }
 
   /**
+   * Determines which storage volume a given path belongs to
+   */
+  fun getVolumeForPath(
+    context: Context,
+    path: String,
+  ): StorageVolume? {
+    try {
+      val volumes = getAllStorageVolumes(context)
+
+      for (volume in volumes) {
+        val volumePath = getVolumePath(volume)
+        if (volumePath != null && path.startsWith(volumePath)) {
+          return volume
+        }
+      }
+
+      return volumes.firstOrNull { it.isPrimary }
+    } catch (e: Exception) {
+      Log.w(TAG, "Error determining volume for path: $path", e)
+      return null
+    }
+  }
+
+  /**
    * Gets the physical path of a storage volume
    */
   fun getVolumePath(volume: StorageVolume): String? {
     try {
-      // For Android 11+ (API 30+), use getDirectory()
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         val directory = volume.directory
         if (directory != null) {
-          Log.d(TAG, "Got volume path via getDirectory(): ${directory.absolutePath}")
           return directory.absolutePath
         }
       }
 
-      // Try reflection for older versions
       val method = volume.javaClass.getMethod("getPath")
       val path = method.invoke(volume) as? String
       if (path != null) {
-        Log.d(TAG, "Got volume path via reflection: $path")
         return path
       }
 
-      // Fallback: construct from UUID
       volume.uuid?.let { uuid ->
         val possiblePaths =
           listOf(
@@ -117,7 +136,6 @@ object StorageScanUtils {
           )
         for (possiblePath in possiblePaths) {
           if (File(possiblePath).exists()) {
-            Log.d(TAG, "Got volume path via UUID: $possiblePath")
             return possiblePath
           }
         }
@@ -249,7 +267,6 @@ object StorageScanUtils {
       }
 
       retriever.release()
-      Log.d(TAG, "Extracted metadata for ${file.name}: duration=${duration}ms, mimeType=$mimeType")
     } catch (e: Exception) {
       Log.w(TAG, "Could not extract metadata for ${file.absolutePath}, using fallback", e)
       // Fallback to mime type based on extension
