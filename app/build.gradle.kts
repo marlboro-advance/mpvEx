@@ -191,7 +191,10 @@ dependencies {
   // Network protocol libraries
   implementation(libs.jcifs.ng) // SMB/CIFS
   implementation(libs.commons.net) // FTP
-  implementation(libs.sardine.android) // WebDAV (Android-compatible version using OkHttp)
+  implementation(libs.sardine.android) { // WebDAV (Android-compatible version using OkHttp)
+    // Exclude xpp3 as Android already provides XmlPullParser
+    exclude(group = "xpp3", module = "xpp3")
+  }
   implementation(libs.nanohttpd) // Local proxy server for streaming
 }
 

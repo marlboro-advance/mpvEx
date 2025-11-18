@@ -3,6 +3,7 @@
 # mpvExtended
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/marlboro-advance/mpvex.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/marlboro-advance/mpvex/total?logo=github&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
+[![IzzyOnDroid Yearly Downloads](https://img.shields.io/badge/dynamic/json?url=https://dlstats.izzyondroid.org/iod-stats-collector/stats/basic/yearly/rolling.json&query=$.['<packageName>']&label=IzzyOnDroid%20yearly%20downloads)](https://apt.izzysoft.de/packages/app.marlboroadvance.mpvex)
 
 
 **mpvExtended is a fork of [mpv-android](https://github.com/mpv-android/mpv-android), built on the libmpv library. It aims
@@ -36,6 +37,10 @@ the [Issues](https://github.com/marlboro-advance/mpvEx/issues) section.**
 Download the latest stable version from the [GitHub releases page](https://github.com/marlboro-advance/mpvEx/releases).
 
 [![Download Release](https://img.shields.io/badge/Download-Release-blue?style=for-the-badge)](https://github.com/marlboro-advance/mpvEx/releases)
+
+Or you can get the stable releases here
+
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroidButtonGreyBorder_nofont.png" height="50" alt="Get it at IzzyOnDroid">](https://apt.izzysoft.de/packages/app.marlboroadvance.mpvex)
 
 ### Preview Builds
 For testing purposes only
@@ -129,6 +134,7 @@ Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_K
 ---
 
 ## Acknowledgments
+
 - [mpv-android](https://github.com/mpv-android)
 - [mpvKt](https://github.com/abdallahmehiz/mpvKt)
 - [Next player](https://github.com/anilbeesetti/nextplayer)
@@ -141,3 +147,5 @@ Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_K
 If you find mpvExtended useful, consider supporting the development:
 
 [![UPI](https://img.shields.io/badge/UPI-aadiinarvekar@upi-blue?style=for-the-badge&logo=google-pay&logoColor=white)](upi://pay?pa=aadiinarvekar@upi)
+
+---
