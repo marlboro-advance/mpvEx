@@ -52,11 +52,20 @@ object StorageScanUtils {
 
   /**
    * Gets all mounted storage volumes
+   * Note: Uses a lenient check as volume.state can sometimes be unreliable
    */
   fun getAllStorageVolumes(context: Context): List<StorageVolume> =
     try {
       val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-      storageManager.storageVolumes.filter { it.state == Environment.MEDIA_MOUNTED }
+      // Filter volumes more leniently - include volumes even if state is not MEDIA_MOUNTED
+      // as the state can be unreliable, especially for SD cards
+      storageManager.storageVolumes.filter { volume ->
+        // Consider a volume available if:
+        // 1. It's reported as mounted, OR
+        // 2. We can get a valid path for it and it exists
+        volume.state == Environment.MEDIA_MOUNTED ||
+          (getVolumePath(volume)?.let { path -> File(path).exists() } == true)
+      }
     } catch (e: Exception) {
       Log.e(TAG, "Error getting storage volumes", e)
       emptyList()
