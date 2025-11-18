@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -21,8 +18,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -36,8 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
@@ -65,75 +58,23 @@ fun EditConnectionSheet(
   var passwordVisible by remember { mutableStateOf(false) }
   var protocolMenuExpanded by remember { mutableStateOf(false) }
 
-  // Validation states
-  var hostError by remember { mutableStateOf<String?>(null) }
-  var portError by remember { mutableStateOf<String?>(null) }
-  var usernameError by remember { mutableStateOf<String?>(null) }
-  var pathError by remember { mutableStateOf<String?>(null) }
-
   val handleDismiss = {
     onDismiss()
   }
 
-  // Validation functions
-  fun validateHost(value: String): String? {
-    return when {
-      value.isBlank() -> "Host is required"
-      value.contains(" ") -> "Host cannot contain spaces"
-      value.length > 253 -> "Host name too long"
-      else -> null
-    }
-  }
-
-  fun validatePort(value: String): String? {
-    val portNum = value.toIntOrNull()
-    return when {
-      value.isBlank() -> "Port is required"
-      portNum == null -> "Port must be a number"
-      portNum < 1 || portNum > 65535 -> "Port must be between 1 and 65535"
-      else -> null
-    }
-  }
-
-  fun validateUsername(value: String): String? {
-    return when {
-      !isAnonymous && value.isBlank() -> "Username is required"
-      value.length > 255 -> "Username too long"
-      else -> null
-    }
-  }
-
-  fun validatePath(value: String): String? {
-    return when {
-      value.isBlank() -> null // Will default to "/"
-      !value.startsWith("/") -> "Path must start with /"
-      value.length > 4096 -> "Path too long"
-      else -> null
-    }
-  }
-
   val handleSave = {
-    // Validate all fields
-    hostError = validateHost(host)
-    portError = validatePort(port)
-    usernameError = validateUsername(username)
-    pathError = validatePath(path)
-
-    // Only save if all validations pass
-    if (hostError == null && portError == null && usernameError == null && pathError == null) {
-      val updatedConnection =
-        connection.copy(
-          name = name,
-          protocol = protocol,
-          host = host.trim(),
-          port = port.toIntOrNull() ?: protocol.defaultPort,
-          username = if (isAnonymous) "" else username.trim(),
-          password = if (isAnonymous) "" else password,
-          path = path.ifBlank { "/" },
-          isAnonymous = isAnonymous,
-        )
-      onSave(updatedConnection)
-    }
+    val updatedConnection =
+      connection.copy(
+        name = name,
+        protocol = protocol,
+        host = host,
+        port = port.toIntOrNull() ?: protocol.defaultPort,
+        username = if (isAnonymous) "" else username,
+        password = if (isAnonymous) "" else password,
+        path = path.ifBlank { "/" },
+        isAnonymous = isAnonymous,
+      )
+    onSave(updatedConnection)
   }
 
   AlertDialog(
@@ -151,7 +92,7 @@ fun EditConnectionSheet(
         modifier = Modifier
           .fillMaxWidth()
           .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
             // Name and Protocol in one row
             Row(
@@ -204,16 +145,11 @@ fun EditConnectionSheet(
             // Host
             OutlinedTextField(
               value = host,
-              onValueChange = {
-                host = it
-                hostError = validateHost(it)
-              },
+              onValueChange = { host = it },
               label = { Text("Host/IP Address", maxLines = 1, overflow = TextOverflow.Ellipsis) },
               modifier = Modifier.fillMaxWidth(),
               singleLine = true,
               placeholder = { Text("192.168.1.100", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-              isError = hostError != null,
-              supportingText = hostError?.let { { Text(it) } },
             )
 
             // Port and Path in one row
@@ -224,31 +160,21 @@ fun EditConnectionSheet(
               // Port
               OutlinedTextField(
                 value = port,
-                onValueChange = {
-                  port = it
-                  portError = validatePort(it)
-                },
+                onValueChange = { port = it },
                 label = { Text("Port", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.weight(0.3f),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = portError != null,
-                supportingText = portError?.let { { Text(it) } },
               )
 
               // Path
               OutlinedTextField(
                 value = path,
-                onValueChange = {
-                  path = it
-                  pathError = validatePath(it)
-                },
+                onValueChange = { path = it },
                 label = { Text("Path", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.weight(0.7f),
                 singleLine = true,
                 placeholder = { Text("/", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                isError = pathError != null,
-                supportingText = pathError?.let { { Text(it) } },
               )
             }
 
@@ -265,53 +191,37 @@ fun EditConnectionSheet(
               Text("Anonymous/Guest Access")
             }
 
-            // Username
-        OutlinedTextField(
-          value = username,
-          onValueChange = {
-            username = it
-            usernameError = validateUsername(it)
-          },
-          label = { Text("Username", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            // Username and Password in one row
+        Row(
           modifier = Modifier.fillMaxWidth(),
-          singleLine = true,
-          enabled = !isAnonymous,
-          isError = usernameError != null && !isAnonymous,
-          supportingText = if (!isAnonymous) usernameError?.let { { Text(it) } } else null,
-        )
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          // Username
+          OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            modifier = Modifier.weight(0.50f),
+            singleLine = true,
+            enabled = !isAnonymous,
+          )
 
-        // Password
-        OutlinedTextField(
-          value = password,
-          onValueChange = { password = it },
-          label = { Text("Password", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-          modifier = Modifier.fillMaxWidth(),
-          singleLine = true,
-          enabled = !isAnonymous,
-          visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-          trailingIcon = {
-            if (!isAnonymous) {
-              IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(
-                  imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                  contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                )
-              }
-            }
-          },
-        )
+          // Password
+          OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            modifier = Modifier.weight(0.50f),
+            singleLine = true,
+            enabled = !isAnonymous,
+          )
+        }
       }
     },
     confirmButton = {
       Button(
         onClick = handleSave,
-        enabled = host.isNotBlank() &&
-          (isAnonymous || username.isNotBlank()) &&
-          hostError == null &&
-          portError == null &&
-          usernameError == null &&
-          pathError == null,
+        enabled = host.isNotBlank() && (isAnonymous || username.isNotBlank()),
       ) {
         Text(
           text = "Save",
