@@ -6,10 +6,12 @@ import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
 import app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.NetworkClient
 import app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.NetworkClientFactory
+import app.marlboroadvance.mpvex.utils.security.EncryptionUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 
 /**
  * Repository for managing network connections and file browsing
@@ -25,25 +27,30 @@ class NetworkRepository(
   val connectionStatuses: StateFlow<Map<Long, ConnectionStatus>> = _connectionStatuses.asStateFlow()
 
   /**
-   * Get all saved connections as a Flow
+   * Get all saved connections as a Flow (with decrypted passwords)
    */
-  fun getAllConnections(): Flow<List<NetworkConnection>> = dao.getAllConnections()
+  fun getAllConnections(): Flow<List<NetworkConnection>> =
+    dao.getAllConnections().map { connections ->
+      connections.map { decryptConnection(it) }
+    }
 
   /**
-   * Get a connection by ID
+   * Get a connection by ID (with decrypted password)
    */
-  suspend fun getConnectionById(id: Long): NetworkConnection? = dao.getConnectionById(id)
+  suspend fun getConnectionById(id: Long): NetworkConnection? =
+    dao.getConnectionById(id)?.let { decryptConnection(it) }
 
   /**
-   * Add a new connection
+   * Add a new connection (encrypts password before storage)
    */
-  suspend fun addConnection(connection: NetworkConnection): Long = dao.insert(connection)
+  suspend fun addConnection(connection: NetworkConnection): Long =
+    dao.insert(encryptConnection(connection))
 
   /**
-   * Update an existing connection
+   * Update an existing connection (encrypts password before storage)
    */
   suspend fun updateConnection(connection: NetworkConnection) {
-    dao.update(connection)
+    dao.update(encryptConnection(connection))
     // Disconnect and remove cached client if it exists
     // This ensures the next connection uses the updated credentials
     activeClients[connection.id]?.let { client ->
@@ -242,5 +249,27 @@ class NetworkRepository(
     status: ConnectionStatus,
   ) {
     _connectionStatuses.value += (connectionId to status)
+  }
+
+  /**
+   * Encrypt password before storing in database
+   */
+  private fun encryptConnection(connection: NetworkConnection): NetworkConnection {
+    return if (connection.password.isNotEmpty() && !EncryptionUtils.isEncrypted(connection.password)) {
+      connection.copy(password = EncryptionUtils.encrypt(connection.password))
+    } else {
+      connection
+    }
+  }
+
+  /**
+   * Decrypt password after reading from database
+   */
+  private fun decryptConnection(connection: NetworkConnection): NetworkConnection {
+    return if (connection.password.isNotEmpty() && EncryptionUtils.isEncrypted(connection.password)) {
+      connection.copy(password = EncryptionUtils.decrypt(connection.password))
+    } else {
+      connection
+    }
   }
 }
