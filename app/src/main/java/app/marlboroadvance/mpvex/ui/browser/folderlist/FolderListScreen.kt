@@ -12,15 +12,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewModule
-import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,10 +64,10 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
+import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
-import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
-import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserScreen
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
@@ -131,7 +130,6 @@ object FolderListScreen : Screen {
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
 
     // View mode
-    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val sortedFolders =
       remember(videoFolders, folderSortType, folderSortOrder) {
         SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
@@ -346,6 +344,10 @@ object FolderListScreen : Screen {
             }
           },
           onPlayLink = { showLinkDialog.value = true },
+          onNetworkStreaming = {
+            fabMenuExpanded = false
+            backstack.add(NetworkStreamingScreen)
+          },
           expanded = fabMenuExpanded,
           onExpandedChange = { fabMenuExpanded = it },
         )

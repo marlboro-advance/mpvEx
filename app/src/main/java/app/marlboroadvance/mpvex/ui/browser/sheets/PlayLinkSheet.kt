@@ -130,7 +130,7 @@ fun PlayLinkSheet(
 
         if (linkInputUrl.isNotBlank() && !isLinkInputUrlValid) {
           Text(
-            text = "Invalid URL protocol. Supported: http, https, rtsp, rtmp, etc.",
+            text = "Invalid URL protocol",
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,

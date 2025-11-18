@@ -60,6 +60,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -428,6 +429,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
             }
           },
           onPlayLink = { showLinkDialog.value = true },
+          onNetworkStreaming = {
+            fabMenuExpanded = false
+            backstack.add(NetworkStreamingScreen)
+          },
           expanded = fabMenuExpanded,
           onExpandedChange = { fabMenuExpanded = it },
         )

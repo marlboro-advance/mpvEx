@@ -65,6 +65,7 @@ fun SortDialog(
         text = title,
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurface,
       )
     },
     text = {
@@ -109,7 +110,7 @@ fun SortDialog(
       }
     },
     confirmButton = {},
-    containerColor = MaterialTheme.colorScheme.surface,
+    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     tonalElevation = 6.dp,
     shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,

@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Lan
+import androidx.compose.material.icons.filled.Webhook
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -44,9 +46,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 
-/**
- * Data class representing a menu item in the MediaActionFab
- */
 data class MediaActionItem(
   val icon: ImageVector,
   val label: String,
@@ -54,16 +53,6 @@ data class MediaActionItem(
   val onClick: () -> Unit,
 )
 
-/**
- * A floating action button menu for media-related actions.
- *
- * Features:
- * - Opens files
- * - Plays recently played media
- * - Plays media from URL
- * - Auto-collapses on scroll
- * - Handles back button
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MediaActionFab(
@@ -72,6 +61,7 @@ fun MediaActionFab(
   onOpenFile: () -> Unit,
   onPlayRecentlyPlayed: () -> Unit,
   onPlayLink: () -> Unit,
+  onNetworkStreaming: () -> Unit,
   expanded: Boolean,
   onExpandedChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
@@ -97,6 +87,7 @@ fun MediaActionFab(
         add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
         add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
         add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
+        add(MediaActionItem(Icons.Filled.Webhook, "Local Network", onClick = onNetworkStreaming))
       }
     }
 
@@ -127,7 +118,8 @@ fun MediaActionFab(
                     },
                   )
               }
-            }.then(
+            }
+            .then(
               if (index == 0) {
                 // First item can navigate back to FAB button
                 Modifier.onKeyEvent { event ->
@@ -161,9 +153,6 @@ fun MediaActionFab(
   }
 }
 
-/**
- * The toggle button for the FAB menu
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ToggleFabButton(
@@ -178,10 +167,12 @@ private fun ToggleFabButton(
           traversalIndex = -1f
           stateDescription = if (expanded) "Expanded" else "Collapsed"
           contentDescription = "Toggle menu"
-        }.animateFloatingActionButton(
+        }
+        .animateFloatingActionButton(
           visible = true,
           alignment = Alignment.BottomEnd,
-        ).focusRequester(focusRequester),
+        )
+        .focusRequester(focusRequester),
     checked = expanded,
     onCheckedChange = { onToggle() },
     containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
