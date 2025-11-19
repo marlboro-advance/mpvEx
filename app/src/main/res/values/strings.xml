@@ -319,4 +319,13 @@
     <string name="pref_folders_clear_all">Clear all blacklisted folders</string>
     <string name="pref_folders_clear_all_confirm_title">Clear all blacklisted folders?</string>
     <string name="pref_folders_clear_all_confirm_message">This will remove all folders from the blacklist. You can add them back later.</string>
+
+    <!-- Browser Preferences -->
+    <string name="pref_browser_title">List</string>
+    <string name="pref_browser_summary">File scanning and list options</string>
+    <string name="pref_browser_category_scanning">Scanning</string>
+    <string name="pref_browser_recognize_nomedia_title">Recognize .nomedia</string>
+    <string name="pref_browser_recognize_nomedia_summary">Exclude any media file from a video list if a \".nomedia\" file exists in that folder or a parent folder.</string>
+    <string name="pref_browser_show_hidden_title">Show hidden files and folders</string>
+    <string name="pref_browser_show_hidden_summary">Show hidden folders and files starting with \".\" (dot).</string>
 </resources>

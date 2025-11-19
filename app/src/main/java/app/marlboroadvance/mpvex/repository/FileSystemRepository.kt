@@ -10,6 +10,7 @@ import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepositor
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,6 +24,7 @@ import kotlin.math.pow
 object FileSystemRepository : KoinComponent {
   private const val TAG = "FileSystemRepository"
   private val metadataCache: VideoMetadataCacheRepository by inject()
+  private val browserPreferences: BrowserPreferences by inject()
 
   // Folders to skip during scanning (system/cache folders)
   private val SKIP_FOLDERS =
@@ -97,6 +99,11 @@ object FileSystemRepository : KoinComponent {
           return@withContext Result.failure(Exception("Failed to list directory contents: $path"))
         }
 
+        // Check if current directory contains .nomedia and should be skipped
+        if (browserPreferences.respectNomedia.get() && files.any { it.name == ".nomedia" }) {
+          return@withContext Result.success(emptyList())
+        }
+
         // Process subdirectories - only include folders that contain videos
         files
           .filter { it.isDirectory && it.canRead() && !shouldSkipFolder(it) }
@@ -119,7 +126,11 @@ object FileSystemRepository : KoinComponent {
           }
 
         // Process video files in current directory
-        val videoFiles = files.filter { it.isFile && StorageScanUtils.isVideoFile(it) }
+        val videoFiles = files.filter {
+          it.isFile &&
+            StorageScanUtils.isVideoFile(it) &&
+            (browserPreferences.showHiddenFiles.get() || !it.name.startsWith("."))
+        }
 
         // Create Video objects for each video file
         val videos = getVideosFromFiles(context, videoFiles)
@@ -209,6 +220,7 @@ object FileSystemRepository : KoinComponent {
     var totalSize = 0L
     var totalDuration = 0L
     var hasSubfolders = false
+    val showHidden = browserPreferences.showHiddenFiles.get()
 
     try {
       val files = folder.listFiles()
@@ -222,7 +234,7 @@ object FileSystemRepository : KoinComponent {
               videoCount += subCount
             }
 
-            file.isFile && StorageScanUtils.isVideoFile(file) -> {
+            file.isFile && StorageScanUtils.isVideoFile(file) && (showHidden || !file.name.startsWith(".")) -> {
               videoCount++
               totalSize += file.length()
               // Skip duration extraction for performance - it's expensive
@@ -249,12 +261,13 @@ object FileSystemRepository : KoinComponent {
     if (currentDepth >= maxDepth) return 0
 
     var count = 0
+    val showHidden = browserPreferences.showHiddenFiles.get()
     try {
       val files = folder.listFiles()
       if (files != null) {
         for (file in files) {
           when {
-            file.isFile && StorageScanUtils.isVideoFile(file) -> count++
+            file.isFile && StorageScanUtils.isVideoFile(file) && (showHidden || !file.name.startsWith(".")) -> count++
             file.isDirectory && !shouldSkipFolder(file) -> {
               count += countVideosRecursive(file, maxDepth, currentDepth + 1)
             }
@@ -449,7 +462,16 @@ object FileSystemRepository : KoinComponent {
    */
   private fun shouldSkipFolder(folder: File): Boolean {
     val name = folder.name.lowercase()
-    return name.startsWith(".") || SKIP_FOLDERS.contains(name)
+    val showHidden = browserPreferences.showHiddenFiles.get()
+
+    if (!showHidden && name.startsWith(".")) return true
+    if (SKIP_FOLDERS.contains(name)) return true
+
+    if (browserPreferences.respectNomedia.get()) {
+      if (File(folder, ".nomedia").exists()) return true
+    }
+
+    return false
   }
 
   private data class FolderInfo(
