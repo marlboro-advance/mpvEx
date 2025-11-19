@@ -825,6 +825,7 @@ private fun FileSystemSortDialog(
   val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
@@ -880,6 +881,11 @@ private fun FileSystemSortDialog(
           label = "Total Videos",
           checked = showTotalVideosChip,
           onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Folder Size",
+          checked = showTotalSizeChip,
+          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
         ),
         VisibilityToggle(
           label = "Size",

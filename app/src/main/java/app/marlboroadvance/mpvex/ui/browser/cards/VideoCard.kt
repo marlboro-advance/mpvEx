@@ -222,7 +222,7 @@ fun VideoCard(
           }
           if (showResolutionChip && video.resolution != "--") {
             if (showSizeChip) {
-              Spacer(modifier = Modifier.width(8.dp))
+              Spacer(modifier = Modifier.width(4.dp))
             }
 
             // Extract base resolution without FPS for display

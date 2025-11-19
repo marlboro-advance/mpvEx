@@ -420,9 +420,16 @@ class VideoRepository(
     val baseResolution = formatResolution(width, height, fps)
     if (baseResolution == "--" || fps <= 0f) return baseResolution
 
-    // Round fps to nearest integer for display
-    val fpsInt = fps.toInt()
-    return "$baseResolution@$fpsInt"
+    // Format fps: show up to 2 decimals, but remove trailing zeros
+    val fpsFormatted = if (fps % 1.0f == 0f) {
+      // Integer fps (e.g., 30.0 -> "30")
+      fps.toInt().toString()
+    } else {
+      // Decimal fps (e.g., 23.976 -> "23.98", 29.97 -> "29.97")
+      String.format(Locale.getDefault(), "%.2f", fps).trimEnd('0').trimEnd('.')
+    }
+
+    return "$baseResolution@$fpsFormatted"
   }
 
   suspend fun getVideosForBuckets(

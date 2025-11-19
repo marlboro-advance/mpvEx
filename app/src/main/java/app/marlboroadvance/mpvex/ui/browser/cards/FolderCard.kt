@@ -32,6 +32,7 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
+import kotlin.math.pow
 
 @Composable
 fun FolderCard(
@@ -48,6 +49,7 @@ fun FolderCard(
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
@@ -116,6 +118,8 @@ fun FolderCard(
         Spacer(modifier = Modifier.height(4.dp))
         Row {
           // Hide chips at storage root level (when videoCount is 0)
+          var hasChip = false
+
           if (showTotalVideosChip && folder.videoCount > 0) {
             Text(
               if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
@@ -129,9 +133,30 @@ fun FolderCard(
                   .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
+            hasChip = true
           }
+
+          if (showTotalSizeChip && folder.totalSize > 0) {
+            if (hasChip) {
+              Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+              formatFileSize(folder.totalSize),
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+            hasChip = true
+          }
+
           if (showTotalDurationChip && folder.totalDuration > 0) {
-            if (showTotalVideosChip && folder.videoCount > 0) {
+            if (hasChip) {
               Spacer(modifier = Modifier.width(4.dp))
             }
             Text(
@@ -164,4 +189,12 @@ private fun formatDuration(durationMs: Long): String {
     minutes > 0 -> "${minutes}m"
     else -> "${secs}s"
   }
+}
+
+private fun formatFileSize(bytes: Long): String {
+  if (bytes <= 0) return "0 B"
+  val units = arrayOf("B", "KB", "MB", "GB", "TB")
+  val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
+  val value = bytes / 1024.0.pow(digitGroups.toDouble())
+  return String.format(java.util.Locale.getDefault(), "%.1f %s", value, units[digitGroups])
 }

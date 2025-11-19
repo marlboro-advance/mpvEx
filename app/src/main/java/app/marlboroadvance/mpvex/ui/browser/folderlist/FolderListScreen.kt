@@ -524,6 +524,7 @@ private fun FolderSortDialog(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
@@ -603,6 +604,11 @@ private fun FolderSortDialog(
           label = "Total Duration",
           checked = showTotalDurationChip,
           onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Folder Size",
+          checked = showTotalSizeChip,
+          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
         ),
         VisibilityToggle(
           label = "Size",
