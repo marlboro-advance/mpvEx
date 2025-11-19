@@ -78,11 +78,11 @@ object PreferencesScreen : Screen {
             onClick = { backstack.add(PlayerControlsPreferencesScreen) },
           )
           preference(
-            key = "list",
-            title = { Text(text = stringResource(id = R.string.pref_browser_title)) },
-            summary = { Text(text = stringResource(id = R.string.pref_browser_summary)) },
+            key = "folders",
+            title = { Text(text = stringResource(id = R.string.pref_folders_title)) },
+            summary = { Text(text = stringResource(id = R.string.pref_folders_summary)) },
             icon = { Icon(Icons.Outlined.Folder, null) },
-            onClick = { backstack.add(ListPreferencesScreen) },
+            onClick = { backstack.add(FoldersPreferencesScreen) },
           )
           preference(
             key = "gesture",

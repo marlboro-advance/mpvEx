@@ -9,7 +9,6 @@ import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
-import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.repository.FileSystemRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
@@ -34,7 +33,6 @@ class FileSystemBrowserViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val browserPreferences: BrowserPreferences by inject()
   // Special marker for "show storage volumes" mode
   private val STORAGE_ROOTS_MARKER = "__STORAGE_ROOTS__"
 
@@ -85,19 +83,6 @@ class FileSystemBrowserViewModel(
     // Refresh on global media library changes
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
-        loadCurrentDirectory()
-      }
-    }
-
-    // Refresh when browser preferences change
-    viewModelScope.launch {
-      browserPreferences.showHiddenFiles.changes().collectLatest {
-        loadCurrentDirectory()
-      }
-    }
-
-    viewModelScope.launch {
-      browserPreferences.respectNomedia.changes().collectLatest {
         loadCurrentDirectory()
       }
     }

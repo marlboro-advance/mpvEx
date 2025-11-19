@@ -29,10 +29,6 @@ class BrowserPreferences(
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
   val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
   val showFolderPath = preferenceStore.getBoolean("show_folder_path", true)
-
-  // File system preferences
-  val showHiddenFiles = preferenceStore.getBoolean("show_hidden_files", false)
-  val respectNomedia = preferenceStore.getBoolean("respect_nomedia", true)
 }
 
 /**
