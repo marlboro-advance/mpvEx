@@ -16,6 +16,8 @@ class SubtitlesPreferences(
   preferenceStore: PreferenceStore,
 ) {
   val preferredLanguages = preferenceStore.getString("sub_preferred_languages")
+  val priorityKeywords = preferenceStore.getString("sub_priority_keywords")
+  val excludedKeywords = preferenceStore.getString("sub_excluded_keywords")
   val autoloadMatchingSubtitles = preferenceStore.getBoolean("sub_autoload_enabled", true)
 
   // Subdl.com API key for online subtitle downloads
