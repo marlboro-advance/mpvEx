@@ -143,9 +143,15 @@ fun GestureHandler(
 
               val xFraction = it.x / size.width
               if (xFraction > rightThreshold) {
+                isDoubleTapSeeking = true
+                lastSeekRegion = "right"
+                lastSeekTime = System.currentTimeMillis()
                 if (!isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleRightDoubleTap()
               } else if (xFraction < leftThreshold) {
+                isDoubleTapSeeking = true
+                lastSeekRegion = "left"
+                lastSeekTime = System.currentTimeMillis()
                 if (isSeekingForwards) viewModel.updateSeekAmount(0)
                 viewModel.handleLeftDoubleTap()
               } else if (!useSingleTapForCenter) {
@@ -175,6 +181,8 @@ fun GestureHandler(
                   now - lastSeekTime!! < multiTapContinueWindow
 
               if (shouldContinueSeek) {
+                tapHandledInPress = true
+                lastSeekTime = now
                 when (region) {
                   "right" -> {
                     if (!isSeekingForwards) viewModel.updateSeekAmount(0)
