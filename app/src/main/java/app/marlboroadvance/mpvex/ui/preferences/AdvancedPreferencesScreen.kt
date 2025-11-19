@@ -38,7 +38,7 @@ import androidx.compose.ui.util.fastJoinToString
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.database.mpvexDatabase
+import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -272,7 +272,7 @@ object AdvancedPreferencesScreen : Screen {
           )
           // Removed: folder scan recursion depth (no longer used)
           var isConfirmDialogShown by remember { mutableStateOf(false) }
-          val mpvexDatabase = koinInject<mpvexDatabase>()
+          val mpvexDatabase = koinInject<MpvExDatabase>()
           Preference(
             title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
             onClick = { isConfirmDialogShown = true },

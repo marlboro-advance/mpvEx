@@ -23,11 +23,13 @@ class BrowserPreferences(
   // Visibility preferences for video card chips
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
   val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
+  val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)
   val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
 
   // Visibility preferences for folder card chips
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
   val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
+  val showTotalSizeChip = preferenceStore.getBoolean("show_total_size_chip", true)
   val showFolderPath = preferenceStore.getBoolean("show_folder_path", true)
 }
 

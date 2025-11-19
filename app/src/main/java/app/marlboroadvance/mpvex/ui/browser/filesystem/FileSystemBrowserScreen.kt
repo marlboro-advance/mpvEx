@@ -44,6 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.repository.FileSystemRepository
@@ -60,6 +61,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -428,6 +430,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
             }
           },
           onPlayLink = { showLinkDialog.value = true },
+          onNetworkStreaming = {
+            fabMenuExpanded = false
+            backstack.add(NetworkStreamingScreen)
+          },
           expanded = fabMenuExpanded,
           onExpandedChange = { fabMenuExpanded = it },
         )
@@ -713,6 +719,8 @@ private fun FileSystemBrowserContent(
   videoSelectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<app.marlboroadvance.mpvex.domain.media.model.Video, Long>,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -786,7 +794,11 @@ private fun FileSystemBrowserContent(
               isRecentlyPlayed = false,
               onClick = { onFolderClick(folder) },
               onLongClick = { onFolderLongClick(folder) },
-              onThumbClick = { onFolderLongClick(folder) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onFolderLongClick(folder) }
+              } else {
+                { onFolderClick(folder) }
+              },
             )
           }
 
@@ -802,7 +814,11 @@ private fun FileSystemBrowserContent(
               isSelected = videoSelectionManager.isSelected(videoFile.video),
               onClick = { onVideoClick(videoFile.video) },
               onLongClick = { onVideoLongClick(videoFile.video) },
-              onThumbClick = { onVideoLongClick(videoFile.video) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onVideoLongClick(videoFile.video) }
+              } else {
+                { onVideoClick(videoFile.video) }
+              },
             )
           }
         }
@@ -820,9 +836,11 @@ private fun FileSystemSortDialog(
   val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
 
@@ -876,6 +894,11 @@ private fun FileSystemSortDialog(
           onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
         ),
         VisibilityToggle(
+          label = "Folder Size",
+          checked = showTotalSizeChip,
+          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
+        ),
+        VisibilityToggle(
           label = "Size",
           checked = showSizeChip,
           onCheckedChange = { browserPreferences.showSizeChip.set(it) },
@@ -884,6 +907,11 @@ private fun FileSystemSortDialog(
           label = "Resolution",
           checked = showResolutionChip,
           onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Framerate",
+          checked = showFramerateInResolution,
+          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
         ),
         VisibilityToggle(
           label = "Progress Bar",

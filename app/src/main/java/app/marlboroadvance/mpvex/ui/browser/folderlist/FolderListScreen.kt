@@ -12,15 +12,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewModule
-import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +51,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
 import app.marlboroadvance.mpvex.preferences.FolderViewMode
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -65,10 +65,10 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
+import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
+import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
-import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
-import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserScreen
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
@@ -131,7 +131,6 @@ object FolderListScreen : Screen {
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
 
     // View mode
-    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val sortedFolders =
       remember(videoFolders, folderSortType, folderSortOrder) {
         SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
@@ -346,6 +345,10 @@ object FolderListScreen : Screen {
             }
           },
           onPlayLink = { showLinkDialog.value = true },
+          onNetworkStreaming = {
+            fabMenuExpanded = false
+            backstack.add(NetworkStreamingScreen)
+          },
           expanded = fabMenuExpanded,
           onExpandedChange = { fabMenuExpanded = it },
         )
@@ -454,6 +457,8 @@ private fun FolderListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -492,7 +497,11 @@ private fun FolderListContent(
           isRecentlyPlayed = isRecentlyPlayed,
           onClick = { onFolderClick(folder) },
           onLongClick = { onFolderLongClick(folder) },
-          onThumbClick = { onFolderLongClick(folder) },
+          onThumbClick = if (tapThumbnailToSelect) {
+            { onFolderLongClick(folder) }
+          } else {
+            { onFolderClick(folder) }
+          },
         )
       }
 
@@ -522,9 +531,11 @@ private fun FolderSortDialog(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
@@ -602,6 +613,11 @@ private fun FolderSortDialog(
           onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
         ),
         VisibilityToggle(
+          label = "Folder Size",
+          checked = showTotalSizeChip,
+          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
+        ),
+        VisibilityToggle(
           label = "Size",
           checked = showSizeChip,
           onCheckedChange = { browserPreferences.showSizeChip.set(it) },
@@ -610,6 +626,11 @@ private fun FolderSortDialog(
           label = "Resolution",
           checked = showResolutionChip,
           onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Framerate",
+          checked = showFramerateInResolution,
+          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
         ),
         VisibilityToggle(
           label = "Progress Bar",

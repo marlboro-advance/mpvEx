@@ -174,6 +174,58 @@ object SubtitlesPreferencesScreen : Screen {
             },
           )
 
+          val priorityKeywords by preferences.priorityKeywords.collectAsState()
+          TextFieldPreference(
+            value = priorityKeywords,
+            onValueChange = preferences.priorityKeywords::set,
+            textToValue = { it },
+            title = { Text(stringResource(R.string.pref_subtitles_whitelist_title)) },
+            summary = {
+              if (priorityKeywords.isNotBlank()) {
+                Text(priorityKeywords)
+              } else {
+                Text(stringResource(R.string.pref_subtitles_whitelist_summary))
+              }
+            },
+            textField = { value, onValueChange, _ ->
+              Column {
+                Text(stringResource(R.string.enter_keywords))
+                TextField(
+                  value,
+                  onValueChange,
+                  modifier = Modifier.fillMaxWidth(),
+                  placeholder = { Text(stringResource(R.string.keywords_placeholder)) },
+                )
+              }
+            },
+          )
+
+          val excludedKeywords by preferences.excludedKeywords.collectAsState()
+          TextFieldPreference(
+            value = excludedKeywords,
+            onValueChange = preferences.excludedKeywords::set,
+            textToValue = { it },
+            title = { Text(stringResource(R.string.pref_subtitles_blacklist_title)) },
+            summary = {
+              if (excludedKeywords.isNotBlank()) {
+                Text(excludedKeywords)
+              } else {
+                Text(stringResource(R.string.pref_subtitles_blacklist_summary))
+              }
+            },
+            textField = { value, onValueChange, _ ->
+              Column {
+                Text(stringResource(R.string.enter_keywords))
+                TextField(
+                  value,
+                  onValueChange,
+                  modifier = Modifier.fillMaxWidth(),
+                  placeholder = { Text(stringResource(R.string.keywords_placeholder)) },
+                )
+              }
+            },
+          )
+
           val autoload by preferences.autoloadMatchingSubtitles.collectAsState()
           SwitchPreference(
             value = autoload,

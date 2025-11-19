@@ -2,7 +2,10 @@ package app.marlboroadvance.mpvex.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import app.marlboroadvance.mpvex.database.converters.NetworkProtocolConverter
 import app.marlboroadvance.mpvex.database.dao.ExternalSubtitleDao
+import app.marlboroadvance.mpvex.database.dao.NetworkConnectionDao
 import app.marlboroadvance.mpvex.database.dao.PlaybackStateDao
 import app.marlboroadvance.mpvex.database.dao.RecentlyPlayedDao
 import app.marlboroadvance.mpvex.database.dao.VideoMetadataDao
@@ -10,6 +13,7 @@ import app.marlboroadvance.mpvex.database.entities.ExternalSubtitleEntity
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 import app.marlboroadvance.mpvex.database.entities.VideoMetadataEntity
+import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 
 @Database(
   entities = [
@@ -17,11 +21,13 @@ import app.marlboroadvance.mpvex.database.entities.VideoMetadataEntity
     RecentlyPlayedEntity::class,
     ExternalSubtitleEntity::class,
     VideoMetadataEntity::class,
+    NetworkConnection::class,
   ],
   version = 2,
-  exportSchema = false,
+  exportSchema = true,
 )
-abstract class mpvexDatabase : RoomDatabase() {
+@TypeConverters(NetworkProtocolConverter::class)
+abstract class MpvExDatabase : RoomDatabase() {
   abstract fun videoDataDao(): PlaybackStateDao
 
   abstract fun recentlyPlayedDao(): RecentlyPlayedDao
@@ -29,4 +35,6 @@ abstract class mpvexDatabase : RoomDatabase() {
   abstract fun externalSubtitleDao(): ExternalSubtitleDao
 
   abstract fun videoMetadataDao(): VideoMetadataDao
+
+  abstract fun networkConnectionDao(): NetworkConnectionDao
 }

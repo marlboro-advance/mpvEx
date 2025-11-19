@@ -95,6 +95,10 @@
     <string name="pref_gesture_media_next">Next</string>
     <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
 
+    <string name="pref_gesture_view_title">View</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_title">Tap thumbnail to select</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_summary">When enabled, tapping on thumbnails enters selection mode. When disabled, tapping thumbnails plays the video.</string>
+
     <string name="pref_decoder">Decoder</string>
     <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
     <string name="pref_decoder_try_hw_dec_title">Try hardware decoding</string>
@@ -110,6 +114,12 @@
     <string name="pref_subtitles_fonts_dir">Fonts directory</string>
     <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
     <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
+    <string name="pref_subtitles_whitelist_title">Priority keywords</string>
+    <string name="pref_subtitles_whitelist_summary">Keywords to prioritize in track titles (e.g., SDH)</string>
+    <string name="pref_subtitles_blacklist_title">Excluded keywords</string>
+    <string name="pref_subtitles_blacklist_summary">Keywords to avoid in track titles (e.g., Forced, Signs)</string>
+    <string name="enter_keywords">Enter keywords separated by commas</string>
+    <string name="keywords_placeholder">e.g. SDH, Forced</string>
 
     <string name="pref_audio">Audio</string>
     <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>

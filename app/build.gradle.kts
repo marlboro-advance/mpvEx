@@ -84,6 +84,17 @@ android {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
       excludes += "lib/*/libsubfont.so"
       excludes += "**/subfont.ttf"
+      excludes += "META-INF/DEPENDENCIES"
+      excludes += "META-INF/LICENSE"
+      excludes += "META-INF/LICENSE.txt"
+      excludes += "META-INF/LICENSE.md"
+      excludes += "META-INF/license.txt"
+      excludes += "META-INF/NOTICE"
+      excludes += "META-INF/NOTICE.txt"
+      excludes += "META-INF/NOTICE.md"
+      excludes += "META-INF/notice.txt"
+      excludes += "META-INF/ASL2.0"
+      excludes += "META-INF/*.kotlin_module"
     }
     jniLibs {
       useLegacyPackaging = true
@@ -176,6 +187,15 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
+
+  // Network protocol libraries
+  implementation(libs.jcifs.ng) // SMB/CIFS
+  implementation(libs.commons.net) // FTP
+  implementation(libs.sardine.android) { // WebDAV (Android-compatible version using OkHttp)
+    // Exclude xpp3 as Android already provides XmlPullParser
+    exclude(group = "xpp3", module = "xpp3")
+  }
+  implementation(libs.nanohttpd) // Local proxy server for streaming
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"

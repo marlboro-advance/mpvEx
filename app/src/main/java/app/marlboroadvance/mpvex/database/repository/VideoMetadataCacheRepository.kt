@@ -53,6 +53,7 @@ class VideoMetadataCacheRepository(
           durationMs = cached.duration,
           width = cached.width,
           height = cached.height,
+          fps = cached.fps,
         )
       }
 
@@ -70,6 +71,7 @@ class VideoMetadataCacheRepository(
             duration = metadata.durationMs,
             width = metadata.width,
             height = metadata.height,
+            fps = metadata.fps,
             lastScanned = System.currentTimeMillis(),
           ),
         )

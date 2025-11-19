@@ -19,5 +19,6 @@ data class Video(
   val bucketDisplayName: String,
   val width: Int,
   val height: Int,
+  val fps: Float,
   val resolution: String,
 )

@@ -19,6 +19,7 @@ import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepo
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -66,6 +67,7 @@ class PlayerViewModel(
   private val playerPreferences: PlayerPreferences by inject()
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
+  private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val externalSubtitleRepository: ExternalSubtitleRepository by inject()
   private val json: Json by inject()
 
@@ -158,6 +160,19 @@ class PlayerViewModel(
 
   // Media title for subtitle association
   private var currentMediaTitle: String = ""
+  private var lastAutoSelectedMediaTitle: String? = null
+
+  init {
+    viewModelScope.launch {
+      subtitleTracks.collect { tracks ->
+        if (tracks.isNotEmpty() && currentMediaTitle.isNotEmpty() && lastAutoSelectedMediaTitle != currentMediaTitle) {
+          if (applySubtitleFilter(tracks)) {
+            lastAutoSelectedMediaTitle = currentMediaTitle
+          }
+        }
+      }
+    }
+  }
 
   // Cached values
   private val showStatusBar = playerPreferences.showSystemStatusBar.get()
@@ -240,7 +255,17 @@ class PlayerViewModel(
   }
 
   fun setMediaTitle(mediaTitle: String) {
-    currentMediaTitle = mediaTitle
+    if (currentMediaTitle != mediaTitle) {
+      currentMediaTitle = mediaTitle
+      lastAutoSelectedMediaTitle = null
+      // Check immediately in case tracks are already loaded
+      val tracks = subtitleTracks.value
+      if (tracks.isNotEmpty()) {
+        if (applySubtitleFilter(tracks)) {
+          lastAutoSelectedMediaTitle = mediaTitle
+        }
+      }
+    }
     viewModelScope.launch {
       delay(100) // Allow MPV to set media title first
       restoreCachedSubtitles(mediaTitle)
@@ -751,6 +776,49 @@ class PlayerViewModel(
 
   private fun showToast(message: String) {
     Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
+  }
+
+  private fun applySubtitleFilter(tracks: List<TrackNode>): Boolean {
+    val priorityKeywords =
+      subtitlesPreferences.priorityKeywords.get().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    val excludedKeywords =
+      subtitlesPreferences.excludedKeywords.get().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    if (priorityKeywords.isEmpty() && excludedKeywords.isEmpty()) return true
+
+    val selectedTrack = tracks.find { it.isSelected }
+    val targetLang = selectedTrack?.lang ?: run {
+      val preferredLangs = subtitlesPreferences.preferredLanguages.get().split(",").map { it.trim() }
+      preferredLangs.firstOrNull { lang -> tracks.any { it.lang == lang } }
+    }
+
+    if (targetLang == null) return true
+
+    val candidates = tracks.filter { it.lang == targetLang }
+
+    if (candidates.isEmpty()) return true
+
+    fun score(track: TrackNode): Int {
+      val title = track.title ?: ""
+      var s = 0
+      if (priorityKeywords.any { title.contains(it, ignoreCase = true) }) s += 10
+      if (excludedKeywords.any { title.contains(it, ignoreCase = true) }) s -= 10
+      return s
+    }
+
+    val scoredCandidates = candidates.map { it to score(it) }
+    val maxScore = scoredCandidates.maxOf { it.second }
+
+    if (selectedTrack != null && candidates.contains(selectedTrack)) {
+      val currentScore = score(selectedTrack)
+      if (currentScore == maxScore) return true
+    }
+
+    val bestTrack = scoredCandidates.first { it.second == maxScore }.first
+
+    selectSub(bestTrack.id)
+
+    return true
   }
 }
 

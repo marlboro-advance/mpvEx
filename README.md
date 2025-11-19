@@ -1,23 +1,32 @@
+![banner](fastlane/metadata/android/en-US/images/featureGraphic.png)
+
 # mpvExtended
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/marlboro-advance/mpvex.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/marlboro-advance/mpvex/total?logo=github&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
 
 
-mpvExtended is a front-end for the versatile media player mpv, built on the libmpv library. It aims
-to combine the powerful features of mpv with an easier-to-use interface and additional
-functionality.
+**mpvExtended is a fork of [mpv-android](https://github.com/mpv-android/mpv-android), built on the libmpv library. It aims
+to combine the powerful features of mpv with an easy to use interface and additional
+features.**
 
-- **Simpler and Easier to Use UI**
-- **Material3 Expressive Design**
-- **Advanced Configuration and Scripting**
-- **Enhanced Playback Features**
-- **Picture-in-Picture (PiP)**
-- **Background Playback**
-- **Multi-Modal Controls**
-- **High-Quality Rendering**
-- **Network Streaming**
-- **File Management**
+- Simpler and Easier to Use UI
+- Material3 Expressive Design
+- Advanced Configuration and Scripting
+- Enhanced Playback Features
+- Picture-in-Picture (PiP)
+- Background Playback
+- High-Quality Rendering
+- Network Streaming
+- File Management
+- Completely free and open source and without any ads or excessive permissions
+- Media picker with tree and folder view modes
+- External Subtitle support
+- Zoom gesture
+- External Audio support
+- Search Functionality
 
-mpvExtended aims to enhance the mpv experience by making it more accessible while retaining its
-flexibility and powerful playback capabilities.
+**This project is still in development and is expected to have bugs. Please report any bugs you find in
+the [Issues](https://github.com/marlboro-advance/mpvEx/issues) section.**
 
 ---
 
@@ -28,10 +37,14 @@ Download the latest stable version from the [GitHub releases page](https://githu
 
 [![Download Release](https://img.shields.io/badge/Download-Release-blue?style=for-the-badge)](https://github.com/marlboro-advance/mpvEx/releases)
 
-### Preview Builds
-Try the latest preview builds:
+Or you can get the stable releases here
 
-[![Download Preview Builds](https://img.shields.io/badge/Download-Preview%20Builds-green?style=for-the-badge)](https://marlboro-advance.github.io/mpvEx/)
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroidButtonGreyBorder_nofont.png" height="50" alt="Get it at IzzyOnDroid">](https://apt.izzysoft.de/packages/app.marlboroadvance.mpvex)
+
+### Preview Builds
+For testing purposes only
+
+[![Download Preview Builds](https://img.shields.io/badge/Download-Preview%20Builds-red?style=for-the-badge)](https://marlboro-advance.github.io/mpvEx/)
 
 ---
 
@@ -49,25 +62,6 @@ Try the latest preview builds:
 - Android SDK with build tools 34.0.0+
 - Git (for version information in builds)
 
-### Build Variants
-
-- **debug**: Development build with debug signing
-- **preview**: Release-optimized build with debug signing and preview suffix
-- **release**: Production build (requires release signing configuration)
-
-### Build Commands
-
-```bash
-# Debug build
-./gradlew assembleDebug
-
-# Preview build
-./gradlew assemblePreview
-
-# Release build
-./gradlew assembleRelease
-```
-
 ### APK Variants
 
 The app generates multiple APK variants for different CPU architectures:
@@ -81,26 +75,6 @@ The app generates multiple APK variants for different CPU architectures:
 ---
 
 ## Releases
-
-### Creating a Release
-
-1. Update `versionCode` and `versionName` in `app/build.gradle.kts`
-2. Commit the changes
-3. Create and push a tag:
-   ```bash
-   git tag -a v1.0.0 -m "Release version 1.0.0"
-   git push origin v1.0.0
-   ```
-4. GitHub Actions will automatically build, sign, and create a draft release
-
-### Creating a Preview Release
-
-1. Create and push a preview tag:
-   ```bash
-   git tag -a v1.0.0-preview.1 -m "Preview release"
-   git push origin v1.0.0-preview.1
-   ```
-2. GitHub Actions will create a pre-release automatically
 
 ### Setting Up Release Signing
 
@@ -136,12 +110,34 @@ base64 -i your-keystore.jks | tr -d '\n' > keystore.txt
 
 Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_KEYSTORE` secret.
 
+### Creating a Release
+
+1. Update `versionCode` and `versionName` in `app/build.gradle.kts`
+2. Commit the changes
+3. Create and push a tag:
+   ```bash
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
+4. GitHub Actions will automatically build, sign, and create a draft release
+
+### Creating a Preview Release
+
+1. Create and push a preview tag:
+   ```bash
+   git tag -a v1.0.0-preview.1 -m "Preview release"
+   git push origin v1.0.0-preview.1
+   ```
+2. GitHub Actions will create a pre-release automatically
 
 ---
 
 ## Acknowledgments
-- [mpv-android](https://github.com/mpv-android) for the base mpv library to use for this project.
-- [mpvKt](https://github.com/abdallahmehiz/mpvKt) for the modified version of mpv-android.
+
+- [mpv-android](https://github.com/mpv-android)
+- [mpvKt](https://github.com/abdallahmehiz/mpvKt)
+- [Next player](https://github.com/anilbeesetti/nextplayer)
+- [Gramophone](https://github.com/FoedusProgramme/Gramophone)
 
 ---
 
@@ -149,7 +145,6 @@ Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_K
 
 If you find mpvExtended useful, consider supporting the development:
 
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/adityanarvekar)
-[![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/aadinarvekar)
-[![UPI](https://img.shields.io/badge/UPI-aadiinarvekar@upi-orange?style=for-the-badge&logo=google-pay&logoColor=white)](upi://pay?pa=aadiinarvekar@upi)
+[![UPI](https://img.shields.io/badge/UPI-aadiinarvekar@upi-blue?style=for-the-badge&logo=google-pay&logoColor=white)](upi://pay?pa=aadiinarvekar@upi)
 
+---

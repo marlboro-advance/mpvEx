@@ -894,6 +894,10 @@ class PlayerActivity :
    * @return The display name of the file, or empty string if not found
    */
   private fun getFileName(intent: Intent): String {
+    // First check if a custom title/filename was provided via intent extras
+    intent.getStringExtra("title")?.let { return it }
+    intent.getStringExtra("filename")?.let { return it }
+
     val uri = extractUriFromIntent(intent) ?: return ""
 
     getDisplayNameFromUri(uri)?.let { return it }

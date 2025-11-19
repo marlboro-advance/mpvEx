@@ -687,6 +687,7 @@ fun PlayerControls(
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
+          val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
 
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
@@ -703,6 +704,7 @@ fun PlayerControls(
             positionTimerOnClick = {},
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
+            useWavySeekbar = useWavySeekbar,
           )
         }
 

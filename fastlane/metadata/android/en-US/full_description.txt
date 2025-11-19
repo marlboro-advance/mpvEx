@@ -12,6 +12,7 @@ mpvExtended is a front-end for the versatile media player mpv, built on the libm
 mpvExtended aims to enhance the mpv experience by making it more accessible while retaining its flexibility and powerful playback capabilities.
 
 This app respects your freedom and privacy:
+
 * No trackers
 * No advertisements
 * Fully open source

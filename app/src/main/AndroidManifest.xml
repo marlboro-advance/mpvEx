@@ -34,6 +34,7 @@
         android:theme="@style/Theme.mpvex"
         android:largeHeap="true"
         android:hardwareAccelerated="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="35">
         <activity
             android:name=".MainActivity"
@@ -288,5 +289,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <provider
+            android:name=".ui.browser.networkstreaming.NetworkStreamingProvider"
+            android:authorities="${applicationId}.networkstreaming"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

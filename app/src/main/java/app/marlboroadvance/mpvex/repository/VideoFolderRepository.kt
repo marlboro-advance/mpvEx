@@ -132,18 +132,60 @@ object VideoFolderRepository {
     folders: MutableMap<String, VideoFolderInfo>,
   ) {
     try {
-      val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-      val volumes = storageManager.storageVolumes
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // Use MediaStore.getExternalVolumeNames() for more reliable volume detection
+        // This directly queries MediaStore which is more reliable than StorageVolume.state
+        val volumeNames = MediaStore.getExternalVolumeNames(context)
+        Log.d(TAG, "Found ${volumeNames.size} MediaStore volumes: $volumeNames")
 
-      for (volume in volumes) {
-        if (volume.state == Environment.MEDIA_MOUNTED) {
-          scanVolumeForVideos(context, volume, folders)
+        for (volumeName in volumeNames) {
+          try {
+            scanVolumeByName(context, volumeName, folders)
+          } catch (e: Exception) {
+            Log.e(TAG, "Error scanning volume: $volumeName", e)
+          }
         }
+      } else {
+        // Pre-Android 10: Use legacy approach
+        scanDefaultExternalStorage(context, folders)
       }
     } catch (e: Exception) {
       Log.e(TAG, "Error scanning storage volumes", e)
       // Fallback to default external storage scan
       scanDefaultExternalStorage(context, folders)
+    }
+  }
+
+  private fun scanVolumeByName(
+    context: Context,
+    volumeName: String,
+    folders: MutableMap<String, VideoFolderInfo>,
+  ) {
+    try {
+      val contentUri = MediaStore.Video.Media.getContentUri(volumeName)
+      Log.d(TAG, "Scanning MediaStore volume: $volumeName")
+
+      val projection = getProjection()
+      val cursor: Cursor? =
+        context.contentResolver.query(
+          contentUri,
+          projection,
+          null,
+          null,
+          "${MediaStore.Video.Media.DATE_MODIFIED} DESC",
+        )
+
+      cursor?.use { c ->
+        val count = c.count
+        Log.d(TAG, "Found $count videos in volume: $volumeName")
+        processFolderCursor(c, folders)
+      }
+    } catch (e: IllegalArgumentException) {
+      // Volume not accessible via MediaStore (e.g., USB OTG not indexed)
+      // This is fine - filesystem scan will catch these volumes
+      Log.d(TAG, "Volume not indexed in MediaStore: $volumeName", e)
+    } catch (e: Exception) {
+      Log.e(TAG, "Error scanning volume: $volumeName", e)
     }
   }
 

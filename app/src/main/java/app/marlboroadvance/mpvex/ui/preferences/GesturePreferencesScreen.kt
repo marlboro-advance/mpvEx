@@ -161,6 +161,22 @@ object GesturePreferencesScreen : Screen {
             )
           }
 
+          val doubleTapSeekAreaWidth by preferences.doubleTapSeekAreaWidth.collectAsState()
+          val seekAreaValues = listOf(20, 25, 30, 35, 40, 45)
+
+          ListPreference(
+            value = doubleTapSeekAreaWidth,
+            onValueChange = { preferences.doubleTapSeekAreaWidth.set(it) },
+            values = seekAreaValues,
+            valueToText = { AnnotatedString("${it}%") },
+            title = { Text(text = "Double Tap Seek Area Width") },
+            summary = {
+              Text(
+                text = "Current: ${doubleTapSeekAreaWidth}%",
+              )
+            },
+          )
+
           val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
           ListPreference(
             value = leftDoubleTap,
@@ -314,6 +330,25 @@ object GesturePreferencesScreen : Screen {
               }
 
               Text(text = annotatedString)
+            },
+          )
+
+          PreferenceCategory(
+            title = { Text(text = stringResource(R.string.pref_gesture_view_title)) },
+          )
+          val tapThumbnailToSelect by preferences.tapThumbnailToSelect.collectAsState()
+          SwitchPreference(
+            value = tapThumbnailToSelect,
+            onValueChange = { preferences.tapThumbnailToSelect.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_tap_thumbnail_to_select_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_tap_thumbnail_to_select_summary),
+              )
             },
           )
         }

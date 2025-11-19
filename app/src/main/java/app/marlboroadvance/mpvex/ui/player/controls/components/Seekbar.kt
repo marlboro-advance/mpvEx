@@ -60,6 +60,7 @@ fun SeekbarWithTimers(
   durationTimerOnCLick: () -> Unit,
   chapters: ImmutableList<Segment>,
   paused: Boolean,
+  useWavySeekbar: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val clickEvent = LocalPlayerButtonsClickEvent.current
@@ -101,7 +102,7 @@ fun SeekbarWithTimers(
       modifier = Modifier.width(92.dp),
     )
 
-    // Squiggly Seekbar
+    // Seekbar
     Box(
       modifier =
         Modifier
@@ -114,6 +115,7 @@ fun SeekbarWithTimers(
         chapters = chapters,
         isPaused = paused,
         isScrubbing = isUserInteracting,
+        useWavySeekbar = useWavySeekbar,
         onSeek = { newPosition ->
           if (!isUserInteracting) {
             isUserInteracting = true
@@ -149,6 +151,7 @@ private fun SquigglySeekbar(
   chapters: ImmutableList<Segment>,
   isPaused: Boolean,
   isScrubbing: Boolean,
+  useWavySeekbar: Boolean,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
   modifier: Modifier = Modifier,
@@ -164,7 +167,7 @@ private fun SquigglySeekbar(
 
   // Wave parameters - matching Gramophone exactly
   val waveLength = 80f
-  val lineAmplitude = 6f
+  val lineAmplitude = if (useWavySeekbar) 6f else 0f
   val phaseSpeed = 10f // px per second
   val transitionPeriods = 1.5f
   val minWaveEndpoint = 0f
@@ -172,7 +175,12 @@ private fun SquigglySeekbar(
   val transitionEnabled = true
 
   // Animate height fraction based on paused state and scrubbing state
-  LaunchedEffect(isPaused, isScrubbing) {
+  LaunchedEffect(isPaused, isScrubbing, useWavySeekbar) {
+    if (!useWavySeekbar) {
+      heightFraction = 0f
+      return@LaunchedEffect
+    }
+
     scope.launch {
       val shouldFlatten = isPaused || isScrubbing
       val targetHeight = if (shouldFlatten) 0f else 1f
@@ -196,8 +204,8 @@ private fun SquigglySeekbar(
   }
 
   // Animate wave movement only when not paused
-  LaunchedEffect(isPaused) {
-    if (isPaused) return@LaunchedEffect
+  LaunchedEffect(isPaused, useWavySeekbar) {
+    if (isPaused || !useWavySeekbar) return@LaunchedEffect
 
     var lastFrameTime = withFrameMillis { it }
     while (isActive) {
@@ -221,7 +229,8 @@ private fun SquigglySeekbar(
             onSeek(newPosition.coerceIn(0f, duration))
             onSeekFinished()
           }
-        }.pointerInput(Unit) {
+        }
+        .pointerInput(Unit) {
           detectDragGestures(
             onDragStart = { },
             onDragEnd = { onSeekFinished() },
@@ -422,7 +431,8 @@ fun VideoTimer(
           interactionSource = interactionSource,
           indication = ripple(),
           onClick = onClick,
-        ).wrapContentHeight(Alignment.CenterVertically),
+        )
+        .wrapContentHeight(Alignment.CenterVertically),
     text = Utils.prettyTime(value.toInt(), isInverted),
     color = Color.White,
     textAlign = TextAlign.Center,
