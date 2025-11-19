@@ -51,6 +51,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.FolderSortType
 import app.marlboroadvance.mpvex.preferences.FolderViewMode
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -456,6 +457,8 @@ private fun FolderListContent(
   onFolderLongClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -494,7 +497,11 @@ private fun FolderListContent(
           isRecentlyPlayed = isRecentlyPlayed,
           onClick = { onFolderClick(folder) },
           onLongClick = { onFolderLongClick(folder) },
-          onThumbClick = { onFolderLongClick(folder) },
+          onThumbClick = if (tapThumbnailToSelect) {
+            { onFolderLongClick(folder) }
+          } else {
+            { onFolderClick(folder) }
+          },
         )
       }
 

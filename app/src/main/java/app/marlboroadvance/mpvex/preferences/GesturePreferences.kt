@@ -16,4 +16,5 @@ class GesturePreferences(
   val mediaPreviousGesture = preferenceStore.getEnum("meda_previous_gesture", SingleActionGesture.Seek)
   val mediaPlayGesture = preferenceStore.getEnum("media_play_gesture", SingleActionGesture.PlayPause)
   val mediaNextGesture = preferenceStore.getEnum("media_next_gesture", SingleActionGesture.Seek)
+  val tapThumbnailToSelect = preferenceStore.getBoolean("tap_thumbnail_to_select", false)
 }

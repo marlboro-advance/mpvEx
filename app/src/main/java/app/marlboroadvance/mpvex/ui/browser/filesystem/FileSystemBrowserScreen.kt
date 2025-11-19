@@ -44,6 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.repository.FileSystemRepository
@@ -718,6 +719,8 @@ private fun FileSystemBrowserContent(
   videoSelectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<app.marlboroadvance.mpvex.domain.media.model.Video, Long>,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -791,7 +794,11 @@ private fun FileSystemBrowserContent(
               isRecentlyPlayed = false,
               onClick = { onFolderClick(folder) },
               onLongClick = { onFolderLongClick(folder) },
-              onThumbClick = { onFolderLongClick(folder) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onFolderLongClick(folder) }
+              } else {
+                { onFolderClick(folder) }
+              },
             )
           }
 
@@ -807,7 +814,11 @@ private fun FileSystemBrowserContent(
               isSelected = videoSelectionManager.isSelected(videoFile.video),
               onClick = { onVideoClick(videoFile.video) },
               onLongClick = { onVideoLongClick(videoFile.video) },
-              onThumbClick = { onVideoLongClick(videoFile.video) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onVideoLongClick(videoFile.video) }
+              } else {
+                { onVideoClick(videoFile.video) }
+              },
             )
           }
         }

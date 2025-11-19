@@ -41,6 +41,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.VideoSortType
@@ -418,6 +419,8 @@ private fun VideoListContent(
   modifier: Modifier = Modifier,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val density = LocalDensity.current
   val thumbWidthDp = 128.dp
   val aspect = 16f / 9f
@@ -482,7 +485,11 @@ private fun VideoListContent(
               isSelected = selectionManager.isSelected(videoWithInfo.video),
               onClick = { onVideoClick(videoWithInfo.video) },
               onLongClick = { onVideoLongClick(videoWithInfo.video) },
-              onThumbClick = { onVideoLongClick(videoWithInfo.video) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onVideoLongClick(videoWithInfo.video) }
+              } else {
+                { onVideoClick(videoWithInfo.video) }
+              },
             )
           }
         }

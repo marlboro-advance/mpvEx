@@ -95,6 +95,10 @@
     <string name="pref_gesture_media_next">Next</string>
     <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
 
+    <string name="pref_gesture_view_title">View</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_title">Tap thumbnail to select</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_summary">When enabled, tapping on thumbnails enters selection mode. When disabled, tapping thumbnails plays the video.</string>
+
     <string name="pref_decoder">Decoder</string>
     <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
     <string name="pref_decoder_try_hw_dec_title">Try hardware decoding</string>

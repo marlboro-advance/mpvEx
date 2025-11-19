@@ -332,6 +332,25 @@ object GesturePreferencesScreen : Screen {
               Text(text = annotatedString)
             },
           )
+
+          PreferenceCategory(
+            title = { Text(text = stringResource(R.string.pref_gesture_view_title)) },
+          )
+          val tapThumbnailToSelect by preferences.tapThumbnailToSelect.collectAsState()
+          SwitchPreference(
+            value = tapThumbnailToSelect,
+            onValueChange = { preferences.tapThumbnailToSelect.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_tap_thumbnail_to_select_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_tap_thumbnail_to_select_summary),
+              )
+            },
+          )
         }
       }
     }
