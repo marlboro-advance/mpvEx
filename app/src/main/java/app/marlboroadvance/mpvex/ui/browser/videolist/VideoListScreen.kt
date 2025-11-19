@@ -504,6 +504,7 @@ private fun VideoSortDialog(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
 
@@ -558,6 +559,11 @@ private fun VideoSortDialog(
           label = "Resolution",
           checked = showResolutionChip,
           onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Framerate",
+          checked = showFramerateInResolution,
+          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
         ),
         VisibilityToggle(
           label = "Progress Bar",

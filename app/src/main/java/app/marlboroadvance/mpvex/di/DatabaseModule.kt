@@ -20,7 +20,7 @@ import org.koin.dsl.module
 // Migration from version 1 to 2: Add VideoMetadataEntity and NetworkConnection tables
 val MIGRATION_1_2 = object : Migration(1, 2) {
   override fun migrate(db: SupportSQLiteDatabase) {
-    // Create video_metadata_cache table
+    // Create video_metadata_cache table with fps field
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
@@ -30,6 +30,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         `duration` INTEGER NOT NULL,
         `width` INTEGER NOT NULL,
         `height` INTEGER NOT NULL,
+        `fps` REAL NOT NULL DEFAULT 0.0,
         `lastScanned` INTEGER NOT NULL,
         PRIMARY KEY(`path`)
       )

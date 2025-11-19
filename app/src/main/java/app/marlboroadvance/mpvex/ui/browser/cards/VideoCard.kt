@@ -63,6 +63,7 @@ fun VideoCard(
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
@@ -223,8 +224,17 @@ fun VideoCard(
             if (showSizeChip) {
               Spacer(modifier = Modifier.width(8.dp))
             }
+
+            // Extract base resolution without FPS for display
+            val displayResolution = if (showFramerateInResolution) {
+              video.resolution
+            } else {
+              // Remove @fps part if present
+              video.resolution.substringBefore("@")
+            }
+
             Text(
-              video.resolution,
+              displayResolution,
               style = MaterialTheme.typography.labelSmall,
               modifier =
                 Modifier

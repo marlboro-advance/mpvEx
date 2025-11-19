@@ -205,11 +205,12 @@ class VideoRepository(
     val uri = Uri.fromFile(file)
 
     // Extract metadata using cache (with MediaInfo fallback)
-    // This provides accurate duration, size, and resolution information
+    // This provides accurate duration, size, resolution, and framerate information
     var size = file.length()
     var duration = 0L
     var width = 0
     var height = 0
+    var fps = 0f
 
     metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
       // Use MediaInfo's file size if available (more accurate for some formats)
@@ -219,9 +220,10 @@ class VideoRepository(
       duration = metadata.durationMs
       width = metadata.width
       height = metadata.height
+      fps = metadata.fps
       Log.d(
         TAG,
-        "Metadata for $displayName: size=$size bytes, duration=$duration ms, resolution=${width}x${height}",
+        "Metadata for $displayName: size=$size bytes, duration=$duration ms, resolution=${width}x${height}@${fps}fps",
       )
     } ?: run {
       Log.w(TAG, "Failed to extract metadata for $displayName, using file system size")
@@ -244,7 +246,8 @@ class VideoRepository(
       bucketDisplayName = bucketDisplayName,
       width = width,
       height = height,
-      resolution = formatResolution(width, height),
+      fps = fps,
+      resolution = formatResolutionWithFps(width, height, fps),
     )
   }
 
@@ -295,16 +298,27 @@ class VideoRepository(
 
     val uri = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
 
-    // Fallback to MediaInfo if MediaStore doesn't have resolution (unsupported format)
+    // Always extract framerate from MediaInfo (MediaStore doesn't provide it)
+    // Also fallback for resolution if MediaStore doesn't have it
+    var fps = 0f
+    val file = File(normalizedPath)
+
     if (width <= 0 || height <= 0) {
+      // MediaStore doesn't have resolution - extract everything from MediaInfo
       Log.d(TAG, "MediaStore has no resolution for $displayName, trying MediaInfo fallback")
-      val file = File(normalizedPath)
       metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
         width = metadata.width
         height = metadata.height
-        Log.d(TAG, "MediaInfo fallback succeeded for $displayName: ${width}x${height}")
+        fps = metadata.fps
+        Log.d(TAG, "MediaInfo fallback succeeded for $displayName: ${width}x${height}@${fps}fps")
       } ?: run {
         Log.w(TAG, "MediaInfo fallback failed for $displayName")
+      }
+    } else {
+      // MediaStore has resolution, but we still need fps from MediaInfo
+      metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+        fps = metadata.fps
+        Log.d(TAG, "Extracted framerate for $displayName: ${fps}fps")
       }
     }
 
@@ -325,7 +339,8 @@ class VideoRepository(
       bucketDisplayName = finalBucketDisplayName,
       width = width,
       height = height,
-      resolution = formatResolution(width, height),
+      fps = fps,
+      resolution = formatResolutionWithFps(width, height, fps),
     )
   }
 
@@ -378,7 +393,7 @@ class VideoRepository(
     return String.format(Locale.getDefault(), "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
   }
 
-  private fun formatResolution(width: Int, height: Int): String {
+  private fun formatResolution(width: Int, height: Int, fps: Float): String {
     if (width <= 0 || height <= 0) return "--"
 
     // For non-standard aspect ratios, use width to determine quality tier
@@ -397,8 +412,17 @@ class VideoRepository(
       else -> "${height}p" // For any other resolution, show height with 'p'
     }
 
-    Log.d(TAG, "formatResolution: ${width}x${height} -> $label")
+    Log.d(TAG, "formatResolution: ${width}x${height}@${fps} -> $label")
     return label
+  }
+
+  private fun formatResolutionWithFps(width: Int, height: Int, fps: Float): String {
+    val baseResolution = formatResolution(width, height, fps)
+    if (baseResolution == "--" || fps <= 0f) return baseResolution
+
+    // Round fps to nearest integer for display
+    val fpsInt = fps.toInt()
+    return "$baseResolution@$fpsInt"
   }
 
   suspend fun getVideosForBuckets(
