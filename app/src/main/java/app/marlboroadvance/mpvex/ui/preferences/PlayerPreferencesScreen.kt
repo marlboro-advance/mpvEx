@@ -136,6 +136,13 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.usePreciseSeeking::set,
             title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
           )
+          val useWavySeekbar by preferences.useWavySeekbar.collectAsState()
+          SwitchPreference(
+            value = useWavySeekbar,
+            onValueChange = preferences.useWavySeekbar::set,
+            title = { Text("Use wavy seekbar") },
+            summary = { Text("Disable to show a normal seekbar instead of the animated wavy seekbar") },
+          )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_gestures)) },
           )
