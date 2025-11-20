@@ -189,7 +189,7 @@ dependencies {
   implementation(libs.mediainfo.lib)
 
   // Network protocol libraries
-  implementation(libs.jcifs.ng) // SMB/CIFS
+  implementation(libs.smbj) // SMB/CIFS
   implementation(libs.commons.net) // FTP
   implementation(libs.sardine.android) { // WebDAV (Android-compatible version using OkHttp)
     // Exclude xpp3 as Android already provides XmlPullParser

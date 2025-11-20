@@ -2,7 +2,7 @@
 agp = "8.13.1"
 commonsNet = "3.12.0"
 composeScrollbar = "1.8.0"
-jcifsNg = "2.1.10"
+smbj = "0.13.0"
 kotlin = "2.2.21"
 composeBom = "2025.11.00"
 activityCompose = "1.12.0-rc01"
@@ -24,7 +24,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 compose-scrollbar = { module = "com.github.nanihadesuka:compose-scrollbar", version.ref = "composeScrollbar" }
-jcifs-ng = { module = "eu.agno3.jcifs:jcifs-ng", version.ref = "jcifsNg" }
+smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 lazycolumnscrollbar = { module = "com.github.nanihadesuka:LazyColumnScrollbar", version.ref = "lazycolumnscrollbar" }
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
 sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardineAndroid" }

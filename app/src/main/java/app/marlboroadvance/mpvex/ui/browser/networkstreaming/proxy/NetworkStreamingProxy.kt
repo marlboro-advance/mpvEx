@@ -4,10 +4,21 @@ import android.util.Log
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.NetworkClient
 import app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.NetworkClientFactory
+import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.smbj.SMBClient
+import com.hierynomus.smbj.SmbConfig
+import com.hierynomus.smbj.auth.AuthenticationContext
+import com.hierynomus.smbj.connection.Connection
+import com.hierynomus.smbj.session.Session
+import com.hierynomus.smbj.share.DiskShare
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
 import java.io.InputStream
+import java.util.EnumSet
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /**
  * Local HTTP proxy server that enables seeking for network streaming protocols
@@ -99,16 +110,6 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
   private fun cleanup() {
     val streamIds = activeStreams.keys.toList()
     streamIds.forEach { unregisterStream(it) }
-
-    // Clear SMB context cache
-    smbContextCache.values.forEach { context ->
-      try {
-        context.close()
-      } catch (e: Exception) {
-        // Ignore close errors
-      }
-    }
-    smbContextCache.clear()
   }
 
   override fun serve(session: IHTTPSession): Response {
@@ -267,13 +268,64 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
   }
 
   /**
-   * Get file size using SMB SmbFile.length()
+   * Get file size using SMB
    */
   private suspend fun getFileSizeSMB(streamInfo: StreamInfo): Long {
     try {
-      val context = getSmbContext(streamInfo)
-      val smbFile = jcifs.smb.SmbFile(streamInfo.filePath, context)
-      return smbFile.length()
+      // Parse the SMB path to extract share name and file path
+      val pathParts = streamInfo.connection.path.trim('/').split('/', limit = 2)
+      val shareName = pathParts.getOrNull(0) ?: return -1L
+      val basePath = if (pathParts.size > 1) pathParts[1] else ""
+
+      // Build relative file path
+      val relativePath = when {
+        streamInfo.filePath.startsWith("smb://") -> {
+          val uri = java.net.URI(streamInfo.filePath)
+          uri.path.trim('/').split('/', limit = 2).getOrNull(1) ?: ""
+        }
+
+        else -> {
+          val cleanPath = streamInfo.filePath.trim('/')
+          if (basePath.isEmpty()) cleanPath else "$basePath/$cleanPath"
+        }
+      }
+
+      val smbConfig = SmbConfig.builder()
+        .withTimeout(30000, TimeUnit.MILLISECONDS)
+        .withSoTimeout(35000, TimeUnit.MILLISECONDS)
+        .build()
+      val smbClient = SMBClient(smbConfig)
+      val connection = smbClient.connect(streamInfo.connection.host, streamInfo.connection.port)
+
+      val authContext = if (streamInfo.connection.isAnonymous) {
+        AuthenticationContext.anonymous()
+      } else {
+        AuthenticationContext(
+          streamInfo.connection.username,
+          streamInfo.connection.password.toCharArray(),
+          null,
+        )
+      }
+
+      val session = connection.authenticate(authContext)
+      val diskShare = session.connectShare(shareName) as DiskShare
+
+      val file = diskShare.openFile(
+        relativePath,
+        EnumSet.of(AccessMask.GENERIC_READ),
+        null,
+        EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+        SMB2CreateDisposition.FILE_OPEN,
+        null,
+      )
+
+      val fileSize = file.fileInformation.standardInformation.endOfFile
+      file.close()
+      diskShare.close()
+      session.close()
+      connection.close()
+      smbClient.close()
+      return fileSize
     } catch (e: Exception) {
       return -1L
     }
@@ -584,96 +636,108 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     }
   }
 
-  // Cache SMB context per connection to reuse
-  private val smbContextCache = ConcurrentHashMap<Long, jcifs.CIFSContext>()
-
   /**
-   * Get or create SMB context for a connection
-   */
-  private fun getSmbContext(streamInfo: StreamInfo): jcifs.CIFSContext {
-    return smbContextCache.getOrPut(streamInfo.connection.id) {
-      val props = java.util.Properties()
-      props.setProperty("jcifs.smb.client.minVersion", "SMB300")
-      props.setProperty("jcifs.smb.client.maxVersion", "SMB311")
-      props.setProperty("jcifs.resolveOrder", "DNS")
-      props.setProperty("jcifs.smb.client.dfs.disabled", "true")
-      props.setProperty("jcifs.smb.client.responseTimeout", "30000")
-      props.setProperty("jcifs.smb.client.connTimeout", "10000")
-      props.setProperty("jcifs.smb.client.soTimeout", "35000")
-      props.setProperty("jcifs.smb.client.enableSMB2", "true")
-      props.setProperty("jcifs.smb.client.useSMB2Negotiation", "true")
-
-      val config = jcifs.config.PropertyConfiguration(props)
-      val baseContext = jcifs.context.BaseContext(config)
-
-      val auth = if (streamInfo.connection.isAnonymous) {
-        jcifs.smb.NtlmPasswordAuthenticator()
-      } else {
-        jcifs.smb.NtlmPasswordAuthenticator(
-          streamInfo.connection.username,
-          streamInfo.connection.password,
-        )
-      }
-
-      baseContext.withCredentials(auth)
-    }
-  }
-
-  /**
-   * Get SMB stream with offset using SmbRandomAccessFile (efficient seeking)
+   * Get SMB stream with offset using SMBJ (efficient seeking)
    */
   private suspend fun getStreamWithOffsetSMB(streamInfo: StreamInfo, offset: Long): InputStream? {
     try {
-      // Reuse the cached SMB context to avoid hitting connection limits
-      val context = getSmbContext(streamInfo)
+      // Parse the SMB path to extract share name and file path
+      val pathParts = streamInfo.connection.path.trim('/').split('/', limit = 2)
+      val shareName = pathParts.getOrNull(0) ?: return null
+      val basePath = if (pathParts.size > 1) pathParts[1] else ""
 
-      // Create a random access file for this specific seek position
-      val smbFile = jcifs.smb.SmbFile(streamInfo.filePath, context)
-      val randomAccessFile = jcifs.smb.SmbRandomAccessFile(smbFile, "r")
-
-      // Seek to the exact offset
-      randomAccessFile.seek(offset)
-
-      // Create an InputStream wrapper with proper cleanup
-      val baseStream = object : java.io.InputStream() {
-        private var closed = false
-
-        override fun read(): Int {
-          if (closed) return -1
-          return randomAccessFile.read()
+      // Build relative file path
+      val relativePath = when {
+        streamInfo.filePath.startsWith("smb://") -> {
+          val uri = java.net.URI(streamInfo.filePath)
+          uri.path.trim('/').split('/', limit = 2).getOrNull(1) ?: ""
         }
 
-        override fun read(b: ByteArray): Int {
-          if (closed) return -1
-          return randomAccessFile.read(b)
+        else -> {
+          val cleanPath = streamInfo.filePath.trim('/')
+          if (basePath.isEmpty()) cleanPath else "$basePath/$cleanPath"
         }
+      }
 
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-          if (closed) return -1
-          return randomAccessFile.read(b, off, len)
-        }
+      val smbConfig = SmbConfig.builder()
+        .withTimeout(30000, TimeUnit.MILLISECONDS)
+        .withSoTimeout(35000, TimeUnit.MILLISECONDS)
+        .build()
+      val smbClient = SMBClient(smbConfig)
+      val connection = smbClient.connect(streamInfo.connection.host, streamInfo.connection.port)
 
-        override fun available(): Int {
-          if (closed) return 0
-          val remaining = randomAccessFile.length() - randomAccessFile.filePointer
-          return remaining.toInt().coerceAtLeast(0)
+      val authContext = if (streamInfo.connection.isAnonymous) {
+        AuthenticationContext.anonymous()
+      } else {
+        AuthenticationContext(
+          streamInfo.connection.username,
+          streamInfo.connection.password.toCharArray(),
+          null,
+        )
+      }
+
+      val session = connection.authenticate(authContext)
+      val diskShare = session.connectShare(shareName) as DiskShare
+
+      val file = diskShare.openFile(
+        relativePath,
+        EnumSet.of(AccessMask.GENERIC_READ),
+        null,
+        EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+        SMB2CreateDisposition.FILE_OPEN,
+        null,
+      )
+
+      val inputStream = file.inputStream
+
+      // Skip to the offset
+      if (offset > 0) {
+        var remaining = offset
+        val buffer = ByteArray(8192)
+        while (remaining > 0) {
+          val toSkip = minOf(remaining, buffer.size.toLong()).toInt()
+          val skipped = inputStream.read(buffer, 0, toSkip)
+          if (skipped <= 0) break
+          remaining -= skipped
         }
+      }
+
+      // Wrap stream to handle cleanup
+      val wrappedStream = object : InputStream() {
+        override fun read(): Int = inputStream.read()
+        override fun read(b: ByteArray): Int = inputStream.read(b)
+        override fun read(b: ByteArray, off: Int, len: Int): Int = inputStream.read(b, off, len)
+        override fun available(): Int = inputStream.available()
 
         override fun close() {
-          if (!closed) {
-            closed = true
-            try {
-              randomAccessFile.close()
-            } catch (e: Exception) {
-              // Ignore
-            }
+          try {
+            inputStream.close()
+          } catch (_: Exception) {
+          }
+          try {
+            file.close()
+          } catch (_: Exception) {
+          }
+          try {
+            diskShare.close()
+          } catch (_: Exception) {
+          }
+          try {
+            session.close()
+          } catch (_: Exception) {
+          }
+          try {
+            connection.close()
+          } catch (_: Exception) {
+          }
+          try {
+            smbClient.close()
+          } catch (_: Exception) {
           }
         }
       }
 
-      // Wrap in BufferedInputStream for better performance
-      return java.io.BufferedInputStream(baseStream, 256 * 1024)
-
+      return wrappedStream
     } catch (e: Exception) {
       return null
     }
