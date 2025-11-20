@@ -610,8 +610,8 @@ object FileSystemRepository : KoinComponent {
     // Determine quality label based on resolution
     val label =
       when {
-        width >= 7680 || height >= 4320 -> "8K"
-        width >= 3840 || height >= 2160 -> "4K"
+        width >= 7680 || height >= 4320 -> "4320p"
+        width >= 3840 || height >= 2160 -> "2160p"
         width >= 2560 || height >= 1440 -> "1440p"
         width >= 1920 || height >= 1080 -> "1080p"
         width >= 1280 || height >= 720 -> "720p"
