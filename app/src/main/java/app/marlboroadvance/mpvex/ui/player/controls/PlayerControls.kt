@@ -141,6 +141,7 @@ fun PlayerControls(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
   val position by MPVLib.propInt["time-pos"].collectAsState()
+  val demuxerCacheTime by MPVLib.propFloat["demuxer-cache-time"].collectAsState()
   val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
   val gestureSeekAmount by viewModel.gestureSeekAmount.collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
@@ -689,6 +690,15 @@ fun PlayerControls(
           val invertDuration by playerPreferences.invertDuration.collectAsState()
           val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
 
+          // Calculate read-ahead position (current position + buffered cache time)
+          val readAheadPosition by remember(position, demuxerCacheTime) {
+            derivedStateOf {
+              val currentPos = position?.toFloat() ?: 0f
+              val cacheTime = demuxerCacheTime ?: 0f
+              currentPos + cacheTime
+            }
+          }
+
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
@@ -704,6 +714,7 @@ fun PlayerControls(
             positionTimerOnClick = {},
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
+            readAheadValue = readAheadPosition,
             useWavySeekbar = useWavySeekbar,
           )
         }
