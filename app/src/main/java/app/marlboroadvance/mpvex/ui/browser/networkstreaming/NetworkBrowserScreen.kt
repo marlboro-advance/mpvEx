@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -191,55 +195,70 @@ private fun NetworkBrowserContent(
       else -> {
         val folders = files.filter { it.isDirectory }
         val videos = files.filter { !it.isDirectory && it.mimeType?.startsWith("video/") == true }
+        val networkListState = rememberLazyListState()
 
-        LazyColumn(
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(8.dp),
+        LazyColumnScrollbar(
+          state = networkListState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary,
+            thumbThickness = 6.dp,
+            scrollbarPadding = 8.dp,
+            thumbMinLength = 0.1f,
+            alwaysShowScrollbar = false,
+            thumbShape = RoundedCornerShape(3.dp),
+          ),
         ) {
-          // Folders section
-          if (folders.isNotEmpty()) {
-            item {
-              Text(
-                text = "Folders",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-              )
-            }
-            items(
-              items = folders,
-              key = { it.path },
-            ) { folder ->
-              NetworkFolderCard(
-                file = folder,
-                onClick = { onFolderClick(folder) },
-                modifier = Modifier,
-              )
-            }
-          }
-
-          // Videos section
-          if (videos.isNotEmpty()) {
-            item {
-              Text(
-                text = "Videos",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
-              )
-            }
-            items(
-              items = videos,
-              key = { it.path },
-            ) { video ->
-              // Only show card if connection is loaded
-              connection?.let { conn ->
-                NetworkVideoCard(
-                  file = video,
-                  connection = conn,
-                  onClick = { onVideoClick(video) },
+          LazyColumn(
+            state = networkListState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(8.dp),
+          ) {
+            // Folders section
+            if (folders.isNotEmpty()) {
+              item {
+                Text(
+                  text = "Folders",
+                  style = MaterialTheme.typography.titleMedium,
+                  color = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+                )
+              }
+              items(
+                items = folders,
+                key = { it.path },
+              ) { folder ->
+                NetworkFolderCard(
+                  file = folder,
+                  onClick = { onFolderClick(folder) },
                   modifier = Modifier,
                 )
+              }
+            }
+
+            // Videos section
+            if (videos.isNotEmpty()) {
+              item {
+                Text(
+                  text = "Videos",
+                  style = MaterialTheme.typography.titleMedium,
+                  color = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
+                )
+              }
+              items(
+                items = videos,
+                key = { it.path },
+              ) { video ->
+                // Only show card if connection is loaded
+                connection?.let { conn ->
+                  NetworkVideoCard(
+                    file = video,
+                    connection = conn,
+                    onClick = { onVideoClick(video) },
+                    modifier = Modifier,
+                  )
+                }
               }
             }
           }

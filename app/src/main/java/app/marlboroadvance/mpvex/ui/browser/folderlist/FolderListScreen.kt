@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -367,22 +370,37 @@ object FolderListScreen : Screen {
                   modifier = Modifier.padding(padding),
                 )
               } else {
-                LazyColumn(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(padding),
-                  contentPadding = PaddingValues(8.dp),
+                val searchListState = rememberLazyListState()
+                LazyColumnScrollbar(
+                  state = searchListState,
+                  settings = ScrollbarSettings(
+                    thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    thumbSelectedColor = MaterialTheme.colorScheme.primary,
+                    thumbThickness = 6.dp,
+                    scrollbarPadding = 8.dp,
+                    thumbMinLength = 0.1f,
+                    alwaysShowScrollbar = false,
+                    thumbShape = RoundedCornerShape(3.dp),
+                  ),
                 ) {
-                  items(filteredVideos) { video ->
-                    VideoCard(
-                      video = video,
-                      progressPercentage = null,
-                      isRecentlyPlayed = false,
-                      isSelected = false,
-                      onClick = { MediaUtils.playFile(video, context, "search") },
-                      onLongClick = {},
-                      onThumbClick = {},
-                    )
+                  LazyColumn(
+                    state = searchListState,
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .padding(padding),
+                    contentPadding = PaddingValues(8.dp),
+                  ) {
+                    items(filteredVideos) { video ->
+                      VideoCard(
+                        video = video,
+                        progressPercentage = null,
+                        isRecentlyPlayed = false,
+                        isSelected = false,
+                        onClick = { MediaUtils.playFile(video, context, "search") },
+                        onLongClick = {},
+                        onThumbClick = {},
+                      )
+                    }
                   }
                 }
               }
@@ -478,40 +496,53 @@ private fun FolderListContent(
       }
     }
 
-    LazyColumn(
+    LazyColumnScrollbar(
       state = listState,
-      modifier = Modifier.fillMaxWidth(),
-      contentPadding = PaddingValues(8.dp),
+      settings = ScrollbarSettings(
+        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+        thumbSelectedColor = MaterialTheme.colorScheme.primary,
+        thumbThickness = 6.dp,
+        scrollbarPadding = 8.dp,
+        thumbMinLength = 0.1f,
+        alwaysShowScrollbar = false,
+        thumbShape = RoundedCornerShape(3.dp),
+      ),
     ) {
-      // Regular folders
-      items(folders) { folder ->
-        val isRecentlyPlayed =
-          recentlyPlayedFilePath?.let { filePath ->
-            val file = File(filePath)
-            file.parent == folder.path
-          } ?: false
+      LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(8.dp),
+      ) {
+        // Regular folders
+        items(folders) { folder ->
+          val isRecentlyPlayed =
+            recentlyPlayedFilePath?.let { filePath ->
+              val file = File(filePath)
+              file.parent == folder.path
+            } ?: false
 
-        FolderCard(
-          folder = folder,
-          isSelected = selectionManager.isSelected(folder),
-          isRecentlyPlayed = isRecentlyPlayed,
-          onClick = { onFolderClick(folder) },
-          onLongClick = { onFolderLongClick(folder) },
-          onThumbClick = if (tapThumbnailToSelect) {
-            { onFolderLongClick(folder) }
-          } else {
-            { onFolderClick(folder) }
-          },
-        )
-      }
-
-      if (showEmpty.value) {
-        item {
-          EmptyState(
-            icon = Icons.Filled.Folder,
-            title = "No video folders found",
-            message = "Add some video files to your device to see them here",
+          FolderCard(
+            folder = folder,
+            isSelected = selectionManager.isSelected(folder),
+            isRecentlyPlayed = isRecentlyPlayed,
+            onClick = { onFolderClick(folder) },
+            onLongClick = { onFolderLongClick(folder) },
+            onThumbClick = if (tapThumbnailToSelect) {
+              { onFolderLongClick(folder) }
+            } else {
+              { onFolderClick(folder) }
+            },
           )
+        }
+
+        if (showEmpty.value) {
+          item {
+            EmptyState(
+              icon = Icons.Filled.Folder,
+              title = "No video folders found",
+              message = "Add some video files to your device to see them here",
+            )
+          }
         }
       }
     }

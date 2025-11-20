@@ -196,6 +196,7 @@ dependencies {
     exclude(group = "xpp3", module = "xpp3")
   }
   implementation(libs.nanohttpd) // Local proxy server for streaming
+  implementation(libs.lazycolumnscrollbar)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"

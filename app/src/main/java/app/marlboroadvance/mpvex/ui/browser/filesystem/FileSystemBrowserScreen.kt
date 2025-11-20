@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Folder
@@ -758,68 +761,83 @@ private fun FileSystemBrowserContent(
       }
 
       else -> {
-        LazyColumn(
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(8.dp),
+        val filesListState = rememberLazyListState()
+        LazyColumnScrollbar(
+          state = filesListState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary,
+            thumbThickness = 6.dp,
+            scrollbarPadding = 8.dp,
+            thumbMinLength = 0.1f,
+            alwaysShowScrollbar = false,
+            thumbShape = RoundedCornerShape(3.dp),
+          ),
         ) {
-          // Breadcrumb navigation (if not at root)
-          if (!isAtRoot && breadcrumbs.isNotEmpty()) {
-            item {
-              BreadcrumbNavigation(
-                breadcrumbs = breadcrumbs,
-                onBreadcrumbClick = onBreadcrumbClick,
+          LazyColumn(
+            state = filesListState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(8.dp),
+          ) {
+            // Breadcrumb navigation (if not at root)
+            if (!isAtRoot && breadcrumbs.isNotEmpty()) {
+              item {
+                BreadcrumbNavigation(
+                  breadcrumbs = breadcrumbs,
+                  onBreadcrumbClick = onBreadcrumbClick,
+                )
+              }
+            }
+
+            // Folders first
+            items(
+              items = items.filterIsInstance<FileSystemItem.Folder>(),
+              key = { it.path },
+            ) { folder ->
+              val folderModel =
+                app.marlboroadvance.mpvex.domain.media.model.VideoFolder(
+                  bucketId = folder.path,
+                  name = folder.name,
+                  path = folder.path,
+                  videoCount = folder.videoCount,
+                  totalSize = folder.totalSize,
+                  totalDuration = folder.totalDuration,
+                  lastModified = folder.lastModified / 1000,
+                )
+
+              FolderCard(
+                folder = folderModel,
+                isSelected = folderSelectionManager.isSelected(folder),
+                isRecentlyPlayed = false,
+                onClick = { onFolderClick(folder) },
+                onLongClick = { onFolderLongClick(folder) },
+                onThumbClick = if (tapThumbnailToSelect) {
+                  { onFolderLongClick(folder) }
+                } else {
+                  { onFolderClick(folder) }
+                },
               )
             }
-          }
 
-          // Folders first
-          items(
-            items = items.filterIsInstance<FileSystemItem.Folder>(),
-            key = { it.path },
-          ) { folder ->
-            val folderModel =
-              app.marlboroadvance.mpvex.domain.media.model.VideoFolder(
-                bucketId = folder.path,
-                name = folder.name,
-                path = folder.path,
-                videoCount = folder.videoCount,
-                totalSize = folder.totalSize,
-                totalDuration = folder.totalDuration,
-                lastModified = folder.lastModified / 1000,
+            // Videos second
+            items(
+              items = items.filterIsInstance<FileSystemItem.VideoFile>(),
+              key = { it.video.id },
+            ) { videoFile ->
+              VideoCard(
+                video = videoFile.video,
+                progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                isRecentlyPlayed = false,
+                isSelected = videoSelectionManager.isSelected(videoFile.video),
+                onClick = { onVideoClick(videoFile.video) },
+                onLongClick = { onVideoLongClick(videoFile.video) },
+                onThumbClick = if (tapThumbnailToSelect) {
+                  { onVideoLongClick(videoFile.video) }
+                } else {
+                  { onVideoClick(videoFile.video) }
+                },
               )
-
-            FolderCard(
-              folder = folderModel,
-              isSelected = folderSelectionManager.isSelected(folder),
-              isRecentlyPlayed = false,
-              onClick = { onFolderClick(folder) },
-              onLongClick = { onFolderLongClick(folder) },
-              onThumbClick = if (tapThumbnailToSelect) {
-                { onFolderLongClick(folder) }
-              } else {
-                { onFolderClick(folder) }
-              },
-            )
-          }
-
-          // Videos second
-          items(
-            items = items.filterIsInstance<FileSystemItem.VideoFile>(),
-            key = { it.video.id },
-          ) { videoFile ->
-            VideoCard(
-              video = videoFile.video,
-              progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-              isRecentlyPlayed = false,
-              isSelected = videoSelectionManager.isSelected(videoFile.video),
-              onClick = { onVideoClick(videoFile.video) },
-              onLongClick = { onVideoLongClick(videoFile.video) },
-              onThumbClick = if (tapThumbnailToSelect) {
-                { onVideoLongClick(videoFile.video) }
-              } else {
-                { onVideoClick(videoFile.video) }
-              },
-            )
+            }
           }
         }
       }
