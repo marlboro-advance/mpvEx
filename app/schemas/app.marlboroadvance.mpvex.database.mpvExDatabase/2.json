@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "133bbb4c29ca9d4d0f30e16f9914ff4b",
+    "identityHash": "264a130c4ecf538a57083bbaf2c3db7b",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
@@ -233,7 +233,7 @@
       },
       {
         "tableName": "network_connections",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `protocol` TEXT NOT NULL, `host` TEXT NOT NULL, `port` INTEGER NOT NULL, `username` TEXT NOT NULL, `password` TEXT NOT NULL, `path` TEXT NOT NULL, `isAnonymous` INTEGER NOT NULL, `lastConnected` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `protocol` TEXT NOT NULL, `host` TEXT NOT NULL, `port` INTEGER NOT NULL, `username` TEXT NOT NULL, `password` TEXT NOT NULL, `path` TEXT NOT NULL, `isAnonymous` INTEGER NOT NULL, `lastConnected` INTEGER NOT NULL, `autoConnect` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -294,6 +294,12 @@
             "columnName": "lastConnected",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "autoConnect",
+            "columnName": "autoConnect",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -306,7 +312,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '133bbb4c29ca9d4d0f30e16f9914ff4b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '264a130c4ecf538a57083bbaf2c3db7b')"
     ]
   }
 }

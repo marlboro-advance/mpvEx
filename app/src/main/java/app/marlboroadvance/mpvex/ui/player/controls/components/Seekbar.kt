@@ -60,6 +60,7 @@ fun SeekbarWithTimers(
   durationTimerOnCLick: () -> Unit,
   chapters: ImmutableList<Segment>,
   paused: Boolean,
+  readAheadValue: Float = position,
   useWavySeekbar: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
@@ -112,6 +113,7 @@ fun SeekbarWithTimers(
       SquigglySeekbar(
         position = if (isUserInteracting) userPosition else animatedPosition.value,
         duration = duration,
+        readAheadValue = readAheadValue,
         chapters = chapters,
         isPaused = paused,
         isScrubbing = isUserInteracting,
@@ -148,6 +150,7 @@ fun SeekbarWithTimers(
 private fun SquigglySeekbar(
   position: Float,
   duration: Float,
+  readAheadValue: Float,
   chapters: ImmutableList<Segment>,
   isPaused: Boolean,
   isScrubbing: Boolean,
@@ -244,8 +247,10 @@ private fun SquigglySeekbar(
   ) {
     val strokeWidth = 5.dp.toPx()
     val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
+    val readAheadProgress = if (duration > 0f) (readAheadValue / duration).coerceIn(0f, 1f) else 0f
     val totalWidth = size.width
     val totalProgressPx = totalWidth * progress
+    val totalReadAheadPx = totalWidth * readAheadProgress
     val centerY = size.height / 2f
 
     // Calculate wave progress with matched endpoint logic (from Gramophone)
@@ -375,15 +380,23 @@ private fun SquigglySeekbar(
     // Played segment with gaps
     drawPathWithGaps(0f, totalProgressPx, primaryColor)
 
+    // Read-ahead buffer segment (between current position and buffered position)
+    if (totalReadAheadPx > totalProgressPx) {
+      val bufferAlpha = 0.5f
+      drawPathWithGaps(totalProgressPx, totalReadAheadPx, primaryColor.copy(alpha = bufferAlpha))
+    }
+
     if (transitionEnabled) {
       val disabledAlpha = 77f / 255f
-      // Unplayed segment (dimmed) with the same gaps
-      drawPathWithGaps(totalProgressPx, totalWidth, primaryColor.copy(alpha = disabledAlpha))
+      // Unplayed segment (dimmed) with the same gaps - start from readAhead position
+      val unplayedStart = maxOf(totalProgressPx, totalReadAheadPx)
+      drawPathWithGaps(unplayedStart, totalWidth, primaryColor.copy(alpha = disabledAlpha))
     } else {
       // No transition: draw a flat line to the end (hidden under thumb in original)
+      val flatLineStart = maxOf(totalProgressPx, totalReadAheadPx)
       drawLine(
         color = surfaceVariant.copy(alpha = 0.4f),
-        start = Offset(totalProgressPx, centerY),
+        start = Offset(flatLineStart, centerY),
         end = Offset(totalWidth, centerY),
         strokeWidth = strokeWidth,
         cap = StrokeCap.Round,
@@ -443,14 +456,15 @@ fun VideoTimer(
 @Composable
 private fun PreviewSeekBar() {
   SeekbarWithTimers(
-    5f,
-    20f,
-    {},
-    {},
-    Pair(false, true),
-    {},
-    {},
-    persistentListOf(),
+    position = 5f,
+    duration = 20f,
+    onValueChange = {},
+    onValueChangeFinished = {},
+    timersInverted = Pair(false, true),
+    positionTimerOnClick = {},
+    durationTimerOnCLick = {},
+    chapters = persistentListOf(),
     paused = false,
+    readAheadValue = 8f, // Buffer up to 8 seconds
   )
 }

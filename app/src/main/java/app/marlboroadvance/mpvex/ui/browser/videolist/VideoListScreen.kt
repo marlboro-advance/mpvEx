@@ -5,11 +5,13 @@ import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
@@ -23,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,8 +71,10 @@ import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
+import my.nanihadesuka.compose.LazyColumnScrollbar
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 import kotlin.math.roundToInt
@@ -427,70 +432,99 @@ private fun VideoListContent(
   val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
-  PullRefreshBox(
-    isRefreshing = isRefreshing,
-    onRefresh = onRefresh,
-    modifier = modifier.fillMaxSize(),
-  ) {
-    when {
-      isLoading -> {
-        Box(
-          modifier = Modifier.fillMaxSize(),
-          contentAlignment = Alignment.Center,
-        ) {
-          CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
+  when {
+    isLoading -> {
+      Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+      ) {
+        CircularProgressIndicator(
+          modifier = Modifier.size(48.dp),
+          color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
+
+    videosWithInfo.isEmpty() -> {
+      EmptyState(
+        icon = Icons.Filled.VideoLibrary,
+        title = "No videos in this folder",
+        message = "Videos you add to this folder will appear here",
+        modifier = modifier.fillMaxSize(),
+      )
+    }
+
+    else -> {
+      val listState = rememberLazyListState()
+
+      // Check if at top of list to hide scrollbar during pull-to-refresh
+      val isAtTop by remember {
+        derivedStateOf {
+          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
       }
 
-      videosWithInfo.isEmpty() -> {
-        EmptyState(
-          icon = Icons.Filled.VideoLibrary,
-          title = "No videos in this folder",
-          message = "Videos you add to this folder will appear here",
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+      // Only show scrollbar if list has more than 20 items
+      val hasEnoughItems = videosWithInfo.size > 20
 
-      else -> {
-        LazyColumn(
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(8.dp),
+      // Animate scrollbar alpha
+      val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "scrollbarAlpha",
+      )
+
+      PullRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        listState = listState,
+        modifier = modifier.fillMaxSize(),
+      ) {
+        LazyColumnScrollbar(
+          state = listState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+          ),
         ) {
-          items(
-            count = videosWithInfo.size,
-            key = { index -> videosWithInfo[index].video.id },
-          ) { index ->
-            val videoWithInfo = videosWithInfo[index]
-            val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+          LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(8.dp),
+          ) {
+            items(
+              count = videosWithInfo.size,
+              key = { index -> videosWithInfo[index].video.id },
+            ) { index ->
+              val videoWithInfo = videosWithInfo[index]
+              val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-            // Prefetch upcoming thumbnails
-            androidx.compose.runtime.LaunchedEffect(index) {
-              if (index < videosWithInfo.size - 1) {
-                val upcomingVideos =
-                  videosWithInfo.subList(
-                    (index + 1).coerceAtMost(videosWithInfo.size),
-                    (index + 11).coerceAtMost(videosWithInfo.size),
-                  )
-                thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
+              // Prefetch upcoming thumbnails
+              androidx.compose.runtime.LaunchedEffect(index) {
+                if (index < videosWithInfo.size - 1) {
+                  val upcomingVideos =
+                    videosWithInfo.subList(
+                      (index + 1).coerceAtMost(videosWithInfo.size),
+                      (index + 11).coerceAtMost(videosWithInfo.size),
+                    )
+                  thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
+                }
               }
-            }
 
-            VideoCard(
-              video = videoWithInfo.video,
-              progressPercentage = videoWithInfo.progressPercentage,
-              isRecentlyPlayed = isRecentlyPlayed,
-              isSelected = selectionManager.isSelected(videoWithInfo.video),
-              onClick = { onVideoClick(videoWithInfo.video) },
-              onLongClick = { onVideoLongClick(videoWithInfo.video) },
-              onThumbClick = if (tapThumbnailToSelect) {
-                { onVideoLongClick(videoWithInfo.video) }
-              } else {
-                { onVideoClick(videoWithInfo.video) }
-              },
-            )
+              VideoCard(
+                video = videoWithInfo.video,
+                progressPercentage = videoWithInfo.progressPercentage,
+                isRecentlyPlayed = isRecentlyPlayed,
+                isSelected = selectionManager.isSelected(videoWithInfo.video),
+                onClick = { onVideoClick(videoWithInfo.video) },
+                onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                onThumbClick = if (tapThumbnailToSelect) {
+                  { onVideoLongClick(videoWithInfo.video) }
+                } else {
+                  { onVideoClick(videoWithInfo.video) }
+                },
+              )
+            }
           }
         }
       }

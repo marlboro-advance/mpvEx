@@ -26,6 +26,9 @@
     <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
     <string name="pref_appearance_hide_player_buttons_background_title">Hide player buttons background</string>
     <string name="pref_appearance_hide_player_buttons_background_summary">Hide the background of all player control buttons</string>
+    <string name="pref_appearance_category_file_browser">File Browser</string>
+    <string name="pref_appearance_show_hidden_files_title">Show Hidden Files</string>
+    <string name="pref_appearance_show_hidden_files_summary">Show hidden folders starting with a dot (.) including android, data, system folders and .nomedia files</string>
 
     <string name="pref_layout_title">Player Layout</string>
     <string name="pref_layout_summary">Customize player button layout</string>

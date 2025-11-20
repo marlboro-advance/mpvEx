@@ -18,6 +18,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -30,14 +31,17 @@ import androidx.navigation3.ui.NavDisplay
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.repository.NetworkRepository
 import app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
+  private val networkRepository by inject<NetworkRepository>()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -55,6 +59,26 @@ class MainActivity : ComponentActivity() {
           darkScrim = Color.Transparent.toArgb(),
         ) { isDarkMode },
       )
+
+      LaunchedEffect(Unit) {
+        launch {
+          try {
+            val autoConnectConnections = networkRepository.getAutoConnectConnections()
+            autoConnectConnections.forEach { connection ->
+              Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
+              networkRepository.connect(connection)
+                .onSuccess {
+                  Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
+                }
+                .onFailure { e ->
+                  Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
+                }
+            }
+          } catch (e: Exception) {
+            Log.e("MainActivity", "Error during auto-connect", e)
+          }
+        }
+      }
 
       MpvexTheme {
         Surface {

@@ -141,6 +141,7 @@ fun PlayerControls(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
   val position by MPVLib.propInt["time-pos"].collectAsState()
+  val demuxerCacheTime by MPVLib.propFloat["demuxer-cache-time"].collectAsState()
   val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
   val gestureSeekAmount by viewModel.gestureSeekAmount.collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
@@ -281,15 +282,20 @@ fun PlayerControls(
           }
         }
 
+        // Slider display duration: 500ms shown + 300ms exit animation = 800ms total
+        val sliderDisplayDuration = 500L
+
         LaunchedEffect(volume, mpvVolume, isVolumeSliderShown) {
-          delay(2000)
+          delay(sliderDisplayDuration)
           if (isVolumeSliderShown) viewModel.isVolumeSliderShown.update { false }
         }
 
         LaunchedEffect(brightness, isBrightnessSliderShown) {
-          delay(2000)
+          delay(sliderDisplayDuration)
           if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
         }
+
+        val areSlidersShown = isBrightnessSliderShown || isVolumeSliderShown
 
         AnimatedVisibility(
           isBrightnessSliderShown,
@@ -689,6 +695,15 @@ fun PlayerControls(
           val invertDuration by playerPreferences.invertDuration.collectAsState()
           val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
 
+          // Calculate read-ahead position (current position + buffered cache time)
+          val readAheadPosition by remember(position, demuxerCacheTime) {
+            derivedStateOf {
+              val currentPos = position?.toFloat() ?: 0f
+              val cacheTime = demuxerCacheTime ?: 0f
+              currentPos + cacheTime
+            }
+          }
+
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
@@ -704,6 +719,7 @@ fun PlayerControls(
             positionTimerOnClick = {},
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
+            readAheadValue = readAheadPosition,
             useWavySeekbar = useWavySeekbar,
           )
         }
@@ -796,7 +812,7 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked && !areSlidersShown,
           enter =
             if (!reduceMotion) {
               slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
@@ -863,7 +879,7 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked && !isPortrait,
+          visible = controlsShown && !areControlsLocked && !isPortrait && !areSlidersShown,
           enter =
             if (!reduceMotion) {
               slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +

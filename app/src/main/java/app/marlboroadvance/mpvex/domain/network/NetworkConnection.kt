@@ -19,6 +19,7 @@ data class NetworkConnection(
   val path: String = "/",
   val isAnonymous: Boolean = false,
   val lastConnected: Long = 0,
+  val autoConnect: Boolean = false,
 )
 
 /**

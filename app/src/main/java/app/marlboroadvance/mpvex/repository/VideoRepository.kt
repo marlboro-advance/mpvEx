@@ -400,8 +400,8 @@ class VideoRepository(
     // This handles ultrawide/cinematic videos correctly (e.g., 1920x800, 1920x1036)
     val label = when {
       // Check width first for ultra-wide/cinematic content
-      width >= 7680 || height >= 4320 -> "8K" // 7680×4320
-      width >= 3840 || height >= 2160 -> "4K" // 3840×2160
+      width >= 7680 || height >= 4320 -> "4320p" // 7680×4320
+      width >= 3840 || height >= 2160 -> "2160p" // 3840×2160
       width >= 2560 || height >= 1440 -> "1440p" // 2560×1440 (2K/QHD)
       width >= 1920 || height >= 1080 -> "1080p" // 1920×1080 (Full HD) or ultrawide 1920x800
       width >= 1280 || height >= 720 -> "720p" // 1280×720 (HD)

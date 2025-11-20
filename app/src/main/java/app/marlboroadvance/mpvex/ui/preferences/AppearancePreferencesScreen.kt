@@ -129,6 +129,25 @@ object AppearancePreferencesScreen : Screen {
               )
             },
           )
+
+          PreferenceCategory(
+            title = { Text(text = stringResource(id = R.string.pref_appearance_category_file_browser)) },
+          )
+          val showHiddenFiles by preferences.showHiddenFiles.collectAsState()
+          SwitchPreference(
+            value = showHiddenFiles,
+            onValueChange = { preferences.showHiddenFiles.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_show_hidden_files_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_appearance_show_hidden_files_summary),
+              )
+            },
+          )
         }
       }
     }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ fun NetworkConnectionCard(
   onEdit: (NetworkConnection) -> Unit,
   onDelete: (NetworkConnection) -> Unit,
   onBrowse: (NetworkConnection) -> Unit,
+  onAutoConnectChange: (NetworkConnection, Boolean) -> Unit,
   modifier: Modifier = Modifier,
   isConnected: Boolean = false,
   isConnecting: Boolean = false,
@@ -117,6 +119,26 @@ fun NetworkConnectionCard(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.error,
           modifier = Modifier.padding(top = 8.dp),
+        )
+      }
+
+      // Auto-connect checkbox
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Checkbox(
+          checked = connection.autoConnect,
+          onCheckedChange = { checked ->
+            onAutoConnectChange(connection, checked)
+          },
+        )
+        Text(
+          text = "Connect automatically on app launch",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
 

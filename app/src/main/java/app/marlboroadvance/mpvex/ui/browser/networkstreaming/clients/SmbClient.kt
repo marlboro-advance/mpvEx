@@ -3,52 +3,51 @@ package app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients
 import android.net.Uri
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
-import jcifs.CIFSContext
-import jcifs.config.PropertyConfiguration
-import jcifs.context.BaseContext
-import jcifs.smb.NtlmPasswordAuthenticator
-import jcifs.smb.SmbFile
+import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.smbj.SMBClient
+import com.hierynomus.smbj.SmbConfig
+import com.hierynomus.smbj.auth.AuthenticationContext
+import com.hierynomus.smbj.connection.Connection
+import com.hierynomus.smbj.session.Session
+import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.InputStream
-import java.util.Properties
+import java.util.EnumSet
+import java.util.concurrent.TimeUnit
 
 class SmbClient(private val connection: NetworkConnection) : NetworkClient {
-  private var context: CIFSContext? = null
+  private var smbClient: SMBClient? = null
+  private var smbConnection: Connection? = null
+  private var session: Session? = null
   private var baseUrl: String = ""
-  private var resolvedHostIp: String = "" // Store the resolved IP
+  private var resolvedHostIp: String = ""
+  private var shareName: String = ""
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
+        // Configure SMBJ for SMB 2/3
+        val config = SmbConfig.builder()
+          .withTimeout(30000, TimeUnit.MILLISECONDS)
+          .withSoTimeout(35000, TimeUnit.MILLISECONDS)
+          .withDialects(
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_1_1,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0_2,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_3_0,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_2_1,
+            com.hierynomus.mssmb2.SMB2Dialect.SMB_2_0_2,
+          )
+          .withDfsEnabled(false)
+          .withMultiProtocolNegotiate(true)
+          .build()
 
-        // Configure jCIFS for SMB 3.0+
-        val props = Properties()
-        props.setProperty("jcifs.smb.client.minVersion", "SMB300")  // Minimum SMB 3.0
-        props.setProperty("jcifs.smb.client.maxVersion", "SMB311")  // Maximum SMB 3.1.1
-        props.setProperty("jcifs.resolveOrder", "DNS")
-        props.setProperty("jcifs.smb.client.dfs.disabled", "true") // Disable DFS for faster operations
-        props.setProperty("jcifs.smb.client.responseTimeout", "30000")
-        props.setProperty("jcifs.smb.client.connTimeout", "10000")
-        props.setProperty("jcifs.smb.client.soTimeout", "35000")
-        // Enable SMB 3.0 features
-        props.setProperty("jcifs.smb.client.enableSMB2", "true")
-        props.setProperty("jcifs.smb.client.useSMB2Negotiation", "true")
-
-        val config = PropertyConfiguration(props)
-        val baseContext = BaseContext(config)
-
-        // Create authentication
-        val auth =
-          if (connection.isAnonymous) {
-            NtlmPasswordAuthenticator()
-          } else {
-            NtlmPasswordAuthenticator(
-              connection.username,
-              connection.password,
-            )
-          }
+        smbClient = SMBClient(config)
 
         // Resolve and verify the host
         val resolvedAddress = try {
@@ -76,60 +75,76 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
           return@withContext Result.failure(Exception("Host ${connection.host} is not reachable on the network"))
         }
 
-        // Create context with credentials
-        context = baseContext.withCredentials(auth)
-
-        // Use the resolved IP address to ensure we connect to the exact host
+        // Use the resolved IP address
         val hostForUrl = resolvedAddress.hostAddress ?: connection.host
         resolvedHostIp = hostForUrl
-        baseUrl =
-          "smb://${hostForUrl}${if (connection.port != 445) ":${connection.port}" else ""}${connection.path}"
 
-        // Test the connection
-        val testFile = SmbFile(baseUrl, context)
+        // Parse the connection path - it should ONLY be the share name
+        // Expected format: /ShareName (not /ShareName/folder)
+        shareName = connection.path.trim('/')
 
-        // Verify the connection with a timeout
+        if (shareName.isEmpty()) {
+          return@withContext Result.failure(
+            Exception("Share name required. Path should be just the share name.\n\nExample: /Media or /Public\n\nDo not include folders, navigate to them after connecting."),
+          )
+        }
+
+        // Reject paths with subfolders
+        if (shareName.contains('/')) {
+          return@withContext Result.failure(
+            Exception("Path should be ONLY the share name, not a folder path.\n\nExample: Use /Media, not /Media/Movies\n\nYou can navigate to folders after connecting."),
+          )
+        }
+
+        baseUrl = "smb://${hostForUrl}${if (connection.port != 445) ":${connection.port}" else ""}/${shareName}"
+
+        // Connect to the server
         val connectionResult = try {
           withTimeout(10000) {
-            val exists = testFile.exists()
+            smbConnection = smbClient!!.connect(hostForUrl, connection.port)
 
-            if (!exists) {
-              Result.failure<Unit>(Exception("Path does not exist"))
+            // Create authentication context
+            val authContext = if (connection.isAnonymous) {
+              AuthenticationContext.anonymous()
             } else {
-              val isDir = testFile.isDirectory
+              AuthenticationContext(
+                connection.username,
+                connection.password.toCharArray(),
+                null, // domain can be null
+              )
+            }
 
-              if (!isDir) {
-                Result.failure<Unit>(Exception("Path is not a directory"))
+            // Authenticate
+            session = smbConnection!!.authenticate(authContext)
+
+            // Test connection by connecting to the share
+            val diskShare = session!!.connectShare(shareName) as? DiskShare
+              ?: return@withTimeout Result.failure<Unit>(Exception("Share '$shareName' is not a disk share"))
+
+            try {
+              // Test access by listing the share root
+              diskShare.list("")
+
+              // Success
+              diskShare.close()
+              Result.success(Unit)
+            } catch (e: Exception) {
+              diskShare.close()
+              if (e.message?.contains("STATUS_ACCESS_DENIED", ignoreCase = true) == true ||
+                e.message?.contains("Access is denied", ignoreCase = true) == true
+              ) {
+                Result.failure<Unit>(Exception("Authentication failed. Check username and password."))
+              } else if (e.message?.contains("STATUS_OBJECT_NAME_NOT_FOUND", ignoreCase = true) == true ||
+                e.message?.contains("does not exist", ignoreCase = true) == true
+              ) {
+                Result.failure<Unit>(Exception("Share does not exist"))
               } else {
-                // Verify authentication by listing files
-                try {
-                  testFile.listFiles()
-
-                  if (!connection.isAnonymous) {
-                    testFile.type // Access share attributes to verify auth
-                  }
-
-                  Result.success(Unit)
-                } catch (e: jcifs.smb.SmbAuthException) {
-                  Result.failure<Unit>(Exception("Authentication failed. Check username and password."))
-                } catch (e: jcifs.smb.SmbException) {
-                  if (e.message?.contains("Access is denied", ignoreCase = true) == true ||
-                    e.message?.contains("STATUS_ACCESS_DENIED", ignoreCase = true) == true
-                  ) {
-                    Result.failure<Unit>(Exception("Authentication failed. Check username and password."))
-                  } else {
-                    Result.failure<Unit>(Exception("Connection failed: ${e.message}"))
-                  }
-                }
+                Result.failure<Unit>(Exception("Connection failed: ${e.message}"))
               }
             }
           }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
           Result.failure(Exception("Connection timeout. Server not responding."))
-        } catch (e: jcifs.smb.SmbAuthException) {
-          Result.failure(Exception("Authentication failed. Check username and password."))
-        } catch (e: jcifs.smb.SmbException) {
-          Result.failure(Exception("Connection failed: ${e.message ?: "Unknown SMB error"}"))
         } catch (e: Exception) {
           Result.failure(Exception("Connection failed: ${e.message ?: "Unknown error"}"))
         }
@@ -142,96 +157,162 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
 
   override suspend fun disconnect() {
     withContext(Dispatchers.IO) {
-      context = null
+      try {
+        session?.close()
+      } catch (_: Exception) {
+      }
+      try {
+        smbConnection?.close()
+      } catch (_: Exception) {
+      }
+      try {
+        smbClient?.close()
+      } catch (_: Exception) {
+      }
+      session = null
+      smbConnection = null
+      smbClient = null
       baseUrl = ""
       resolvedHostIp = ""
+      shareName = ""
     }
   }
 
-  override fun isConnected(): Boolean = context != null
+  override fun isConnected(): Boolean = session != null && smbConnection != null
 
   override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
-        val ctx = context ?: return@withContext Result.failure(Exception("Not connected"))
-
-        // Verify we're using the correct base URL for this connection
-        if (baseUrl.isEmpty() || resolvedHostIp.isEmpty()) {
-          return@withContext Result.failure(Exception("Connection not properly initialized"))
-        }
-
-        // Build the full path
-        val fullPath = if (path.startsWith("smb://")) {
-          path
-        } else if (path == "/" || path.isEmpty()) {
-          baseUrl
-        } else {
-          "$baseUrl${if (path.startsWith("/")) path else "/$path"}"
-        }
-
-        val smbFile = SmbFile(fullPath, ctx)
-
-        val exists = smbFile.exists()
-
-        if (!exists) {
-          return@withContext Result.failure(Exception("Path does not exist"))
-        }
-
-        val isDir = smbFile.isDirectory
-
-        if (!isDir) {
-          return@withContext Result.failure(Exception("Path is not a directory"))
-        }
-
-        // Use a timeout for listFiles operation
-        val rawFiles: Array<SmbFile>? = try {
-          withTimeout(15000) {
-            smbFile.listFiles()
-          }
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-          return@withContext Result.failure(Exception("Operation timed out. The server may be slow or unresponsive."))
-        }
-
-        if (rawFiles == null || rawFiles.isEmpty()) {
-          return@withContext Result.success(emptyList())
-        }
-
-        val files = rawFiles.mapNotNull { file ->
-          try {
-            val fileName = file.name.trimEnd('/')
-
-            // Skip special entries
-            if (fileName == "." || fileName == "..") {
-              return@mapNotNull null
-            }
-
-            // Skip Windows administrative/system shares
-            if (fileName.endsWith("$", ignoreCase = true)) {
-              return@mapNotNull null
-            }
-
-            // Skip IPC$ and other system shares
-            if (fileName.equals("IPC", ignoreCase = true) ||
-              fileName.equals("print", ignoreCase = true) ||
-              fileName.equals("print$", ignoreCase = true)
-            ) {
-              return@mapNotNull null
-            }
-
-            NetworkFile(
-              name = fileName,
-              path = file.path,
-              isDirectory = file.isDirectory,
-              size = if (file.isDirectory) 0 else file.length(),
-              lastModified = file.lastModified(),
-              mimeType = if (!file.isDirectory) getMimeType(fileName) else null,
-            )
-          } catch (e: Exception) {
-            null // Skip files that can't be accessed
+        // Check if we're still connected, if not reconnect
+        if (!isConnected() || smbConnection?.isConnected != true) {
+          android.util.Log.w("SmbClient", "Connection is stale, reconnecting...")
+          disconnect()
+          val reconnectResult = connect()
+          if (reconnectResult.isFailure) {
+            return@withContext Result.failure(Exception("Failed to reconnect: ${reconnectResult.exceptionOrNull()?.message}"))
           }
         }
 
-        Result.success(files)
+        val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
+
+        android.util.Log.d("SmbClient", "=== listFiles called ===")
+        android.util.Log.d("SmbClient", "  Input path: '$path'")
+        android.util.Log.d("SmbClient", "  Share name: '$shareName'")
+
+        // Build the relative path within the share
+        // The 'path' parameter is the navigation path from the share root
+        val relativePath = when {
+          path.startsWith("smb://") -> {
+            // Extract path from smb:// URL
+            val uri = java.net.URI(path)
+            // uri.path is like: /shareName/folder/file
+            // Remove /shareName to get: folder/file
+            val pathParts = uri.path.trim('/').split('/', limit = 2)
+            val extracted = pathParts.getOrNull(1) ?: ""
+            android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
+            extracted
+          }
+
+          path == "/" || path.isEmpty() -> {
+            // Root of the share
+            android.util.Log.d("SmbClient", "  Using share root (empty path)")
+            ""
+          }
+
+          else -> {
+            // Check if path is just the share name (means root)
+            val cleaned = path.trim('/')
+            if (cleaned.equals(shareName, ignoreCase = true)) {
+              android.util.Log.d("SmbClient", "  Path equals share name - using root")
+              ""
+            } else if (cleaned.startsWith("$shareName/", ignoreCase = true)) {
+              // Path includes share name prefix - remove it
+              val withoutShare = cleaned.substring(shareName.length + 1)
+              android.util.Log.d("SmbClient", "  Removed share prefix: '$withoutShare'")
+              withoutShare
+            } else {
+              // Normal subfolder navigation
+              android.util.Log.d("SmbClient", "  Using cleaned path: '$cleaned'")
+              cleaned
+            }
+          }
+        }
+
+        android.util.Log.d("SmbClient", "  Final relativePath: '$relativePath'")
+        android.util.Log.d("SmbClient", "  Will call: diskShare.list('$relativePath')")
+
+        val diskShare = try {
+          sess.connectShare(shareName) as? DiskShare
+            ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
+        } catch (e: Exception) {
+          android.util.Log.e("SmbClient", "Failed to connect to share: ${e.message}", e)
+          return@withContext Result.failure(Exception("Failed to connect to share: ${e.message}"))
+        }
+
+        try {
+          // Use a timeout for list operation
+          val rawFiles: List<FileIdBothDirectoryInformation> = try {
+            withTimeout(15000) {
+              diskShare.list(relativePath)
+            }
+          } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            diskShare.close()
+            return@withContext Result.failure(Exception("Operation timed out. The server may be slow or unresponsive."))
+          }
+
+          android.util.Log.d("SmbClient", "  Listed ${rawFiles.size} items")
+
+          val files = rawFiles.mapNotNull { fileInfo ->
+            try {
+              val fileName = fileInfo.fileName
+
+              // Skip special entries
+              if (fileName == "." || fileName == "..") {
+                return@mapNotNull null
+              }
+
+              // Skip Windows administrative/system shares
+              if (fileName.endsWith("$", ignoreCase = true)) {
+                return@mapNotNull null
+              }
+
+              // Skip IPC$ and other system shares
+              if (fileName.equals("IPC", ignoreCase = true) ||
+                fileName.equals("print", ignoreCase = true) ||
+                fileName.equals("print$", ignoreCase = true)
+              ) {
+                return@mapNotNull null
+              }
+
+              val isDirectory = fileInfo.fileAttributes and 0x10 != 0L // FILE_ATTRIBUTE_DIRECTORY
+              val fileSize = if (isDirectory) 0 else fileInfo.endOfFile
+
+              // Build the full SMB path for this file
+              val fullPath = if (relativePath.isEmpty()) {
+                "smb://${resolvedHostIp}/${shareName}/${fileName}"
+              } else {
+                "smb://${resolvedHostIp}/${shareName}/${relativePath}/${fileName}"
+              }
+
+              NetworkFile(
+                name = fileName,
+                path = fullPath,
+                isDirectory = isDirectory,
+                size = fileSize,
+                lastModified = fileInfo.lastWriteTime.toEpochMillis(),
+                mimeType = if (!isDirectory) getMimeType(fileName) else null,
+              )
+            } catch (e: Exception) {
+              null // Skip files that can't be accessed
+            }
+          }
+
+          diskShare.close()
+          Result.success(files)
+        } catch (e: Exception) {
+          diskShare.close()
+          Result.failure(Exception("Failed to list files: ${e.message}"))
+        }
       } catch (e: Exception) {
         Result.failure(e)
       }
@@ -240,17 +321,65 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun getFileStream(path: String): Result<InputStream> =
     withContext(Dispatchers.IO) {
       try {
-        val ctx = context ?: return@withContext Result.failure(Exception("Not connected"))
-        val fullPath =
-          if (path.startsWith("smb://")) path else "$baseUrl${if (path.startsWith("/")) path else "/$path"}"
+        val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
 
-        val smbFile = SmbFile(fullPath, ctx)
+        // Parse the SMB path to get relative path within share
+        val relativePath = when {
+          path.startsWith("smb://") -> {
+            // Extract path from smb:// URL
+            val uri = java.net.URI(path)
+            val pathParts = uri.path.trim('/').split('/', limit = 2)
+            pathParts.getOrNull(1) ?: ""
+          }
 
-        if (!smbFile.exists()) {
-          return@withContext Result.failure(Exception("File does not exist"))
+          else -> {
+            path.trim('/')
+          }
         }
 
-        Result.success(smbFile.inputStream)
+        val diskShare = sess.connectShare(shareName) as? DiskShare
+          ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
+
+        try {
+          val file = diskShare.openFile(
+            relativePath,
+            EnumSet.of(AccessMask.GENERIC_READ),
+            null,
+            EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+            SMB2CreateDisposition.FILE_OPEN,
+            null,
+          )
+
+          val inputStream = file.inputStream
+
+          // Wrap the stream to handle cleanup
+          val wrappedStream = object : InputStream() {
+            override fun read(): Int = inputStream.read()
+            override fun read(b: ByteArray): Int = inputStream.read(b)
+            override fun read(b: ByteArray, off: Int, len: Int): Int = inputStream.read(b, off, len)
+            override fun available(): Int = inputStream.available()
+
+            override fun close() {
+              try {
+                inputStream.close()
+              } catch (_: Exception) {
+              }
+              try {
+                file.close()
+              } catch (_: Exception) {
+              }
+              try {
+                diskShare.close()
+              } catch (_: Exception) {
+              }
+            }
+          }
+
+          Result.success(wrappedStream)
+        } catch (e: Exception) {
+          diskShare.close()
+          Result.failure(Exception("Failed to open file: ${e.message}"))
+        }
       } catch (e: Exception) {
         Result.failure(e)
       }

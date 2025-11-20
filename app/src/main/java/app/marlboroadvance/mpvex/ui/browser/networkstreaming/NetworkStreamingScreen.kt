@@ -185,6 +185,9 @@ object NetworkStreamingScreen : Screen {
                     )
                   }
                 },
+                onAutoConnectChange = { conn, autoConnect ->
+                  viewModel.updateConnection(conn.copy(autoConnect = autoConnect))
+                },
                 isConnected = status?.isConnected ?: false,
                 isConnecting = status?.isConnecting ?: false,
                 error = status?.error,

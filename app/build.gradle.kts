@@ -189,13 +189,14 @@ dependencies {
   implementation(libs.mediainfo.lib)
 
   // Network protocol libraries
-  implementation(libs.jcifs.ng) // SMB/CIFS
+  implementation(libs.smbj) // SMB/CIFS
   implementation(libs.commons.net) // FTP
   implementation(libs.sardine.android) { // WebDAV (Android-compatible version using OkHttp)
     // Exclude xpp3 as Android already provides XmlPullParser
     exclude(group = "xpp3", module = "xpp3")
   }
   implementation(libs.nanohttpd) // Local proxy server for streaming
+  implementation(libs.lazycolumnscrollbar)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
