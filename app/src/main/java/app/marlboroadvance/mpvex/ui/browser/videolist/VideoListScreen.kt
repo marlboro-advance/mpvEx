@@ -108,17 +108,14 @@ data class VideoListScreen(
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-
-    // Use derivedStateOf to ensure recomposition when videosWithPlaybackInfo changes
-    val sortedVideosWithInfo by remember {
-      androidx.compose.runtime.derivedStateOf {
+    val sortedVideosWithInfo =
+      remember(videosWithPlaybackInfo, videoSortType, videoSortOrder) {
         val sortedVideos = SortUtils.sortVideos(videosWithPlaybackInfo.map { it.video }, videoSortType, videoSortOrder)
         // Maintain the playback info mapping
         sortedVideos.map { video ->
           videosWithPlaybackInfo.find { it.video.id == video.id } ?: VideoWithPlaybackInfo(video)
         }
       }
-    }
 
     // Selection manager
     val selectionManager =

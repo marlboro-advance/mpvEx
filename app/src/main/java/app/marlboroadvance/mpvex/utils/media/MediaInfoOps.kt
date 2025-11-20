@@ -294,38 +294,57 @@ object MediaInfoOps {
     val forcedStream: String = "",
   )
 
-  private suspend fun tryExtractWithRetriever(
+  /**
+   * Try to extract framerate using MediaMetadataRetriever (fast, built-in Android API)
+   * This is much faster than MediaInfo for framerate extraction.
+   *
+   * @param context Android context
+   * @param uri URI of the video file
+   * @return Framerate in fps, or null if extraction failed
+   */
+  private suspend fun tryExtractFramerateWithRetriever(
     context: Context,
     uri: Uri,
-  ): VideoMetadata? =
+  ): Float? =
     withContext(Dispatchers.IO) {
       runCatching {
         val retriever = MediaMetadataRetriever()
         try {
           retriever.setDataSource(context, uri)
 
-          val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-          val duration = durationStr?.toLongOrNull() ?: 0L
-
-          val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-          val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-          val width = widthStr?.toIntOrNull() ?: 0
-          val height = heightStr?.toIntOrNull() ?: 0
-
+          // Try to get framerate from metadata
           val fpsString = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-          val fps = fpsString?.toFloatOrNull() ?: 0f
+          val fps = fpsString?.toFloatOrNull()
 
-          if (duration > 0 && width > 0 && height > 0) {
-            VideoMetadata(0L, duration, width, height, fps)
+          if (fps != null && fps > 0f) {
+            Log.d(TAG, "MediaMetadataRetriever extracted framerate: ${fps}fps")
+            fps
           } else {
+            Log.d(TAG, "MediaMetadataRetriever could not extract valid framerate")
             null
           }
         } finally {
           retriever.release()
         }
-      }.getOrNull()
+      }.getOrElse { error ->
+        Log.d(TAG, "MediaMetadataRetriever failed: ${error.message}")
+        null
+      }
     }
 
+  /**
+   * Quickly extract just size, duration, resolution, and framerate metadata from a video file
+   * This is optimized for external storage videos where MediaStore doesn't have metadata.
+   *
+   * Strategy:
+   * 1. First tries MediaMetadataRetriever for framerate (fast, built-in Android API)
+   * 2. Falls back to MediaInfo for complete metadata including framerate (slower but more reliable)
+   *
+   * @param context Android context
+   * @param uri URI of the video file
+   * @param fileName Name of the file (needed for MediaInfo to detect format correctly)
+   * @return Result containing VideoMetadata with size in bytes, duration in milliseconds, resolution, and fps
+   */
   suspend fun extractBasicMetadata(
     context: Context,
     uri: Uri,
@@ -333,16 +352,8 @@ object MediaInfoOps {
   ): Result<VideoMetadata> =
     withContext(Dispatchers.IO) {
       runCatching {
-        val retrieverMetadata = tryExtractWithRetriever(context, uri)
-
-        if (retrieverMetadata != null && retrieverMetadata.width > 0 && retrieverMetadata.height > 0) {
-          if (retrieverMetadata.fps > 0f) {
-            return@runCatching retrieverMetadata
-          } else {
-            val fps = extractFramerateFromMediaInfo(context, uri, fileName)
-            return@runCatching retrieverMetadata.copy(fps = fps)
-          }
-        }
+        // First, try to get framerate using MediaMetadataRetriever (fast)
+        val retrieverFps = tryExtractFramerateWithRetriever(context, uri)
 
         val contentResolver = context.contentResolver
         val pfd =
@@ -355,20 +366,31 @@ object MediaInfoOps {
         try {
           mi.Open(fd, fileName)
 
+          // Extract file size in bytes
           val fileSizeStr = mi.getInfo(MediaInfo.Stream.General, 0, "FileSize")
           val fileSize = fileSizeStr.toLongOrNull() ?: 0L
 
+          // Extract duration in milliseconds
           val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
           val duration = durationStr.toLongOrNull() ?: 0L
 
+          // Extract video resolution (width and height)
           val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")
           val width = widthStr.toIntOrNull() ?: 0
 
           val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
           val height = heightStr.toIntOrNull() ?: 0
 
-          val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
-          val fps = fpsStr.toFloatOrNull() ?: 0f
+          // Use framerate from MediaMetadataRetriever if available, otherwise from MediaInfo
+          val fps = if (retrieverFps != null && retrieverFps > 0f) {
+            Log.d(TAG, "Using framerate from MediaMetadataRetriever: ${retrieverFps}fps")
+            retrieverFps
+          } else {
+            val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
+            val mediaInfoFps = fpsStr.toFloatOrNull() ?: 0f
+            Log.d(TAG, "Using framerate from MediaInfo: ${mediaInfoFps}fps")
+            mediaInfoFps
+          }
 
           VideoMetadata(fileSize, duration, width, height, fps)
         } finally {
@@ -378,30 +400,9 @@ object MediaInfoOps {
       }
     }
 
-  private suspend fun extractFramerateFromMediaInfo(
-    context: Context,
-    uri: Uri,
-    fileName: String,
-  ): Float =
-    withContext(Dispatchers.IO) {
-      runCatching {
-        val contentResolver = context.contentResolver
-        val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return@withContext 0f
-
-        val fd = pfd.detachFd()
-        val mi = MediaInfo()
-
-        try {
-          mi.Open(fd, fileName)
-          val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
-          fpsStr.toFloatOrNull() ?: 0f
-        } finally {
-          mi.Close()
-          pfd.close()
-        }
-      }.getOrElse { 0f }
-    }
-
+  /**
+   * Data class to hold basic video metadata (size, duration, resolution, and framerate)
+   */
   data class VideoMetadata(
     val sizeBytes: Long,
     val durationMs: Long,

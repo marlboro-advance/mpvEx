@@ -353,16 +353,36 @@ object FileSystemRepository : KoinComponent {
               id.toString(),
             )
 
-          val file = File(path)
-          val cachedMetadata = metadataCache.getCachedMetadata(file, dateModified, size)
-
+          // Always extract framerate from MediaInfo (MediaStore doesn't provide it)
+          // Also fallback for resolution/duration if MediaStore doesn't have them
           var fps = 0f
+          val file = File(path)
 
-          if (cachedMetadata != null) {
-            if (width <= 0) width = cachedMetadata.width
-            if (height <= 0) height = cachedMetadata.height
-            if (duration <= 0) duration = cachedMetadata.durationMs
-            fps = cachedMetadata.fps
+          if (width <= 0 || height <= 0 || duration <= 0) {
+            // MediaStore has incomplete data - extract everything from MediaInfo
+            Log.d(TAG, "MediaStore has incomplete data for $displayName, trying MediaInfo fallback")
+            metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+              if (metadata.width > 0 && metadata.height > 0) {
+                width = metadata.width
+                height = metadata.height
+              }
+              if (metadata.durationMs > 0) {
+                duration = metadata.durationMs
+              }
+              if (metadata.sizeBytes > 0) {
+                size = metadata.sizeBytes
+              }
+              fps = metadata.fps
+              Log.d(TAG, "MediaInfo fallback for $displayName: ${width}x${height}@${fps}fps, ${duration}ms")
+            } ?: run {
+              Log.w(TAG, "MediaInfo fallback failed for $displayName")
+            }
+          } else {
+            // MediaStore has basic data, but we still need fps from MediaInfo
+            metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+              fps = metadata.fps
+              Log.d(TAG, "Extracted framerate for $displayName: ${fps}fps")
+            }
           }
 
           videos.add(
@@ -390,20 +410,33 @@ object FileSystemRepository : KoinComponent {
         }
       }
 
+      // For files not in MediaStore, create Video objects using cached MediaInfo extraction
       val foundPaths = videos.map { it.path }.toSet()
       files
         .filter { it.absolutePath !in foundPaths }
         .forEach { file ->
           val uri = Uri.fromFile(file)
           val displayName = file.name
-          val size = file.length()
-          val dateModified = file.lastModified() / 1000
+          var size = file.length()
+          var duration = 0L
+          var width = 0
+          var height = 0
+          var fps = 0f
 
-          val cachedMetadata = metadataCache.getCachedMetadata(file, dateModified, size)
-          val duration = cachedMetadata?.durationMs ?: 0L
-          val width = cachedMetadata?.width ?: 0
-          val height = cachedMetadata?.height ?: 0
-          val fps = cachedMetadata?.fps ?: 0f
+          // Use metadata cache with MediaInfo fallback
+          metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+            if (metadata.sizeBytes > 0) size = metadata.sizeBytes
+            duration = metadata.durationMs
+            width = metadata.width
+            height = metadata.height
+            fps = metadata.fps
+            Log.d(
+              TAG,
+              "Metadata for $displayName (not in MediaStore): ${width}x${height}@${fps}fps, ${duration}ms",
+            )
+          } ?: run {
+            Log.w(TAG, "Failed to extract metadata for $displayName (not in MediaStore)")
+          }
 
           val extension = file.extension.lowercase()
           val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
@@ -517,10 +550,13 @@ object FileSystemRepository : KoinComponent {
     val baseResolution = formatResolution(width, height, fps)
     if (baseResolution == "--" || fps <= 0f) return baseResolution
 
+    // Format fps: show up to 2 decimals, but remove trailing zeros
     val fpsFormatted = if (fps % 1.0f == 0f) {
+      // Integer fps (e.g., 30.0 -> "30")
       fps.toInt().toString()
     } else {
-      String.format(Locale.getDefault(), "%.3f", fps).trimEnd('0').trimEnd('.')
+      // Decimal fps (e.g., 23.976 -> "23.98", 29.97 -> "29.97")
+      String.format(Locale.getDefault(), "%.2f", fps).trimEnd('0').trimEnd('.')
     }
 
     return "$baseResolution@$fpsFormatted"
