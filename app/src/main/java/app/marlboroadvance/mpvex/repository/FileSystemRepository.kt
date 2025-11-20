@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import android.text.format.Formatter.formatFileSize
 import android.util.Log
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
@@ -20,11 +19,16 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
+/**
+ * Repository for filesystem operations - based on Fossify File Manager ItemsFragment logic
+ * Handles directory scanning, file detection, and metadata extraction
+ */
 object FileSystemRepository : KoinComponent {
   private const val TAG = "FileSystemRepository"
   private val metadataCache: VideoMetadataCacheRepository by inject()
 
-  // Folders to skip during scanning (system/cache folders)
+  // Folders to skip during scanning (system/cache folders) - from Fossify reference
+  // These are skipped by default but shown when showHiddenFiles is enabled
   private val SKIP_FOLDERS =
     setOf(
       "android",
@@ -41,11 +45,13 @@ object FileSystemRepository : KoinComponent {
 
   /**
    * Gets the default root path for the filesystem browser
+   * Equivalent to internalStoragePath from Fossify
    */
   fun getDefaultRootPath(): String = Environment.getExternalStorageDirectory().absolutePath
 
   /**
    * Parses a path into breadcrumb components
+   * Similar to Fossify's Breadcrumbs component logic
    */
   fun getPathComponents(path: String): List<PathComponent> {
     if (path.isBlank()) return emptyList()
@@ -54,7 +60,7 @@ object FileSystemRepository : KoinComponent {
     val normalizedPath = path.trimEnd('/')
     val parts = normalizedPath.split("/").filter { it.isNotEmpty() }
 
-    // Build cumulative paths
+    // Build cumulative paths - similar to Fossify's breadcrumb builder
     val rootPath = "/"
     components.add(PathComponent("Root", rootPath))
 
@@ -69,15 +75,22 @@ object FileSystemRepository : KoinComponent {
 
   /**
    * Scans a directory and returns its contents (folders and video files)
+   * Based on Fossify's ItemsFragment.getRegularItemsOf() and getItems() logic
+   *
+   * @param showAllFileTypes If true, shows all files. If false, shows only videos.
+   * @param showHiddenFiles If true, shows hidden files and folders (starting with .). If false, hides them.
    */
   suspend fun scanDirectory(
     context: Context,
     path: String,
+    showAllFileTypes: Boolean = false,
+    showHiddenFiles: Boolean = false,
   ): Result<List<FileSystemItem>> =
     withContext(Dispatchers.IO) {
       try {
         val directory = File(path)
 
+        // Validation checks - similar to Fossify's directory validation
         if (!directory.exists()) {
           return@withContext Result.failure(Exception("Directory does not exist: $path"))
         }
@@ -97,12 +110,14 @@ object FileSystemRepository : KoinComponent {
           return@withContext Result.failure(Exception("Failed to list directory contents: $path"))
         }
 
-        // Process subdirectories - only include folders that contain videos
+        // Process subdirectories - based on Fossify's getListItemFromFile logic
+        // Only include folders that contain files (videos or all files based on mode)
         files
-          .filter { it.isDirectory && it.canRead() && !shouldSkipFolder(it) }
+          .filter { it.isDirectory && it.canRead() && !shouldSkipFolder(it, showHiddenFiles) }
           .forEach { subdir ->
-            val folderInfo = analyzeFolderContents(subdir)
-            // Only add folder if it contains at least one video (directly or in subfolders)
+            val folderInfo = getDirectChildrenCount(subdir, showHiddenFiles, showAllFileTypes)
+
+            // Only add folder if it contains files
             if (folderInfo.videoCount > 0) {
               items.add(
                 FileSystemItem.Folder(
@@ -111,18 +126,24 @@ object FileSystemRepository : KoinComponent {
                   lastModified = subdir.lastModified(),
                   videoCount = folderInfo.videoCount,
                   totalSize = folderInfo.totalSize,
-                  totalDuration = folderInfo.totalDuration,
+                  totalDuration = 0L, // Duration calculated on-demand for performance
                   hasSubfolders = folderInfo.hasSubfolders,
                 ),
               )
             }
           }
 
-        // Process video files in current directory
-        val videoFiles = files.filter { it.isFile && StorageScanUtils.isVideoFile(it) }
+        // Process files in current directory - based on Fossify's file detection
+        val targetFiles = if (showAllFileTypes) {
+          // Show all files in file manager mode
+          files.filter { it.isFile }
+        } else {
+          // Show only videos in video player mode
+          files.filter { it.isFile && StorageScanUtils.isVideoFile(it) }
+        }
 
-        // Create Video objects for each video file
-        val videos = getVideosFromFiles(context, videoFiles)
+        // Create Video objects for each file - using MediaStore when available
+        val videos = getVideosFromFiles(context, targetFiles)
 
         videos.forEach { video ->
           items.add(
@@ -135,7 +156,10 @@ object FileSystemRepository : KoinComponent {
           )
         }
 
-        Log.d(TAG, "Scanned directory: $path, found ${items.size} items")
+        Log.d(
+          TAG,
+          "Scanned directory: $path, found ${items.size} items (${items.filterIsInstance<FileSystemItem.Folder>().size} folders, ${items.filterIsInstance<FileSystemItem.VideoFile>().size} videos)",
+        )
         Result.success(items)
       } catch (e: SecurityException) {
         Log.e(TAG, "Security exception scanning directory: $path", e)
@@ -148,14 +172,14 @@ object FileSystemRepository : KoinComponent {
 
   /**
    * Gets all storage volume roots
-   * Optimized: doesn't pre-scan for video counts (done lazily when navigating)
+   * Based on Fossify's storage detection logic (internalStoragePath, sdCardPath, OTG)
    */
   suspend fun getStorageRoots(context: Context): List<FileSystemItem.Folder> =
     withContext(Dispatchers.IO) {
       val roots = mutableListOf<FileSystemItem.Folder>()
 
       try {
-        // Primary storage
+        // Primary storage (internal) - equivalent to Fossify's internalStoragePath
         val primaryStorage = Environment.getExternalStorageDirectory()
         if (primaryStorage.exists() && primaryStorage.canRead()) {
           roots.add(
@@ -171,7 +195,7 @@ object FileSystemRepository : KoinComponent {
           )
         }
 
-        // External volumes (SD cards, USB OTG)
+        // External volumes (SD cards, USB OTG) - similar to Fossify's SD and OTG detection
         val externalVolumes = StorageScanUtils.getExternalStorageVolumes(context)
         for (volume in externalVolumes) {
           val volumePath = StorageScanUtils.getVolumePath(volume)
@@ -193,6 +217,8 @@ object FileSystemRepository : KoinComponent {
             }
           }
         }
+
+        Log.d(TAG, "Found ${roots.size} storage roots")
       } catch (e: Exception) {
         Log.e(TAG, "Error getting storage roots", e)
       }
@@ -201,13 +227,18 @@ object FileSystemRepository : KoinComponent {
     }
 
   /**
-   * Analyzes folder contents to get video count, size, and duration
-   * Uses recursive calculation for complete folder statistics
+   * Gets direct children count for a folder (not recursive)
+   * Based on Fossify's FileDirItem.getDirectChildrenCount() extension
+   *
+   * @param showAllFileTypes If true, counts all files. If false, counts only videos.
    */
-  private fun analyzeFolderContents(folder: File): FolderInfo {
+  private fun getDirectChildrenCount(
+    folder: File,
+    showHiddenFiles: Boolean,
+    showAllFileTypes: Boolean = false,
+  ): FolderInfo {
     var videoCount = 0
     var totalSize = 0L
-    var totalDuration = 0L
     var hasSubfolders = false
 
     try {
@@ -215,40 +246,59 @@ object FileSystemRepository : KoinComponent {
       if (files != null) {
         for (file in files) {
           when {
-            file.isDirectory && !shouldSkipFolder(file) -> {
+            // Skip hidden files if needed
+            !showHiddenFiles && file.name.startsWith(".") -> continue
+
+            // Skip system folders
+            file.isDirectory && shouldSkipFolder(file, showHiddenFiles) -> continue
+
+            // Count subdirectories
+            file.isDirectory -> {
               hasSubfolders = true
-              // Recursively analyze subfolder and accumulate statistics
-              val subFolderInfo = analyzeFolderContentsRecursive(file, maxDepth = 10, currentDepth = 0)
-              videoCount += subFolderInfo.videoCount
-              totalSize += subFolderInfo.totalSize
-              totalDuration += subFolderInfo.totalDuration
+              // Recursively count files in subfolders (up to depth 10)
+              val subInfo =
+                countVideosRecursive(file, showHiddenFiles, showAllFileTypes, maxDepth = 10, currentDepth = 0)
+              videoCount += subInfo.videoCount
+              totalSize += subInfo.totalSize
             }
 
-            file.isFile && StorageScanUtils.isVideoFile(file) -> {
-              videoCount++
-              totalSize += file.length()
-              // Skip duration extraction for performance - it's expensive
-              // Duration will be extracted when user actually views the folder
+            // Count files (videos only or all files based on mode)
+            file.isFile -> {
+              val shouldCount = if (showAllFileTypes) {
+                true // Count all files in file manager mode
+              } else {
+                StorageScanUtils.isVideoFile(file) // Count only videos in video player mode
+              }
+
+              if (shouldCount) {
+                videoCount++
+                totalSize += file.length()
+              }
             }
           }
         }
       }
     } catch (e: Exception) {
-      Log.w(TAG, "Error analyzing folder: ${folder.absolutePath}", e)
+      Log.w(TAG, "Error counting folder children: ${folder.absolutePath}", e)
     }
 
-    return FolderInfo(videoCount, totalSize, totalDuration, hasSubfolders)
+    return FolderInfo(videoCount, totalSize, hasSubfolders)
   }
 
   /**
-   * Recursively analyzes folder contents to get video count and size
+   * Recursively counts videos in a folder hierarchy
+   * Similar to Fossify's recursive folder analysis
+   *
+   * @param showAllFileTypes If true, counts all files. If false, counts only videos.
    */
-  private fun analyzeFolderContentsRecursive(
+  private fun countVideosRecursive(
     folder: File,
+    showHiddenFiles: Boolean,
+    showAllFileTypes: Boolean,
     maxDepth: Int,
     currentDepth: Int,
   ): FolderInfo {
-    if (currentDepth >= maxDepth) return FolderInfo(0, 0L, 0L, false)
+    if (currentDepth >= maxDepth) return FolderInfo(0, 0L, false)
 
     var videoCount = 0
     var totalSize = 0L
@@ -259,28 +309,41 @@ object FileSystemRepository : KoinComponent {
       if (files != null) {
         for (file in files) {
           when {
-            file.isFile && StorageScanUtils.isVideoFile(file) -> {
-              videoCount++
-              totalSize += file.length()
+            !showHiddenFiles && file.name.startsWith(".") -> continue
+            file.isDirectory && shouldSkipFolder(file, showHiddenFiles) -> continue
+
+            file.isFile -> {
+              val shouldCount = if (showAllFileTypes) {
+                true // Count all files in file manager mode
+              } else {
+                StorageScanUtils.isVideoFile(file) // Count only videos in video player mode
+              }
+
+              if (shouldCount) {
+                videoCount++
+                totalSize += file.length()
+              }
             }
 
-            file.isDirectory && !shouldSkipFolder(file) -> {
+            file.isDirectory -> {
               hasSubfolders = true
-              val subFolderInfo = analyzeFolderContentsRecursive(file, maxDepth, currentDepth + 1)
-              videoCount += subFolderInfo.videoCount
-              totalSize += subFolderInfo.totalSize
+              val subInfo = countVideosRecursive(file, showHiddenFiles, showAllFileTypes, maxDepth, currentDepth + 1)
+              videoCount += subInfo.videoCount
+              totalSize += subInfo.totalSize
             }
           }
         }
       }
     } catch (e: Exception) {
-      Log.w(TAG, "Error analyzing folder recursively: ${folder.absolutePath}", e)
+      Log.w(TAG, "Error counting videos recursively: ${folder.absolutePath}", e)
     }
-    return FolderInfo(videoCount, totalSize, 0L, hasSubfolders)
+
+    return FolderInfo(videoCount, totalSize, hasSubfolders)
   }
 
   /**
    * Creates Video objects from file paths by querying MediaStore
+   * Based on Fossify's MediaStore query logic and FileDirItem creation
    * Uses MediaInfo fallback for videos with missing metadata
    */
   private suspend fun getVideosFromFiles(
@@ -289,6 +352,9 @@ object FileSystemRepository : KoinComponent {
   ): List<Video> {
     val videos = mutableListOf<Video>()
 
+    if (files.isEmpty()) return emptyList()
+
+    // MediaStore projection - similar to Fossify's video queries
     val projection =
       arrayOf(
         MediaStore.Video.Media._ID,
@@ -305,14 +371,13 @@ object FileSystemRepository : KoinComponent {
         MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
       )
 
-    // Build selection for all file paths
+    // Build selection for all file paths - Fossify uses similar batch queries
     val pathList = files.map { it.absolutePath }
-    if (pathList.isEmpty()) return emptyList()
-
     val selection = "${MediaStore.Video.Media.DATA} IN (${pathList.joinToString(",") { "?" }})"
     val selectionArgs = pathList.toTypedArray()
 
     try {
+      // Query MediaStore for video metadata
       context.contentResolver.query(
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
         projection,
@@ -353,14 +418,14 @@ object FileSystemRepository : KoinComponent {
               id.toString(),
             )
 
-          // Always extract framerate from MediaInfo (MediaStore doesn't provide it)
-          // Also fallback for resolution/duration if MediaStore doesn't have them
+          // Extract framerate and fallback metadata using MediaInfo cache
           var fps = 0f
           val file = File(path)
 
+          // Use metadata cache for fps and fallback data
           if (width <= 0 || height <= 0 || duration <= 0) {
             // MediaStore has incomplete data - extract everything from MediaInfo
-            Log.d(TAG, "MediaStore has incomplete data for $displayName, trying MediaInfo fallback")
+            Log.d(TAG, "MediaStore incomplete for $displayName, using MediaInfo fallback")
             metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
               if (metadata.width > 0 && metadata.height > 0) {
                 width = metadata.width
@@ -373,7 +438,6 @@ object FileSystemRepository : KoinComponent {
                 size = metadata.sizeBytes
               }
               fps = metadata.fps
-              Log.d(TAG, "MediaInfo fallback for $displayName: ${width}x${height}@${fps}fps, ${duration}ms")
             } ?: run {
               Log.w(TAG, "MediaInfo fallback failed for $displayName")
             }
@@ -381,7 +445,6 @@ object FileSystemRepository : KoinComponent {
             // MediaStore has basic data, but we still need fps from MediaInfo
             metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
               fps = metadata.fps
-              Log.d(TAG, "Extracted framerate for $displayName: ${fps}fps")
             }
           }
 
@@ -410,7 +473,7 @@ object FileSystemRepository : KoinComponent {
         }
       }
 
-      // For files not in MediaStore, create Video objects using cached MediaInfo extraction
+      // Handle files not in MediaStore - similar to Fossify's fallback for unindexed files
       val foundPaths = videos.map { it.path }.toSet()
       files
         .filter { it.absolutePath !in foundPaths }
@@ -430,10 +493,7 @@ object FileSystemRepository : KoinComponent {
             width = metadata.width
             height = metadata.height
             fps = metadata.fps
-            Log.d(
-              TAG,
-              "Metadata for $displayName (not in MediaStore): ${width}x${height}@${fps}fps, ${duration}ms",
-            )
+            Log.d(TAG, "Metadata for $displayName (not in MediaStore): ${width}x${height}@${fps}fps, ${duration}ms")
           } ?: run {
             Log.w(TAG, "Failed to extract metadata for $displayName (not in MediaStore)")
           }
@@ -441,9 +501,12 @@ object FileSystemRepository : KoinComponent {
           val extension = file.extension.lowercase()
           val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
 
+          // Use file path hash as ID for files not in MediaStore
+          val fileId = file.absolutePath.hashCode().toLong()
+
           videos.add(
             Video(
-              id = file.absolutePath.hashCode().toLong(),
+              id = fileId,
               title = file.nameWithoutExtension,
               displayName = displayName,
               path = file.absolutePath,
@@ -473,55 +536,78 @@ object FileSystemRepository : KoinComponent {
 
   /**
    * Checks if a folder should be skipped during scanning
+   * Based on Fossify's folder filtering logic
+   *
+   * When showHiddenFiles = false: Skip hidden folders (starting with .) and SKIP_FOLDERS
+   * When showHiddenFiles = true: Show everything, don't skip anything
    */
-  private fun shouldSkipFolder(folder: File): Boolean {
+  private fun shouldSkipFolder(folder: File, showHiddenFiles: Boolean): Boolean {
+    // If showHiddenFiles is enabled, don't skip anything
+    if (showHiddenFiles) {
+      return false
+    }
+
+    // If showHiddenFiles is disabled, skip hidden folders and folders in SKIP_FOLDERS
     val name = folder.name.lowercase()
-    return name.startsWith(".") || SKIP_FOLDERS.contains(name)
+    val isHidden = name.startsWith(".")
+    return isHidden || SKIP_FOLDERS.contains(name)
   }
 
+  /**
+   * Folder analysis result
+   */
   private data class FolderInfo(
     val videoCount: Int,
     val totalSize: Long,
-    val totalDuration: Long,
     val hasSubfolders: Boolean,
   )
 
   /**
    * Formats duration in milliseconds to human-readable string
+   * Similar to Fossify's duration formatting
    */
   private fun formatDuration(durationMs: Long): String {
+    if (durationMs <= 0) return "0s"
+
     val seconds = durationMs / 1000
     val hours = seconds / 3600
     val minutes = (seconds % 3600) / 60
     val secs = seconds % 60
 
     return when {
-      hours > 0 -> "${hours}h ${minutes}m ${secs}s"
-      minutes > 0 -> "${minutes}m ${secs}s"
+      hours > 0 -> String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, secs)
+      minutes > 0 -> String.format(Locale.getDefault(), "%d:%02d", minutes, secs)
       else -> "${secs}s"
     }
   }
 
   /**
    * Formats file size in bytes to human-readable string
+   * Based on Fossify's formatSize extension
    */
   private fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
     val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt()
-    return String.format(Locale.getDefault(), "%.1f %s", bytes / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
+    return String.format(
+      Locale.getDefault(),
+      "%.1f %s",
+      bytes / 1024.0.pow(digitGroups.toDouble()),
+      units[digitGroups],
+    )
   }
 
   /**
-   * Formats resolution to human-readable string
+   * Formats resolution to human-readable string with quality label
+   * Similar to Fossify's resolution display logic
    */
   private fun formatResolution(
     width: Int,
     height: Int,
-    fps: Float,
   ): String {
     if (width <= 0 || height <= 0) return "--"
 
+    // Determine quality label based on resolution
     val label =
       when {
         width >= 7680 || height >= 4320 -> "8K"
@@ -532,7 +618,6 @@ object FileSystemRepository : KoinComponent {
         width >= 854 || height >= 480 -> "480p"
         width >= 640 || height >= 360 -> "360p"
         width >= 426 || height >= 240 -> "240p"
-        width >= 256 || height >= 144 -> "144p"
         else -> "${height}p"
       }
 
@@ -547,17 +632,16 @@ object FileSystemRepository : KoinComponent {
     height: Int,
     fps: Float,
   ): String {
-    val baseResolution = formatResolution(width, height, fps)
+    val baseResolution = formatResolution(width, height)
     if (baseResolution == "--" || fps <= 0f) return baseResolution
 
     // Format fps: show up to 2 decimals, but remove trailing zeros
-    val fpsFormatted = if (fps % 1.0f == 0f) {
-      // Integer fps (e.g., 30.0 -> "30")
-      fps.toInt().toString()
-    } else {
-      // Decimal fps (e.g., 23.976 -> "23.98", 29.97 -> "29.97")
-      String.format(Locale.getDefault(), "%.2f", fps).trimEnd('0').trimEnd('.')
-    }
+    val fpsFormatted =
+      if (fps % 1.0f == 0f) {
+        fps.toInt().toString()
+      } else {
+        String.format(Locale.getDefault(), "%.2f", fps).trimEnd('0').trimEnd('.')
+      }
 
     return "$baseResolution@$fpsFormatted"
   }

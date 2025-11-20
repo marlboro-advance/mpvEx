@@ -112,11 +112,21 @@ fun NetworkConnectionCard(
         )
       }
 
+      // Error message
+      if (error != null) {
+        Text(
+          text = "Error: $error",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+          modifier = Modifier.padding(top = 8.dp),
+        )
+      }
+
       // Auto-connect checkbox
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(top = 8.dp),
+          .padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Checkbox(
@@ -129,17 +139,6 @@ fun NetworkConnectionCard(
           text = "Connect automatically on app launch",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.padding(start = 8.dp),
-        )
-      }
-
-      // Error message
-      if (error != null) {
-        Text(
-          text = "Error: $error",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.error,
-          modifier = Modifier.padding(top = 8.dp),
         )
       }
 
