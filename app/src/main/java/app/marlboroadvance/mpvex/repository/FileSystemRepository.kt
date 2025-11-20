@@ -202,7 +202,7 @@ object FileSystemRepository : KoinComponent {
 
   /**
    * Analyzes folder contents to get video count, size, and duration
-   * Uses lightweight recursive counting (depth limited to 2 levels for performance)
+   * Uses recursive calculation for complete folder statistics
    */
   private fun analyzeFolderContents(folder: File): FolderInfo {
     var videoCount = 0
@@ -217,9 +217,11 @@ object FileSystemRepository : KoinComponent {
           when {
             file.isDirectory && !shouldSkipFolder(file) -> {
               hasSubfolders = true
-              // Lightweight count - only check if folder has videos (limited depth)
-              val subCount = countVideosRecursive(file, maxDepth = 2, currentDepth = 0)
-              videoCount += subCount
+              // Recursively analyze subfolder and accumulate statistics
+              val subFolderInfo = analyzeFolderContentsRecursive(file, maxDepth = 10, currentDepth = 0)
+              videoCount += subFolderInfo.videoCount
+              totalSize += subFolderInfo.totalSize
+              totalDuration += subFolderInfo.totalDuration
             }
 
             file.isFile && StorageScanUtils.isVideoFile(file) -> {
@@ -239,32 +241,42 @@ object FileSystemRepository : KoinComponent {
   }
 
   /**
-   * Recursively counts videos in a folder
+   * Recursively analyzes folder contents to get video count and size
    */
-  private fun countVideosRecursive(
+  private fun analyzeFolderContentsRecursive(
     folder: File,
     maxDepth: Int,
     currentDepth: Int,
-  ): Int {
-    if (currentDepth >= maxDepth) return 0
+  ): FolderInfo {
+    if (currentDepth >= maxDepth) return FolderInfo(0, 0L, 0L, false)
 
-    var count = 0
+    var videoCount = 0
+    var totalSize = 0L
+    var hasSubfolders = false
+
     try {
       val files = folder.listFiles()
       if (files != null) {
         for (file in files) {
           when {
-            file.isFile && StorageScanUtils.isVideoFile(file) -> count++
+            file.isFile && StorageScanUtils.isVideoFile(file) -> {
+              videoCount++
+              totalSize += file.length()
+            }
+
             file.isDirectory && !shouldSkipFolder(file) -> {
-              count += countVideosRecursive(file, maxDepth, currentDepth + 1)
+              hasSubfolders = true
+              val subFolderInfo = analyzeFolderContentsRecursive(file, maxDepth, currentDepth + 1)
+              videoCount += subFolderInfo.videoCount
+              totalSize += subFolderInfo.totalSize
             }
           }
         }
       }
     } catch (e: Exception) {
-      Log.w(TAG, "Error counting videos in: ${folder.absolutePath}", e)
+      Log.w(TAG, "Error analyzing folder recursively: ${folder.absolutePath}", e)
     }
-    return count
+    return FolderInfo(videoCount, totalSize, 0L, hasSubfolders)
   }
 
   /**

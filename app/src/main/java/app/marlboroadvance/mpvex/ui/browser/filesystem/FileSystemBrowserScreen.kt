@@ -14,15 +14,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
-import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +82,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 
@@ -464,6 +468,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
     when (permissionState.status) {
       PermissionStatus.Granted -> {
         FileSystemBrowserContent(
+          listState = listState,
           items = items,
           videoFilesWithPlayback = videoFilesWithPlayback,
           isLoading = isLoading && items.isEmpty(),
@@ -704,6 +709,7 @@ private fun playVideosAsPlaylist(
 
 @Composable
 private fun FileSystemBrowserContent(
+  listState: LazyListState,
   items: List<FileSystemItem>,
   videoFilesWithPlayback: Map<Long, Float>,
   isLoading: Boolean,
@@ -724,59 +730,72 @@ private fun FileSystemBrowserContent(
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
-  PullRefreshBox(
-    isRefreshing = isRefreshing,
-    onRefresh = onRefresh,
-    modifier = modifier.fillMaxSize(),
-  ) {
-    when {
-      isLoading -> {
-        Box(
-          modifier = Modifier.fillMaxSize(),
-          contentAlignment = Alignment.Center,
-        ) {
-          CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
+
+  when {
+    isLoading -> {
+      Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+      ) {
+        CircularProgressIndicator(
+          modifier = Modifier.size(48.dp),
+          color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
+
+    error != null -> {
+      EmptyState(
+        icon = Icons.Filled.Folder,
+        title = "Error loading directory",
+        message = error,
+        modifier = modifier.fillMaxSize(),
+      )
+    }
+
+    items.isEmpty() -> {
+      EmptyState(
+        icon = if (isAtRoot) Icons.Filled.Folder else Icons.Filled.FolderOpen,
+        title = if (isAtRoot) "No storage volumes found" else "Empty folder",
+        message = if (isAtRoot) "No accessible storage volumes" else "This folder contains no videos or subfolders",
+        modifier = modifier.fillMaxSize(),
+      )
+    }
+
+    else -> {
+      // Check if at top of list to hide scrollbar during pull-to-refresh
+      val isAtTop by remember {
+        derivedStateOf {
+          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
       }
 
-      error != null -> {
-        EmptyState(
-          icon = Icons.Filled.Folder,
-          title = "Error loading directory",
-          message = error,
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+      // Only show scrollbar if list has more than 20 items
+      val hasEnoughItems = items.size > 20
 
-      items.isEmpty() -> {
-        EmptyState(
-          icon = if (isAtRoot) Icons.Filled.Folder else Icons.Filled.FolderOpen,
-          title = if (isAtRoot) "No storage volumes found" else "Empty folder",
-          message = if (isAtRoot) "No accessible storage volumes" else "This folder contains no videos or subfolders",
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+      // Animate scrollbar alpha
+      val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "scrollbarAlpha",
+      )
 
-      else -> {
-        val filesListState = rememberLazyListState()
+      PullRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        listState = listState,
+        modifier = modifier.fillMaxSize(),
+      ) {
         LazyColumnScrollbar(
-          state = filesListState,
+          state = listState,
           settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary,
-            thumbThickness = 6.dp,
-            scrollbarPadding = 8.dp,
-            thumbMinLength = 0.1f,
-            alwaysShowScrollbar = false,
-            thumbShape = RoundedCornerShape(3.dp),
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
         ) {
           LazyColumn(
-            state = filesListState,
-            modifier = Modifier.fillMaxWidth(),
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp),
           ) {
             // Breadcrumb navigation (if not at root)
@@ -847,95 +866,126 @@ private fun FileSystemBrowserContent(
 
 @Composable
 private fun FileSystemSortDialog(
-  isOpen: Boolean,
-  onDismiss: () -> Unit,
-) {
-  val browserPreferences = koinInject<BrowserPreferences>()
-  val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
-  val folderViewMode by browserPreferences.folderViewMode.collectAsState()
-  val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
-  val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
-  val showFolderPath by browserPreferences.showFolderPath.collectAsState()
-  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
-  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
-  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
-  val showProgressBar by browserPreferences.showProgressBar.collectAsState()
-  val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+    isOpen: Boolean,
+    onDismiss: () -> Unit,
+  ) {
+    val browserPreferences = koinInject<BrowserPreferences>()
+    val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
+    val folderViewMode by browserPreferences.folderViewMode.collectAsState()
+    val folderSortType by browserPreferences.folderSortType.collectAsState()
+    val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
+    val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
+    val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
+    val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
+    val showFolderPath by browserPreferences.showFolderPath.collectAsState()
+    val showSizeChip by browserPreferences.showSizeChip.collectAsState()
+    val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+    val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
+    val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+    val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
 
-  // This dialog is only shown when in Tree View mode
-  // When user switches to Folder View via this dialog, they'll be redirected
-  SortDialog(
-    isOpen = isOpen,
-    onDismiss = onDismiss,
-    title = "View Options",
-    sortType = "Name",
-    onSortTypeChange = { },
-    sortOrderAsc = true,
-    onSortOrderChange = { },
-    types = listOf("Name"),
-    icons = listOf(Icons.Filled.Folder),
-    getLabelForType = { _, _ -> Pair("A-Z", "Z-A") },
-    showSortOptions = false, // Tree View doesn't show sort options
-    viewModeSelector =
-      ViewModeSelector(
-        label = "View Mode",
-        firstOptionLabel = "Folder View",
-        secondOptionLabel = "Tree View",
-        firstOptionIcon = Icons.Filled.ViewModule,
-        secondOptionIcon = Icons.Filled.AccountTree,
-        isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore,
-        onViewModeChange = { isFirstOption ->
-          browserPreferences.folderViewMode.set(
-            if (isFirstOption) {
-              app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore
-            } else {
-              app.marlboroadvance.mpvex.preferences.FolderViewMode.FileManager
-            },
-          )
-        },
+    SortDialog(
+      isOpen = isOpen,
+      onDismiss = onDismiss,
+      title = "Sort & View Options",
+      sortType = folderSortType.displayName,
+      onSortTypeChange = { typeName ->
+        app.marlboroadvance.mpvex.preferences.FolderSortType.entries.find { it.displayName == typeName }?.let {
+          browserPreferences.folderSortType.set(it)
+        }
+      },
+      sortOrderAsc = folderSortOrder.isAscending,
+      onSortOrderChange = { isAsc ->
+        browserPreferences.folderSortOrder.set(
+          if (isAsc) app.marlboroadvance.mpvex.preferences.SortOrder.Ascending
+          else app.marlboroadvance.mpvex.preferences.SortOrder.Descending,
+        )
+      },
+      types = listOf(
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Title.displayName,
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName,
+        app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName,
       ),
-    visibilityToggles =
-      listOf(
-        VisibilityToggle(
-          label = "Full Name",
-          checked = unlimitedNameLines,
-          onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Path",
-          checked = showFolderPath,
-          onCheckedChange = { browserPreferences.showFolderPath.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Total Videos",
-          checked = showTotalVideosChip,
-          onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Folder Size",
-          checked = showTotalSizeChip,
-          onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Size",
-          checked = showSizeChip,
-          onCheckedChange = { browserPreferences.showSizeChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Resolution",
-          checked = showResolutionChip,
-          onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Framerate",
-          checked = showFramerateInResolution,
-          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Progress Bar",
-          checked = showProgressBar,
-          onCheckedChange = { browserPreferences.showProgressBar.set(it) },
-        ),
+      icons = listOf(
+        Icons.Filled.Title,
+        Icons.Filled.CalendarToday,
+        Icons.Filled.SwapVert,
       ),
-  )
-}
+      getLabelForType = { type, _ ->
+        when (type) {
+          app.marlboroadvance.mpvex.preferences.FolderSortType.Title.displayName -> Pair("A-Z", "Z-A")
+          app.marlboroadvance.mpvex.preferences.FolderSortType.Date.displayName -> Pair("Oldest", "Newest")
+          app.marlboroadvance.mpvex.preferences.FolderSortType.Size.displayName -> Pair("Smallest", "Largest")
+          else -> Pair("Asc", "Desc")
+        }
+      },
+      showSortOptions = true, // Enable sorting for Tree View
+      viewModeSelector =
+        ViewModeSelector(
+          label = "View Mode",
+          firstOptionLabel = "Folder View",
+          secondOptionLabel = "Tree View",
+          firstOptionIcon = Icons.Filled.ViewModule,
+          secondOptionIcon = Icons.Filled.AccountTree,
+          isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore,
+          onViewModeChange = { isFirstOption ->
+            browserPreferences.folderViewMode.set(
+              if (isFirstOption) {
+                app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore
+              } else {
+                app.marlboroadvance.mpvex.preferences.FolderViewMode.FileManager
+              },
+            )
+          },
+        ),
+      visibilityToggles =
+        listOf(
+          VisibilityToggle(
+            label = "Full Name",
+            checked = unlimitedNameLines,
+            onCheckedChange = { appearancePreferences.unlimitedNameLines.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Path",
+            checked = showFolderPath,
+            onCheckedChange = { browserPreferences.showFolderPath.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Total Videos",
+            checked = showTotalVideosChip,
+            onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Total Duration",
+            checked = showTotalDurationChip,
+            onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Folder Size",
+            checked = showTotalSizeChip,
+            onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Size",
+            checked = showSizeChip,
+            onCheckedChange = { browserPreferences.showSizeChip.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Resolution",
+            checked = showResolutionChip,
+            onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Framerate",
+            checked = showFramerateInResolution,
+            onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Progress Bar",
+            checked = showProgressBar,
+            onCheckedChange = { browserPreferences.showProgressBar.set(it) },
+          ),
+        ),
+    )
+  }
+

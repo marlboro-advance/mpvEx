@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import my.nanihadesuka.compose.LazyColumnScrollbar
-import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,15 +34,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.database.dao.NetworkConnectionDao
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.cards.NetworkFolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.NetworkVideoCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.ScrollbarSettings
 
 @Serializable
 data class NetworkBrowserScreen(
@@ -156,62 +157,76 @@ private fun NetworkBrowserContent(
   LaunchedEffect(connectionId) {
     connection = dao.getConnectionById(connectionId)
   }
-  PullRefreshBox(
-    isRefreshing = isRefreshing,
-    onRefresh = onRefresh,
-    modifier = modifier.fillMaxSize(),
-  ) {
-    when {
-      isLoading -> {
-        Box(
-          modifier = Modifier.fillMaxSize(),
-          contentAlignment = Alignment.Center,
-        ) {
-          CircularProgressIndicator(
-            modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary,
-          )
+
+  when {
+    isLoading -> {
+      Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+      ) {
+        CircularProgressIndicator(
+          modifier = Modifier.size(48.dp),
+          color = MaterialTheme.colorScheme.primary,
+        )
+      }
+    }
+
+    error != null -> {
+      EmptyState(
+        icon = Icons.Filled.Folder,
+        title = "Error loading files",
+        message = error,
+        modifier = modifier.fillMaxSize(),
+      )
+    }
+
+    files.isEmpty() -> {
+      EmptyState(
+        icon = Icons.Filled.Folder,
+        title = "Empty folder",
+        message = "This folder contains no files or directories",
+        modifier = modifier.fillMaxSize(),
+      )
+    }
+
+    else -> {
+      val folders = files.filter { it.isDirectory }
+      val videos = files.filter { !it.isDirectory && it.mimeType?.startsWith("video/") == true }
+      val networkListState = rememberLazyListState()
+
+      // Check if at top of list to hide scrollbar during pull-to-refresh
+      val isAtTop by remember {
+        derivedStateOf {
+          networkListState.firstVisibleItemIndex == 0 && networkListState.firstVisibleItemScrollOffset == 0
         }
       }
 
-      error != null -> {
-        EmptyState(
-          icon = Icons.Filled.Folder,
-          title = "Error loading files",
-          message = error,
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+      // Only show scrollbar if list has more than 20 items (folders + videos)
+      val hasEnoughItems = (folders.size + videos.size) > 20
 
-      files.isEmpty() -> {
-        EmptyState(
-          icon = Icons.Filled.Folder,
-          title = "Empty folder",
-          message = "This folder contains no files or directories",
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+      // Animate scrollbar alpha
+      val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        label = "scrollbarAlpha",
+      )
 
-      else -> {
-        val folders = files.filter { it.isDirectory }
-        val videos = files.filter { !it.isDirectory && it.mimeType?.startsWith("video/") == true }
-        val networkListState = rememberLazyListState()
-
+      PullRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        listState = networkListState,
+        modifier = modifier.fillMaxSize(),
+      ) {
         LazyColumnScrollbar(
           state = networkListState,
           settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary,
-            thumbThickness = 6.dp,
-            scrollbarPadding = 8.dp,
-            thumbMinLength = 0.1f,
-            alwaysShowScrollbar = false,
-            thumbShape = RoundedCornerShape(3.dp),
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
         ) {
           LazyColumn(
             state = networkListState,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp),
           ) {
             // Folders section

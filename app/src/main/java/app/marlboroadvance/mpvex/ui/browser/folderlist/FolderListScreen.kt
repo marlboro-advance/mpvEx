@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
-import my.nanihadesuka.compose.ScrollbarSettings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +85,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 
@@ -371,22 +373,35 @@ object FolderListScreen : Screen {
                 )
               } else {
                 val searchListState = rememberLazyListState()
+
+                // Check if at top of list to hide scrollbar
+                val isAtTop by remember {
+                  derivedStateOf {
+                    searchListState.firstVisibleItemIndex == 0 && searchListState.firstVisibleItemScrollOffset == 0
+                  }
+                }
+
+                // Only show scrollbar if list has more than 20 items
+                val hasEnoughItems = filteredVideos.size > 20
+
+                // Animate scrollbar alpha
+                val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+                  targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+                  animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+                  label = "scrollbarAlpha",
+                )
+
                 LazyColumnScrollbar(
                   state = searchListState,
                   settings = ScrollbarSettings(
-                    thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                    thumbSelectedColor = MaterialTheme.colorScheme.primary,
-                    thumbThickness = 6.dp,
-                    scrollbarPadding = 8.dp,
-                    thumbMinLength = 0.1f,
-                    alwaysShowScrollbar = false,
-                    thumbShape = RoundedCornerShape(3.dp),
+                    thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+                    thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
                   ),
                 ) {
                   LazyColumn(
                     state = searchListState,
                     modifier = Modifier
-                      .fillMaxWidth()
+                      .fillMaxSize()
                       .padding(padding),
                     contentPadding = PaddingValues(8.dp),
                   ) {
@@ -477,40 +492,54 @@ private fun FolderListContent(
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+
+  // Avoid brief empty-state flicker by delaying its appearance slightly
+  val showEmpty =
+    remember(folders) {
+      mutableStateOf(false)
+    }
+  LaunchedEffect(folders) {
+    if (folders.isEmpty()) {
+      kotlinx.coroutines.delay(250)
+      showEmpty.value = folders.isEmpty()
+    } else {
+      showEmpty.value = false
+    }
+  }
+
+  // Check if at top of list to hide scrollbar during pull-to-refresh
+  val isAtTop by remember {
+    derivedStateOf {
+      listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+    }
+  }
+
+  // Only show scrollbar if list has more than 20 items
+  val hasEnoughItems = folders.size > 20
+
+  // Animate scrollbar alpha
+  val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+    label = "scrollbarAlpha",
+  )
+
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
-    modifier = modifier.fillMaxWidth(),
+    listState = listState,
+    modifier = modifier.fillMaxSize(),
   ) {
-    // Avoid brief empty-state flicker by delaying its appearance slightly
-    val showEmpty =
-      remember(folders) {
-        mutableStateOf(false)
-      }
-    LaunchedEffect(folders) {
-      if (folders.isEmpty()) {
-        kotlinx.coroutines.delay(250)
-        showEmpty.value = folders.isEmpty()
-      } else {
-        showEmpty.value = false
-      }
-    }
-
     LazyColumnScrollbar(
       state = listState,
       settings = ScrollbarSettings(
-        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-        thumbSelectedColor = MaterialTheme.colorScheme.primary,
-        thumbThickness = 6.dp,
-        scrollbarPadding = 8.dp,
-        thumbMinLength = 0.1f,
-        alwaysShowScrollbar = false,
-        thumbShape = RoundedCornerShape(3.dp),
+        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+        thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
       ),
     ) {
       LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp),
       ) {
         // Regular folders

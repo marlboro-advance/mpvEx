@@ -9,14 +9,17 @@ import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.repository.FileSystemRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
+import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -33,12 +36,15 @@ class FileSystemBrowserViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val browserPreferences: BrowserPreferences by inject()
+
   // Special marker for "show storage volumes" mode
   private val STORAGE_ROOTS_MARKER = "__STORAGE_ROOTS__"
 
   private val _currentPath = MutableStateFlow(initialPath ?: STORAGE_ROOTS_MARKER)
   val currentPath: StateFlow<String> = _currentPath.asStateFlow()
 
+  private val _unsortedItems = MutableStateFlow<List<FileSystemItem>>(emptyList())
   private val _items = MutableStateFlow<List<FileSystemItem>>(emptyList())
   val items: StateFlow<List<FileSystemItem>> = _items.asStateFlow()
 
@@ -84,6 +90,19 @@ class FileSystemBrowserViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
         loadCurrentDirectory()
+      }
+    }
+
+    // Apply sorting whenever items or sort preferences change
+    viewModelScope.launch {
+      combine(
+        _unsortedItems,
+        browserPreferences.folderSortType.changes(),
+        browserPreferences.folderSortOrder.changes(),
+      ) { items, sortType, sortOrder ->
+        SortUtils.sortFileSystemItems(items, sortType, sortOrder)
+      }.collectLatest { sortedItems ->
+        _items.value = sortedItems
       }
     }
   }
@@ -172,7 +191,7 @@ class FileSystemBrowserViewModel(
         if (path == STORAGE_ROOTS_MARKER) {
           _breadcrumbs.value = emptyList()
           val roots = FileSystemRepository.getStorageRoots(getApplication())
-          _items.value = roots
+          _unsortedItems.value = roots
           Log.d(TAG, "Loaded ${roots.size} storage roots")
         } else {
           // Update breadcrumbs for real paths
@@ -182,20 +201,20 @@ class FileSystemBrowserViewModel(
           FileSystemRepository
             .scanDirectory(getApplication(), path)
             .onSuccess { items ->
-              _items.value = items
+              _unsortedItems.value = items
               Log.d(TAG, "Loaded directory: $path with ${items.size} items")
 
               // Load playback info for videos
               loadPlaybackInfo(items)
             }.onFailure { error ->
               _error.value = error.message
-              _items.value = emptyList()
+              _unsortedItems.value = emptyList()
               Log.e(TAG, "Error loading directory: $path", error)
             }
         }
       } catch (e: Exception) {
         _error.value = e.message
-        _items.value = emptyList()
+        _unsortedItems.value = emptyList()
         Log.e(TAG, "Error loading directory", e)
       } finally {
         _isLoading.value = false
