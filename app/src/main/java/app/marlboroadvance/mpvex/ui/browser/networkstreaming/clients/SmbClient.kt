@@ -28,7 +28,6 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
   private var baseUrl: String = ""
   private var resolvedHostIp: String = ""
   private var shareName: String = ""
-  private var basePath: String = ""
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
@@ -80,14 +79,21 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         val hostForUrl = resolvedAddress.hostAddress ?: connection.host
         resolvedHostIp = hostForUrl
 
-        // Parse the connection path to extract share name and base path
-        // Expected format: /shareName/path/to/folder or /shareName
-        val pathParts = connection.path.trim('/').split('/', limit = 2)
-        shareName = pathParts.getOrNull(0) ?: ""
-        basePath = if (pathParts.size > 1) pathParts[1] else ""
+        // Parse the connection path - it should ONLY be the share name
+        // Expected format: /ShareName (not /ShareName/folder)
+        shareName = connection.path.trim('/')
 
         if (shareName.isEmpty()) {
-          return@withContext Result.failure(Exception("Share name not specified in path"))
+          return@withContext Result.failure(
+            Exception("Share name required. Path should be just the share name.\n\nExample: /Media or /Public\n\nDo not include folders, navigate to them after connecting."),
+          )
+        }
+
+        // Reject paths with subfolders
+        if (shareName.contains('/')) {
+          return@withContext Result.failure(
+            Exception("Path should be ONLY the share name, not a folder path.\n\nExample: Use /Media, not /Media/Movies\n\nYou can navigate to folders after connecting."),
+          )
         }
 
         baseUrl = "smb://${hostForUrl}${if (connection.port != 445) ":${connection.port}" else ""}/${shareName}"
@@ -116,9 +122,8 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
               ?: return@withTimeout Result.failure<Unit>(Exception("Share '$shareName' is not a disk share"))
 
             try {
-              // Test access to the base path
-              val testPath = if (basePath.isEmpty()) "" else basePath
-              val fileInfo = diskShare.list(testPath)
+              // Test access by listing the share root
+              diskShare.list("")
 
               // Success
               diskShare.close()
@@ -132,7 +137,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
               } else if (e.message?.contains("STATUS_OBJECT_NAME_NOT_FOUND", ignoreCase = true) == true ||
                 e.message?.contains("does not exist", ignoreCase = true) == true
               ) {
-                Result.failure<Unit>(Exception("Path does not exist"))
+                Result.failure<Unit>(Exception("Share does not exist"))
               } else {
                 Result.failure<Unit>(Exception("Connection failed: ${e.message}"))
               }
@@ -170,7 +175,6 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
       baseUrl = ""
       resolvedHostIp = ""
       shareName = ""
-      basePath = ""
     }
   }
 
@@ -179,27 +183,69 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
       try {
+        // Check if we're still connected, if not reconnect
+        if (!isConnected() || smbConnection?.isConnected != true) {
+          android.util.Log.w("SmbClient", "Connection is stale, reconnecting...")
+          disconnect()
+          val reconnectResult = connect()
+          if (reconnectResult.isFailure) {
+            return@withContext Result.failure(Exception("Failed to reconnect: ${reconnectResult.exceptionOrNull()?.message}"))
+          }
+        }
+
         val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
 
-        // Build the full path
+        android.util.Log.d("SmbClient", "=== listFiles called ===")
+        android.util.Log.d("SmbClient", "  Input path: '$path'")
+        android.util.Log.d("SmbClient", "  Share name: '$shareName'")
+
+        // Build the relative path within the share
+        // The 'path' parameter is the navigation path from the share root
         val relativePath = when {
           path.startsWith("smb://") -> {
             // Extract path from smb:// URL
             val uri = java.net.URI(path)
-            uri.path.trim('/').split('/', limit = 2).getOrNull(1) ?: ""
+            // uri.path is like: /shareName/folder/file
+            // Remove /shareName to get: folder/file
+            val pathParts = uri.path.trim('/').split('/', limit = 2)
+            val extracted = pathParts.getOrNull(1) ?: ""
+            android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
+            extracted
           }
 
-          path == "/" || path.isEmpty() -> basePath
+          path == "/" || path.isEmpty() -> {
+            // Root of the share
+            android.util.Log.d("SmbClient", "  Using share root (empty path)")
+            ""
+          }
+
           else -> {
-            val cleanPath = path.trim('/')
-            if (basePath.isEmpty()) cleanPath else "$basePath/$cleanPath"
+            // Check if path is just the share name (means root)
+            val cleaned = path.trim('/')
+            if (cleaned.equals(shareName, ignoreCase = true)) {
+              android.util.Log.d("SmbClient", "  Path equals share name - using root")
+              ""
+            } else if (cleaned.startsWith("$shareName/", ignoreCase = true)) {
+              // Path includes share name prefix - remove it
+              val withoutShare = cleaned.substring(shareName.length + 1)
+              android.util.Log.d("SmbClient", "  Removed share prefix: '$withoutShare'")
+              withoutShare
+            } else {
+              // Normal subfolder navigation
+              android.util.Log.d("SmbClient", "  Using cleaned path: '$cleaned'")
+              cleaned
+            }
           }
         }
+
+        android.util.Log.d("SmbClient", "  Final relativePath: '$relativePath'")
+        android.util.Log.d("SmbClient", "  Will call: diskShare.list('$relativePath')")
 
         val diskShare = try {
           sess.connectShare(shareName) as? DiskShare
             ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
         } catch (e: Exception) {
+          android.util.Log.e("SmbClient", "Failed to connect to share: ${e.message}", e)
           return@withContext Result.failure(Exception("Failed to connect to share: ${e.message}"))
         }
 
@@ -213,6 +259,8 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
             diskShare.close()
             return@withContext Result.failure(Exception("Operation timed out. The server may be slow or unresponsive."))
           }
+
+          android.util.Log.d("SmbClient", "  Listed ${rawFiles.size} items")
 
           val files = rawFiles.mapNotNull { fileInfo ->
             try {
@@ -239,7 +287,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
               val isDirectory = fileInfo.fileAttributes and 0x10 != 0L // FILE_ATTRIBUTE_DIRECTORY
               val fileSize = if (isDirectory) 0 else fileInfo.endOfFile
 
-              // Build the full SMB path
+              // Build the full SMB path for this file
               val fullPath = if (relativePath.isEmpty()) {
                 "smb://${resolvedHostIp}/${shareName}/${fileName}"
               } else {
@@ -275,17 +323,17 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
       try {
         val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
 
-        // Parse the SMB path
+        // Parse the SMB path to get relative path within share
         val relativePath = when {
           path.startsWith("smb://") -> {
             // Extract path from smb:// URL
             val uri = java.net.URI(path)
-            uri.path.trim('/').split('/', limit = 2).getOrNull(1) ?: ""
+            val pathParts = uri.path.trim('/').split('/', limit = 2)
+            pathParts.getOrNull(1) ?: ""
           }
 
           else -> {
-            val cleanPath = path.trim('/')
-            if (basePath.isEmpty()) cleanPath else "$basePath/$cleanPath"
+            path.trim('/')
           }
         }
 
