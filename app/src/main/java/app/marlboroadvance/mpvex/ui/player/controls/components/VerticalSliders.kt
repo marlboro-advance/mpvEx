@@ -1,7 +1,9 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.filled.BrightnessLow
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,7 +63,12 @@ fun VerticalSlider(
         .height(120.dp)
         .aspectRatio(0.2f)
         .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.background),
+        .background(MaterialTheme.colorScheme.background)
+        .border(
+          width = 1.dp,
+          color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+          shape = RoundedCornerShape(16.dp),
+        ),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
@@ -99,7 +108,12 @@ fun VerticalSlider(
         .height(120.dp)
         .aspectRatio(0.2f)
         .clip(RoundedCornerShape(16.dp))
-        .background(MaterialTheme.colorScheme.background),
+        .background(MaterialTheme.colorScheme.background)
+        .border(
+          width = 1.dp,
+          color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+          shape = RoundedCornerShape(16.dp),
+        ),
     contentAlignment = Alignment.BottomCenter,
   ) {
     val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
@@ -130,28 +144,38 @@ fun BrightnessSlider(
   range: ClosedFloatingPointRange<Float>,
   modifier: Modifier = Modifier,
 ) {
-  Column(
+  Surface(
     modifier = modifier,
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    shape = RoundedCornerShape(20.dp),
+    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    tonalElevation = 2.dp,
+    shadowElevation = 0.dp,
+    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
   ) {
-    Text(
-      (brightness * 100).toInt().toString(),
-      style = MaterialTheme.typography.bodySmall,
-    )
-    VerticalSlider(
-      brightness,
-      range,
-    )
-    Icon(
-      when (percentage(brightness, range)) {
-        in 0f..0.3f -> Icons.Default.BrightnessLow
-        in 0.3f..0.6f -> Icons.Default.BrightnessMedium
-        in 0.6f..1f -> Icons.Default.BrightnessHigh
-        else -> Icons.Default.BrightnessMedium
-      },
-      null,
-    )
+    Column(
+      modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    ) {
+      Text(
+        (brightness * 100).toInt().toString(),
+        style = MaterialTheme.typography.bodySmall,
+      )
+      VerticalSlider(
+        brightness,
+        range,
+      )
+      Icon(
+        when (percentage(brightness, range)) {
+          in 0f..0.3f -> Icons.Default.BrightnessLow
+          in 0.3f..0.6f -> Icons.Default.BrightnessMedium
+          in 0.6f..1f -> Icons.Default.BrightnessHigh
+          else -> Icons.Default.BrightnessMedium
+        },
+        contentDescription = null,
+      )
+    }
   }
 }
 
@@ -165,34 +189,43 @@ fun VolumeSlider(
   displayAsPercentage: Boolean = false,
 ) {
   val percentage = (percentage(volume, range) * 100).roundToInt()
-  Column(
+  Surface(
     modifier = modifier,
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    shape = RoundedCornerShape(20.dp),
+    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    tonalElevation = 2.dp,
+    shadowElevation = 0.dp,
+    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
   ) {
-    val boostVolume = mpvVolume - 100
-    Text(
-      getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage),
-      style = MaterialTheme.typography.bodySmall,
-      modifier = Modifier.width(48.dp),
-      textAlign = TextAlign.Center,
-    )
-    VerticalSlider(
-      if (displayAsPercentage) percentage else volume,
-      if (displayAsPercentage) 0..100 else range,
-      overflowValue = boostVolume,
-      overflowRange = boostRange,
-    )
-    Icon(
-      when (percentage) {
-        0 -> Icons.AutoMirrored.Default.VolumeOff
-        in 0..30 -> Icons.AutoMirrored.Default.VolumeMute
-        in 30..60 -> Icons.AutoMirrored.Default.VolumeDown
-        in 60..100 -> Icons.AutoMirrored.Default.VolumeUp
-        else -> Icons.AutoMirrored.Default.VolumeOff
-      },
-      null,
-    )
+    Column(
+      modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+    ) {
+      val boostVolume = mpvVolume - 100
+      Text(
+        getVolumeSliderText(volume, mpvVolume, boostVolume, percentage, displayAsPercentage),
+        style = MaterialTheme.typography.bodySmall,
+        textAlign = TextAlign.Center,
+      )
+      VerticalSlider(
+        if (displayAsPercentage) percentage else volume,
+        if (displayAsPercentage) 0..100 else range,
+        overflowValue = boostVolume,
+        overflowRange = boostRange,
+      )
+      Icon(
+        when (percentage) {
+          0 -> Icons.AutoMirrored.Default.VolumeOff
+          in 0..30 -> Icons.AutoMirrored.Default.VolumeMute
+          in 30..60 -> Icons.AutoMirrored.Default.VolumeDown
+          in 60..100 -> Icons.AutoMirrored.Default.VolumeUp
+          else -> Icons.AutoMirrored.Default.VolumeOff
+        },
+        contentDescription = null,
+      )
+    }
   }
 }
 
@@ -201,14 +234,14 @@ val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
     when {
       mpvVolume == 100 ->
         if (displayAsPercentage) {
-          stringResource(R.string.value_percentage_int, percentage)
+          "$percentage"
         } else {
           "$volume"
         }
 
       mpvVolume > 100 -> {
         if (displayAsPercentage) {
-          stringResource(R.string.value_percentage_int, percentage + boostVolume)
+          "${percentage + boostVolume}"
         } else {
           stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
         }
@@ -216,7 +249,7 @@ val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
 
       mpvVolume < 100 -> {
         if (displayAsPercentage) {
-          stringResource(R.string.value_percentage_int, percentage + boostVolume)
+          "${percentage + boostVolume}"
         } else {
           stringResource(R.string.volume_slider_absolute_value, volume + boostVolume)
         }
@@ -224,7 +257,7 @@ val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
 
       else -> {
         if (displayAsPercentage) {
-          stringResource(R.string.value_percentage_int, percentage)
+          "$percentage"
         } else {
           "$volume"
         }

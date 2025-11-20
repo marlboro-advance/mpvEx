@@ -282,15 +282,20 @@ fun PlayerControls(
           }
         }
 
+        // Slider display duration: 500ms shown + 300ms exit animation = 800ms total
+        val sliderDisplayDuration = 500L
+
         LaunchedEffect(volume, mpvVolume, isVolumeSliderShown) {
-          delay(2000)
+          delay(sliderDisplayDuration)
           if (isVolumeSliderShown) viewModel.isVolumeSliderShown.update { false }
         }
 
         LaunchedEffect(brightness, isBrightnessSliderShown) {
-          delay(2000)
+          delay(sliderDisplayDuration)
           if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
         }
+
+        val areSlidersShown = isBrightnessSliderShown || isVolumeSliderShown
 
         AnimatedVisibility(
           isBrightnessSliderShown,
@@ -807,7 +812,7 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked,
+          visible = controlsShown && !areControlsLocked && !areSlidersShown,
           enter =
             if (!reduceMotion) {
               slideInHorizontally(playerControlsEnterAnimationSpec()) { it } +
@@ -874,7 +879,7 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
-          visible = controlsShown && !areControlsLocked && !isPortrait,
+          visible = controlsShown && !areControlsLocked && !isPortrait && !areSlidersShown,
           enter =
             if (!reduceMotion) {
               slideInHorizontally(playerControlsEnterAnimationSpec()) { -it } +
