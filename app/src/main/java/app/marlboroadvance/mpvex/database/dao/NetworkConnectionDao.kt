@@ -20,6 +20,9 @@ interface NetworkConnectionDao {
   @Query("SELECT * FROM network_connections WHERE id = :id")
   suspend fun getConnectionById(id: Long): NetworkConnection?
 
+  @Query("SELECT * FROM network_connections WHERE autoConnect = 1 ORDER BY id ASC")
+  suspend fun getAutoConnectConnections(): List<NetworkConnection>
+
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insert(connection: NetworkConnection): Long
 

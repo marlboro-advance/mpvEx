@@ -30,6 +30,11 @@ class NetworkRepository(
   fun getAllConnections(): Flow<List<NetworkConnection>> = dao.getAllConnections()
 
   /**
+   * Get connections that should auto-connect on launch
+   */
+  suspend fun getAutoConnectConnections(): List<NetworkConnection> = dao.getAutoConnectConnections()
+
+  /**
    * Get a connection by ID
    */
   suspend fun getConnectionById(id: Long): NetworkConnection? = dao.getConnectionById(id)

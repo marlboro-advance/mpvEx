@@ -37,7 +37,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     """.trimIndent(),
     )
 
-    // Create network_connections table
+    // Create network_connections table with autoConnect column
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `network_connections` (
@@ -50,7 +50,8 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         `password` TEXT NOT NULL,
         `path` TEXT NOT NULL,
         `isAnonymous` INTEGER NOT NULL,
-        `lastConnected` INTEGER NOT NULL
+        `lastConnected` INTEGER NOT NULL,
+        `autoConnect` INTEGER NOT NULL DEFAULT 0
       )
     """.trimIndent(),
     )
