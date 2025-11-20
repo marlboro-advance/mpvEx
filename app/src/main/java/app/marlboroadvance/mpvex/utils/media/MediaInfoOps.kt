@@ -1,12 +1,16 @@
 package app.marlboroadvance.mpvex.utils.media
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mediaarea.mediainfo.lib.MediaInfo
 
 object MediaInfoOps {
+  private const val TAG = "MediaInfoOps"
+
   /**
    * Extract detailed media information from a video file
    */
@@ -291,9 +295,50 @@ object MediaInfoOps {
   )
 
   /**
+   * Try to extract framerate using MediaMetadataRetriever (fast, built-in Android API)
+   * This is much faster than MediaInfo for framerate extraction.
+   *
+   * @param context Android context
+   * @param uri URI of the video file
+   * @return Framerate in fps, or null if extraction failed
+   */
+  private suspend fun tryExtractFramerateWithRetriever(
+    context: Context,
+    uri: Uri,
+  ): Float? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val retriever = MediaMetadataRetriever()
+        try {
+          retriever.setDataSource(context, uri)
+
+          // Try to get framerate from metadata
+          val fpsString = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+          val fps = fpsString?.toFloatOrNull()
+
+          if (fps != null && fps > 0f) {
+            Log.d(TAG, "MediaMetadataRetriever extracted framerate: ${fps}fps")
+            fps
+          } else {
+            Log.d(TAG, "MediaMetadataRetriever could not extract valid framerate")
+            null
+          }
+        } finally {
+          retriever.release()
+        }
+      }.getOrElse { error ->
+        Log.d(TAG, "MediaMetadataRetriever failed: ${error.message}")
+        null
+      }
+    }
+
+  /**
    * Quickly extract just size, duration, resolution, and framerate metadata from a video file
    * This is optimized for external storage videos where MediaStore doesn't have metadata.
-   * Uses MediaInfo library which is faster and more reliable than MediaMetadataRetriever.
+   *
+   * Strategy:
+   * 1. First tries MediaMetadataRetriever for framerate (fast, built-in Android API)
+   * 2. Falls back to MediaInfo for complete metadata including framerate (slower but more reliable)
    *
    * @param context Android context
    * @param uri URI of the video file
@@ -307,6 +352,9 @@ object MediaInfoOps {
   ): Result<VideoMetadata> =
     withContext(Dispatchers.IO) {
       runCatching {
+        // First, try to get framerate using MediaMetadataRetriever (fast)
+        val retrieverFps = tryExtractFramerateWithRetriever(context, uri)
+
         val contentResolver = context.contentResolver
         val pfd =
           contentResolver.openFileDescriptor(uri, "r")
@@ -333,9 +381,16 @@ object MediaInfoOps {
           val heightStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Height")
           val height = heightStr.toIntOrNull() ?: 0
 
-          // Extract framerate (fps)
-          val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
-          val fps = fpsStr.toFloatOrNull() ?: 0f
+          // Use framerate from MediaMetadataRetriever if available, otherwise from MediaInfo
+          val fps = if (retrieverFps != null && retrieverFps > 0f) {
+            Log.d(TAG, "Using framerate from MediaMetadataRetriever: ${retrieverFps}fps")
+            retrieverFps
+          } else {
+            val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
+            val mediaInfoFps = fpsStr.toFloatOrNull() ?: 0f
+            Log.d(TAG, "Using framerate from MediaInfo: ${mediaInfoFps}fps")
+            mediaInfoFps
+          }
 
           VideoMetadata(fileSize, duration, width, height, fps)
         } finally {

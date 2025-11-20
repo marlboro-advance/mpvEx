@@ -732,20 +732,24 @@ class PlayerViewModel(
   // ==================== Frame Navigation ====================
 
   fun updateFrameInfo() {
-    _currentFrame.value = MPVLib.getPropertyInt("estimated-frame-number") ?: 0
+    viewModelScope.launch(Dispatchers.Default) {
+      val currentFrame = MPVLib.getPropertyInt("estimated-frame-number") ?: 0
+      val durationValue = MPVLib.getPropertyDouble("duration") ?: 0.0
+      val fps =
+        MPVLib.getPropertyDouble("container-fps")
+          ?: MPVLib.getPropertyDouble("estimated-vf-fps")
+          ?: 0.0
 
-    val durationValue = MPVLib.getPropertyDouble("duration") ?: 0.0
-    val fps =
-      MPVLib.getPropertyDouble("container-fps")
-        ?: MPVLib.getPropertyDouble("estimated-vf-fps")
-        ?: 0.0
+      val totalFrames =
+        if (durationValue > 0 && fps > 0) {
+          (durationValue * fps).toInt()
+        } else {
+          0
+        }
 
-    _totalFrames.value =
-      if (durationValue > 0 && fps > 0) {
-        (durationValue * fps).toInt()
-      } else {
-        0
-      }
+      _currentFrame.value = currentFrame
+      _totalFrames.value = totalFrames
+    }
   }
 
   // ==================== Playlist Management ====================
