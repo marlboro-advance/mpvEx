@@ -44,6 +44,9 @@ class VideoListViewModel(
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+  private val _isEnrichingMetadata = MutableStateFlow(false)
+  val isEnrichingMetadata: StateFlow<Boolean> = _isEnrichingMetadata.asStateFlow()
+
   // MediaStore observer for external changes
   private val mediaStoreObserver = MediaStoreObserver(application, viewModelScope)
 
@@ -79,22 +82,20 @@ class VideoListViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         _isLoading.value = true
-
-        // First attempt to load videos
         val videoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
 
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          // Trigger a media scan to refresh MediaStore
           triggerMediaScan()
-          // Wait longer for MediaStore to update
           delay(1000)
           val retryVideoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
+          enrichMetadataInBackground(retryVideoList)
         } else {
           _videos.value = videoList
           loadPlaybackInfo(videoList)
+          enrichMetadataInBackground(videoList)
         }
       } catch (e: Exception) {
         Log.e(tag, "Error loading videos for bucket $bucketId", e)
@@ -102,6 +103,21 @@ class VideoListViewModel(
         _videosWithPlaybackInfo.value = emptyList()
       } finally {
         _isLoading.value = false
+      }
+    }
+  }
+
+  private fun enrichMetadataInBackground(videos: List<Video>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        _isEnrichingMetadata.value = true
+        val enrichedVideos = videoRepository.enrichVideosMetadata(getApplication(), videos)
+        _videos.value = enrichedVideos
+        loadPlaybackInfo(enrichedVideos)
+      } catch (e: Exception) {
+        Log.e(tag, "Error enriching video metadata", e)
+      } finally {
+        _isEnrichingMetadata.value = false
       }
     }
   }

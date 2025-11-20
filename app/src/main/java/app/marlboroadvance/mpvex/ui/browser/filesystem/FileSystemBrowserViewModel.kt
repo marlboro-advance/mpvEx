@@ -37,6 +37,7 @@ class FileSystemBrowserViewModel(
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val browserPreferences: BrowserPreferences by inject()
+  private val videoRepository: app.marlboroadvance.mpvex.repository.VideoRepository by inject()
 
   // Special marker for "show storage volumes" mode
   private val STORAGE_ROOTS_MARKER = "__STORAGE_ROOTS__"
@@ -59,6 +60,9 @@ class FileSystemBrowserViewModel(
 
   private val _breadcrumbs = MutableStateFlow<List<PathComponent>>(emptyList())
   val breadcrumbs: StateFlow<List<PathComponent>> = _breadcrumbs.asStateFlow()
+
+  private val _isEnrichingMetadata = MutableStateFlow(false)
+  val isEnrichingMetadata: StateFlow<Boolean> = _isEnrichingMetadata.asStateFlow()
 
   val isAtRoot: StateFlow<Boolean> =
     MutableStateFlow(initialPath == null).apply {
@@ -204,8 +208,8 @@ class FileSystemBrowserViewModel(
               _unsortedItems.value = items
               Log.d(TAG, "Loaded directory: $path with ${items.size} items")
 
-              // Load playback info for videos
               loadPlaybackInfo(items)
+              enrichMetadataInBackground(items)
             }.onFailure { error ->
               _error.value = error.message
               _unsortedItems.value = emptyList()
@@ -237,7 +241,6 @@ class FileSystemBrowserViewModel(
           val watched = durationSeconds - timeRemaining
           val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
 
-          // Only show progress for videos that are 1-99% complete
           if (progressValue in 0.01f..0.99f) {
             playbackMap[video.id] = progressValue
           }
@@ -245,6 +248,37 @@ class FileSystemBrowserViewModel(
       }
 
       _videoFilesWithPlayback.value = playbackMap
+    }
+  }
+
+  private fun enrichMetadataInBackground(items: List<FileSystemItem>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        _isEnrichingMetadata.value = true
+        val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
+        val videos = videoFiles.map { it.video }
+        val enrichedVideos = videoRepository.enrichVideosMetadata(getApplication(), videos)
+
+        val updatedItems = items.map { item ->
+          if (item is FileSystemItem.VideoFile) {
+            val enrichedVideo = enrichedVideos.find { it.id == item.video.id }
+            if (enrichedVideo != null) {
+              item.copy(video = enrichedVideo)
+            } else {
+              item
+            }
+          } else {
+            item
+          }
+        }
+
+        _unsortedItems.value = updatedItems
+        loadPlaybackInfo(updatedItems)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error enriching video metadata", e)
+      } finally {
+        _isEnrichingMetadata.value = false
+      }
     }
   }
 }

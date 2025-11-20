@@ -30,10 +30,25 @@ class VideoMetadataCacheRepository(
     private const val CACHE_VALIDITY_DAYS = 30L
   }
 
-  /**
-   * Get metadata from cache or extract using MediaInfo
-   * Returns immediately with cached data, or suspends to extract if not cached
-   */
+  suspend fun getCachedMetadata(
+    file: File,
+    dateModified: Long,
+    size: Long,
+  ): MediaInfoOps.VideoMetadata? =
+    withContext(Dispatchers.IO) {
+      val path = file.absolutePath
+      val cached = dao.getMetadata(path, dateModified, size)
+      cached?.let {
+        MediaInfoOps.VideoMetadata(
+          sizeBytes = it.size,
+          durationMs = it.duration,
+          width = it.width,
+          height = it.height,
+          fps = it.fps,
+        )
+      }
+    }
+
   suspend fun getOrExtractMetadata(
     file: File,
     uri: Uri,
@@ -44,10 +59,8 @@ class VideoMetadataCacheRepository(
       val size = file.length()
       val dateModified = file.lastModified() / 1000
 
-      // Try cache first
       val cached = dao.getMetadata(path, dateModified, size)
       if (cached != null) {
-        Log.d(TAG, "Cache hit for $displayName")
         return@withContext MediaInfoOps.VideoMetadata(
           sizeBytes = cached.size,
           durationMs = cached.duration,
@@ -57,8 +70,6 @@ class VideoMetadataCacheRepository(
         )
       }
 
-      // Cache miss - extract metadata
-      Log.d(TAG, "Cache miss for $displayName, extracting metadata")
       val result = MediaInfoOps.extractBasicMetadata(context, uri, displayName)
 
       result.onSuccess { metadata ->
