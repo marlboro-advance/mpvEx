@@ -10,4 +10,5 @@ data class RecentlyPlayedEntity(
   val fileName: String,
   val timestamp: Long,
   val launchSource: String? = null, // null or empty means normal playback from list
+  val playlistId: Int? = null, // ID of playlist if played from a playlist
 )

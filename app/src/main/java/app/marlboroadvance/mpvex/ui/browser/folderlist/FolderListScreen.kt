@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.ui.browser.folderlist
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -70,7 +72,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
-import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -338,25 +339,99 @@ object FolderListScreen : Screen {
         }
       },
       floatingActionButton = {
-        MediaActionFab(
-          listState = listState,
-          hasRecentlyPlayed = hasRecentlyPlayed,
-          onOpenFile = { filePicker.launch(arrayOf("video/*")) },
-          onPlayRecentlyPlayed = {
-            coroutineScope.launch {
-              app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-                .getLastPlayed()
-                ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
-            }
-          },
-          onPlayLink = { showLinkDialog.value = true },
-          onNetworkStreaming = {
-            fabMenuExpanded = false
-            backstack.add(NetworkStreamingScreen)
-          },
-          expanded = fabMenuExpanded,
-          onExpandedChange = { fabMenuExpanded = it },
-        )
+        if (videoFolders.isNotEmpty()) {
+          Box(
+            modifier = Modifier.padding(bottom = 75.dp),
+          ) {
+            MediaActionFab(
+              listState = listState,
+              hasRecentlyPlayed = hasRecentlyPlayed,
+              onOpenFile = { filePicker.launch(arrayOf("video/*")) },
+              onPlayRecentlyPlayed = {
+                coroutineScope.launch {
+                val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+                  .getLastPlayedEntity()
+
+                if (lastPlayedEntity != null) {
+                  // Check if this was played from a playlist
+                  if (lastPlayedEntity.playlistId != null) {
+                    // Load the full playlist and play from the most recently played video
+                    val playlistRepository =
+                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
+                        app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
+                      )
+                    val videoRepository =
+                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.repository.VideoRepository>(
+                        app.marlboroadvance.mpvex.repository.VideoRepository::class.java,
+                      )
+                    val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
+
+                    if (playlistItems.isNotEmpty()) {
+                      // Get unique folders (bucketIds) from playlist items
+                      // For each video, extract its parent folder and query that bucket
+                      val pathToBucketMap = mutableMapOf<String, String>()
+                      val bucketIds = mutableSetOf<String>()
+
+                      playlistItems.forEach { item ->
+                        val file = java.io.File(item.filePath)
+                        val parentPath = file.parent
+                        if (parentPath != null) {
+                          val normalizedPath = parentPath.replace("\\", "/")
+                          pathToBucketMap[item.filePath] = normalizedPath
+                          bucketIds.add(normalizedPath)
+                        }
+                      }
+
+                      // Get all videos from those buckets
+                      val allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
+
+                      // Match videos by path, maintaining playlist order
+                      val videos = playlistItems.mapNotNull { item ->
+                        allVideos.find { video -> video.path == item.filePath }
+                      }
+
+                      if (videos.isNotEmpty()) {
+                        // Find the most recently played video in this playlist
+                        val mostRecentItem = playlistItems
+                          .filter { it.lastPlayedAt > 0 }
+                          .maxByOrNull { it.lastPlayedAt }
+
+                        val startIndex = if (mostRecentItem != null) {
+                          videos.indexOfFirst { it.path == mostRecentItem.filePath }
+                        } else {
+                          0
+                        }
+
+                        val validStartIndex = if (startIndex >= 0) startIndex else 0
+                        val uris = videos.map { it.uri }
+
+                        val intent = Intent(
+                          context,
+                          app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java,
+                        ).apply {
+                          action = Intent.ACTION_VIEW
+                          data = uris[validStartIndex]
+                          putParcelableArrayListExtra("playlist", ArrayList(uris))
+                          putExtra("playlist_index", validStartIndex)
+                          putExtra("launch_source", "playlist")
+                          putExtra("playlist_id", lastPlayedEntity.playlistId)
+                        }
+                        context.startActivity(intent)
+                      }
+                    }
+                  } else {
+                    // Just play the single video
+                    MediaUtils.playFile(lastPlayedEntity.filePath, context, "recently_played_button")
+                  }
+                }
+                }
+              },
+              onPlayLink = { showLinkDialog.value = true },
+              expanded = fabMenuExpanded,
+              onExpandedChange = { fabMenuExpanded = it },
+            )
+          }
+        }
       },
     ) { padding ->
       when (permissionState.status) {
@@ -365,12 +440,19 @@ object FolderListScreen : Screen {
             // Search results
             if (searchQuery.isNotBlank() && videosLoaded) {
               if (filteredVideos.isEmpty()) {
-                EmptyState(
-                  icon = Icons.Filled.Folder,
-                  title = "No videos found",
-                  message = "Try a different search term.",
-                  modifier = Modifier.padding(padding),
-                )
+                Box(
+                  modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(bottom = 80.dp), // Account for bottom navigation bar
+                  contentAlignment = Alignment.Center,
+                ) {
+                  EmptyState(
+                    icon = Icons.Filled.Folder,
+                    title = "No videos found",
+                    message = "Try a different search term.",
+                  )
+                }
               } else {
                 val searchListState = rememberLazyListState()
 
@@ -403,7 +485,7 @@ object FolderListScreen : Screen {
                     modifier = Modifier
                       .fillMaxSize()
                       .padding(padding),
-                    contentPadding = PaddingValues(8.dp),
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
                   ) {
                     items(filteredVideos) { video ->
                       VideoCard(
@@ -540,7 +622,7 @@ private fun FolderListContent(
       LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
       ) {
         // Regular folders
         items(folders) { folder ->

@@ -50,57 +50,52 @@ fun EmptyState(
     label = "icon_alpha",
   )
 
-  Box(
-    modifier = modifier.fillMaxSize(),
-    contentAlignment = Alignment.Center,
+  Column(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(48.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center,
   ) {
-    Column(
+    // Icon with Surface
+    Surface(
       modifier =
         Modifier
-          .fillMaxWidth()
-          .padding(48.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Center,
+          .size(96.dp)
+          .alpha(alpha),
+      shape = RoundedCornerShape(28.dp),
+      color = MaterialTheme.colorScheme.surfaceContainerHighest,
+      tonalElevation = 0.dp,
     ) {
-      // Icon with Surface
-      Surface(
-        modifier =
-          Modifier
-            .size(96.dp)
-            .alpha(alpha),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        tonalElevation = 0.dp,
-      ) {
-        Icon(
-          imageVector = icon,
-          contentDescription = null,
-          modifier = Modifier.padding(24.dp),
-          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-
-      // Title
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-
-      Spacer(modifier = Modifier.height(8.dp))
-
-      // Message
-      Text(
-        text = message,
-        style = MaterialTheme.typography.bodyMedium,
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.padding(24.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // Title
+    Text(
+      text = title,
+      style = MaterialTheme.typography.titleLarge,
+      fontWeight = FontWeight.SemiBold,
+      textAlign = TextAlign.Center,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Message
+    Text(
+      text = message,
+      style = MaterialTheme.typography.bodyMedium,
+      textAlign = TextAlign.Center,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
+    )
   }
 }

@@ -43,6 +43,8 @@ fun FolderCard(
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   onThumbClick: () -> Unit = {},
+  showDateModified: Boolean = false,
+  customIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -89,7 +91,7 @@ fun FolderCard(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          Icons.Filled.Folder,
+          customIcon ?: Icons.Filled.Folder,
           contentDescription = "Folder",
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
@@ -106,7 +108,7 @@ fun FolderCard(
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
         )
-        if (showFolderPath) {
+        if (showFolderPath && parentPath.isNotEmpty()) {
           Text(
             parentPath,
             style = MaterialTheme.typography.bodySmall,
@@ -114,8 +116,10 @@ fun FolderCard(
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
           )
+          Spacer(modifier = Modifier.height(4.dp))
+        } else {
+          Spacer(modifier = Modifier.height(4.dp))
         }
-        Spacer(modifier = Modifier.height(4.dp))
         Row {
           // Hide chips at storage root level (when videoCount is 0)
           var hasChip = false
@@ -171,6 +175,25 @@ fun FolderCard(
                   .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
+            hasChip = true
+          }
+
+          if (showDateModified && folder.lastModified > 0) {
+            if (hasChip) {
+              Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+              formatDate(folder.lastModified),
+              style = MaterialTheme.typography.labelSmall,
+              modifier =
+                Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+              color = MaterialTheme.colorScheme.onSurface,
+            )
           }
         }
       }
@@ -197,4 +220,9 @@ private fun formatFileSize(bytes: Long): String {
   val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
   val value = bytes / 1024.0.pow(digitGroups.toDouble())
   return String.format(java.util.Locale.getDefault(), "%.1f %s", value, units[digitGroups])
+}
+
+private fun formatDate(timestampSeconds: Long): String {
+  val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+  return sdf.format(java.util.Date(timestampSeconds * 1000))
 }

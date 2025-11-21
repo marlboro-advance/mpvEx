@@ -41,6 +41,9 @@ interface RecentlyPlayedDao {
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
+  fun observeRecentlyPlayed(limit: Int = 50): Flow<List<RecentlyPlayedEntity>>
+
   @Query("SELECT * FROM RecentlyPlayedEntity WHERE launchSource = :launchSource ORDER BY timestamp DESC LIMIT :limit")
   suspend fun getRecentlyPlayedBySource(
     launchSource: String,
@@ -61,5 +64,34 @@ interface RecentlyPlayedDao {
     oldPath: String,
     newPath: String,
     newFileName: String,
+  )
+
+  @Query(
+    """
+    SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
+    FROM RecentlyPlayedEntity 
+    WHERE playlistId IS NOT NULL
+    GROUP BY playlistId
+    ORDER BY timestamp DESC
+    LIMIT :limit
+  """,
+  )
+  suspend fun getRecentlyPlayedPlaylists(limit: Int = 10): List<RecentlyPlayedPlaylistInfo>
+
+  @Query(
+    """
+    SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
+    FROM RecentlyPlayedEntity 
+    WHERE playlistId IS NOT NULL
+    GROUP BY playlistId
+    ORDER BY timestamp DESC
+    LIMIT :limit
+  """,
+  )
+  fun observeRecentlyPlayedPlaylists(limit: Int = 50): Flow<List<RecentlyPlayedPlaylistInfo>>
+
+  data class RecentlyPlayedPlaylistInfo(
+    val playlistId: Int,
+    val timestamp: Long,
   )
 }

@@ -33,13 +33,15 @@ object RecentlyPlayedOps {
    * @param filePath Full path to the video file
    * @param fileName Display name of the file
    * @param launchSource Optional source identifier (e.g., "folder_list", "open_file")
+   * @param playlistId Optional playlist ID if played from a playlist
    */
   suspend fun addRecentlyPlayed(
     filePath: String,
     fileName: String,
     launchSource: String? = null,
+    playlistId: Int? = null,
   ) {
-    repository.addRecentlyPlayed(filePath, fileName, launchSource)
+    repository.addRecentlyPlayed(filePath, fileName, launchSource, playlistId)
   }
 
   /**
@@ -67,6 +69,30 @@ object RecentlyPlayedOps {
         }
         if (fileExists(path)) {
           return@withContext path
+        } else {
+          // Prune missing local file entries as we encounter them
+          kotlin.runCatching { repository.deleteByFilePath(path) }
+        }
+      }
+      null
+    }
+  }
+
+  /**
+   * Get the most recently played entity with playlist info (if it still exists)
+   *
+   * @return RecentlyPlayedEntity, or null if no recently played or file doesn't exist
+   */
+  suspend fun getLastPlayedEntity(): app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity? {
+    return withContext(Dispatchers.IO) {
+      val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
+      for (entity in recent) {
+        val path = entity.filePath
+        if (isNonFileUri(path)) {
+          return@withContext entity
+        }
+        if (fileExists(path)) {
+          return@withContext entity
         } else {
           // Prune missing local file entries as we encounter them
           kotlin.runCatching { repository.deleteByFilePath(path) }

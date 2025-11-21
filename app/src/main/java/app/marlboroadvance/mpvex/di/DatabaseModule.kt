@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaybackStateRepositoryImpl
+import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
@@ -17,10 +18,10 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-// Migration from version 1 to 2: Add VideoMetadataEntity and NetworkConnection tables
+// Squashed migration from version 1 to 2: All schema changes
 val MIGRATION_1_2 = object : Migration(1, 2) {
   override fun migrate(db: SupportSQLiteDatabase) {
-    // Create video_metadata_cache table with fps field
+    // Create video_metadata_cache table
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
@@ -30,14 +31,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         `duration` INTEGER NOT NULL,
         `width` INTEGER NOT NULL,
         `height` INTEGER NOT NULL,
-        `fps` REAL NOT NULL DEFAULT 0.0,
+        `fps` REAL NOT NULL,
         `lastScanned` INTEGER NOT NULL,
         PRIMARY KEY(`path`)
       )
     """.trimIndent(),
     )
 
-    // Create network_connections table with autoConnect column
+    // Create network_connections table
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `network_connections` (
@@ -51,10 +52,46 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         `path` TEXT NOT NULL,
         `isAnonymous` INTEGER NOT NULL,
         `lastConnected` INTEGER NOT NULL,
-        `autoConnect` INTEGER NOT NULL DEFAULT 0
+        `autoConnect` INTEGER NOT NULL
       )
     """.trimIndent(),
     )
+
+    // Create PlaylistEntity table
+    db.execSQL(
+      """
+      CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `name` TEXT NOT NULL,
+        `createdAt` INTEGER NOT NULL,
+        `updatedAt` INTEGER NOT NULL
+      )
+    """.trimIndent(),
+    )
+
+    // Create PlaylistItemEntity table with all columns including play history
+    db.execSQL(
+      """
+      CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
+        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        `playlistId` INTEGER NOT NULL,
+        `filePath` TEXT NOT NULL,
+        `fileName` TEXT NOT NULL,
+        `position` INTEGER NOT NULL,
+        `addedAt` INTEGER NOT NULL,
+        `lastPlayedAt` INTEGER NOT NULL,
+        `playCount` INTEGER NOT NULL,
+        `lastPosition` INTEGER NOT NULL,
+        FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+      )
+    """.trimIndent(),
+    )
+
+    // Create index for playlistId to optimize queries
+    db.execSQL("CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)")
+
+    // Add playlistId column to RecentlyPlayedEntity
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
   }
 }
 
@@ -112,6 +149,12 @@ val DatabaseModule =
     single {
       app.marlboroadvance.mpvex.repository.NetworkRepository(
         dao = get(),
+      )
+    }
+
+    single {
+      PlaylistRepository(
+        playlistDao = get<MpvExDatabase>().playlistDao(),
       )
     }
   }

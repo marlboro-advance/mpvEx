@@ -105,6 +105,11 @@ class PlayerActivity :
   private val playbackStateRepository: PlaybackStateRepository by inject()
 
   /**
+   * Repository for managing playlists.
+   */
+  private val playlistRepository: app.marlboroadvance.mpvex.database.repository.PlaylistRepository by inject()
+
+  /**
    * Preferences for player settings.
    */
   private val playerPreferences: PlayerPreferences by inject()
@@ -158,6 +163,11 @@ class PlayerActivity :
    * Current index in the playlist
    */
   internal var playlistIndex: Int = 0
+
+  /**
+   * Playlist ID for tracking play history (optional, only for custom playlists)
+   */
+  private var playlistId: Int? = null
 
   /**
    * Helper for managing Picture-in-Picture mode.
@@ -288,6 +298,7 @@ class PlayerActivity :
       intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     }
     playlistIndex = intent.getIntExtra("playlist_index", 0)
+    playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
 
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
@@ -1911,6 +1922,38 @@ class PlayerActivity :
     // Generate new media identifier for playback state
     mediaIdentifier = getMediaIdentifierFromUri(uri, fileName)
 
+    // Update playlist play history if this is a custom playlist
+    playlistId?.let { id ->
+      lifecycleScope.launch(Dispatchers.IO) {
+        val filePath = when (uri.scheme) {
+          "file" -> uri.path ?: uri.toString()
+          "content" -> {
+            contentResolver.query(
+              uri,
+              arrayOf(MediaStore.MediaColumns.DATA),
+              null,
+              null,
+              null,
+            )?.use { cursor ->
+              if (cursor.moveToFirst()) {
+                val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                if (columnIndex != -1) cursor.getString(columnIndex) else null
+              } else null
+            } ?: uri.toString()
+          }
+
+          else -> uri.toString()
+        }
+
+        runCatching {
+          playlistRepository.updatePlayHistory(id, filePath)
+          Log.d(TAG, "Updated playlist history for: $filePath in playlist $id")
+        }.onFailure { e ->
+          Log.e(TAG, "Error updating playlist history", e)
+        }
+      }
+    }
+
     // Load the new video
     MPVLib.command("loadfile", playableUri)
 
@@ -1984,9 +2027,10 @@ class PlayerActivity :
         filePath = filePath,
         fileName = name,
         launchSource = "playlist",
+        playlistId = playlistId,
       )
 
-      Log.d(TAG, "Saved recently played: $filePath (source: playlist)")
+      Log.d(TAG, "Saved recently played: $filePath (source: playlist, playlistId: $playlistId)")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played for playlist item", e)
     }

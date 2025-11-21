@@ -58,6 +58,7 @@ import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
@@ -67,7 +68,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
-import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -156,6 +156,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
   val mediaInfoDialogOpen = rememberSaveable { mutableStateOf(false) }
+  val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
 
   // Copy/Move state
   val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
@@ -423,29 +424,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
         },
       )
     },
-    floatingActionButton = {
-      if (!isInSelectionMode) {
-        MediaActionFab(
-          listState = listState,
-          hasRecentlyPlayed = hasRecentlyPlayed,
-          onOpenFile = { filePicker.launch(arrayOf("video/*")) },
-          onPlayRecentlyPlayed = {
-            coroutineScope.launch {
-              app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-                .getLastPlayed()
-                ?.let { MediaUtils.playFile(it, context, "recently_played_button") }
-            }
-          },
-          onPlayLink = { showLinkDialog.value = true },
-          onNetworkStreaming = {
-            fabMenuExpanded = false
-            backstack.add(NetworkStreamingScreen)
-          },
-          expanded = fabMenuExpanded,
-          onExpandedChange = { fabMenuExpanded = it },
-        )
-      }
-    },
     bottomBar = {
       // Only show bottom bar for videos (not for mixed selection of folders + videos)
       if (videoSelectionManager.isInSelectionMode && !isMixedSelection) {
@@ -461,6 +439,78 @@ fun FileSystemBrowserScreen(path: String? = null) {
           },
           onRenameClick = { renameDialogOpen.value = true },
           onDeleteClick = { deleteDialogOpen.value = true },
+          onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+        )
+      }
+    },
+    floatingActionButton = {
+      if (isAtRoot && items.isNotEmpty()) {
+        MediaActionFab(
+          listState = listState,
+          hasRecentlyPlayed = true,
+          onOpenFile = { filePicker.launch(arrayOf("*/*")) },
+          onPlayRecentlyPlayed = {
+            val ctx = context
+            coroutineScope.launch {
+              val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
+              if (lastPlayedEntity != null) {
+                if (lastPlayedEntity.playlistId != null) {
+                  // Play full playlist from most recent video
+                  val playlistRepository =
+                    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
+                      app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
+                    )
+                  val videoRepository =
+                    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.repository.VideoRepository>(app.marlboroadvance.mpvex.repository.VideoRepository::class.java)
+                  val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
+                  if (playlistItems.isNotEmpty()) {
+                    val pathToBucketMap = mutableMapOf<String, String>()
+                    val bucketIds = mutableSetOf<String>()
+                    playlistItems.forEach { item ->
+                      val file = java.io.File(item.filePath)
+                      val parentPath = file.parent
+                      if (parentPath != null) {
+                        val normalizedPath = parentPath.replace("\\", "/")
+                        pathToBucketMap[item.filePath] = normalizedPath
+                        bucketIds.add(normalizedPath)
+                      }
+                    }
+                    val allVideos = videoRepository.getVideosForBuckets(ctx, bucketIds)
+                    val videos =
+                      playlistItems.mapNotNull { item -> allVideos.find { video -> video.path == item.filePath } }
+                    if (videos.isNotEmpty()) {
+                      val mostRecentItem = playlistItems.filter { it.lastPlayedAt > 0 }.maxByOrNull { it.lastPlayedAt }
+                      val startIndex = mostRecentItem?.let { videos.indexOfFirst { v -> v.path == it.filePath } } ?: 0
+                      val validStartIndex = if (startIndex >= 0) startIndex else 0
+                      val uris = videos.map { it.uri }
+                      val intent =
+                        android.content.Intent(ctx, app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java)
+                          .apply {
+                            action = android.content.Intent.ACTION_VIEW
+                            data = uris[validStartIndex]
+                            putParcelableArrayListExtra("playlist", java.util.ArrayList(uris))
+                            putExtra("playlist_index", validStartIndex)
+                            putExtra("launch_source", "playlist")
+                            putExtra("playlist_id", lastPlayedEntity.playlistId)
+                          }
+                      ctx.startActivity(intent)
+                    }
+                  }
+                } else {
+                  // Just play the single video
+                  app.marlboroadvance.mpvex.utils.media.MediaUtils.playFile(
+                    lastPlayedEntity.filePath,
+                    ctx,
+                    "recently_played_button",
+                  )
+                }
+              }
+            }
+          },
+          onPlayLink = { showLinkDialog.value = true },
+          expanded = fabMenuExpanded,
+          onExpandedChange = { fabMenuExpanded = it },
+          modifier = Modifier.padding(bottom = 75.dp),
         )
       }
     },
@@ -650,6 +700,17 @@ fun FileSystemBrowserScreen(path: String? = null) {
         },
       )
     }
+
+    // Add to Playlist Dialog
+    AddToPlaylistDialog(
+      isOpen = addToPlaylistDialogOpen.value,
+      videos = videoSelectionManager.getSelectedItems(),
+      onDismiss = { addToPlaylistDialogOpen.value = false },
+      onSuccess = {
+        videoSelectionManager.clear()
+        viewModel.refresh()
+      },
+    )
   }
 }
 
@@ -745,21 +806,29 @@ private fun FileSystemBrowserContent(
     }
 
     error != null -> {
-      EmptyState(
-        icon = Icons.Filled.Folder,
-        title = "Error loading directory",
-        message = error,
+      Box(
         modifier = modifier.fillMaxSize(),
-      )
+        contentAlignment = Alignment.Center,
+      ) {
+        EmptyState(
+          icon = Icons.Filled.Folder,
+          title = "Error loading directory",
+          message = error,
+        )
+      }
     }
 
     items.isEmpty() -> {
-      EmptyState(
-        icon = if (isAtRoot) Icons.Filled.Folder else Icons.Filled.FolderOpen,
-        title = if (isAtRoot) "No storage volumes found" else "Empty folder",
-        message = if (isAtRoot) "No accessible storage volumes" else "This folder contains no videos or subfolders",
+      Box(
         modifier = modifier.fillMaxSize(),
-      )
+        contentAlignment = Alignment.Center,
+      ) {
+        EmptyState(
+          icon = if (isAtRoot) Icons.Filled.Folder else Icons.Filled.FolderOpen,
+          title = if (isAtRoot) "No storage volumes found" else "Empty folder",
+          message = if (isAtRoot) "No accessible storage volumes" else "This folder contains no videos or subfolders",
+        )
+      }
     }
 
     else -> {

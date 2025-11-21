@@ -12,6 +12,7 @@ class RecentlyPlayedRepositoryImpl(
     filePath: String,
     fileName: String,
     launchSource: String?,
+    playlistId: Int?,
   ) {
     val entity =
       RecentlyPlayedEntity(
@@ -19,6 +20,7 @@ class RecentlyPlayedRepositoryImpl(
         fileName = fileName,
         timestamp = System.currentTimeMillis(),
         launchSource = launchSource,
+        playlistId = playlistId,
       )
     recentlyPlayedDao.insert(entity)
   }
@@ -35,6 +37,9 @@ class RecentlyPlayedRepositoryImpl(
 
   override suspend fun getRecentlyPlayed(limit: Int): List<RecentlyPlayedEntity> =
     recentlyPlayedDao.getRecentlyPlayed(limit)
+
+  override fun observeRecentlyPlayed(limit: Int): Flow<List<RecentlyPlayedEntity>> =
+    recentlyPlayedDao.observeRecentlyPlayed(limit)
 
   override suspend fun getRecentlyPlayedBySource(
     launchSource: String,
