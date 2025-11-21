@@ -12,6 +12,9 @@ interface RecentlyPlayedDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insert(recentlyPlayed: RecentlyPlayedEntity)
 
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
+  suspend fun deleteExistingEntriesForFile(filePath: String)
+
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 

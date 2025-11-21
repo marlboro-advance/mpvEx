@@ -14,6 +14,10 @@ class RecentlyPlayedRepositoryImpl(
     launchSource: String?,
     playlistId: Int?,
   ) {
+    // Delete all existing entries for this file path to avoid duplicates
+    // This ensures the same video only appears once in recents, and will be "bumped up" when replayed
+    recentlyPlayedDao.deleteExistingEntriesForFile(filePath)
+
     val entity =
       RecentlyPlayedEntity(
         filePath = filePath,
