@@ -140,4 +140,20 @@ class PlaylistDetailViewModel(
   suspend fun updatePlayHistory(filePath: String, position: Long = 0) {
     playlistRepository.updatePlayHistory(playlistId, filePath, position)
   }
+
+  suspend fun reorderPlaylistItems(fromIndex: Int, toIndex: Int) {
+    val currentItems = _videoItems.value.toMutableList()
+    if (fromIndex < 0 || fromIndex >= currentItems.size || toIndex < 0 || toIndex >= currentItems.size) {
+      return
+    }
+
+    // Reorder the list locally first
+    val item = currentItems.removeAt(fromIndex)
+    currentItems.add(toIndex, item)
+    _videoItems.value = currentItems
+
+    // Persist to database
+    val newOrder = currentItems.map { it.playlistItem.id }
+    playlistRepository.reorderPlaylistItems(playlistId, newOrder)
+  }
 }
