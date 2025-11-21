@@ -234,9 +234,8 @@ fun GestureHandler(
           )
         }
         // Unified drag gesture handler to prevent conflicts
-        .pointerInput(areControlsLocked, seekGesture, brightnessGesture, volumeGesture) {
+        .pointerInput(areControlsLocked, seekGesture, brightnessGesture, volumeGesture, pinchToZoomGesture) {
           if (areControlsLocked) return@pointerInput
-          if (!seekGesture && !brightnessGesture && !volumeGesture) return@pointerInput
 
           awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
@@ -249,6 +248,8 @@ fun GestureHandler(
             var originalMPVVolume = currentMPVVolume
             var originalBrightness = currentBrightness
             var wasPlayerAlreadyPaused = paused ?: false
+            var startPanX = 0.0
+            var startPanY = 0.0
 
             var totalDragX = 0f
             var totalDragY = 0f
@@ -285,22 +286,29 @@ fun GestureHandler(
 
                   // Determine gesture type if not yet determined
                   if (gestureType == null && (abs(totalDragX) > dragThreshold || abs(totalDragY) > dragThreshold)) {
-                    gestureType = if (abs(totalDragX) > abs(totalDragY)) {
-                      if (seekGesture) GestureType.HORIZONTAL_SEEK else null
+                    val currentZoom = MPVLib.getPropertyDouble("video-zoom") ?: 0.0
+                    val isZoomed = currentZoom > 0.001
+
+                    if (isZoomed && pinchToZoomGesture) {
+                      gestureType = GestureType.PAN
                     } else {
-                      if (brightnessGesture || volumeGesture) {
-                        if (brightnessGesture && volumeGesture) {
-                          if (swapVolumeAndBrightness) {
-                            if (change.position.x > size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                      gestureType = if (abs(totalDragX) > abs(totalDragY)) {
+                        if (seekGesture) GestureType.HORIZONTAL_SEEK else null
+                      } else {
+                        if (brightnessGesture || volumeGesture) {
+                          if (brightnessGesture && volumeGesture) {
+                            if (swapVolumeAndBrightness) {
+                              if (change.position.x > size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                            } else {
+                              if (change.position.x < size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                            }
+                          } else if (brightnessGesture) {
+                            GestureType.BRIGHTNESS
                           } else {
-                            if (change.position.x < size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                            GestureType.VOLUME
                           }
-                        } else if (brightnessGesture) {
-                          GestureType.BRIGHTNESS
-                        } else {
-                          GestureType.VOLUME
-                        }
-                      } else null
+                        } else null
+                      }
                     }
 
                     // Initialize gesture
@@ -318,6 +326,11 @@ fun GestureHandler(
                         originalVolume = currentVolume
                         originalMPVVolume = currentMPVVolume
                         originalBrightness = currentBrightness
+                      }
+
+                      GestureType.PAN -> {
+                        startPanX = MPVLib.getPropertyDouble("video-pan-x") ?: 0.0
+                        startPanY = MPVLib.getPropertyDouble("video-pan-y") ?: 0.0
                       }
 
                       null -> {}
@@ -397,6 +410,16 @@ fun GestureHandler(
                         ),
                       )
                       viewModel.displayBrightnessSlider()
+                      change.consume()
+                    }
+
+                    GestureType.PAN -> {
+                      val sensitivity = 2.0f
+                      val newPanX = startPanX - (totalDragX / size.width) * sensitivity
+                      val newPanY = startPanY - (totalDragY / size.height) * sensitivity
+
+                      MPVLib.setPropertyDouble("video-pan-x", newPanX.coerceIn(-1.0, 1.0))
+                      MPVLib.setPropertyDouble("video-pan-y", newPanY.coerceIn(-1.0, 1.0))
                       change.consume()
                     }
 
@@ -481,7 +504,8 @@ fun GestureHandler(
 private enum class GestureType {
   HORIZONTAL_SEEK,
   BRIGHTNESS,
-  VOLUME
+  VOLUME,
+  PAN,
 }
 
 // ... existing code ...

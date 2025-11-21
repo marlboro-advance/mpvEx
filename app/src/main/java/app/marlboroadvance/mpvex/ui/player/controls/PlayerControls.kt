@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -260,7 +262,7 @@ fun PlayerControls(
         val (bottomRightControls, bottomLeftControls) = createRefs()
         val playerPauseButton = createRef()
         val seekbar = createRef()
-        val (playerUpdates) = createRefs()
+        val (playerUpdates, resetView) = createRefs()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -371,6 +373,8 @@ fun PlayerControls(
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
         val aspectRatio by playerPreferences.videoAspect.collectAsState()
         val videoZoom by viewModel.videoZoom.collectAsState()
+        val videoPanX by MPVLib.propDouble["video-pan-x"].collectAsState()
+        val videoPanY by MPVLib.propDouble["video-pan-y"].collectAsState()
 
         LaunchedEffect(currentPlayerUpdate, aspectRatio, videoZoom) {
           if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed ||
@@ -407,6 +411,27 @@ fun PlayerControls(
 
             else -> {}
           }
+        }
+
+        AnimatedVisibility(
+          visible = (videoZoom != 0f || videoPanX != 0.0 || videoPanY != 0.0) && !areControlsLocked,
+          enter = fadeIn(),
+          exit = fadeOut(),
+          modifier =
+            Modifier.constrainAs(resetView) {
+              top.linkTo(parent.top, spacing.medium)
+              end.linkTo(parent.end, spacing.medium)
+            },
+        ) {
+          ControlsButton(
+            icon = Icons.Default.Refresh,
+            onClick = {
+              viewModel.setVideoZoom(0f)
+              MPVLib.setPropertyDouble("video-pan-x", 0.0)
+              MPVLib.setPropertyDouble("video-pan-y", 0.0)
+            },
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          )
         }
 
         AnimatedVisibility(

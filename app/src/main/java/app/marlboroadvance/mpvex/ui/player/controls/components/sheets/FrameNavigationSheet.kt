@@ -606,11 +606,11 @@ private suspend fun takeSnapshot(
       // Create a temporary file first
       val tempFile = File(context.cacheDir, filename)
 
-      // Take screenshot using MPV to temp file, with or without subtitles
+      // Take screenshot using MPV
       if (includeSubtitles) {
         MPVLib.command("screenshot-to-file", tempFile.absolutePath, "subtitles")
       } else {
-        MPVLib.command("screenshot-to-file", tempFile.absolutePath, "video")
+        MPVLib.command("screenshot-to-file", tempFile.absolutePath, "window")
       }
 
       // Wait a bit for MPV to finish writing the file
