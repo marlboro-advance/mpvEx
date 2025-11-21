@@ -81,14 +81,17 @@ fun BrowserBottomBar(
           }
         }
 
-        if (showRename) {
-          IconButton(onClick = onRenameClick) {
-            Icon(
-              imageVector = Icons.Default.DriveFileRenameOutline,
-              contentDescription = "Rename",
-              tint = MaterialTheme.colorScheme.secondary,
-            )
-          }
+        IconButton(
+          onClick = onRenameClick,
+          enabled = showRename,
+        ) {
+          Icon(
+            imageVector = Icons.Default.DriveFileRenameOutline,
+            contentDescription = "Rename",
+            tint = if (showRename) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(
+              alpha = 0.38f,
+            ),
+          )
         }
 
         if (showDelete) {

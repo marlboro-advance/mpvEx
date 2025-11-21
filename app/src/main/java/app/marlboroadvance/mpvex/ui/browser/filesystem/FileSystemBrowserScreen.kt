@@ -299,34 +299,33 @@ fun FileSystemBrowserScreen(path: String? = null) {
           } else {
             null
           },
-        isSingleSelection = videoSelectionManager.isSingleSelection || folderSelectionManager.isSingleSelection,
-        onInfoClick =
-          if (videoSelectionManager.isSingleSelection && !isMixedSelection) {
-            {
-              val video = videoSelectionManager.getSelectedItems().firstOrNull()
-              if (video != null) {
-                selectedVideo.value = video
-                mediaInfoDialogOpen.value = true
-                mediaInfoLoading.value = true
-                mediaInfoError.value = null
-                mediaInfoData.value = null
+        isSingleSelection = videoSelectionManager.isSingleSelection && !isMixedSelection,
+        onInfoClick = if (videoSelectionManager.isInSelectionMode && !folderSelectionManager.isInSelectionMode) {
+          {
+            val video = videoSelectionManager.getSelectedItems().firstOrNull()
+            if (video != null) {
+              selectedVideo.value = video
+              mediaInfoDialogOpen.value = true
+              mediaInfoLoading.value = true
+              mediaInfoError.value = null
+              mediaInfoData.value = null
 
-                coroutineScope.launch {
-                  MediaInfoOps
-                    .getMediaInfo(context, video.uri, video.displayName)
-                    .onSuccess { info ->
-                      mediaInfoData.value = info
-                      mediaInfoLoading.value = false
-                    }.onFailure { error ->
-                      mediaInfoError.value = error.message ?: "Unknown error"
-                      mediaInfoLoading.value = false
-                    }
-                }
+              coroutineScope.launch {
+                MediaInfoOps
+                  .getMediaInfo(context, video.uri, video.displayName)
+                  .onSuccess { info ->
+                    mediaInfoData.value = info
+                    mediaInfoLoading.value = false
+                  }.onFailure { error ->
+                    mediaInfoError.value = error.message ?: "Unknown error"
+                    mediaInfoLoading.value = false
+                  }
               }
             }
-          } else {
-            null
-          },
+          }
+        } else {
+          null
+        },
         onShareClick = {
           when {
             // Mixed selection: share videos from both selected videos and selected folders
@@ -440,6 +439,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           onRenameClick = { renameDialogOpen.value = true },
           onDeleteClick = { deleteDialogOpen.value = true },
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+          showRename = videoSelectionManager.isSingleSelection,
         )
       }
     },

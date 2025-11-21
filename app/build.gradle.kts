@@ -166,7 +166,6 @@ dependencies {
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
   implementation(libs.aboutlibraries.compose.m3)
-  implementation(libs.simple.icons)
 
   implementation(libs.accompanist.permissions)
 
