@@ -45,6 +45,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
+import app.marlboroadvance.mpvex.utils.media.HttpUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -52,8 +53,10 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import java.io.File
 
@@ -714,8 +717,8 @@ class PlayerActivity :
 
       fileManager.deleteContent(scriptsDir)
 
-      assets.open("mpvex.lua").use { input ->
-        File("$scriptsDir/mpvex.lua").apply {
+      assets.open("mpvrex.lua").use { input ->
+        File("$scriptsDir/mpvrex.lua").apply {
           if (!exists()) createNewFile()
           writeText(input.bufferedReader().readText())
         }
@@ -911,9 +914,47 @@ class PlayerActivity :
 
     val uri = extractUriFromIntent(intent) ?: return ""
 
+    // Try content resolver first for content:// URIs
     getDisplayNameFromUri(uri)?.let { return it }
 
-    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
+    // Extract filename from URL/URI
+    return extractFileNameFromUri(uri)
+  }
+
+  /**
+   * Extracts filename from URI, handling URL encoding and network URLs properly.
+   * For network streams, returns a temporary name that will be updated async via HTTP headers.
+   *
+   * @param uri The URI to extract filename from
+   * @return The extracted filename
+   */
+  private fun extractFileNameFromUri(uri: Uri): String {
+    // For HTTP/HTTPS URLs, extract from path (will be updated async via HTTP headers)
+    if (HttpUtils.isNetworkStream(uri)) {
+      // Get the last path segment and decode URL encoding
+      val path = uri.path ?: return uri.host ?: "Network Stream"
+      val lastSegment = path.substringAfterLast("/")
+
+      if (lastSegment.isNotBlank()) {
+        // Decode URL encoding (e.g., %20 -> space)
+        return try {
+          java.net.URLDecoder.decode(lastSegment, "UTF-8")
+            .substringBefore("?") // Remove query parameters
+            .substringBefore("#") // Remove fragments
+            .takeIf { it.isNotBlank() } ?: uri.host ?: "Network Stream"
+        } catch (e: Exception) {
+          lastSegment
+            .substringBefore("?")
+            .substringBefore("#")
+        }
+      }
+
+      // If no filename in path, use hostname
+      return uri.host ?: "Network Stream"
+    }
+
+    // For file:// and content:// URIs
+    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Unknown Video"
   }
 
   /**
@@ -1025,7 +1066,13 @@ class PlayerActivity :
     value: Boolean,
   ) {
     when (property) {
-      "pause" -> handlePauseStateChange(value)
+      "pause" -> {
+        handlePauseStateChange(value)
+        // Ensure isReady is set when playback starts
+        if (!value && !isReady) {
+          isReady = true
+        }
+      }
       "eof-reached" -> handleEndOfFile(value)
     }
   }
@@ -1221,6 +1268,133 @@ class PlayerActivity :
       durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L,
     )
     updateMediaSessionPlaybackState(isPlaying = true)
+
+    // Asynchronously fetch better filename from HTTP headers for network streams
+    fetchNetworkStreamTitle()
+  }
+
+  /**
+   * Fetches a better title from HTTP headers for network streams asynchronously.
+   * Updates the title in UI, MPV, and media session if a better name is found.
+   */
+  private fun fetchNetworkStreamTitle() {
+    lifecycleScope.launch(Dispatchers.IO) {
+      try {
+        val uri = extractUriFromIntent(intent)
+        if (uri == null || !HttpUtils.isNetworkStream(uri)) {
+          return@launch
+        }
+
+        // Skip fetching for local proxy URLs (SMB/WebDAV/FTP files)
+        // These already have correct filename from intent extras
+        val host = uri.host?.lowercase()
+        if (host == "127.0.0.1" || host == "localhost" || host == "0.0.0.0") {
+          Log.d(TAG, "Skipping title fetch for local proxy URL: $uri")
+          return@launch
+        }
+
+        val url = uri.toString()
+        Log.d(TAG, "Fetching title from network stream: $url")
+
+        val betterFilename = HttpUtils.extractFilenameFromUrl(url)
+        if (betterFilename != null && betterFilename.isNotBlank() &&
+          betterFilename != fileName &&
+          betterFilename != uri.host &&
+          betterFilename != "Network Stream"
+        ) {
+
+          Log.d(TAG, "Found better filename from HTTP headers: $betterFilename")
+
+          // Update fileName
+          fileName = betterFilename
+
+          // DO NOT update mediaIdentifier - keep the original identifier for playback state consistency
+          // The URI hash in mediaIdentifier ensures position is saved/loaded correctly even if filename changes
+
+          // Update MPV title
+          withContext(Dispatchers.Main) {
+            MPVLib.setPropertyString("force-media-title", fileName)
+            viewModel.setMediaTitle(fileName)
+
+            // Update media session
+            val durationMs = (MPVLib.getPropertyDouble("duration")?.times(1000))?.toLong() ?: 0L
+            updateMediaSessionMetadata(
+              title = fileName,
+              durationMs = durationMs,
+            )
+
+            // Update background service if connected
+            if (serviceBound && mediaPlaybackService != null) {
+              val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
+              val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
+              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
+            }
+          }
+
+          // Update recently played with the parsed video title, duration, and file size
+          val filePath = when (uri.scheme) {
+            "file" -> uri.path ?: uri.toString()
+            "content" -> {
+              contentResolver.query(
+                uri,
+                arrayOf(MediaStore.MediaColumns.DATA),
+                null,
+                null,
+                null,
+              )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                  val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                  if (columnIndex != -1) cursor.getString(columnIndex) else null
+                } else null
+              } ?: uri.toString()
+            }
+
+            else -> uri.toString()
+          }
+
+          // Get duration and file size from MPV
+          val updatedDuration = runCatching {
+            (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
+          }.getOrDefault(0L)
+
+          val updatedFileSize = runCatching {
+            // Try multiple properties to get file size
+            MPVLib.getPropertyDouble("file-size")?.toLong()
+              ?: MPVLib.getPropertyDouble("stream-end")?.toLong()
+              ?: 0L
+          }.getOrDefault(0L)
+
+          // Get video resolution from MPV
+          val updatedWidth = runCatching {
+            MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+          }.getOrDefault(0)
+
+          val updatedHeight = runCatching {
+            MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+          }.getOrDefault(0)
+
+          // Update metadata without thumbnail
+          runCatching {
+            RecentlyPlayedOps.updateVideoMetadata(
+              filePath,
+              fileName,
+              updatedDuration,
+              updatedFileSize,
+              updatedWidth,
+              updatedHeight,
+            )
+            Log.d(
+              TAG,
+              "Updated recently played metadata: $fileName (duration: ${updatedDuration}ms, size: ${updatedFileSize}B, resolution: ${updatedWidth}x${updatedHeight}) for $filePath",
+            )
+          }.onFailure { e ->
+            Log.e(TAG, "Error updating video metadata in recently played", e)
+          }
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error fetching network stream title", e)
+      }
+    }
   }
 
   /**
@@ -1409,13 +1583,50 @@ class PlayerActivity :
           else -> "normal"
         }
 
+      // Get parsed video title from MPV
+      val videoTitle = runCatching {
+        MPVLib.getPropertyString("media-title")
+      }.getOrNull()?.takeIf { it.isNotBlank() && it != fileName }
+
+      // Get duration and file size from MPV
+      val duration = runCatching {
+        (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
+      }.getOrDefault(0L)
+
+      val fileSize = runCatching {
+        // Try multiple properties to get file size
+        MPVLib.getPropertyDouble("file-size")?.toLong()
+          ?: MPVLib.getPropertyDouble("stream-end")?.toLong()
+          ?: 0L
+      }.getOrDefault(0L)
+
+      // Get video resolution from MPV
+      val width = runCatching {
+        MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+      }.getOrDefault(0)
+
+      val height = runCatching {
+        MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+      }.getOrDefault(0)
+
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
         fileName = fileName,
+        videoTitle = videoTitle,
+        duration = duration,
+        fileSize = fileSize,
+        width = width,
+        height = height,
         launchSource = launchSource,
       )
 
-      Log.d(TAG, "Saved recently played: $filePath (source: $launchSource)")
+      Log.d(TAG, "Saved recently played: $filePath")
+      Log.d(TAG, "  - fileName: $fileName")
+      Log.d(TAG, "  - videoTitle: $videoTitle")
+      Log.d(TAG, "  - duration: ${duration}ms")
+      Log.d(TAG, "  - size: ${fileSize}B")
+      Log.d(TAG, "  - resolution: ${width}x${height}")
+      Log.d(TAG, "  - source: $launchSource")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played", e)
     }
@@ -1973,11 +2184,11 @@ class PlayerActivity :
   }
 
   /**
-   * Get file name from URI
+   * Get file name from URI (used for playlist items)
    */
   private fun getFileNameFromUri(uri: Uri): String {
     getDisplayNameFromUri(uri)?.let { return it }
-    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: ""
+    return extractFileNameFromUri(uri)
   }
 
   /**
@@ -2023,14 +2234,51 @@ class PlayerActivity :
           }
         }
 
+      // Get parsed video title from MPV
+      val videoTitle = runCatching {
+        MPVLib.getPropertyString("media-title")
+      }.getOrNull()?.takeIf { it.isNotBlank() && it != name }
+
+      // Get duration and file size from MPV
+      val duration = runCatching {
+        (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
+      }.getOrDefault(0L)
+
+      val fileSize = runCatching {
+        // Try multiple properties to get file size
+        MPVLib.getPropertyDouble("file-size")?.toLong()
+          ?: MPVLib.getPropertyDouble("stream-end")?.toLong()
+          ?: 0L
+      }.getOrDefault(0L)
+
+      // Get video resolution from MPV
+      val width = runCatching {
+        MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+      }.getOrDefault(0)
+
+      val height = runCatching {
+        MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+      }.getOrDefault(0)
+
       RecentlyPlayedOps.addRecentlyPlayed(
         filePath = filePath,
         fileName = name,
+        videoTitle = videoTitle,
+        duration = duration,
+        fileSize = fileSize,
+        width = width,
+        height = height,
         launchSource = "playlist",
         playlistId = playlistId,
       )
 
-      Log.d(TAG, "Saved recently played: $filePath (source: playlist, playlistId: $playlistId)")
+      Log.d(TAG, "Saved recently played (playlist): $filePath")
+      Log.d(TAG, "  - fileName: $name")
+      Log.d(TAG, "  - videoTitle: $videoTitle")
+      Log.d(TAG, "  - duration: ${duration}ms")
+      Log.d(TAG, "  - size: ${fileSize}B")
+      Log.d(TAG, "  - resolution: ${width}x${height}")
+      Log.d(TAG, "  - playlistId: $playlistId")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played for playlist item", e)
     }
@@ -2066,6 +2314,8 @@ class PlayerActivity :
       fileName
     }
   }
+
+
 
   companion object {
     /**

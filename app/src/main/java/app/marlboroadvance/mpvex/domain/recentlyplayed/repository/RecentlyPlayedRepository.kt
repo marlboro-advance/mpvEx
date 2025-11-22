@@ -7,6 +7,11 @@ interface RecentlyPlayedRepository {
   suspend fun addRecentlyPlayed(
     filePath: String,
     fileName: String,
+    videoTitle: String? = null,
+    duration: Long = 0,
+    fileSize: Long = 0,
+    width: Int = 0,
+    height: Int = 0,
     launchSource: String? = null,
     playlistId: Int? = null,
   )
@@ -36,5 +41,19 @@ interface RecentlyPlayedRepository {
     oldPath: String,
     newPath: String,
     newFileName: String,
+  )
+
+  suspend fun updateVideoTitle(
+    filePath: String,
+    videoTitle: String,
+  )
+
+  suspend fun updateVideoMetadata(
+    filePath: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
   )
 }

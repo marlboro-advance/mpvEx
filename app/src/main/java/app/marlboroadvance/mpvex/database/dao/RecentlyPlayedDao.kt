@@ -69,6 +69,22 @@ interface RecentlyPlayedDao {
     newFileName: String,
   )
 
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle WHERE filePath = :filePath")
+  suspend fun updateVideoTitle(
+    filePath: String,
+    videoTitle: String,
+  )
+
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle, duration = :duration, fileSize = :fileSize, width = :width, height = :height WHERE filePath = :filePath")
+  suspend fun updateVideoMetadata(
+    filePath: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
+  )
+
   @Query(
     """
     SELECT DISTINCT playlistId, MAX(timestamp) as timestamp

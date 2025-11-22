@@ -18,10 +18,8 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-// Squashed migration from version 1 to 2: All schema changes
 val MIGRATION_1_2 = object : Migration(1, 2) {
   override fun migrate(db: SupportSQLiteDatabase) {
-    // Create video_metadata_cache table
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
@@ -38,7 +36,6 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     """.trimIndent(),
     )
 
-    // Create network_connections table
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `network_connections` (
@@ -57,7 +54,6 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     """.trimIndent(),
     )
 
-    // Create PlaylistEntity table
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
@@ -69,7 +65,6 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     """.trimIndent(),
     )
 
-    // Create PlaylistItemEntity table with all columns including play history
     db.execSQL(
       """
       CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
@@ -87,17 +82,19 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     """.trimIndent(),
     )
 
-    // Create index for playlistId to optimize queries
     db.execSQL("CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)")
 
-    // Add playlistId column to RecentlyPlayedEntity
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
     db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
   }
 }
 
 val DatabaseModule =
   module {
-    // Provide kotlinx.serialization Json as a singleton (used by PlayerViewModel)
     single<Json> {
       Json {
         isLenient = true

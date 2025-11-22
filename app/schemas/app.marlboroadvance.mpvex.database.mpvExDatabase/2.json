@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "8f43bedc4c47d2b3503fa8b16f563a67",
+    "identityHash": "aad799cdfd6da33b7ffae2539b468aef",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
@@ -84,7 +84,7 @@
       },
       {
         "tableName": "RecentlyPlayedEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `filePath` TEXT NOT NULL, `fileName` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `launchSource` TEXT, `playlistId` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `filePath` TEXT NOT NULL, `fileName` TEXT NOT NULL, `videoTitle` TEXT, `duration` INTEGER NOT NULL, `fileSize` INTEGER NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `launchSource` TEXT, `playlistId` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -102,6 +102,35 @@
             "fieldPath": "fileName",
             "columnName": "fileName",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoTitle",
+            "columnName": "videoTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileSize",
+            "columnName": "fileSize",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "width",
+            "columnName": "width",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -443,7 +472,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8f43bedc4c47d2b3503fa8b16f563a67')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aad799cdfd6da33b7ffae2539b468aef')"
     ]
   }
 }

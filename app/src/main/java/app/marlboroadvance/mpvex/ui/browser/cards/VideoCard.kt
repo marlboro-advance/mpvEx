@@ -206,7 +206,7 @@ fun VideoCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row {
-          if (showSizeChip) {
+          if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
             Text(
               video.sizeFormatted,
               style = MaterialTheme.typography.labelSmall,
@@ -221,7 +221,7 @@ fun VideoCard(
             )
           }
           if (showResolutionChip && video.resolution != "--") {
-            if (showSizeChip) {
+            if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
               Spacer(modifier = Modifier.width(4.dp))
             }
 

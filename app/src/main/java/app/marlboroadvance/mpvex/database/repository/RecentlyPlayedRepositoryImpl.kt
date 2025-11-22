@@ -11,17 +11,25 @@ class RecentlyPlayedRepositoryImpl(
   override suspend fun addRecentlyPlayed(
     filePath: String,
     fileName: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
     launchSource: String?,
     playlistId: Int?,
   ) {
-    // Delete all existing entries for this file path to avoid duplicates
-    // This ensures the same video only appears once in recents, and will be "bumped up" when replayed
     recentlyPlayedDao.deleteExistingEntriesForFile(filePath)
 
     val entity =
       RecentlyPlayedEntity(
         filePath = filePath,
         fileName = fileName,
+        videoTitle = videoTitle,
+        duration = duration,
+        fileSize = fileSize,
+        width = width,
+        height = height,
         timestamp = System.currentTimeMillis(),
         launchSource = launchSource,
         playlistId = playlistId,
@@ -64,5 +72,23 @@ class RecentlyPlayedRepositoryImpl(
     newFileName: String,
   ) {
     recentlyPlayedDao.updateFilePath(oldPath, newPath, newFileName)
+  }
+
+  override suspend fun updateVideoTitle(
+    filePath: String,
+    videoTitle: String,
+  ) {
+    recentlyPlayedDao.updateVideoTitle(filePath, videoTitle)
+  }
+
+  override suspend fun updateVideoMetadata(
+    filePath: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
+  ) {
+    recentlyPlayedDao.updateVideoMetadata(filePath, videoTitle, duration, fileSize, width, height)
   }
 }

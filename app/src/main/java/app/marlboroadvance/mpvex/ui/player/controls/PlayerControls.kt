@@ -141,7 +141,8 @@ fun PlayerControls(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
   val position by MPVLib.propInt["time-pos"].collectAsState()
-  val demuxerCacheTime by MPVLib.propFloat["demuxer-cache-time"].collectAsState()
+  val demuxerCacheDuration by MPVLib.propFloat["demuxer-cache-duration"].collectAsState()
+  val cacheBufferingState by MPVLib.propInt["cache-buffering-state"].collectAsState()
   val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
   val gestureSeekAmount by viewModel.gestureSeekAmount.collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
@@ -696,11 +697,24 @@ fun PlayerControls(
           val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
 
           // Calculate read-ahead position (current position + buffered cache time)
-          val readAheadPosition by remember(position, demuxerCacheTime) {
+          val readAheadPosition by remember(position, demuxerCacheDuration, cacheBufferingState, duration) {
             derivedStateOf {
               val currentPos = position?.toFloat() ?: 0f
-              val cacheTime = demuxerCacheTime ?: 0f
-              currentPos + cacheTime
+              val cacheDuration = demuxerCacheDuration ?: 0f
+              val totalDuration = duration?.toFloat() ?: 0f
+              val isBuffering = cacheBufferingState ?: 0
+
+              // If cache duration is available and valid, use it (up to 60 seconds)
+              if (cacheDuration > 0.1f) {
+                (currentPos + cacheDuration).coerceAtMost(totalDuration)
+              } else if (isBuffering > 0 && isBuffering < 100) {
+                // Show estimated buffer when actively buffering (up to 60 seconds)
+                val estimatedBuffer = (isBuffering / 100f) * 60f
+                (currentPos + estimatedBuffer).coerceAtMost(totalDuration)
+              } else {
+                // When not actively buffering and cache is full, show 1 minute buffer
+                (currentPos + 60f).coerceAtMost(totalDuration)
+              }
             }
           }
 
