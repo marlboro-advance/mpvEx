@@ -406,6 +406,36 @@ fun PlayerControls(
               TextPlayerUpdate("Zoom: $zoomPercentage%")
             }
 
+            is PlayerUpdates.RepeatMode -> {
+              val mode = (currentPlayerUpdate as PlayerUpdates.RepeatMode).mode
+              val text = when (mode) {
+                app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> "Repeat: Off"
+                app.marlboroadvance.mpvex.ui.player.RepeatMode.ONE -> "Repeat: Current file"
+                app.marlboroadvance.mpvex.ui.player.RepeatMode.ALL -> {
+                  if (viewModel.hasPlaylistSupport()) {
+                    "Repeat: All playlist"
+                  } else {
+                    "Repeat: Current file"
+                  }
+                }
+              }
+              TextPlayerUpdate(text)
+            }
+
+            is PlayerUpdates.Shuffle -> {
+              val enabled = (currentPlayerUpdate as PlayerUpdates.Shuffle).enabled
+              val text = if (enabled) {
+                if (viewModel.hasPlaylistSupport()) {
+                  "Shuffle: On"
+                } else {
+                  "Shuffle: Not available"
+                }
+              } else {
+                "Shuffle: Off"
+              }
+              TextPlayerUpdate(text)
+            }
+
             else -> {}
           }
         }

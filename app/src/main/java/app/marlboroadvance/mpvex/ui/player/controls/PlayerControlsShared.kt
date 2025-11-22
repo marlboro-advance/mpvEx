@@ -27,12 +27,19 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -393,6 +400,48 @@ fun RenderPlayerButton(
             )
           }
         }
+      }
+    }
+
+    PlayerButton.REPEAT_MODE -> {
+      val repeatMode by viewModel.repeatMode.collectAsState()
+      val icon = when (repeatMode) {
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> Icons.Default.Repeat
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.ONE -> Icons.Default.RepeatOne
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.ALL -> Icons.Default.RepeatOn
+      }
+      ControlsButton(
+        icon = icon,
+        onClick = viewModel::cycleRepeatMode,
+        color = if (hideBackground) {
+          when (repeatMode) {
+            app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> controlColor
+            else -> MaterialTheme.colorScheme.primary
+          }
+        } else {
+          when (repeatMode) {
+            app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.primary
+          }
+        },
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
+    PlayerButton.SHUFFLE -> {
+      // Only show shuffle button if there's a playlist (more than one video)
+      if (viewModel.hasPlaylistSupport()) {
+        val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
+        ControlsButton(
+          icon = if (shuffleEnabled) Icons.Default.ShuffleOn else Icons.Default.Shuffle,
+          onClick = viewModel::toggleShuffle,
+          color = if (hideBackground) {
+            if (shuffleEnabled) MaterialTheme.colorScheme.primary else controlColor
+          } else {
+            if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+          },
+          modifier = Modifier.size(buttonSize),
+        )
       }
     }
 

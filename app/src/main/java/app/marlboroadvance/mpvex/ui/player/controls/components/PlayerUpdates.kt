@@ -1,15 +1,18 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DoubleArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,15 +31,28 @@ fun PlayerUpdate(
   modifier: Modifier = Modifier,
   content: @Composable () -> Unit = {},
 ) {
-  Box(
-    modifier =
-      modifier
-        .clip(RoundedCornerShape(16.dp))
-        .background(Color.Black.copy(0.4f))
-        .padding(vertical = MaterialTheme.spacing.smaller, horizontal = MaterialTheme.spacing.medium)
-        .animateContentSize(),
-    contentAlignment = Alignment.Center,
-  ) { content() }
+  Surface(
+    shape = CircleShape,
+    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    tonalElevation = 2.dp,
+    shadowElevation = 0.dp,
+    border = BorderStroke(
+      1.dp,
+      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+    ),
+    modifier = modifier.animateContentSize(),
+  ) {
+    Box(
+      modifier = Modifier.padding(
+        vertical = MaterialTheme.spacing.small,
+        horizontal = MaterialTheme.spacing.medium,
+      ),
+      contentAlignment = Alignment.Center,
+    ) {
+      content()
+    }
+  }
 }
 
 @Composable

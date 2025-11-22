@@ -44,6 +44,12 @@ import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
+enum class RepeatMode {
+  OFF,      // No repeat
+  ONE,      // Repeat current file
+  ALL       // Repeat all (playlist)
+}
+
 class PlayerViewModelProviderFactory(
   private val host: PlayerHost,
 ) : ViewModelProvider.Factory {
@@ -161,6 +167,13 @@ class PlayerViewModel(
   // Media title for subtitle association
   private var currentMediaTitle: String = ""
   private var lastAutoSelectedMediaTitle: String? = null
+
+  // Repeat and Shuffle state
+  private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
+  val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
+
+  private val _shuffleEnabled = MutableStateFlow(false)
+  val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
@@ -756,6 +769,39 @@ class PlayerViewModel(
   }
 
   fun getCurrentMediaTitle(): String = currentMediaTitle
+
+  // ==================== Repeat and Shuffle ====================
+
+  fun cycleRepeatMode() {
+    _repeatMode.value = when (_repeatMode.value) {
+      RepeatMode.OFF -> RepeatMode.ONE
+      RepeatMode.ONE -> RepeatMode.ALL
+      RepeatMode.ALL -> RepeatMode.OFF
+    }
+
+    // Show overlay update instead of toast
+    playerUpdate.value = PlayerUpdates.RepeatMode(_repeatMode.value)
+  }
+
+  fun toggleShuffle() {
+    _shuffleEnabled.value = !_shuffleEnabled.value
+    val activity = host as? PlayerActivity
+
+    // Notify activity to handle shuffle state change
+    activity?.onShuffleToggled(_shuffleEnabled.value)
+
+    // Show overlay update instead of toast
+    playerUpdate.value = PlayerUpdates.Shuffle(_shuffleEnabled.value)
+  }
+
+  fun shouldRepeatCurrentFile(): Boolean {
+    return _repeatMode.value == RepeatMode.ONE ||
+      (_repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isEmpty() == true)
+  }
+
+  fun shouldRepeatPlaylist(): Boolean {
+    return _repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
+  }
 
   // ==================== Utility ====================
 

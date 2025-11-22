@@ -175,6 +175,16 @@ class PlayerActivity :
   internal var playlistIndex: Int = 0
 
   /**
+   * Shuffled order of playlist indices (when shuffle is enabled)
+   */
+  private var shuffledIndices: List<Int> = emptyList()
+
+  /**
+   * Current position in shuffled playlist (when shuffle is enabled)
+   */
+  private var shuffledPosition: Int = 0
+
+  /**
    * Playlist ID for tracking play history (optional, only for custom playlists)
    */
   private var playlistId: Int? = null
@@ -1110,12 +1120,46 @@ class PlayerActivity :
    */
   private fun handleEndOfFile(isEof: Boolean) {
     if (isEof) {
-      // If there's a next video in the playlist, play it
-      if (hasNext()) {
-        playNext()
-      } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
-        // Only close if no next video and setting is enabled
-        finishAndRemoveTask()
+      // Check if we should repeat the current file
+      if (viewModel.shouldRepeatCurrentFile()) {
+        MPVLib.command("seek", "0", "absolute")
+        viewModel.unpause()
+        return
+      }
+
+      // Handle playlist playback
+      if (playlist.isNotEmpty()) {
+        val hasNextItem = if (viewModel.shuffleEnabled.value) {
+          shuffledPosition < shuffledIndices.size - 1
+        } else {
+          playlistIndex < playlist.size - 1
+        }
+
+        if (hasNextItem) {
+          // Play next item in playlist
+          playNext()
+        } else if (viewModel.shouldRepeatPlaylist()) {
+          // At end of playlist with repeat ALL: restart from beginning
+          if (viewModel.shuffleEnabled.value) {
+            // Regenerate shuffle order and start from beginning
+            generateShuffledIndices()
+            shuffledPosition = 0
+            playlistIndex = shuffledIndices[0]
+            loadPlaylistItem(playlistIndex)
+          } else {
+            // Normal mode: restart from index 0
+            playlistIndex = 0
+            loadPlaylistItem(0)
+          }
+        } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
+          // No repeat, end of playlist: close if setting is enabled
+          finishAndRemoveTask()
+        }
+      } else {
+        // Single video playback (no playlist)
+        if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
+          finishAndRemoveTask()
+        }
       }
     }
   }
@@ -2118,31 +2162,133 @@ class PlayerActivity :
   /**
    * Check if there's a next video in the playlist
    */
-  fun hasNext(): Boolean = playlist.isNotEmpty() && playlistIndex < playlist.size - 1
+  fun hasNext(): Boolean {
+    if (playlist.isEmpty()) return false
+
+    // With repeat ALL, there's always a "next" (loops back to beginning)
+    if (viewModel.shouldRepeatPlaylist()) return true
+
+    return if (viewModel.shuffleEnabled.value) {
+      shuffledPosition < shuffledIndices.size - 1
+    } else {
+      playlistIndex < playlist.size - 1
+    }
+  }
 
   /**
    * Check if there's a previous video in the playlist
    */
-  fun hasPrevious(): Boolean = playlist.isNotEmpty() && playlistIndex > 0
+  fun hasPrevious(): Boolean {
+    if (playlist.isEmpty()) return false
+
+    // With repeat ALL, there's always a "previous" (loops back to end)
+    if (viewModel.shouldRepeatPlaylist()) return true
+
+    return if (viewModel.shuffleEnabled.value) {
+      shuffledPosition > 0
+    } else {
+      playlistIndex > 0
+    }
+  }
+
+  /**
+   * Generate shuffled indices for the playlist
+   */
+  private fun generateShuffledIndices() {
+    if (playlist.isEmpty()) return
+
+    // Create a list of all indices except the current one
+    val indices = playlist.indices.filter { it != playlistIndex }.toMutableList()
+    indices.shuffle()
+
+    // Put current index at the beginning
+    shuffledIndices = listOf(playlistIndex) + indices
+    shuffledPosition = 0
+  }
+
+  /**
+   * Called when shuffle is toggled on/off
+   */
+  fun onShuffleToggled(enabled: Boolean) {
+    if (enabled && playlist.isNotEmpty()) {
+      generateShuffledIndices()
+    } else {
+      shuffledIndices = emptyList()
+      shuffledPosition = 0
+    }
+  }
 
   /**
    * Play the next video in the playlist
    */
   fun playNext() {
-    if (!hasNext()) return
+    if (playlist.isEmpty()) return
 
-    playlistIndex++
-    loadPlaylistItem(playlistIndex)
+    if (viewModel.shuffleEnabled.value) {
+      // Initialize shuffle if not done yet
+      if (shuffledIndices.isEmpty()) {
+        generateShuffledIndices()
+      }
+
+      // Move to next position
+      if (shuffledPosition < shuffledIndices.size - 1) {
+        shuffledPosition++
+        playlistIndex = shuffledIndices[shuffledPosition]
+        loadPlaylistItem(playlistIndex)
+      } else if (viewModel.shouldRepeatPlaylist()) {
+        // At end of shuffled playlist with repeat ALL: regenerate and restart
+        generateShuffledIndices()
+        shuffledPosition = 0
+        playlistIndex = shuffledIndices[0]
+        loadPlaylistItem(playlistIndex)
+      }
+    } else {
+      // Normal sequential playback
+      if (playlistIndex < playlist.size - 1) {
+        playlistIndex++
+        loadPlaylistItem(playlistIndex)
+      } else if (viewModel.shouldRepeatPlaylist()) {
+        // At end of playlist with repeat ALL: restart from beginning
+        playlistIndex = 0
+        loadPlaylistItem(0)
+      }
+    }
   }
 
   /**
    * Play the previous video in the playlist
    */
   fun playPrevious() {
-    if (!hasPrevious()) return
+    if (playlist.isEmpty()) return
 
-    playlistIndex--
-    loadPlaylistItem(playlistIndex)
+    if (viewModel.shuffleEnabled.value) {
+      // Initialize shuffle if not done yet
+      if (shuffledIndices.isEmpty()) {
+        generateShuffledIndices()
+      }
+
+      // Move to previous position
+      if (shuffledPosition > 0) {
+        shuffledPosition--
+        playlistIndex = shuffledIndices[shuffledPosition]
+        loadPlaylistItem(playlistIndex)
+      } else if (viewModel.shouldRepeatPlaylist()) {
+        // At beginning of shuffled playlist with repeat ALL: go to end
+        shuffledPosition = shuffledIndices.size - 1
+        playlistIndex = shuffledIndices[shuffledPosition]
+        loadPlaylistItem(playlistIndex)
+      }
+    } else {
+      // Normal sequential playback
+      if (playlistIndex > 0) {
+        playlistIndex--
+        loadPlaylistItem(playlistIndex)
+      } else if (viewModel.shouldRepeatPlaylist()) {
+        // At beginning of playlist with repeat ALL: go to last item
+        playlistIndex = playlist.size - 1
+        loadPlaylistItem(playlistIndex)
+      }
+    }
   }
 
   /**
