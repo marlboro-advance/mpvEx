@@ -233,14 +233,19 @@ fun GestureHandler(
             },
           )
         }
-        // Unified drag gesture handler to prevent conflicts
-        .pointerInput(areControlsLocked, seekGesture, brightnessGesture, volumeGesture) {
+        // Unified gesture handler with pinch-to-zoom priority
+        .pointerInput(
+          areControlsLocked, seekGesture, brightnessGesture, volumeGesture, pinchToZoomGesture,
+          isLongPressing,
+        ) {
           if (areControlsLocked) return@pointerInput
-          if (!seekGesture && !brightnessGesture && !volumeGesture) return@pointerInput
+          // Disable all gestures when long-press speed gesture is active
+          if (isLongPressing) return@pointerInput
 
           awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
 
+            // Single-finger gesture variables
             var startingPosition = position ?: 0
             var startingX = down.position.x
             var startingY = 0f
@@ -249,12 +254,19 @@ fun GestureHandler(
             var originalMPVVolume = currentMPVVolume
             var originalBrightness = currentBrightness
             var wasPlayerAlreadyPaused = paused ?: false
-
             var totalDragX = 0f
             var totalDragY = 0f
             var gestureType: GestureType? = null
 
-            val dragThreshold = 30f // Pixels to move before committing to a direction
+            // Pinch-to-zoom gesture variables
+            var gestureStartZoom = 0f
+            var isZoomGestureStarted = false
+            var initialDistance = 0f
+            var isPinchGesture = false
+
+            // Increased threshold for single-finger gestures to give pinch more time
+            val dragThreshold = 40f // Increased from 30f to reduce false positives
+            val minDistanceChangeThreshold = 10f // Reduced from 15f for faster pinch response
             val brightnessGestureSens = 0.001f
             val volumeGestureSens = 0.03f
             val mpvVolumeGestureSens = 0.02f
@@ -272,189 +284,57 @@ fun GestureHandler(
                 it > 0
             }
 
-            // Track the drag
-            do {
-              val event = awaitPointerEvent()
-              event.changes.forEach { change ->
-                if (change.pressed) {
-                  val dragX = change.position.x - startingX
-                  change.position.y - (if (startingY == 0f) down.position.y else startingY)
-
-                  totalDragX += change.positionChange().x
-                  totalDragY += change.positionChange().y
-
-                  // Determine gesture type if not yet determined
-                  if (gestureType == null && (abs(totalDragX) > dragThreshold || abs(totalDragY) > dragThreshold)) {
-                    gestureType = if (abs(totalDragX) > abs(totalDragY)) {
-                      if (seekGesture) GestureType.HORIZONTAL_SEEK else null
-                    } else {
-                      if (brightnessGesture || volumeGesture) {
-                        if (brightnessGesture && volumeGesture) {
-                          if (swapVolumeAndBrightness) {
-                            if (change.position.x > size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
-                          } else {
-                            if (change.position.x < size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
-                          }
-                        } else if (brightnessGesture) {
-                          GestureType.BRIGHTNESS
-                        } else {
-                          GestureType.VOLUME
-                        }
-                      } else null
-                    }
-
-                    // Initialize gesture
-                    when (gestureType) {
-                      GestureType.HORIZONTAL_SEEK -> {
-                        startingPosition = position ?: 0
-                        startingX = change.position.x
-                        wasPlayerAlreadyPaused = paused ?: false
-                        viewModel.pause()
-                      }
-
-                      GestureType.BRIGHTNESS, GestureType.VOLUME -> {
-                        startingY = change.position.y
-                        mpvVolumeStartingY = change.position.y
-                        originalVolume = currentVolume
-                        originalMPVVolume = currentMPVVolume
-                        originalBrightness = currentBrightness
-                      }
-
-                      null -> {}
-                    }
-                  }
-
-                  // Handle the gesture
-                  when (gestureType) {
-                    GestureType.HORIZONTAL_SEEK -> {
-                      if ((position ?: 0) <= 0 && dragX < 0) return@forEach
-                      if ((position ?: 0) >= (duration ?: 0) && dragX > 0) return@forEach
-
-                      val newPosition = calculateNewHorizontalGestureValue(
-                        startingPosition,
-                        startingX,
-                        change.position.x,
-                        0.15f,
-                      )
-
-                      viewModel.gestureSeekAmount.update { _ ->
-                        Pair(
-                          startingPosition,
-                          (newPosition - startingPosition)
-                            .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
-                        )
-                      }
-                      viewModel.seekTo(newPosition)
-
-                      if (showSeekbarWhenSeeking) viewModel.showSeekBar()
-                      change.consume()
-                    }
-
-                    GestureType.VOLUME -> {
-                      val amount = change.position.y - startingY
-
-                      if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
-                        if (mpvVolumeStartingY == 0f) {
-                          startingY = 0f
-                          originalVolume = currentVolume
-                          mpvVolumeStartingY = change.position.y
-                        }
-                        viewModel.changeMPVVolumeTo(
-                          calculateNewVerticalGestureValue(
-                            originalMPVVolume ?: 100,
-                            mpvVolumeStartingY,
-                            change.position.y,
-                            mpvVolumeGestureSens,
-                          ).coerceIn(100..volumeBoostingCap + 100),
-                        )
-                      } else {
-                        if (startingY == 0f) {
-                          mpvVolumeStartingY = 0f
-                          originalMPVVolume = currentMPVVolume
-                          startingY = change.position.y
-                        }
-                        viewModel.changeVolumeTo(
-                          calculateNewVerticalGestureValue(
-                            originalVolume,
-                            startingY,
-                            change.position.y,
-                            volumeGestureSens,
-                          ),
-                        )
-                      }
-                      viewModel.displayVolumeSlider()
-                      change.consume()
-                    }
-
-                    GestureType.BRIGHTNESS -> {
-                      if (startingY == 0f) startingY = change.position.y
-                      viewModel.changeBrightnessTo(
-                        calculateNewVerticalGestureValue(
-                          originalBrightness,
-                          startingY,
-                          change.position.y,
-                          brightnessGestureSens,
-                        ),
-                      )
-                      viewModel.displayBrightnessSlider()
-                      change.consume()
-                    }
-
-                    null -> {} // Still determining direction
-                  }
-                }
-              }
-            } while (event.changes.any { it.pressed })
-
-            // Gesture ended
-            when (gestureType) {
-              GestureType.HORIZONTAL_SEEK -> {
-                viewModel.gestureSeekAmount.update { null }
-                viewModel.hideSeekBar()
-                if (!wasPlayerAlreadyPaused) viewModel.unpause()
-              }
-
-              else -> {}
-            }
-          }
-        }
-        .pointerInput(areControlsLocked) {
-          if (areControlsLocked || !pinchToZoomGesture) return@pointerInput
-
-          awaitEachGesture {
-            var gestureStartZoom = 0f
-            var isZoomGestureStarted = false
-            var initialDistance = 0f
-            val minDistanceChangeThreshold = 20f
-
             do {
               val event = awaitPointerEvent()
               val pointerCount = event.changes.count { it.pressed }
 
-              if (pointerCount == 2) {
+              // PRIORITY 1: Check for two-finger pinch gesture first
+              if (pointerCount == 2 && pinchToZoomGesture) {
                 val currentPointers = event.changes.filter { it.pressed }
+
+                if (currentPointers.size == 2 && !isPinchGesture) {
+                  // Clean up any active single-finger gesture before switching to pinch
+                  when (gestureType) {
+                    GestureType.HORIZONTAL_SEEK -> {
+                      // Clean up seek gesture state
+                      viewModel.gestureSeekAmount.update { null }
+                      viewModel.hideSeekBar()
+                      if (!wasPlayerAlreadyPaused) viewModel.unpause()
+                    }
+
+                    GestureType.BRIGHTNESS, GestureType.VOLUME -> {
+                      // These don't need cleanup, but reset for consistency
+                    }
+
+                    null -> {}
+                  }
+
+                  // Mark as pinch gesture immediately to block single-finger gestures
+                  isPinchGesture = true
+                  // Reset any single-finger gesture that might have started
+                  gestureType = null
+                  totalDragX = 0f
+                  totalDragY = 0f
+                }
 
                 if (currentPointers.size == 2) {
                   val pointer1 = currentPointers[0].position
                   val pointer2 = currentPointers[1].position
                   val currentDistance =
-                    kotlin.math
-                      .sqrt(
-                        (
-                          (pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
-                            (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)
-                          ).toDouble(),
-                      ).toFloat()
+                    kotlin.math.sqrt(
+                      ((pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
+                        (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
+                    ).toFloat()
 
                   if (initialDistance == 0f) {
                     initialDistance = currentDistance
+                    gestureStartZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
                   }
 
                   val distanceChange = abs(currentDistance - initialDistance)
 
                   if (distanceChange > minDistanceChangeThreshold) {
                     if (!isZoomGestureStarted) {
-                      gestureStartZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
                       isZoomGestureStarted = true
                       viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
                     }
@@ -464,15 +344,184 @@ fun GestureHandler(
                       val zoomDelta = kotlin.math.ln(zoomScale.toDouble()).toFloat() * 1.5f
                       val newZoom = (gestureStartZoom + zoomDelta).coerceIn(-2f, 3f)
                       viewModel.setVideoZoom(newZoom)
+                    }
+                  }
 
-                      currentPointers.forEach { it.consume() }
+                  // Always consume events when two fingers are detected
+                  currentPointers.forEach { it.consume() }
+                }
+              } else if (pointerCount > 2) {
+                // More than 2 fingers, cancel all gestures
+                break
+              } else if (pointerCount < 2 && isPinchGesture) {
+                // User lifted a finger during pinch, end the gesture
+                break
+              } else if (pointerCount == 1 && !isPinchGesture && (seekGesture || brightnessGesture || volumeGesture)) {
+                // PRIORITY 2: Handle single-finger gestures only if not a pinch
+                event.changes.forEach { change ->
+                  if (change.pressed) {
+                    val dragX = change.position.x - startingX
+
+                    totalDragX += change.positionChange().x
+                    totalDragY += change.positionChange().y
+
+                    // Determine gesture type if not yet determined
+                    if (gestureType == null && (abs(totalDragX) > dragThreshold || abs(totalDragY) > dragThreshold)) {
+                      gestureType = if (abs(totalDragX) > abs(totalDragY)) {
+                        if (seekGesture) GestureType.HORIZONTAL_SEEK else null
+                      } else {
+                        if (brightnessGesture || volumeGesture) {
+                          if (brightnessGesture && volumeGesture) {
+                            if (swapVolumeAndBrightness) {
+                              if (change.position.x > size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                            } else {
+                              if (change.position.x < size.width / 2) GestureType.BRIGHTNESS else GestureType.VOLUME
+                            }
+                          } else if (brightnessGesture) {
+                            GestureType.BRIGHTNESS
+                          } else {
+                            GestureType.VOLUME
+                          }
+                        } else null
+                      }
+
+                      // Initialize gesture
+                      when (gestureType) {
+                        GestureType.HORIZONTAL_SEEK -> {
+                          startingPosition = position ?: 0
+                          startingX = change.position.x
+                          wasPlayerAlreadyPaused = paused ?: false
+                          viewModel.pause()
+                        }
+
+                        GestureType.BRIGHTNESS, GestureType.VOLUME -> {
+                          startingY = change.position.y
+                          originalVolume = currentVolume
+                          originalBrightness = currentBrightness
+
+                          // For volume boost: capture correct starting values
+                          val currentMPV = currentMPVVolume ?: 100
+                          if (currentMPV > 100) {
+                            // We're in boost mode, track from MPV volume
+                            mpvVolumeStartingY = change.position.y
+                            originalMPVVolume = currentMPV
+                          } else {
+                            // Normal mode, track from system volume
+                            mpvVolumeStartingY = 0f
+                            originalMPVVolume = currentMPV
+                          }
+                        }
+
+                        null -> {}
+                      }
+                    }
+
+                    // Handle the gesture
+                    when (gestureType) {
+                      GestureType.HORIZONTAL_SEEK -> {
+                        if ((position ?: 0) <= 0 && dragX < 0) return@forEach
+                        if ((position ?: 0) >= (duration ?: 0) && dragX > 0) return@forEach
+
+                        val newPosition = calculateNewHorizontalGestureValue(
+                          startingPosition,
+                          startingX,
+                          change.position.x,
+                          0.15f,
+                        )
+
+                        viewModel.gestureSeekAmount.update { _ ->
+                          Pair(
+                            startingPosition,
+                            (newPosition - startingPosition)
+                              .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
+                          )
+                        }
+                        viewModel.seekTo(newPosition)
+
+                        if (showSeekbarWhenSeeking) viewModel.showSeekBar()
+                        change.consume()
+                      }
+
+                      GestureType.VOLUME -> {
+                        val amount = change.position.y - startingY
+                        val currentMPV = currentMPVVolume ?: 100
+
+                        // Check if we started in boost mode (using originalMPVVolume, not current)
+                        val startedInBoostMode = (originalMPVVolume ?: 100) > 100
+
+                        if (startedInBoostMode) {
+                          // We started in boost mode - always use MPV volume control for this gesture
+                          val newMPVVolume = calculateNewVerticalGestureValue(
+                            originalMPVVolume ?: 100,
+                            mpvVolumeStartingY,
+                            change.position.y,
+                            mpvVolumeGestureSens,
+                          ).coerceIn(100..volumeBoostingCap + 100)
+
+                          viewModel.changeMPVVolumeTo(newMPVVolume)
+
+                        } else if (isIncreasingVolumeBoost(amount)) {
+                          // Started at normal volume, trying to boost beyond 100%
+                          if (mpvVolumeStartingY == 0f) {
+                            mpvVolumeStartingY = change.position.y
+                            originalMPVVolume = 100
+                          }
+                          viewModel.changeMPVVolumeTo(
+                            calculateNewVerticalGestureValue(
+                              originalMPVVolume ?: 100,
+                              mpvVolumeStartingY,
+                              change.position.y,
+                              mpvVolumeGestureSens,
+                            ).coerceIn(100..volumeBoostingCap + 100),
+                          )
+                        } else {
+                          // Normal system volume control (not in boost mode)
+                          viewModel.changeVolumeTo(
+                            calculateNewVerticalGestureValue(
+                              originalVolume,
+                              startingY,
+                              change.position.y,
+                              volumeGestureSens,
+                            ),
+                          )
+                        }
+                        viewModel.displayVolumeSlider()
+                        change.consume()
+                      }
+
+                      GestureType.BRIGHTNESS -> {
+                        if (startingY == 0f) startingY = change.position.y
+                        viewModel.changeBrightnessTo(
+                          calculateNewVerticalGestureValue(
+                            originalBrightness,
+                            startingY,
+                            change.position.y,
+                            brightnessGestureSens,
+                          ),
+                        )
+                        viewModel.displayBrightnessSlider()
+                        change.consume()
+                      }
+
+                      null -> {}
                     }
                   }
                 }
-              } else if (pointerCount > 2 || (isZoomGestureStarted)) {
-                break
               }
             } while (event.changes.any { it.pressed })
+
+            // Gesture ended - cleanup (only if not already cleaned up during pinch transition)
+            if (!isPinchGesture && gestureType != null) {
+              when (gestureType) {
+                GestureType.HORIZONTAL_SEEK -> {
+                  viewModel.gestureSeekAmount.update { null }
+                  viewModel.hideSeekBar()
+                  if (!wasPlayerAlreadyPaused) viewModel.unpause()
+                }
+
+                else -> {}
+              }
+            }
           }
         },
   )
