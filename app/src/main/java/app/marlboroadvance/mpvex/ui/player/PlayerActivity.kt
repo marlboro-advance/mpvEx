@@ -137,6 +137,13 @@ class PlayerActivity :
    */
   private val fileManager: FileManager by inject()
 
+  /**
+   * Track selector for automatic audio/subtitle selection
+   */
+  private val trackSelector: TrackSelector by lazy {
+    TrackSelector(audioPreferences, subtitlesPreferences)
+  }
+
   // ==================== Views ====================
 
   /**
@@ -1224,7 +1231,11 @@ class PlayerActivity :
     setIntentExtras(intent.extras)
 
     lifecycleScope.launch(Dispatchers.IO) {
+      // Load playback state (will skip track restoration if preferred language configured)
       loadVideoPlaybackState(fileName)
+
+      // Apply preferred language settings (will override if configured)
+      trackSelector.onFileLoaded()
     }
 
     // Save to recently played when video actually loads and plays
@@ -1497,9 +1508,32 @@ class PlayerActivity :
     val secondarySubDelay = state.secondarySubDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
 
-    player.sid = state.sid
-    player.secondarySid = state.secondarySid
-    player.aid = state.aid
+    // Check if user has preferred languages configured
+    val hasAudioPreference = audioPreferences.preferredLanguages.get().isNotBlank()
+    val hasSubtitlePreference = subtitlesPreferences.preferredLanguages.get().isNotBlank()
+
+    // Only restore subtitle tracks if no preferred language is configured
+    // Preferred language takes precedence over saved state
+    if (!hasSubtitlePreference) {
+      if (state.sid >= 0) {
+        player.sid = state.sid
+      }
+      if (state.secondarySid >= 0) {
+        player.secondarySid = state.secondarySid
+      }
+    } else {
+      Log.d(TAG, "Skipping subtitle restoration - preferred language configured")
+    }
+
+    // Only restore audio track if no preferred language is configured
+    // Preferred language takes precedence over saved state
+    if (!hasAudioPreference) {
+      if (state.aid >= 0) {
+        player.aid = state.aid
+      }
+    } else {
+      Log.d(TAG, "Skipping audio restoration - preferred language configured")
+    }
 
     MPVLib.setPropertyDouble("sub-delay", subDelay)
     MPVLib.setPropertyDouble("secondary-sub-delay", secondarySubDelay)

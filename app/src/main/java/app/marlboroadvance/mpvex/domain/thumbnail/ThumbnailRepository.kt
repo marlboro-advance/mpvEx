@@ -142,26 +142,26 @@ class ThumbnailRepository(
 
       if (thumbnailFile.exists()) {
         android.util.Log.d("ThumbnailRepository", "Found cached thumbnail")
-        runCatching {
+        return runCatching {
           val options = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.RGB_565
           }
-          return BitmapFactory.decodeFile(thumbnailFile.absolutePath, options)?.let { bmp ->
+          BitmapFactory.decodeFile(thumbnailFile.absolutePath, options)?.let { bmp ->
             if (bmp.width != width || bmp.height != height) {
               bmp.scale(width, height)
             } else {
               bmp
             }
           }
-        }.getOrNull()?.let { return it }
+        }.getOrNull()
       }
       return null
     }
 
     if (video.uri.scheme == "content" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      runCatching {
-        return context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
-      }
+      return runCatching {
+        context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
+      }.getOrNull()
     }
 
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -175,8 +175,11 @@ class ThumbnailRepository(
           ThumbnailUtils.createVideoThumbnail(video.path, MediaStore.Images.Thumbnails.MINI_KIND)
         }.getOrNull()
       raw?.let { bmp ->
-        if (bmp.width == width && bmp.height == height) return bmp
-        bmp.scale(width, height)
+        if (bmp.width == width && bmp.height == height) {
+          bmp
+        } else {
+          bmp.scale(width, height)
+        }
       }
     }
   }
