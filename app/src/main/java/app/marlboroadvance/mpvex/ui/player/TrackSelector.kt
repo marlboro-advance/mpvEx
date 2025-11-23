@@ -10,9 +10,10 @@ import `is`.xyz.mpv.MPVLib
  *
  * This class ensures:
  * - Audio tracks are ALWAYS selected (never silent playback)
- * - Subtitle tracks respect user preference (only selected if configured)
- * - Preferred languages work correctly
- * - Manual selections are preserved
+ * - Preferred languages override user selections when configured
+ * - User manual selections and saved states are respected when no preferred language is set
+ * - User manual selections and saved states are preserved when preferred language doesn't match
+ * - Subtitle tracks are optional and only enabled when explicitly selected or matching preferences
  */
 class TrackSelector(
   private val audioPreferences: AudioPreferences,
@@ -43,8 +44,9 @@ class TrackSelector(
    * Strategy:
    * 1. If preferred languages configured, ALWAYS select based on preference
    * 2. Override any existing selection to respect user preference
-   * 3. If no language match, keep existing selection or select first track
-   * 4. Audio must ALWAYS be selected
+   * 3. If no preferred languages configured, respect any existing selection (user choice or saved state)
+   * 4. If no selection exists and no preference, select first track
+   * 5. Audio must ALWAYS be selected
    */
   private fun ensureAudioTrackSelected() {
     try {
@@ -85,13 +87,15 @@ class TrackSelector(
           }
         }
 
-        Log.d(TAG, "No preferred language found in available tracks")
+        Log.d(TAG, "No preferred language found in available tracks - keeping existing selection")
+        // When preferred language is set but not found, keep existing selection
+        // This respects user's manual selection or saved state
       }
 
-      // Check if a track is already selected
+      // Check if a track is already selected (user choice, saved state, or MPV's alang)
       val currentAid = MPVLib.getPropertyInt("aid")
       if (currentAid != null && currentAid > 0) {
-        Log.d(TAG, "Audio track already selected: $currentAid (no preferred language to override)")
+        Log.d(TAG, "Audio track already selected: $currentAid (respecting existing selection)")
         return
       }
 
@@ -110,8 +114,9 @@ class TrackSelector(
    * Strategy:
    * 1. If preferred languages configured, ALWAYS select based on preference
    * 2. Override any existing selection to respect user preference
-   * 3. If no preferred languages, disable subtitles
-   * 4. If no language match, disable subtitles
+   * 3. If no preferred languages configured, respect any existing selection (user choice or saved state)
+   * 4. If preferred language set but not found, keep existing selection
+   * 5. Subtitles are optional - only enabled if preference matches or user/saved state selects them
    */
   private fun ensureSubtitleTrackSelected() {
     try {
@@ -130,13 +135,14 @@ class TrackSelector(
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
-      // If no preferred languages configured, disable subtitles
+      // If no preferred languages configured, respect any existing selection
       if (preferredLangs.isEmpty()) {
-        Log.d(TAG, "No preferred subtitle languages configured")
+        Log.d(TAG, "No preferred subtitle languages configured - respecting existing selection")
         val currentSid = MPVLib.getPropertyInt("sid")
         if (currentSid != null && currentSid > 0) {
-          MPVLib.setPropertyBoolean("sid", false)
-          Log.d(TAG, "Disabled subtitles (no preferred language)")
+          Log.d(TAG, "Subtitle track $currentSid is selected (user choice or saved state)")
+        } else {
+          Log.d(TAG, "No subtitle track selected (respecting user preference for no subtitles)")
         }
         return
       }
@@ -167,12 +173,14 @@ class TrackSelector(
         Log.d(TAG, "No tracks found for language: $preferredLang")
       }
 
-      // No matching subtitle found for any preferred language, disable subtitles
-      Log.d(TAG, "No matching subtitle tracks found for any preferred language")
+      // No matching subtitle found for any preferred language
+      // Keep existing selection (user choice or saved state) instead of disabling
+      Log.d(TAG, "No matching subtitle tracks found for any preferred language - keeping existing selection")
       val currentSid = MPVLib.getPropertyInt("sid")
       if (currentSid != null && currentSid > 0) {
-        MPVLib.setPropertyBoolean("sid", false)
-        Log.d(TAG, "Disabled subtitles (preferred language not found)")
+        Log.d(TAG, "Keeping subtitle track $currentSid (user choice or saved state)")
+      } else {
+        Log.d(TAG, "No subtitle track selected")
       }
 
     } catch (e: Exception) {
