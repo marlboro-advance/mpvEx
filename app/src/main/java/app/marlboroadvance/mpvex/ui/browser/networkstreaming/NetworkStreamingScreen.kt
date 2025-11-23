@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SignalWifiConnectedNoInternet4
+import androidx.compose.material.icons.rounded.SignalWifiStatusbarConnectedNoInternet4
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -176,9 +178,8 @@ object NetworkStreamingScreen : Screen {
             item {
               Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(
-                  containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                  containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
               ) {
                 Column(
@@ -186,10 +187,10 @@ object NetworkStreamingScreen : Screen {
                   horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                   Icon(
-                    imageVector = Icons.Filled.Add,
+                    imageVector = Icons.Rounded.SignalWifiStatusbarConnectedNoInternet4,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                   )
                   Spacer(modifier = Modifier.height(16.dp))
                   Text(
@@ -288,9 +289,8 @@ private fun StreamLinkSection(
     )
     Card(
       modifier = Modifier.fillMaxWidth(),
-      elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
       colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
       ),
     ) {
       Column(
