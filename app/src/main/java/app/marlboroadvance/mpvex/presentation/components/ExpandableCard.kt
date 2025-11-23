@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.ui.theme.spacing
 
 @SuppressLint("UnrememberedMutableState")
@@ -39,9 +40,19 @@ fun ExpandableCard(
   onExpand: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
   colors: CardColors = CardDefaults.cardColors(),
-  shape: Shape = CardDefaults.shape,
-  border: BorderStroke? = null,
-  elevation: CardElevation = CardDefaults.cardElevation(),
+  shape: Shape = MaterialTheme.shapes.large,
+  border: BorderStroke? = BorderStroke(
+    1.dp,
+    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+  ),
+  elevation: CardElevation = CardDefaults.cardElevation(
+    defaultElevation = 0.dp,
+    pressedElevation = 0.dp,
+    focusedElevation = 0.dp,
+    hoveredElevation = 0.dp,
+    draggedElevation = 0.dp,
+    disabledElevation = 0.dp,
+  ),
   content: @Composable () -> Unit,
 ) {
   val rotationState by animateFloatAsState(if (isExpanded) 0f else 180f, label = "card_rotation")
@@ -56,7 +67,11 @@ fun ExpandableCard(
       modifier =
         Modifier
           .clickable(onClick = { onExpand(!isExpanded) })
-          .padding(start = MaterialTheme.spacing.medium),
+          .padding(
+            start = MaterialTheme.spacing.medium,
+            top = MaterialTheme.spacing.medium,
+            end = MaterialTheme.spacing.extraSmall,
+          ),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       title(isExpanded)
@@ -68,7 +83,15 @@ fun ExpandableCard(
         Icon(Icons.Default.ArrowDropDown, null)
       }
     }
-    Box(Modifier.animateContentSize()) {
+    Box(
+      Modifier
+        .animateContentSize()
+        .padding(
+          start = MaterialTheme.spacing.medium,
+          end = MaterialTheme.spacing.medium,
+          bottom = MaterialTheme.spacing.medium,
+        ),
+    ) {
       if (isExpanded) content()
     }
   }

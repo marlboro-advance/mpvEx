@@ -103,7 +103,7 @@ fun RenderPlayerButton(
             )
           },
         contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        tonalElevation = if (hideBackground) 0.dp else 2.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border =
           if (hideBackground) {
@@ -161,7 +161,7 @@ fun RenderPlayerButton(
           shape = CircleShape,
           color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-          tonalElevation = if (hideBackground) 0.dp else 2.dp,
+          tonalElevation = 0.dp,
           shadowElevation = 0.dp,
           border = if (hideBackground) null else BorderStroke(
             1.dp,
@@ -179,7 +179,10 @@ fun RenderPlayerButton(
           Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.small),
+            modifier = Modifier.padding(
+              horizontal = MaterialTheme.spacing.small,
+              vertical = MaterialTheme.spacing.small,
+            ),
           ) {
             Icon(
               imageVector = Icons.Default.Speed,
@@ -216,7 +219,7 @@ fun RenderPlayerButton(
             )
           },
         contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        tonalElevation = if (hideBackground) 0.dp else 2.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border =
           if (hideBackground) {
@@ -273,7 +276,7 @@ fun RenderPlayerButton(
           shape = CircleShape,
           color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-          tonalElevation = if (hideBackground) 0.dp else 2.dp,
+          tonalElevation = 0.dp,
           shadowElevation = 0.dp,
           border = if (hideBackground) null else BorderStroke(
             1.dp,
@@ -369,7 +372,7 @@ fun RenderPlayerButton(
       ControlsButton(
         Icons.Default.Subtitles,
         onClick = { onOpenSheet(Sheets.SubtitleTracks) },
-        onLongClick = { onOpenPanel(Panels.SubtitleSettings) },
+        onLongClick = { onOpenPanel(Panels.SubtitleDelay) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )

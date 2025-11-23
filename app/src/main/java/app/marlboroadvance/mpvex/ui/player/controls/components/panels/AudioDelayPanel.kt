@@ -57,7 +57,7 @@ fun AudioDelayPanel(
       delayType = DelayType.Audio,
       modifier =
         Modifier.constrainAs(delayControlCard) {
-          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          top.linkTo(parent.top)
           end.linkTo(parent.end)
         },
     )
@@ -69,21 +69,9 @@ fun AudioDelayCardTitle(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Text(
-      stringResource(R.string.player_sheets_audio_delay_card_title),
-      style = MaterialTheme.typography.headlineMedium,
-    )
-    IconButton(onClose) {
-      Icon(
-        Icons.Default.Close,
-        null,
-        modifier = Modifier.size(32.dp),
-      )
-    }
-  }
+  Text(
+    stringResource(R.string.player_sheets_audio_delay_card_title),
+    style = MaterialTheme.typography.titleLarge,
+    modifier = modifier,
+  )
 }

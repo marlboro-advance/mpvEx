@@ -535,7 +535,7 @@ fun PlayerControls(
                         Color.Transparent
                       },
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    tonalElevation = 2.dp,
+                    tonalElevation = 0.dp,
                     shadowElevation = 0.dp,
                     border =
                       if (!hideBackground) {
@@ -584,7 +584,7 @@ fun PlayerControls(
                         Color.Transparent
                       },
                     contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                    tonalElevation = 2.dp,
+                    tonalElevation = 0.dp,
                     shadowElevation = 0.dp,
                     border =
                       if (!hideBackground) {
@@ -627,7 +627,7 @@ fun PlayerControls(
                         Color.Transparent
                       },
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    tonalElevation = 2.dp,
+                    tonalElevation = 0.dp,
                     shadowElevation = 0.dp,
                     border =
                       if (!hideBackground) {
@@ -677,7 +677,7 @@ fun PlayerControls(
                       Color.Transparent
                     },
                   contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-                  tonalElevation = 2.dp,
+                  tonalElevation = 0.dp,
                   shadowElevation = 0.dp,
                   border =
                     if (!hideBackground) {

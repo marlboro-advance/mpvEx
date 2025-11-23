@@ -59,19 +59,19 @@ fun CurrentChapter(
       if (hideBackground) {
         Color.Transparent
       } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh.copy(
-          alpha = 0.5f,
+        MaterialTheme.colorScheme.surfaceContainer.copy(
+          alpha = 0.55f,
         )
       },
     contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-    tonalElevation = if (hideBackground) 0.dp else 5.dp,
+    tonalElevation = 0.dp,
     border =
       if (hideBackground) {
         null
       } else {
         BorderStroke(
           1.dp,
-          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+          MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
         )
       },
   ) {
