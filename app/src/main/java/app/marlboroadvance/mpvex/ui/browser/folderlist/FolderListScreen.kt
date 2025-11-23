@@ -98,10 +98,9 @@ object FolderListScreen : Screen {
     val browserPreferences = koinInject<BrowserPreferences>()
     val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
-    // Switch between MediaStore and FileSystem views based on preference
     when (folderViewMode) {
       FolderViewMode.FileManager -> FileSystemBrowserRootScreen.Content()
-      FolderViewMode.MediaStore -> MediaStoreFolderListContent()
+      FolderViewMode.AlbumView -> MediaStoreFolderListContent()
     }
   }
 
@@ -682,8 +681,7 @@ private fun FolderSortDialog(
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
-  // Dynamic dialog based on view mode
-  val isAlbumView = folderViewMode == FolderViewMode.MediaStore
+  val isAlbumView = folderViewMode == FolderViewMode.AlbumView
 
   SortDialog(
     isOpen = isOpen,
@@ -717,7 +715,7 @@ private fun FolderSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
-    showSortOptions = isAlbumView, // Only show sort options in Album view
+    showSortOptions = isAlbumView,
     viewModeSelector =
       ViewModeSelector(
         label = "View Mode",
@@ -725,10 +723,10 @@ private fun FolderSortDialog(
         secondOptionLabel = "Tree View",
         firstOptionIcon = Icons.Filled.ViewModule,
         secondOptionIcon = Icons.Filled.AccountTree,
-        isFirstOptionSelected = folderViewMode == FolderViewMode.MediaStore,
+        isFirstOptionSelected = folderViewMode == FolderViewMode.AlbumView,
         onViewModeChange = { isFirstOption ->
           browserPreferences.folderViewMode.set(
-            if (isFirstOption) FolderViewMode.MediaStore else FolderViewMode.FileManager,
+            if (isFirstOption) FolderViewMode.AlbumView else FolderViewMode.FileManager,
           )
         },
       ),

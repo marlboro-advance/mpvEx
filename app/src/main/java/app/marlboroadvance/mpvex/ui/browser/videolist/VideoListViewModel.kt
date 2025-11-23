@@ -10,7 +10,6 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.repository.VideoRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
-import app.marlboroadvance.mpvex.utils.media.MediaStoreObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,18 +42,13 @@ class VideoListViewModel(
 
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-  // MediaStore observer for external changes
-  private val mediaStoreObserver = MediaStoreObserver(application, viewModelScope)
+  
 
   private val tag = "VideoListViewModel"
 
   init {
     loadVideos()
-    // Start observing MediaStore for external changes
-    viewModelScope.launch {
-      mediaStoreObserver.startObserving()
-    }
+
     // Listen for global media library changes and refresh this list when they occur
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
@@ -67,14 +61,6 @@ class VideoListViewModel(
     loadVideos()
   }
 
-  override fun onCleared() {
-    super.onCleared()
-    // Stop observing when ViewModel is destroyed
-    viewModelScope.launch {
-      mediaStoreObserver.stopObserving()
-    }
-  }
-
   private fun loadVideos() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -85,9 +71,7 @@ class VideoListViewModel(
 
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          // Trigger a media scan to refresh MediaStore
           triggerMediaScan()
-          // Wait longer for MediaStore to update
           delay(1000)
           val retryVideoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList

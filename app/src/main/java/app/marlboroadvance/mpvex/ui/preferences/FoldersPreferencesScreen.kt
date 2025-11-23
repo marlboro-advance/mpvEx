@@ -49,12 +49,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
+import android.net.Uri
+import android.os.Environment
+import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
+import java.io.File
+import java.util.Locale
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionState
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
@@ -192,7 +198,7 @@ object FoldersPreferencesScreen : Screen {
                 isLoading = true
                 coroutineScope.launch(Dispatchers.IO) {
                   try {
-                    availableFolders = VideoFolderRepository.getVideoFolders(context.applicationContext as Application)
+                    availableFolders = scanAllVideoFolders(context.applicationContext as Application)
                   } finally {
                     isLoading = false
                   }
@@ -475,3 +481,146 @@ private fun AddFolderDialog(
     },
   )
 }
+
+/**
+ * Scans all storage volumes for folders containing videos
+ * This is a simplified version of FolderListViewModel's scanning logic
+ */
+private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> {
+  val appearancePreferences =
+    org.koin.java.KoinJavaComponent.get<AppearancePreferences>(AppearancePreferences::class.java)
+  val metadataCache =
+    org.koin.java.KoinJavaComponent.get<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
+
+  val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
+  val folders = mutableMapOf<String, FolderData>()
+
+  // Get storage roots
+  val primaryStorage = Environment.getExternalStorageDirectory()
+  val storageRoots = mutableListOf(primaryStorage)
+
+  // Add external volumes (SD cards, USB OTG)
+  val externalVolumes = StorageScanUtils.getExternalStorageVolumes(context)
+  for (volume in externalVolumes) {
+    val volumePath = StorageScanUtils.getVolumePath(volume)
+    if (volumePath != null) {
+      val volumeDir = File(volumePath)
+      if (volumeDir.exists() && volumeDir.canRead()) {
+        storageRoots.add(volumeDir)
+      }
+    }
+  }
+
+  // Scan each storage root recursively
+  for (root in storageRoots) {
+    scanDirectoryRecursively(root, folders, showHiddenFiles, metadataCache)
+  }
+
+  // Convert to VideoFolder list
+  return folders.values.map { folderData ->
+    VideoFolder(
+      bucketId = folderData.path,
+      name = folderData.name,
+      path = folderData.path,
+      videoCount = folderData.videoCount,
+      totalSize = folderData.totalSize,
+      totalDuration = folderData.totalDuration,
+      lastModified = folderData.lastModified,
+    )
+  }.sortedBy { it.name.lowercase(Locale.getDefault()) }
+}
+
+private suspend fun scanDirectoryRecursively(
+  directory: File,
+  folders: MutableMap<String, FolderData>,
+  showHiddenFiles: Boolean,
+  metadataCache: VideoMetadataCacheRepository,
+  maxDepth: Int = 20,
+  currentDepth: Int = 0,
+) {
+  if (currentDepth >= maxDepth) return
+  if (!directory.exists() || !directory.canRead() || !directory.isDirectory) return
+
+  try {
+    val files = directory.listFiles() ?: return
+
+    val videoFiles = mutableListOf<File>()
+    val subdirectories = mutableListOf<File>()
+
+    for (file in files) {
+      when {
+        !showHiddenFiles && file.name.startsWith(".") -> continue
+        file.isDirectory && shouldSkipFolder(file, showHiddenFiles) -> continue
+        file.isFile && StorageScanUtils.isVideoFile(file) -> videoFiles.add(file)
+        file.isDirectory -> subdirectories.add(file)
+      }
+    }
+
+    if (videoFiles.isNotEmpty()) {
+      val folderPath = directory.absolutePath
+      val folderName = directory.name
+      val totalSize = videoFiles.sumOf { it.length() }
+      val lastModified = videoFiles.maxOfOrNull { it.lastModified() }?.div(1000) ?: 0L
+
+      var totalDuration = 0L
+      for (videoFile in videoFiles) {
+        try {
+          val uri = Uri.fromFile(videoFile)
+          val metadata = metadataCache.getOrExtractMetadata(videoFile, uri, videoFile.name)
+          if (metadata != null && metadata.durationMs > 0) {
+            totalDuration += metadata.durationMs
+          }
+        } catch (e: Exception) {
+          // Ignore errors
+        }
+      }
+
+      folders[folderPath] = FolderData(
+        path = folderPath,
+        name = folderName,
+        videoCount = videoFiles.size,
+        totalSize = totalSize,
+        totalDuration = totalDuration,
+        lastModified = lastModified,
+      )
+    }
+
+    for (subdir in subdirectories) {
+      scanDirectoryRecursively(subdir, folders, showHiddenFiles, metadataCache, maxDepth, currentDepth + 1)
+    }
+  } catch (e: Exception) {
+    // Ignore errors
+  }
+}
+
+private fun shouldSkipFolder(folder: File, showHiddenFiles: Boolean): Boolean {
+  if (showHiddenFiles) {
+    return false
+  }
+
+  val skipFolders = setOf(
+    "android",
+    "data",
+    ".thumbnails",
+    ".cache",
+    "cache",
+    "lost.dir",
+    "system",
+    ".android_secure",
+    ".trash",
+    ".trashbin",
+  )
+
+  val name = folder.name.lowercase()
+  val isHidden = name.startsWith(".")
+  return isHidden || skipFolders.contains(name)
+}
+
+private data class FolderData(
+  val path: String,
+  val name: String,
+  val videoCount: Int,
+  val totalSize: Long,
+  val totalDuration: Long,
+  val lastModified: Long,
+)

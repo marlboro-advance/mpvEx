@@ -1,13 +1,11 @@
 package app.marlboroadvance.mpvex.utils.storage
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
-import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import kotlinx.coroutines.runBlocking
@@ -178,31 +176,7 @@ object StorageScanUtils {
       emptyList()
     }
 
-  /**
-   * Gets MediaStore content URI for a specific storage volume
-   */
-  fun getContentUriForVolume(
-    context: Context,
-    volume: StorageVolume,
-  ): Uri =
-    try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        if (volume.isPrimary) {
-          MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        } else {
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            MediaStore.Video.Media.getContentUri(volume.mediaStoreVolumeName)
-          } else {
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-          }
-        }
-      } else {
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error getting content URI for volume: ${volume.getDescription(context)}", e)
-      MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-    }
+
 
   /**
    * Determines which storage volume a given path belongs to

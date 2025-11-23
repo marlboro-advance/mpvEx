@@ -3,7 +3,6 @@ package app.marlboroadvance.mpvex.repository
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
@@ -142,7 +141,6 @@ object FileSystemRepository : KoinComponent {
           files.filter { it.isFile && StorageScanUtils.isVideoFile(it) }
         }
 
-        // Create Video objects for each file - using MediaStore when available
         val videos = getVideosFromFiles(context, targetFiles)
 
         videos.forEach { video ->
@@ -342,9 +340,7 @@ object FileSystemRepository : KoinComponent {
   }
 
   /**
-   * Creates Video objects from file paths by querying MediaStore
-   * Based on Fossify's MediaStore query logic and FileDirItem creation
-   * Uses MediaInfo fallback for videos with missing metadata
+   * Creates Video objects from file paths using direct filesystem + MediaInfo
    */
   private suspend fun getVideosFromFiles(
     context: Context,
@@ -354,181 +350,59 @@ object FileSystemRepository : KoinComponent {
 
     if (files.isEmpty()) return emptyList()
 
-    // MediaStore projection - similar to Fossify's video queries
-    val projection =
-      arrayOf(
-        MediaStore.Video.Media._ID,
-        MediaStore.Video.Media.DISPLAY_NAME,
-        MediaStore.Video.Media.DATA,
-        MediaStore.Video.Media.SIZE,
-        MediaStore.Video.Media.DURATION,
-        MediaStore.Video.Media.WIDTH,
-        MediaStore.Video.Media.HEIGHT,
-        MediaStore.Video.Media.MIME_TYPE,
-        MediaStore.Video.Media.DATE_ADDED,
-        MediaStore.Video.Media.DATE_MODIFIED,
-        MediaStore.Video.Media.BUCKET_ID,
-        MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
-      )
-
-    // Build selection for all file paths - Fossify uses similar batch queries
-    val pathList = files.map { it.absolutePath }
-    val selection = "${MediaStore.Video.Media.DATA} IN (${pathList.joinToString(",") { "?" }})"
-    val selectionArgs = pathList.toTypedArray()
-
     try {
-      // Query MediaStore for video metadata
-      context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        selectionArgs,
-        null,
-      )?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-        val displayNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-        val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
-        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
-        val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)
-        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
-        val dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
-        val bucketIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID)
-        val bucketNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+      files.forEach { file ->
+        val uri = Uri.fromFile(file)
+        val displayName = file.name
+        var size = file.length()
+        var duration = 0L
+        var width = 0
+        var height = 0
+        var fps = 0f
 
-        while (cursor.moveToNext()) {
-          val id = cursor.getLong(idColumn)
-          val displayName = cursor.getString(displayNameColumn)
-          val path = cursor.getString(dataColumn)
-          var size = cursor.getLong(sizeColumn)
-          var duration = cursor.getLong(durationColumn)
-          var width = cursor.getInt(widthColumn)
-          var height = cursor.getInt(heightColumn)
-          val mimeType = cursor.getString(mimeTypeColumn) ?: "video/*"
-          val dateAdded = cursor.getLong(dateAddedColumn)
-          val dateModified = cursor.getLong(dateModifiedColumn)
-          val bucketId = cursor.getString(bucketIdColumn) ?: ""
-          val bucketName = cursor.getString(bucketNameColumn) ?: ""
-
-          val uri =
-            Uri.withAppendedPath(
-              MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-              id.toString(),
-            )
-
-          // Extract framerate and fallback metadata using MediaInfo cache
-          var fps = 0f
-          val file = File(path)
-
-          // Use metadata cache for fps and fallback data
-          if (width <= 0 || height <= 0 || duration <= 0) {
-            // MediaStore has incomplete data - extract everything from MediaInfo
-            Log.d(TAG, "MediaStore incomplete for $displayName, using MediaInfo fallback")
-            metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
-              if (metadata.width > 0 && metadata.height > 0) {
-                width = metadata.width
-                height = metadata.height
-              }
-              if (metadata.durationMs > 0) {
-                duration = metadata.durationMs
-              }
-              if (metadata.sizeBytes > 0) {
-                size = metadata.sizeBytes
-              }
-              fps = metadata.fps
-            } ?: run {
-              Log.w(TAG, "MediaInfo fallback failed for $displayName")
-            }
-          } else {
-            // MediaStore has basic data, but we still need fps from MediaInfo
-            metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
-              fps = metadata.fps
-            }
-          }
-
-          videos.add(
-            Video(
-              id = id,
-              title = displayName.substringBeforeLast('.'),
-              displayName = displayName,
-              path = path,
-              uri = uri,
-              size = size,
-              sizeFormatted = formatFileSize(size),
-              duration = duration,
-              durationFormatted = formatDuration(duration),
-              width = width,
-              height = height,
-              fps = fps,
-              resolution = formatResolutionWithFps(width, height, fps),
-              mimeType = mimeType,
-              dateAdded = dateAdded,
-              dateModified = dateModified,
-              bucketId = bucketId,
-              bucketDisplayName = bucketName,
-            ),
-          )
+        // Extract all metadata using MediaInfo cache
+        metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
+          if (metadata.sizeBytes > 0) size = metadata.sizeBytes
+          duration = metadata.durationMs
+          width = metadata.width
+          height = metadata.height
+          fps = metadata.fps
+          Log.d(TAG, "Metadata for $displayName: ${width}x${height}@${fps}fps, ${duration}ms")
+        } ?: run {
+          Log.w(TAG, "Failed to extract metadata for $displayName")
         }
+
+        val extension = file.extension.lowercase()
+        val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
+
+        // Use file path hash as ID
+        val fileId = file.absolutePath.hashCode().toLong()
+
+        videos.add(
+          Video(
+            id = fileId,
+            title = file.nameWithoutExtension,
+            displayName = displayName,
+            path = file.absolutePath,
+            uri = uri,
+            size = size,
+            sizeFormatted = formatFileSize(size),
+            duration = duration,
+            durationFormatted = formatDuration(duration),
+            width = width,
+            height = height,
+            fps = fps,
+            resolution = formatResolutionWithFps(width, height, fps),
+            mimeType = mimeType,
+            dateAdded = file.lastModified() / 1000,
+            dateModified = file.lastModified() / 1000,
+            bucketId = file.parent ?: "",
+            bucketDisplayName = file.parentFile?.name ?: "",
+          ),
+        )
       }
-
-      // Handle files not in MediaStore - similar to Fossify's fallback for unindexed files
-      val foundPaths = videos.map { it.path }.toSet()
-      files
-        .filter { it.absolutePath !in foundPaths }
-        .forEach { file ->
-          val uri = Uri.fromFile(file)
-          val displayName = file.name
-          var size = file.length()
-          var duration = 0L
-          var width = 0
-          var height = 0
-          var fps = 0f
-
-          // Use metadata cache with MediaInfo fallback
-          metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
-            if (metadata.sizeBytes > 0) size = metadata.sizeBytes
-            duration = metadata.durationMs
-            width = metadata.width
-            height = metadata.height
-            fps = metadata.fps
-            Log.d(TAG, "Metadata for $displayName (not in MediaStore): ${width}x${height}@${fps}fps, ${duration}ms")
-          } ?: run {
-            Log.w(TAG, "Failed to extract metadata for $displayName (not in MediaStore)")
-          }
-
-          val extension = file.extension.lowercase()
-          val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
-
-          // Use file path hash as ID for files not in MediaStore
-          val fileId = file.absolutePath.hashCode().toLong()
-
-          videos.add(
-            Video(
-              id = fileId,
-              title = file.nameWithoutExtension,
-              displayName = displayName,
-              path = file.absolutePath,
-              uri = uri,
-              size = size,
-              sizeFormatted = formatFileSize(size),
-              duration = duration,
-              durationFormatted = formatDuration(duration),
-              width = width,
-              height = height,
-              fps = fps,
-              resolution = formatResolutionWithFps(width, height, fps),
-              mimeType = mimeType,
-              dateAdded = file.lastModified() / 1000,
-              dateModified = file.lastModified() / 1000,
-              bucketId = file.parent ?: "",
-              bucketDisplayName = file.parentFile?.name ?: "",
-            ),
-          )
-        }
     } catch (e: Exception) {
-      Log.e(TAG, "Error querying MediaStore for videos", e)
+      Log.e(TAG, "Error creating videos from files", e)
     }
 
     return videos

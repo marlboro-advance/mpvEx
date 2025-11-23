@@ -996,11 +996,11 @@ private fun FileSystemSortDialog(
           secondOptionLabel = "Tree View",
           firstOptionIcon = Icons.Filled.ViewModule,
           secondOptionIcon = Icons.Filled.AccountTree,
-          isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore,
+          isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView,
           onViewModeChange = { isFirstOption ->
             browserPreferences.folderViewMode.set(
               if (isFirstOption) {
-                app.marlboroadvance.mpvex.preferences.FolderViewMode.MediaStore
+                app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView
               } else {
                 app.marlboroadvance.mpvex.preferences.FolderViewMode.FileManager
               },

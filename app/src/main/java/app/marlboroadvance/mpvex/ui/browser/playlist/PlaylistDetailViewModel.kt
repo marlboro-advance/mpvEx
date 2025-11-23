@@ -84,7 +84,7 @@ class PlaylistDetailViewModel(
             if (matchedVideo != null) {
               PlaylistVideoItem(item, matchedVideo)
             } else {
-              Log.w(TAG, "Video not found in MediaStore for path: ${item.filePath}")
+              Log.w(TAG, "Video not found for path: ${item.filePath}")
               null
             }
           }
