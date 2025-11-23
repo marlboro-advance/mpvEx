@@ -773,9 +773,11 @@ class PlayerViewModel(
   // ==================== Repeat and Shuffle ====================
 
   fun cycleRepeatMode() {
+    val hasPlaylist = (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
+
     _repeatMode.value = when (_repeatMode.value) {
       RepeatMode.OFF -> RepeatMode.ONE
-      RepeatMode.ONE -> RepeatMode.ALL
+      RepeatMode.ONE -> if (hasPlaylist) RepeatMode.ALL else RepeatMode.OFF
       RepeatMode.ALL -> RepeatMode.OFF
     }
 
