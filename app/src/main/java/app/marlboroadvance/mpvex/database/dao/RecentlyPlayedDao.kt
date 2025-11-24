@@ -12,6 +12,9 @@ interface RecentlyPlayedDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insert(recentlyPlayed: RecentlyPlayedEntity)
 
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
+  suspend fun deleteExistingEntriesForFile(filePath: String)
+
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 
@@ -64,6 +67,22 @@ interface RecentlyPlayedDao {
     oldPath: String,
     newPath: String,
     newFileName: String,
+  )
+
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle WHERE filePath = :filePath")
+  suspend fun updateVideoTitle(
+    filePath: String,
+    videoTitle: String,
+  )
+
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle, duration = :duration, fileSize = :fileSize, width = :width, height = :height WHERE filePath = :filePath")
+  suspend fun updateVideoMetadata(
+    filePath: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
   )
 
   @Query(

@@ -33,9 +33,6 @@ class MPVView(
 
   var isExiting = false
 
-  /**
-   * Returns the video aspect ratio. Rotation is taken into account.
-   */
   fun getVideoOutAspect(): Double? {
     return MPVLib.getPropertyDouble("video-params/aspect")?.let {
       if (it < 0.001) return 0.0
@@ -71,6 +68,7 @@ class MPVView(
   override fun initOptions() {
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
     MPVLib.setOptionString("profile", "fast")
+
     // Set hwdec with fallback order: HW+ (mediacodec) -> SW (no) -> HW (mediacodec-copy)
     MPVLib.setOptionString(
       "hwdec",
@@ -81,7 +79,8 @@ class MPVView(
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
     }
-    MPVLib.setOptionString("msg-level", "all=" + if (advancedPreferences.verboseLogging.get()) "v" else "warn")
+    val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
+    MPVLib.setOptionString("msg-level", "all=$logLevel")
 
     MPVLib.setPropertyBoolean("keep-open", true)
     MPVLib.setPropertyBoolean("input-default-bindings", true)
@@ -89,11 +88,6 @@ class MPVView(
     MPVLib.setOptionString("tls-verify", "yes")
     MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
 
-    // Limit demuxer cache since the defaults are too high for mobile devices
-    val cacheMegs = 64
-    MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
-    MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
-    //
     val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDir.mkdirs()
     MPVLib.setOptionString("screenshot-directory", screenshotDir.path)
@@ -103,16 +97,11 @@ class MPVView(
     }
 
     MPVLib.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
-    // workaround for <https://github.com/mpv-player/mpv/issues/14651>
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
 
-    // Improve seek responsiveness/smoothness on mobile
-    MPVLib.setOptionString("hr-seek", if (playerPreferences.usePreciseSeeking.get()) "yes" else "no")
-    MPVLib.setOptionString("hr-seek-framedrop", if (playerPreferences.usePreciseSeeking.get()) "no" else "no")
-    MPVLib.setOptionString("demuxer-readahead-secs", "8")
-    MPVLib.setOptionString("demuxer-seekable-cache", "yes")
-    MPVLib.setOptionString("cache", "yes")
-    MPVLib.setOptionString("cache-secs", "8")
+    val preciseSeek = playerPreferences.usePreciseSeeking.get()
+    MPVLib.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
+    MPVLib.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -205,15 +194,10 @@ class MPVView(
   // Setup
   private fun setupSubtitlesOptions() {
     MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
-
-    // Disable automatic subtitle loading from video directory
-    // Users must manually add subtitles via the subtitle picker
     MPVLib.setOptionString("sub-auto", "no")
-
-    // Load external subtitle files from the same directory as the video
     MPVLib.setOptionString("sub-file-paths", "")
 
-    val fontsDirPath = context.filesDir.path + "/fonts/"
+    val fontsDirPath = "${context.filesDir.path}/fonts/"
     MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
     MPVLib.setOptionString("sub-delay", (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("sub-speed", subtitlesPreferences.defaultSubSpeed.get().toString())
@@ -222,15 +206,14 @@ class MPVView(
       (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString(),
     )
 
-    // With fonts cached persistently in filesDir/fonts, just set preferred or fallback
-    val preferredFontFamily = subtitlesPreferences.font.get()
-    MPVLib.setOptionString("sub-font", preferredFontFamily.ifBlank { "sans-serif" })
+    val preferredFont = subtitlesPreferences.font.get()
+    MPVLib.setOptionString("sub-font", preferredFont.ifBlank { "sans-serif" })
 
     if (subtitlesPreferences.overrideAssSubs.get()) {
       MPVLib.setOptionString("sub-ass-override", "force")
       MPVLib.setOptionString("sub-ass-justify", "yes")
     }
-    // Removed SSA/ASS global override; rely on track styling and per-justify settings only
+
     MPVLib.setOptionString("sub-font-size", subtitlesPreferences.fontSize.get().toString())
     MPVLib.setOptionString("sub-bold", if (subtitlesPreferences.bold.get()) "yes" else "no")
     MPVLib.setOptionString("sub-italic", if (subtitlesPreferences.italic.get()) "yes" else "no")

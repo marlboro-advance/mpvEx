@@ -62,7 +62,7 @@ fun TopPlayerControlsPortrait(
               )
             },
           contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-          tonalElevation = if (hideBackground) 0.dp else 2.dp,
+          tonalElevation = 0.dp,
           shadowElevation = 0.dp,
           border =
             if (hideBackground) {

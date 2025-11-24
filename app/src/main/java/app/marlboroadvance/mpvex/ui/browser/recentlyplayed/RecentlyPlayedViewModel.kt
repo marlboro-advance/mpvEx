@@ -1,9 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
 import android.app.Application
-import android.content.ContentUris
 import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -16,7 +14,8 @@ import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,10 +27,7 @@ import kotlin.math.pow
 class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(application) {
   private val recentlyPlayedRepository by inject<RecentlyPlayedRepository>(RecentlyPlayedRepository::class.java)
   private val playlistRepository by inject<PlaylistRepository>(PlaylistRepository::class.java)
-  private val videoRepository by lazy {
-    val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
-    VideoRepository(metadataCache)
-  }
+  private val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
 
   private val _recentItems = MutableStateFlow<List<RecentlyPlayedItem>>(emptyList())
   val recentItems: StateFlow<List<RecentlyPlayedItem>> = _recentItems.asStateFlow()
@@ -102,12 +98,26 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
 
       // Create standalone video items
       for ((filePath, timestamp) in standaloneVideos) {
-        val file = File(filePath)
-        if (file.exists()) {
-          val video = createVideoFromFilePath(filePath, file)
-          if (video != null) {
-            items.add(RecentlyPlayedItem.VideoItem(video, timestamp))
+        val entity = allRecentEntities.find { it.filePath == filePath }
+
+        val isNetworkUri = filePath.startsWith("http://", ignoreCase = true) ||
+          filePath.startsWith("https://", ignoreCase = true) ||
+          filePath.startsWith("rtmp://", ignoreCase = true) ||
+          filePath.startsWith("rtsp://", ignoreCase = true)
+
+        val video = if (isNetworkUri) {
+          createNetworkVideoFromUri(filePath, entity)
+        } else {
+          val file = File(filePath)
+          if (file.exists()) {
+            createVideoFromFilePath(filePath, file, entity?.videoTitle)
+          } else {
+            null
           }
+        }
+
+        if (video != null) {
+          items.add(RecentlyPlayedItem.VideoItem(video, timestamp))
         }
       }
 
@@ -127,85 +137,127 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     }
   }
 
-  private suspend fun createVideoFromFilePath(filePath: String, file: File): Video? {
+  private suspend fun createVideoFromFilePath(
+    filePath: String,
+    file: File,
+    parsedVideoTitle: String? = null,
+  ): Video? {
     return try {
       val context = getApplication<Application>()
 
-      // Try to find video in MediaStore first for better metadata
-      val projection = arrayOf(
-        MediaStore.Video.Media._ID,
-        MediaStore.Video.Media.TITLE,
-        MediaStore.Video.Media.DISPLAY_NAME,
-        MediaStore.Video.Media.DATA,
-        MediaStore.Video.Media.DURATION,
-        MediaStore.Video.Media.SIZE,
-        MediaStore.Video.Media.DATE_MODIFIED,
-        MediaStore.Video.Media.DATE_ADDED,
-        MediaStore.Video.Media.MIME_TYPE,
-        MediaStore.Video.Media.BUCKET_ID,
-        MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
-        MediaStore.Video.Media.WIDTH,
-        MediaStore.Video.Media.HEIGHT,
-      )
+      // Extract metadata directly from file using metadata cache
+      val uri = Uri.fromFile(file)
+      val displayName = file.name
+      val title = file.nameWithoutExtension
 
-      val cursor = context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        "${MediaStore.Video.Media.DATA} = ?",
-        arrayOf(filePath),
-        null,
-      )
+      // Get metadata from cache or extract it
+      val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
+      val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
 
-      cursor?.use {
-        if (it.moveToFirst()) {
-          val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
-          val title = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)) ?: ""
-          val displayName = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)) ?: file.name
-          val duration = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION))
-          val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE))
-          val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED))
-          val dateAdded = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED))
-          val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)) ?: ""
-          val bucketId = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID)) ?: ""
-          val bucketDisplayName =
-            it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)) ?: ""
-          val width = it.getInt(it.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH))
-          val height = it.getInt(it.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT))
-
-          val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-
-          return Video(
-            id = id,
-            title = title,
-            displayName = displayName,
-            path = filePath,
-            uri = uri,
-            duration = duration,
-            durationFormatted = formatDuration(duration),
-            size = size,
-            sizeFormatted = formatFileSize(size),
-            dateModified = dateModified,
-            dateAdded = dateAdded,
-            mimeType = mimeType,
-            bucketId = bucketId,
-            bucketDisplayName = bucketDisplayName,
-            width = width,
-            height = height,
-            fps = 0f,
-            resolution = formatResolution(width, height),
-          )
-        }
+      val duration = metadata?.durationMs ?: 0L
+      val width = metadata?.width ?: 0
+      val height = metadata?.height ?: 0
+      val fps = metadata?.fps ?: 0f
+      val size = if (metadata?.sizeBytes != null && metadata.sizeBytes > 0) {
+        metadata.sizeBytes
+      } else {
+        file.length()
       }
 
-      // Fallback: Create basic Video from file if not in MediaStore
-      createBasicVideoFromFile(file)
+      val dateModified = file.lastModified() / 1000
+      val dateAdded = dateModified
+      val parent = file.parent ?: ""
+      val bucketId = parent.hashCode().toString()
+      val bucketDisplayName = File(parent).name
+
+      // Determine mime type from extension
+      val mimeType = when (file.extension.lowercase()) {
+        "mp4" -> "video/mp4"
+        "mkv" -> "video/x-matroska"
+        "webm" -> "video/webm"
+        "avi" -> "video/x-msvideo"
+        "mov" -> "video/quicktime"
+        "flv" -> "video/x-flv"
+        "wmv" -> "video/x-ms-wmv"
+        "m4v" -> "video/x-m4v"
+        "3gp" -> "video/3gpp"
+        "ts" -> "video/mp2t"
+        else -> "video/*"
+      }
+
+      Video(
+        id = file.absolutePath.hashCode().toLong(),
+        title = title,
+        displayName = displayName,
+        path = filePath,
+        uri = uri,
+        duration = duration,
+        durationFormatted = formatDuration(duration),
+        size = size,
+        sizeFormatted = formatFileSize(size),
+        dateModified = dateModified,
+        dateAdded = dateAdded,
+        mimeType = mimeType,
+        bucketId = bucketId,
+        bucketDisplayName = bucketDisplayName,
+        width = width,
+        height = height,
+        fps = fps,
+        resolution = formatResolution(width, height),
+      )
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error creating video from path: $filePath", e)
       null
     }
   }
 
-  private fun createBasicVideoFromFile(file: File): Video {
+  private fun createNetworkVideoFromUri(
+    uri: String,
+    entity: RecentlyPlayedEntity?,
+  ): Video {
+    val parsedUri = Uri.parse(uri)
+
+    // For HTTP/HTTPS network streams, prefer parsed video title (e.g., from HTTP headers)
+    // Always use videoTitle first (parsed from MPV), then fileName, then URI fallback
+    val displayName =
+      entity?.videoTitle?.takeIf { it.isNotBlank() } ?: entity?.fileName ?: parsedUri.lastPathSegment ?: uri
+    val title = entity?.videoTitle?.takeIf { it.isNotBlank() }?.substringBeforeLast('.') ?: displayName.substringBeforeLast('.')
+
+    // Use cached duration, file size, resolution, and thumbnail from entity
+    val duration = entity?.duration ?: 0L
+    val fileSize = entity?.fileSize ?: 0L
+    val width = entity?.width ?: 0
+    val height = entity?.height ?: 0
+
+    val videoPath = uri
+
+    return Video(
+      id = uri.hashCode().toLong(),
+      title = title,
+      displayName = displayName,
+      path = videoPath,  // Use thumbnail path if available for thumbnail loading
+      uri = parsedUri,   // Keep original URI for playback
+      duration = duration,
+      durationFormatted = formatDuration(duration),
+      size = fileSize,
+      sizeFormatted = formatFileSize(fileSize),
+      dateModified = entity?.timestamp?.div(1000) ?: 0L,
+      dateAdded = entity?.timestamp?.div(1000) ?: 0L,
+      mimeType = "video/*",
+      bucketId = parsedUri.host?.hashCode()?.toString() ?: "0",
+      bucketDisplayName = parsedUri.host ?: "Network",
+      width = width,
+      height = height,
+      fps = 0f,
+      resolution = formatResolution(width, height),
+    )
+  }
+
+  private fun createBasicVideoFromFile(
+    file: File,
+    parsedVideoTitle: String? = null,
+  ): Video {
+    // For local videos, always use filename (ignore parsed title)
     val displayName = file.name
     val title = file.nameWithoutExtension
     val size = file.length()

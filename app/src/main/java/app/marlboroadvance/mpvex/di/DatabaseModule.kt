@@ -18,86 +18,294 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-// Squashed migration from version 1 to 2: All schema changes
+/**
+ * Migration from version 1 to version 2
+ *
+ * Version 1 had 3 tables:
+ * - PlaybackStateEntity
+ * - RecentlyPlayedEntity (with columns: id, filePath, fileName, timestamp, launchSource)
+ * - ExternalSubtitleEntity
+ *
+ * Version 2 adds:
+ * - video_metadata_cache table (for MediaInfo caching)
+ * - network_connections table (for SMB/FTP/WebDAV)
+ * - PlaylistEntity table (for custom playlists)
+ * - PlaylistItemEntity table (playlist items with foreign key)
+ * - 6 new columns to RecentlyPlayedEntity (videoTitle, duration, fileSize, width, height, playlistId)
+ */
 val MIGRATION_1_2 = object : Migration(1, 2) {
   override fun migrate(db: SupportSQLiteDatabase) {
-    // Create video_metadata_cache table
-    db.execSQL(
-      """
-      CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
-        `path` TEXT NOT NULL,
-        `size` INTEGER NOT NULL,
-        `dateModified` INTEGER NOT NULL,
-        `duration` INTEGER NOT NULL,
-        `width` INTEGER NOT NULL,
-        `height` INTEGER NOT NULL,
-        `fps` REAL NOT NULL,
-        `lastScanned` INTEGER NOT NULL,
-        PRIMARY KEY(`path`)
+    try {
+      // 1. Create video_metadata_cache table
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
+          `path` TEXT NOT NULL,
+          `size` INTEGER NOT NULL,
+          `dateModified` INTEGER NOT NULL,
+          `duration` INTEGER NOT NULL,
+          `width` INTEGER NOT NULL,
+          `height` INTEGER NOT NULL,
+          `fps` REAL NOT NULL,
+          `lastScanned` INTEGER NOT NULL,
+          PRIMARY KEY(`path`)
+        )
+        """.trimIndent(),
       )
-    """.trimIndent(),
-    )
 
-    // Create network_connections table
-    db.execSQL(
-      """
-      CREATE TABLE IF NOT EXISTS `network_connections` (
-        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        `name` TEXT NOT NULL,
-        `protocol` TEXT NOT NULL,
-        `host` TEXT NOT NULL,
-        `port` INTEGER NOT NULL,
-        `username` TEXT NOT NULL,
-        `password` TEXT NOT NULL,
-        `path` TEXT NOT NULL,
-        `isAnonymous` INTEGER NOT NULL,
-        `lastConnected` INTEGER NOT NULL,
-        `autoConnect` INTEGER NOT NULL
+      // 2. Create network_connections table
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `network_connections` (
+          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          `name` TEXT NOT NULL,
+          `protocol` TEXT NOT NULL,
+          `host` TEXT NOT NULL,
+          `port` INTEGER NOT NULL,
+          `username` TEXT NOT NULL DEFAULT '',
+          `password` TEXT NOT NULL DEFAULT '',
+          `path` TEXT NOT NULL DEFAULT '/',
+          `isAnonymous` INTEGER NOT NULL DEFAULT 0,
+          `lastConnected` INTEGER NOT NULL DEFAULT 0,
+          `autoConnect` INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent(),
       )
-    """.trimIndent(),
-    )
 
-    // Create PlaylistEntity table
-    db.execSQL(
-      """
-      CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
-        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        `name` TEXT NOT NULL,
-        `createdAt` INTEGER NOT NULL,
-        `updatedAt` INTEGER NOT NULL
+      // 3. Create PlaylistEntity table
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
+          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          `name` TEXT NOT NULL,
+          `createdAt` INTEGER NOT NULL,
+          `updatedAt` INTEGER NOT NULL
+        )
+        """.trimIndent(),
       )
-    """.trimIndent(),
-    )
 
-    // Create PlaylistItemEntity table with all columns including play history
-    db.execSQL(
-      """
-      CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
-        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        `playlistId` INTEGER NOT NULL,
-        `filePath` TEXT NOT NULL,
-        `fileName` TEXT NOT NULL,
-        `position` INTEGER NOT NULL,
-        `addedAt` INTEGER NOT NULL,
-        `lastPlayedAt` INTEGER NOT NULL,
-        `playCount` INTEGER NOT NULL,
-        `lastPosition` INTEGER NOT NULL,
-        FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+      // 4. Create PlaylistItemEntity table with foreign key
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
+          `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          `playlistId` INTEGER NOT NULL,
+          `filePath` TEXT NOT NULL,
+          `fileName` TEXT NOT NULL,
+          `position` INTEGER NOT NULL,
+          `addedAt` INTEGER NOT NULL,
+          `lastPlayedAt` INTEGER NOT NULL DEFAULT 0,
+          `playCount` INTEGER NOT NULL DEFAULT 0,
+          `lastPosition` INTEGER NOT NULL DEFAULT 0,
+          FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+        )
+        """.trimIndent(),
       )
-    """.trimIndent(),
-    )
 
-    // Create index for playlistId to optimize queries
-    db.execSQL("CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)")
+      // 5. Create index for PlaylistItemEntity foreign key
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)",
+      )
 
-    // Add playlistId column to RecentlyPlayedEntity
-    db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
+      // 6. Add new columns to RecentlyPlayedEntity
+      // SQLite ALTER TABLE syntax: DEFAULT must come AFTER the type/constraint
+      // For NOT NULL columns, we MUST provide a default value
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
+      db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
+
+    } catch (e: Exception) {
+      // If migration fails, log the error and rethrow
+      android.util.Log.e("Migration_1_2", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
+/**
+ * Migration from version 2 to version 3
+ * No schema changes - just version bump for Room schema verification consistency
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    // No-op migration - schema is identical between version 2 and 3
+    // This exists only to handle version bump for Room schema verification
+    android.util.Log.d("Migration_2_3", "No schema changes needed")
+  }
+}
+
+/**
+ * Migration from version 3 to version 4
+ * No schema changes - just version bump after fixing migration syntax
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    // No-op migration - schema is identical, version bump only
+    android.util.Log.d("Migration_3_4", "No schema changes needed")
+  }
+}
+
+/**
+ * Migration from version 4 to version 5
+ * Ensures RecentlyPlayedEntity and PlaylistEntity have all required columns
+ * Handles corrupted database states where migrations were partially applied
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      // ===== Fix RecentlyPlayedEntity =====
+      android.util.Log.d("Migration_4_5", "Ensuring RecentlyPlayedEntity schema integrity")
+
+      val recentlyPlayedCursor = db.query("PRAGMA table_info(RecentlyPlayedEntity)")
+      val recentlyPlayedColumns = mutableSetOf<String>()
+
+      var nameColumnIndex = recentlyPlayedCursor.getColumnIndex("name")
+      while (recentlyPlayedCursor.moveToNext()) {
+        val columnName = recentlyPlayedCursor.getString(nameColumnIndex)
+        recentlyPlayedColumns.add(columnName)
+      }
+      recentlyPlayedCursor.close()
+
+      android.util.Log.d("Migration_4_5", "RecentlyPlayedEntity existing columns: $recentlyPlayedColumns")
+
+      // Add missing columns if they don't exist
+      if ("videoTitle" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: videoTitle")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
+      }
+
+      if ("duration" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: duration")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("fileSize" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: fileSize")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("width" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: width")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("height" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: height")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("playlistId" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: playlistId")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
+      }
+
+      android.util.Log.d("Migration_4_5", "RecentlyPlayedEntity schema updated successfully")
+
+      // ===== Fix PlaylistEntity =====
+      android.util.Log.d("Migration_4_5", "Checking PlaylistEntity schema integrity")
+
+      val playlistCursor = db.query("PRAGMA table_info(PlaylistEntity)")
+      val playlistColumns = mutableSetOf<String>()
+
+      nameColumnIndex = playlistCursor.getColumnIndex("name")
+      while (playlistCursor.moveToNext()) {
+        val columnName = playlistCursor.getString(nameColumnIndex)
+        playlistColumns.add(columnName)
+      }
+      playlistCursor.close()
+
+      android.util.Log.d("Migration_4_5", "PlaylistEntity existing columns: $playlistColumns")
+
+      // If PlaylistEntity is empty or missing columns, recreate it
+      if (playlistColumns.isEmpty() ||
+        "id" !in playlistColumns ||
+        "name" !in playlistColumns ||
+        "createdAt" !in playlistColumns ||
+        "updatedAt" !in playlistColumns
+      ) {
+
+        android.util.Log.d("Migration_4_5", "Recreating PlaylistEntity table")
+
+        // Drop corrupted table
+        db.execSQL("DROP TABLE IF EXISTS `PlaylistEntity`")
+
+        // Recreate PlaylistEntity table
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `name` TEXT NOT NULL,
+            `createdAt` INTEGER NOT NULL,
+            `updatedAt` INTEGER NOT NULL
+          )
+          """.trimIndent(),
+        )
+
+        android.util.Log.d("Migration_4_5", "PlaylistEntity recreated successfully")
+      }
+
+      // ===== Fix PlaylistItemEntity =====
+      android.util.Log.d("Migration_4_5", "Checking PlaylistItemEntity schema integrity")
+
+      val playlistItemCursor = db.query("PRAGMA table_info(PlaylistItemEntity)")
+      val playlistItemColumns = mutableSetOf<String>()
+
+      nameColumnIndex = playlistItemCursor.getColumnIndex("name")
+      while (playlistItemCursor.moveToNext()) {
+        val columnName = playlistItemCursor.getString(nameColumnIndex)
+        playlistItemColumns.add(columnName)
+      }
+      playlistItemCursor.close()
+
+      android.util.Log.d("Migration_4_5", "PlaylistItemEntity existing columns: $playlistItemColumns")
+
+      // If PlaylistItemEntity is corrupted, recreate it
+      if (playlistItemColumns.isEmpty() || "id" !in playlistItemColumns) {
+        android.util.Log.d("Migration_4_5", "Recreating PlaylistItemEntity table")
+
+        // Drop corrupted table
+        db.execSQL("DROP TABLE IF EXISTS `PlaylistItemEntity`")
+
+        // Recreate PlaylistItemEntity table with foreign key
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `playlistId` INTEGER NOT NULL,
+            `filePath` TEXT NOT NULL,
+            `fileName` TEXT NOT NULL,
+            `position` INTEGER NOT NULL,
+            `addedAt` INTEGER NOT NULL,
+            `lastPlayedAt` INTEGER NOT NULL DEFAULT 0,
+            `playCount` INTEGER NOT NULL DEFAULT 0,
+            `lastPosition` INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+
+        // Create index for foreign key
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)",
+        )
+
+        android.util.Log.d("Migration_4_5", "PlaylistItemEntity recreated successfully")
+      }
+
+      android.util.Log.d("Migration_4_5", "All schema integrity checks completed successfully")
+
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_4_5", "Migration failed", e)
+      throw e
+    }
   }
 }
 
 val DatabaseModule =
   module {
-    // Provide kotlinx.serialization Json as a singleton (used by PlayerViewModel)
     single<Json> {
       Json {
         isLenient = true
@@ -110,7 +318,8 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
         .build()
     }
 
@@ -136,11 +345,7 @@ val DatabaseModule =
       )
     }
 
-    single {
-      app.marlboroadvance.mpvex.repository.VideoRepository(
-        metadataCache = get(),
-      )
-    }
+    // MediaFileRepository is a singleton object - no DI needed
 
     single {
       get<MpvExDatabase>().networkConnectionDao()

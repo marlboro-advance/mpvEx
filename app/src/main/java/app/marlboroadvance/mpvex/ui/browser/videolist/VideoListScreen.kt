@@ -234,6 +234,7 @@ data class VideoListScreen(
           onRenameClick = { renameDialogOpen.value = true },
           onDeleteClick = { deleteDialogOpen.value = true },
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+          showRename = selectionManager.isSingleSelection,
         )
       },
     ) { padding ->
@@ -447,7 +448,7 @@ private fun VideoListContent(
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
   when {
-    isLoading -> {
+    isLoading && videosWithInfo.isEmpty() -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -459,7 +460,7 @@ private fun VideoListContent(
       }
     }
 
-    videosWithInfo.isEmpty() -> {
+    videosWithInfo.isEmpty() && !isLoading -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -534,6 +535,7 @@ private fun VideoListContent(
                 progressPercentage = videoWithInfo.progressPercentage,
                 isRecentlyPlayed = isRecentlyPlayed,
                 isSelected = selectionManager.isSelected(videoWithInfo.video),
+                isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
                 onClick = { onVideoClick(videoWithInfo.video) },
                 onLongClick = { onVideoLongClick(videoWithInfo.video) },
                 onThumbClick = if (tapThumbnailToSelect) {

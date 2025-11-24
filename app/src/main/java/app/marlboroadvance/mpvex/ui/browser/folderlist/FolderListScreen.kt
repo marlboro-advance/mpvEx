@@ -62,7 +62,7 @@ import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
@@ -98,10 +98,9 @@ object FolderListScreen : Screen {
     val browserPreferences = koinInject<BrowserPreferences>()
     val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
-    // Switch between MediaStore and FileSystem views based on preference
     when (folderViewMode) {
       FolderViewMode.FileManager -> FileSystemBrowserRootScreen.Content()
-      FolderViewMode.MediaStore -> MediaStoreFolderListContent()
+      FolderViewMode.AlbumView -> MediaStoreFolderListContent()
     }
   }
 
@@ -111,11 +110,12 @@ object FolderListScreen : Screen {
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
     val videoFolders by viewModel.videoFolders.collectAsState()
+    val foldersWithNewCount by viewModel.foldersWithNewCount.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val videoRepository = koinInject<VideoRepository>()
+    // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
@@ -158,7 +158,7 @@ object FolderListScreen : Screen {
         onDeleteItems = { folders ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()
-          val videos = videoRepository.getVideosForBuckets(context, ids)
+          val videos = MediaFileRepository.getVideosForBuckets(context, ids)
           viewModel.deleteVideos(videos)
           Pair(videos.size, 0) // Return (successCount, failureCount)
         },
@@ -206,7 +206,7 @@ object FolderListScreen : Screen {
       if (isSearching && !videosLoaded) {
         // Load all videos across all folders using all bucketIds
         val bucketIds = videoFolders.map { it.bucketId }.toSet()
-        allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
+        allVideos = MediaFileRepository.getVideosForBuckets(context, bucketIds)
         videosLoaded = true
       }
       if (!isSearching) {
@@ -302,7 +302,7 @@ object FolderListScreen : Screen {
               // Share all videos across selected folders with a single chooser
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = MediaFileRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   MediaUtils.shareVideos(context, allVideos)
                 }
@@ -312,7 +312,7 @@ object FolderListScreen : Screen {
               // Play all videos from selected folders as a playlist
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = MediaFileRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   if (allVideos.size == 1) {
                     // Single video - play normally
@@ -349,41 +349,38 @@ object FolderListScreen : Screen {
               onOpenFile = { filePicker.launch(arrayOf("video/*")) },
               onPlayRecentlyPlayed = {
                 coroutineScope.launch {
-                val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-                  .getLastPlayedEntity()
+                  val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+                    .getLastPlayedEntity()
 
-                if (lastPlayedEntity != null) {
-                  // Check if this was played from a playlist
-                  if (lastPlayedEntity.playlistId != null) {
-                    // Load the full playlist and play from the most recently played video
-                    val playlistRepository =
-                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
-                        app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
-                      )
-                    val videoRepository =
-                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.repository.VideoRepository>(
-                        app.marlboroadvance.mpvex.repository.VideoRepository::class.java,
-                      )
-                    val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
+                  if (lastPlayedEntity != null) {
+                    // Check if this was played from a playlist
+                    if (lastPlayedEntity.playlistId != null) {
+                      // Load the full playlist and play from the most recently played video
+                      val playlistRepository =
+                        org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
+                          app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
+                        )
+                      // Using MediaFileRepository singleton directly
+                      val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
 
-                    if (playlistItems.isNotEmpty()) {
-                      // Get unique folders (bucketIds) from playlist items
-                      // For each video, extract its parent folder and query that bucket
-                      val pathToBucketMap = mutableMapOf<String, String>()
-                      val bucketIds = mutableSetOf<String>()
+                      if (playlistItems.isNotEmpty()) {
+                        // Get unique folders (bucketIds) from playlist items
+                        // For each video, extract its parent folder and query that bucket
+                        val pathToBucketMap = mutableMapOf<String, String>()
+                        val bucketIds = mutableSetOf<String>()
 
-                      playlistItems.forEach { item ->
-                        val file = java.io.File(item.filePath)
-                        val parentPath = file.parent
-                        if (parentPath != null) {
-                          val normalizedPath = parentPath.replace("\\", "/")
-                          pathToBucketMap[item.filePath] = normalizedPath
-                          bucketIds.add(normalizedPath)
+                        playlistItems.forEach { item ->
+                          val file = java.io.File(item.filePath)
+                          val parentPath = file.parent
+                          if (parentPath != null) {
+                            val normalizedPath = parentPath.replace("\\", "/")
+                            pathToBucketMap[item.filePath] = normalizedPath
+                            bucketIds.add(normalizedPath)
+                          }
                         }
-                      }
 
-                      // Get all videos from those buckets
-                      val allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
+                        // Get all videos from those buckets
+                        val allVideos = MediaFileRepository.getVideosForBuckets(context, bucketIds)
 
                       // Match videos by path, maintaining playlist order
                       val videos = playlistItems.mapNotNull { item ->
@@ -506,6 +503,7 @@ object FolderListScreen : Screen {
             // Normal mode - show folder list
             FolderListContent(
               folders = filteredFolders,
+              foldersWithNewCount = foldersWithNewCount,
               listState = listState,
               isRefreshing = isRefreshing,
               recentlyPlayedFilePath = recentlyPlayedFilePath,
@@ -563,6 +561,7 @@ object FolderListScreen : Screen {
 @Composable
 private fun FolderListContent(
   folders: List<VideoFolder>,
+  foldersWithNewCount: List<FolderWithNewCount>,
   listState: LazyListState,
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
@@ -632,6 +631,9 @@ private fun FolderListContent(
               file.parent == folder.path
             } ?: false
 
+          // Get new video count for this folder
+          val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
+
           FolderCard(
             folder = folder,
             isSelected = selectionManager.isSelected(folder),
@@ -643,6 +645,7 @@ private fun FolderListContent(
             } else {
               { onFolderClick(folder) }
             },
+            newVideoCount = newCount,
           )
         }
 
@@ -682,8 +685,7 @@ private fun FolderSortDialog(
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
-  // Dynamic dialog based on view mode
-  val isAlbumView = folderViewMode == FolderViewMode.MediaStore
+  val isAlbumView = folderViewMode == FolderViewMode.AlbumView
 
   SortDialog(
     isOpen = isOpen,
@@ -717,7 +719,7 @@ private fun FolderSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
-    showSortOptions = isAlbumView, // Only show sort options in Album view
+    showSortOptions = isAlbumView,
     viewModeSelector =
       ViewModeSelector(
         label = "View Mode",
@@ -725,10 +727,10 @@ private fun FolderSortDialog(
         secondOptionLabel = "Tree View",
         firstOptionIcon = Icons.Filled.ViewModule,
         secondOptionIcon = Icons.Filled.AccountTree,
-        isFirstOptionSelected = folderViewMode == FolderViewMode.MediaStore,
+        isFirstOptionSelected = folderViewMode == FolderViewMode.AlbumView,
         onViewModeChange = { isFirstOption ->
           browserPreferences.folderViewMode.set(
-            if (isFirstOption) FolderViewMode.MediaStore else FolderViewMode.FileManager,
+            if (isFirstOption) FolderViewMode.AlbumView else FolderViewMode.FileManager,
           )
         },
       ),

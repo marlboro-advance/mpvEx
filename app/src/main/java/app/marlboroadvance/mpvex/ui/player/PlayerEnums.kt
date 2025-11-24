@@ -105,6 +105,14 @@ sealed class PlayerUpdates {
   data class ShowText(
     val value: String,
   ) : PlayerUpdates()
+
+  data class RepeatMode(
+    val mode: app.marlboroadvance.mpvex.ui.player.RepeatMode,
+  ) : PlayerUpdates()
+
+  data class Shuffle(
+    val enabled: Boolean,
+  ) : PlayerUpdates()
 }
 
 enum class VideoFilters(

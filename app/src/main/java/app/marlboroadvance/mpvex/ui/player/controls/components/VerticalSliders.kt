@@ -149,7 +149,7 @@ fun BrightnessSlider(
     shape = RoundedCornerShape(20.dp),
     color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
     contentColor = MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 2.dp,
+    tonalElevation = 0.dp,
     shadowElevation = 0.dp,
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
   ) {
@@ -194,7 +194,7 @@ fun VolumeSlider(
     shape = RoundedCornerShape(20.dp),
     color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
     contentColor = MaterialTheme.colorScheme.onSurface,
-    tonalElevation = 2.dp,
+    tonalElevation = 0.dp,
     shadowElevation = 0.dp,
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
   ) {

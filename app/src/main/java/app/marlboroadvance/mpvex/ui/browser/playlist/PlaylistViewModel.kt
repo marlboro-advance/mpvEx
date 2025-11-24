@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +28,7 @@ class PlaylistViewModel(
 ) : androidx.lifecycle.AndroidViewModel(application),
   KoinComponent {
   private val repository: PlaylistRepository by inject()
-  private val videoRepository: VideoRepository by inject()
+  // Using MediaFileRepository singleton directly
 
   private val _playlistsWithCount = MutableStateFlow<List<PlaylistWithCount>>(emptyList())
   val playlistsWithCount: StateFlow<List<PlaylistWithCount>> = _playlistsWithCount.asStateFlow()
@@ -47,13 +47,10 @@ class PlaylistViewModel(
   }
 
   init {
-    // Observe playlists from repository and load their item counts
     viewModelScope.launch(Dispatchers.IO) {
       repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
-        // Sort alphabetically for consistent ordering
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
-        // Load item counts for each playlist (only count videos that exist in MediaStore)
         val playlistsWithCounts = sortedPlaylists.map { playlist ->
           val count = getActualVideoCount(playlist.id)
           PlaylistWithCount(playlist, count)
@@ -65,35 +62,30 @@ class PlaylistViewModel(
   }
 
   /**
-   * Get the actual count of videos that exist in MediaStore for a playlist
+   * Get the actual count of videos that exist for a playlist
    */
   private suspend fun getActualVideoCount(playlistId: Int): Int {
     val items = repository.getPlaylistItems(playlistId)
     if (items.isEmpty()) return 0
 
-    // Get unique bucket IDs from playlist items' parent folders
     val bucketIds = items.map { item ->
       File(item.filePath).parent ?: ""
     }.toSet()
 
-    // Get all videos from those folders (uses cache)
-    val allVideos = videoRepository.getVideosForBuckets(getApplication(), bucketIds)
+    val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
 
-    // Count how many playlist items have matching videos in MediaStore
     return items.count { item ->
       allVideos.any { video -> video.path == item.filePath }
     }
   }
 
   fun refresh() {
-    // Trigger refresh by reloading from database
     viewModelScope.launch(Dispatchers.IO) {
       try {
         _isLoading.value = true
         val playlistsFromDb = repository.getAllPlaylists()
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
 
-        // Load item counts for each playlist (only count videos that exist in MediaStore)
         val playlistsWithCounts = sortedPlaylists.map { playlist ->
           val count = getActualVideoCount(playlist.id)
           PlaylistWithCount(playlist, count)
