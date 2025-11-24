@@ -496,12 +496,25 @@ class PlayerActivity :
 
     if (!isFinishing) return
 
-    // Cleanup on main thread - it's fast enough and safer
     runCatching {
       MPVLib.removeObserver(playerObserver)
+
       if (isReady) {
+        // Pause playback first to reduce thread activity
+        MPVLib.setPropertyBoolean("pause", true)
+
+        // Send quit command to gracefully shut down MPV
         MPVLib.command("quit")
+
+        // Wait briefly for MPV to process quit and clean up internal threads
+        // This prevents race conditions where hardware UI threads try to access
+        // mutexes/queues that are destroyed by MPVLib.destroy()
+        // We use a short blocking wait here as onDestroy is already on the main thread
+        // and this ensures proper cleanup before activity destruction
+        Thread.sleep(100)
       }
+
+      // Now safe to destroy MPV as internal threads have had time to shut down
       MPVLib.destroy()
       mpvInitialized = false
     }.onFailure { e ->
