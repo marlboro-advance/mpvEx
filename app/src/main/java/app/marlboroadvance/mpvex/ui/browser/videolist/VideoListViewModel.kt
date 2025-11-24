@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +32,7 @@ class VideoListViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val videoRepository: VideoRepository by inject()
+  // Using MediaFileRepository singleton directly
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
@@ -67,13 +67,13 @@ class VideoListViewModel(
         _isLoading.value = true
 
         // First attempt to load videos
-        val videoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
+        val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
 
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
           triggerMediaScan()
           delay(1000)
-          val retryVideoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
+          val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
         } else {

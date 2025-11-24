@@ -14,7 +14,8 @@ import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,10 +27,7 @@ import kotlin.math.pow
 class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(application) {
   private val recentlyPlayedRepository by inject<RecentlyPlayedRepository>(RecentlyPlayedRepository::class.java)
   private val playlistRepository by inject<PlaylistRepository>(PlaylistRepository::class.java)
-  private val videoRepository by lazy {
-    val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
-    VideoRepository(metadataCache)
-  }
+  private val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
 
   private val _recentItems = MutableStateFlow<List<RecentlyPlayedItem>>(emptyList())
   val recentItems: StateFlow<List<RecentlyPlayedItem>> = _recentItems.asStateFlow()

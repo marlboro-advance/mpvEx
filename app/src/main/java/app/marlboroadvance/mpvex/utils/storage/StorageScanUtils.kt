@@ -319,8 +319,52 @@ object StorageScanUtils {
   // Folders to skip during scanning (system/cache folders)
   private val SKIP_FOLDERS = setOf(
     "android", "data", ".thumbnails", ".cache", "cache",
-    "lost.dir", "system", ".android_secure",
+    "lost.dir", "system", ".android_secure", ".trash", ".trashbin",
   )
+
+  /**
+   * Checks if a folder contains a .nomedia file
+   * @param folder The folder to check
+   * @return true if the folder contains a .nomedia file, false otherwise
+   */
+  fun hasNoMediaFile(folder: File): Boolean {
+    if (!folder.isDirectory || !folder.canRead()) {
+      return false
+    }
+
+    return try {
+      val noMediaFile = File(folder, ".nomedia")
+      noMediaFile.exists()
+    } catch (e: Exception) {
+      Log.w(TAG, "Error checking for .nomedia file in: ${folder.absolutePath}", e)
+      false
+    }
+  }
+
+  /**
+   * Checks if a folder should be skipped during scanning
+   * @param folder The folder to check
+   * @param showHiddenFiles Whether to show hidden files/folders
+   * @return true if the folder should be skipped, false otherwise
+   *
+   * When showHiddenFiles = true: Shows everything including .nomedia folders
+   * When showHiddenFiles = false: Hides .nomedia folders, hidden folders, and system folders
+   */
+  fun shouldSkipFolder(folder: File, showHiddenFiles: Boolean): Boolean {
+    // If showHiddenFiles is enabled, don't skip anything (show .nomedia folders too)
+    if (showHiddenFiles) {
+      return false
+    }
+
+    // If showHiddenFiles is disabled, check for .nomedia, hidden folders, and system folders
+    if (hasNoMediaFile(folder)) {
+      return true
+    }
+
+    val name = folder.name.lowercase()
+    val isHidden = name.startsWith(".")
+    return isHidden || SKIP_FOLDERS.contains(name)
+  }
 
   /**
    * Recursively scans a directory for video files

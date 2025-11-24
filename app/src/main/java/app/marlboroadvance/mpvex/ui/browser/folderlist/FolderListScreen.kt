@@ -62,7 +62,7 @@ import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
@@ -114,7 +114,7 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
-    val videoRepository = koinInject<VideoRepository>()
+    // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
@@ -157,7 +157,7 @@ object FolderListScreen : Screen {
         onDeleteItems = { folders ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()
-          val videos = videoRepository.getVideosForBuckets(context, ids)
+          val videos = MediaFileRepository.getVideosForBuckets(context, ids)
           viewModel.deleteVideos(videos)
           Pair(videos.size, 0) // Return (successCount, failureCount)
         },
@@ -205,7 +205,7 @@ object FolderListScreen : Screen {
       if (isSearching && !videosLoaded) {
         // Load all videos across all folders using all bucketIds
         val bucketIds = videoFolders.map { it.bucketId }.toSet()
-        allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
+        allVideos = MediaFileRepository.getVideosForBuckets(context, bucketIds)
         videosLoaded = true
       }
       if (!isSearching) {
@@ -301,7 +301,7 @@ object FolderListScreen : Screen {
               // Share all videos across selected folders with a single chooser
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = MediaFileRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   MediaUtils.shareVideos(context, allVideos)
                 }
@@ -311,7 +311,7 @@ object FolderListScreen : Screen {
               // Play all videos from selected folders as a playlist
               coroutineScope.launch {
                 val selectedIds = selectionManager.getSelectedItems().map { it.bucketId }.toSet()
-                val allVideos = videoRepository.getVideosForBuckets(context, selectedIds)
+                val allVideos = MediaFileRepository.getVideosForBuckets(context, selectedIds)
                 if (allVideos.isNotEmpty()) {
                   if (allVideos.size == 1) {
                     // Single video - play normally
@@ -348,41 +348,38 @@ object FolderListScreen : Screen {
               onOpenFile = { filePicker.launch(arrayOf("video/*")) },
               onPlayRecentlyPlayed = {
                 coroutineScope.launch {
-                val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-                  .getLastPlayedEntity()
+                  val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+                    .getLastPlayedEntity()
 
-                if (lastPlayedEntity != null) {
-                  // Check if this was played from a playlist
-                  if (lastPlayedEntity.playlistId != null) {
-                    // Load the full playlist and play from the most recently played video
-                    val playlistRepository =
-                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
-                        app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
-                      )
-                    val videoRepository =
-                      org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.repository.VideoRepository>(
-                        app.marlboroadvance.mpvex.repository.VideoRepository::class.java,
-                      )
-                    val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
+                  if (lastPlayedEntity != null) {
+                    // Check if this was played from a playlist
+                    if (lastPlayedEntity.playlistId != null) {
+                      // Load the full playlist and play from the most recently played video
+                      val playlistRepository =
+                        org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
+                          app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
+                        )
+                      // Using MediaFileRepository singleton directly
+                      val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
 
-                    if (playlistItems.isNotEmpty()) {
-                      // Get unique folders (bucketIds) from playlist items
-                      // For each video, extract its parent folder and query that bucket
-                      val pathToBucketMap = mutableMapOf<String, String>()
-                      val bucketIds = mutableSetOf<String>()
+                      if (playlistItems.isNotEmpty()) {
+                        // Get unique folders (bucketIds) from playlist items
+                        // For each video, extract its parent folder and query that bucket
+                        val pathToBucketMap = mutableMapOf<String, String>()
+                        val bucketIds = mutableSetOf<String>()
 
-                      playlistItems.forEach { item ->
-                        val file = java.io.File(item.filePath)
-                        val parentPath = file.parent
-                        if (parentPath != null) {
-                          val normalizedPath = parentPath.replace("\\", "/")
-                          pathToBucketMap[item.filePath] = normalizedPath
-                          bucketIds.add(normalizedPath)
+                        playlistItems.forEach { item ->
+                          val file = java.io.File(item.filePath)
+                          val parentPath = file.parent
+                          if (parentPath != null) {
+                            val normalizedPath = parentPath.replace("\\", "/")
+                            pathToBucketMap[item.filePath] = normalizedPath
+                            bucketIds.add(normalizedPath)
+                          }
                         }
-                      }
 
-                      // Get all videos from those buckets
-                      val allVideos = videoRepository.getVideosForBuckets(context, bucketIds)
+                        // Get all videos from those buckets
+                        val allVideos = MediaFileRepository.getVideosForBuckets(context, bucketIds)
 
                       // Match videos by path, maintaining playlist order
                       val videos = playlistItems.mapNotNull { item ->

@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +28,7 @@ class PlaylistViewModel(
 ) : androidx.lifecycle.AndroidViewModel(application),
   KoinComponent {
   private val repository: PlaylistRepository by inject()
-  private val videoRepository: VideoRepository by inject()
+  // Using MediaFileRepository singleton directly
 
   private val _playlistsWithCount = MutableStateFlow<List<PlaylistWithCount>>(emptyList())
   val playlistsWithCount: StateFlow<List<PlaylistWithCount>> = _playlistsWithCount.asStateFlow()
@@ -72,7 +72,7 @@ class PlaylistViewModel(
       File(item.filePath).parent ?: ""
     }.toSet()
 
-    val allVideos = videoRepository.getVideosForBuckets(getApplication(), bucketIds)
+    val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
 
     return items.count { item ->
       allVideos.any { video -> video.path == item.filePath }

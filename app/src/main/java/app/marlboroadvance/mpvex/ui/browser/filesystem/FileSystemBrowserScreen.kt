@@ -53,7 +53,7 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.repository.FileSystemRepository
+
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
@@ -460,8 +460,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
                       app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
                     )
-                  val videoRepository =
-                    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.repository.VideoRepository>(app.marlboroadvance.mpvex.repository.VideoRepository::class.java)
+                  // Using MediaFileRepository singleton directly
                   val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
                   if (playlistItems.isNotEmpty()) {
                     val pathToBucketMap = mutableMapOf<String, String>()
@@ -475,7 +474,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                         bucketIds.add(normalizedPath)
                       }
                     }
-                    val allVideos = videoRepository.getVideosForBuckets(ctx, bucketIds)
+                    val allVideos = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(ctx, bucketIds)
                     val videos =
                       playlistItems.mapNotNull { item -> allVideos.find { video -> video.path == item.filePath } }
                     if (videos.isNotEmpty()) {
@@ -724,8 +723,10 @@ private suspend fun collectVideosRecursively(
   val videos = mutableListOf<app.marlboroadvance.mpvex.domain.media.model.Video>()
 
   try {
-    // Scan the current directory
-    val items = FileSystemRepository.scanDirectory(context, folderPath).getOrNull() ?: emptyList()
+    // Scan the current directory using MediaFileRepository
+    val items = app.marlboroadvance.mpvex.repository.MediaFileRepository
+      .scanDirectory(context, folderPath, showAllFileTypes = false, showHiddenFiles = false)
+      .getOrNull() ?: emptyList()
 
     // Add videos from current folder
     items.filterIsInstance<FileSystemItem.VideoFile>().forEach { videoFile ->

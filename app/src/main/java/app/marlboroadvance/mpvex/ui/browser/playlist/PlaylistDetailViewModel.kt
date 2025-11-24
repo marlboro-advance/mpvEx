@@ -9,7 +9,7 @@ import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.database.entities.PlaylistItemEntity
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +32,7 @@ class PlaylistDetailViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playlistRepository: PlaylistRepository by inject()
-  private val videoRepository: VideoRepository by inject()
+  // Using MediaFileRepository singleton directly
 
   private val _playlist = MutableStateFlow<PlaylistEntity?>(null)
   val playlist: StateFlow<PlaylistEntity?> = _playlist.asStateFlow()
@@ -76,7 +76,7 @@ class PlaylistDetailViewModel(
           }.toSet()
 
           // Get all videos from those folders (uses cache)
-          val allVideos = videoRepository.getVideosForBuckets(getApplication(), bucketIds)
+          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
 
           // Match videos by path, maintaining playlist order
           val videoItems = items.mapNotNull { item ->
@@ -107,7 +107,7 @@ class PlaylistDetailViewModel(
           val bucketIds = items.map { item ->
             File(item.filePath).parent ?: ""
           }.toSet()
-          val allVideos = videoRepository.getVideosForBuckets(getApplication(), bucketIds)
+          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
           val videoItems = items.mapNotNull { item ->
             allVideos.find { video -> video.path == item.filePath }?.let { video ->
               PlaylistVideoItem(item, video)
