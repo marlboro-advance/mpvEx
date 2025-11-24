@@ -43,6 +43,9 @@ object MediaFileRepository : KoinComponent {
   /**
    * Scans all storage volumes to find all folders containing videos
    * Used by FolderListViewModel for album view
+   *
+   * LEGACY VERSION: Maintains backward compatibility with metadata extraction
+   * For better performance, use getAllVideoFoldersFast() instead
    */
   suspend fun getAllVideoFolders(
     context: Context,
@@ -59,6 +62,79 @@ object MediaFileRepository : KoinComponent {
       } catch (e: Exception) {
         Log.e(TAG, "Error scanning for video folders", e)
         emptyList()
+      }
+    }
+
+  /**
+   * OPTIMIZED: Fast scan for video folders without metadata extraction
+   * Returns folders immediately with basic info (count, size)
+   * Duration will be 0 initially - call enrichVideoFolders() to populate
+   *
+   * @param context Application context
+   * @param showHiddenFiles Whether to show hidden files/folders
+   * @param onProgress Optional callback for progress updates (folder count found)
+   * @return List of VideoFolder with basic info (no duration)
+   */
+  suspend fun getAllVideoFoldersFast(
+    context: Context,
+    showHiddenFiles: Boolean,
+    onProgress: ((Int) -> Unit)? = null,
+  ): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      try {
+        val folders = FolderScanUtils.scanAllStorageForVideoFoldersFast(
+          context = context,
+          showHiddenFiles = showHiddenFiles,
+          onProgress = onProgress,
+        )
+        FolderScanUtils.convertToVideoFolders(folders)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error fast scanning for video folders", e)
+        emptyList()
+      }
+    }
+
+  /**
+   * OPTIMIZED: Enriches folder list with metadata (duration) in background
+   * Call after getAllVideoFoldersFast() to add duration information
+   *
+   * @param context Application context
+   * @param folders List of folders to enrich (from fast scan)
+   * @param onProgress Optional callback for progress (processed, total)
+   * @return Updated list with duration information
+   */
+  suspend fun enrichVideoFolders(
+    context: Context,
+    folders: List<VideoFolder>,
+    onProgress: ((Int, Int) -> Unit)? = null,
+  ): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      try {
+        // Convert back to FolderData map
+        val folderDataMap = folders.associate { folder ->
+          folder.path to FolderScanUtils.FolderData(
+            path = folder.path,
+            name = folder.name,
+            videoCount = folder.videoCount,
+            totalSize = folder.totalSize,
+            totalDuration = folder.totalDuration,
+            lastModified = folder.lastModified,
+          )
+        }
+
+        // Enrich with metadata
+        val enrichedMap = FolderScanUtils.enrichFolderMetadata(
+          context = context,
+          folders = folderDataMap,
+          metadataCache = metadataCache,
+          onProgress = onProgress,
+        )
+
+        // Convert back to VideoFolder list
+        FolderScanUtils.convertToVideoFolders(enrichedMap)
+      } catch (e: Exception) {
+        Log.e(TAG, "Error enriching video folders", e)
+        folders // Return original on error
       }
     }
 
@@ -239,12 +315,14 @@ object MediaFileRepository : KoinComponent {
    * Scans a directory and returns its contents (folders and video files)
    * @param showAllFileTypes If true, shows all files. If false, shows only videos.
    * @param showHiddenFiles If true, shows hidden files and folders. If false, hides them.
+   * @param useFastCount If true, uses fast shallow counting (immediate children only). If false, uses deep recursive counting.
    */
   suspend fun scanDirectory(
     context: Context,
     path: String,
     showAllFileTypes: Boolean = false,
     showHiddenFiles: Boolean = false,
+    useFastCount: Boolean = false,
   ): Result<List<FileSystemItem>> =
     withContext(Dispatchers.IO) {
       try {
@@ -274,9 +352,13 @@ object MediaFileRepository : KoinComponent {
         files
           .filter { it.isDirectory && it.canRead() && !StorageScanUtils.shouldSkipFolder(it, showHiddenFiles) }
           .forEach { subdir ->
-            val folderInfo = FolderScanUtils.getDirectChildrenCount(subdir, showHiddenFiles, showAllFileTypes)
+            val folderInfo = if (useFastCount) {
+              FolderScanUtils.getDirectChildrenCountFast(subdir, showHiddenFiles, showAllFileTypes)
+            } else {
+              FolderScanUtils.getDirectChildrenCount(subdir, showHiddenFiles, showAllFileTypes)
+            }
 
-            // Only add folder if it contains files
+            // Only add folder if it contains files (recursively counted)
             if (folderInfo.videoCount > 0) {
               items.add(
                 FileSystemItem.Folder(
@@ -314,7 +396,7 @@ object MediaFileRepository : KoinComponent {
 
         Log.d(
           TAG,
-          "Scanned directory: $path, found ${items.size} items (${items.filterIsInstance<FileSystemItem.Folder>().size} folders, ${items.filterIsInstance<FileSystemItem.VideoFile>().size} videos)",
+          "Scanned directory: $path, found ${items.size} items (${items.filterIsInstance<FileSystemItem.Folder>().size} folders, ${items.filterIsInstance<FileSystemItem.VideoFile>().size} videos) [fastCount=$useFastCount]",
         )
         Result.success(items)
       } catch (e: SecurityException) {

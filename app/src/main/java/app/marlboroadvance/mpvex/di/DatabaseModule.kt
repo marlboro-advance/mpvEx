@@ -148,6 +148,162 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
   }
 }
 
+/**
+ * Migration from version 4 to version 5
+ * Ensures RecentlyPlayedEntity and PlaylistEntity have all required columns
+ * Handles corrupted database states where migrations were partially applied
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      // ===== Fix RecentlyPlayedEntity =====
+      android.util.Log.d("Migration_4_5", "Ensuring RecentlyPlayedEntity schema integrity")
+
+      val recentlyPlayedCursor = db.query("PRAGMA table_info(RecentlyPlayedEntity)")
+      val recentlyPlayedColumns = mutableSetOf<String>()
+
+      var nameColumnIndex = recentlyPlayedCursor.getColumnIndex("name")
+      while (recentlyPlayedCursor.moveToNext()) {
+        val columnName = recentlyPlayedCursor.getString(nameColumnIndex)
+        recentlyPlayedColumns.add(columnName)
+      }
+      recentlyPlayedCursor.close()
+
+      android.util.Log.d("Migration_4_5", "RecentlyPlayedEntity existing columns: $recentlyPlayedColumns")
+
+      // Add missing columns if they don't exist
+      if ("videoTitle" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: videoTitle")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
+      }
+
+      if ("duration" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: duration")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("fileSize" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: fileSize")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("width" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: width")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("height" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: height")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
+      }
+
+      if ("playlistId" !in recentlyPlayedColumns) {
+        android.util.Log.d("Migration_4_5", "Adding column: playlistId")
+        db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
+      }
+
+      android.util.Log.d("Migration_4_5", "RecentlyPlayedEntity schema updated successfully")
+
+      // ===== Fix PlaylistEntity =====
+      android.util.Log.d("Migration_4_5", "Checking PlaylistEntity schema integrity")
+
+      val playlistCursor = db.query("PRAGMA table_info(PlaylistEntity)")
+      val playlistColumns = mutableSetOf<String>()
+
+      nameColumnIndex = playlistCursor.getColumnIndex("name")
+      while (playlistCursor.moveToNext()) {
+        val columnName = playlistCursor.getString(nameColumnIndex)
+        playlistColumns.add(columnName)
+      }
+      playlistCursor.close()
+
+      android.util.Log.d("Migration_4_5", "PlaylistEntity existing columns: $playlistColumns")
+
+      // If PlaylistEntity is empty or missing columns, recreate it
+      if (playlistColumns.isEmpty() ||
+        "id" !in playlistColumns ||
+        "name" !in playlistColumns ||
+        "createdAt" !in playlistColumns ||
+        "updatedAt" !in playlistColumns
+      ) {
+
+        android.util.Log.d("Migration_4_5", "Recreating PlaylistEntity table")
+
+        // Drop corrupted table
+        db.execSQL("DROP TABLE IF EXISTS `PlaylistEntity`")
+
+        // Recreate PlaylistEntity table
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `name` TEXT NOT NULL,
+            `createdAt` INTEGER NOT NULL,
+            `updatedAt` INTEGER NOT NULL
+          )
+          """.trimIndent(),
+        )
+
+        android.util.Log.d("Migration_4_5", "PlaylistEntity recreated successfully")
+      }
+
+      // ===== Fix PlaylistItemEntity =====
+      android.util.Log.d("Migration_4_5", "Checking PlaylistItemEntity schema integrity")
+
+      val playlistItemCursor = db.query("PRAGMA table_info(PlaylistItemEntity)")
+      val playlistItemColumns = mutableSetOf<String>()
+
+      nameColumnIndex = playlistItemCursor.getColumnIndex("name")
+      while (playlistItemCursor.moveToNext()) {
+        val columnName = playlistItemCursor.getString(nameColumnIndex)
+        playlistItemColumns.add(columnName)
+      }
+      playlistItemCursor.close()
+
+      android.util.Log.d("Migration_4_5", "PlaylistItemEntity existing columns: $playlistItemColumns")
+
+      // If PlaylistItemEntity is corrupted, recreate it
+      if (playlistItemColumns.isEmpty() || "id" !in playlistItemColumns) {
+        android.util.Log.d("Migration_4_5", "Recreating PlaylistItemEntity table")
+
+        // Drop corrupted table
+        db.execSQL("DROP TABLE IF EXISTS `PlaylistItemEntity`")
+
+        // Recreate PlaylistItemEntity table with foreign key
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `playlistId` INTEGER NOT NULL,
+            `filePath` TEXT NOT NULL,
+            `fileName` TEXT NOT NULL,
+            `position` INTEGER NOT NULL,
+            `addedAt` INTEGER NOT NULL,
+            `lastPlayedAt` INTEGER NOT NULL DEFAULT 0,
+            `playCount` INTEGER NOT NULL DEFAULT 0,
+            `lastPosition` INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY(`playlistId`) REFERENCES `PlaylistEntity`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+
+        // Create index for foreign key
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_PlaylistItemEntity_playlistId` ON `PlaylistItemEntity` (`playlistId`)",
+        )
+
+        android.util.Log.d("Migration_4_5", "PlaylistItemEntity recreated successfully")
+      }
+
+      android.util.Log.d("Migration_4_5", "All schema integrity checks completed successfully")
+
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_4_5", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -162,7 +318,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
         .build()
     }
