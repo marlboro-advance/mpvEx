@@ -40,7 +40,7 @@ class VideoListViewModel(
   private val _videosWithPlaybackInfo = MutableStateFlow<List<VideoWithPlaybackInfo>>(emptyList())
   val videosWithPlaybackInfo: StateFlow<List<VideoWithPlaybackInfo>> = _videosWithPlaybackInfo.asStateFlow()
 
-  private val _isLoading = MutableStateFlow(false)
+  private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
   
 
@@ -52,20 +52,22 @@ class VideoListViewModel(
     // Listen for global media library changes and refresh this list when they occur
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
+        // Clear cache when media library changes
+        MediaFileRepository.clearCacheForFolder(bucketId)
         loadVideos()
       }
     }
   }
 
   override fun refresh() {
+    // Clear cache for this folder to force fresh data
+    MediaFileRepository.clearCacheForFolder(bucketId)
     loadVideos()
   }
 
   private fun loadVideos() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
-        _isLoading.value = true
-
         // First attempt to load videos
         val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
 

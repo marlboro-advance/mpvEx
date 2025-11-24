@@ -109,7 +109,7 @@ object RecentlyPlayedScreen : Screen {
       },
     ) { padding ->
       when {
-        isLoading -> {
+        isLoading && recentItems.isEmpty() -> {
           Box(
             modifier = Modifier
               .fillMaxSize()
@@ -123,7 +123,7 @@ object RecentlyPlayedScreen : Screen {
           }
         }
 
-        recentItems.isEmpty() -> {
+        recentItems.isEmpty() && !isLoading -> {
           Box(
             modifier = Modifier
               .fillMaxSize()

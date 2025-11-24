@@ -50,6 +50,8 @@ class FolderListViewModel(
     // Refresh folders on global media library changes
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
+        // Clear cache when media library changes
+        app.marlboroadvance.mpvex.repository.MediaFileRepository.clearCache()
         loadVideoFolders()
       }
     }
@@ -65,6 +67,8 @@ class FolderListViewModel(
   }
 
   override fun refresh() {
+    // Clear cache to force fresh data
+    app.marlboroadvance.mpvex.repository.MediaFileRepository.clearCache()
     loadVideoFolders()
   }
 

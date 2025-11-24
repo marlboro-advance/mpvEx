@@ -36,6 +36,29 @@ object MediaFileRepository : KoinComponent {
   private const val TAG = "MediaFileRepository"
   private val metadataCache: VideoMetadataCacheRepository by inject()
 
+  // In-memory cache for fast subsequent loads
+  private val videoFoldersCache = mutableMapOf<String, Pair<List<VideoFolder>, Long>>()
+  private val videosCache = mutableMapOf<String, Pair<List<Video>, Long>>()
+  private const val CACHE_VALIDITY_MS = 30_000L // 30 seconds
+
+  /**
+   * Clears all in-memory caches
+   * Call this when media library changes are detected
+   */
+  fun clearCache() {
+    videoFoldersCache.clear()
+    videosCache.clear()
+    Log.d(TAG, "Cleared all in-memory caches")
+  }
+
+  /**
+   * Clears cache for a specific folder
+   */
+  fun clearCacheForFolder(bucketId: String) {
+    videosCache.remove(bucketId)
+    Log.d(TAG, "Cleared cache for bucket: $bucketId")
+  }
+
   // =============================================================================
   // FOLDER OPERATIONS (Album View)
   // =============================================================================
@@ -52,16 +75,32 @@ object MediaFileRepository : KoinComponent {
     showHiddenFiles: Boolean,
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
+      val cacheKey = "all_folders_$showHiddenFiles"
+
+      // Check cache first
+      videoFoldersCache[cacheKey]?.let { (cached, timestamp) ->
+        if (System.currentTimeMillis() - timestamp < CACHE_VALIDITY_MS) {
+          Log.d(TAG, "Returning cached video folders (${cached.size} folders)")
+          return@withContext cached
+        }
+      }
+
       try {
         val folders = FolderScanUtils.scanAllStorageForVideoFolders(
           context = context,
           showHiddenFiles = showHiddenFiles,
           metadataCache = metadataCache,
         )
-        FolderScanUtils.convertToVideoFolders(folders)
+        val result = FolderScanUtils.convertToVideoFolders(folders)
+
+        // Update cache
+        videoFoldersCache[cacheKey] = Pair(result, System.currentTimeMillis())
+
+        result
       } catch (e: Exception) {
         Log.e(TAG, "Error scanning for video folders", e)
-        emptyList()
+        // Return cached data even if expired on error
+        videoFoldersCache[cacheKey]?.first ?: emptyList()
       }
     }
 
@@ -151,6 +190,14 @@ object MediaFileRepository : KoinComponent {
     bucketId: String,
   ): List<Video> =
     withContext(Dispatchers.IO) {
+      // Check cache first
+      videosCache[bucketId]?.let { (cached, timestamp) ->
+        if (System.currentTimeMillis() - timestamp < CACHE_VALIDITY_MS) {
+          Log.d(TAG, "Returning cached videos for bucket $bucketId (${cached.size} videos)")
+          return@withContext cached
+        }
+      }
+
       val videos = mutableListOf<Video>()
       val processedPaths = mutableSetOf<String>()
 
@@ -166,7 +213,8 @@ object MediaFileRepository : KoinComponent {
         val directory = File(folderPath)
         if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
           Log.w(TAG, "Cannot access directory: $folderPath")
-          return@withContext emptyList()
+          // Return cached data even if expired on error
+          return@withContext videosCache[bucketId]?.first ?: emptyList()
         }
 
         val videoFiles = directory.listFiles()?.filter {
@@ -188,9 +236,16 @@ object MediaFileRepository : KoinComponent {
         }
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
+        // Return cached data even if expired on error
+        return@withContext videosCache[bucketId]?.first ?: emptyList()
       }
 
-      videos.sortedBy { it.displayName.lowercase() }
+      val result = videos.sortedBy { it.displayName.lowercase() }
+
+      // Update cache
+      videosCache[bucketId] = Pair(result, System.currentTimeMillis())
+
+      result
     }
 
   /**

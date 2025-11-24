@@ -448,7 +448,7 @@ private fun VideoListContent(
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
   when {
-    isLoading -> {
+    isLoading && videosWithInfo.isEmpty() -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -460,7 +460,7 @@ private fun VideoListContent(
       }
     }
 
-    videosWithInfo.isEmpty() -> {
+    videosWithInfo.isEmpty() && !isLoading -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
