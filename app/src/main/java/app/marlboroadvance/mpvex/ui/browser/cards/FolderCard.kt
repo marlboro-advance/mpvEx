@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
@@ -45,6 +46,7 @@ fun FolderCard(
   onThumbClick: () -> Unit = {},
   showDateModified: Boolean = false,
   customIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+  newVideoCount: Int = 0,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -96,6 +98,27 @@ fun FolderCard(
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )
+
+        // Show "NEW" badge if folder contains new videos
+        if (newVideoCount > 0) {
+          Box(
+            modifier =
+              Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFFD32F2F)) // Warning red color
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+          ) {
+            Text(
+              text = "NEW",
+              style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+              ),
+              color = Color.White,
+            )
+          }
+        }
       }
       Spacer(modifier = Modifier.width(16.dp))
       Column(

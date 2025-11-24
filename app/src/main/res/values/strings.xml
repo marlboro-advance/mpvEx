@@ -29,6 +29,11 @@
     <string name="pref_appearance_category_file_browser">File Browser</string>
     <string name="pref_appearance_show_hidden_files_title">Show Hidden Files</string>
     <string name="pref_appearance_show_hidden_files_summary">Show hidden folders starting with a dot (.) including android, data, system folders and .nomedia files</string>
+    <string name="pref_appearance_show_unplayed_old_video_label_title">Show label for new unplayed videos</string>
+    <string name="pref_appearance_show_unplayed_old_video_label_summary">Display a \"New\" label on videos added within specified days that have never been played</string>
+    <string name="pref_appearance_unplayed_old_video_days_title">Days threshold for new video label</string>
+    <string name="pref_appearance_unplayed_old_video_days_summary">Videos added within the last %d days without playback history will be marked as new</string>
+    <string name="video_label_new">NEW</string>
 
     <string name="pref_layout_title">Player Layout</string>
     <string name="pref_layout_summary">Customize player button layout</string>

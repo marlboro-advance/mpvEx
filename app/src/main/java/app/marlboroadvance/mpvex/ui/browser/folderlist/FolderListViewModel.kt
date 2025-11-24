@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
-
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
@@ -22,16 +22,25 @@ import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
+data class FolderWithNewCount(
+  val folder: VideoFolder,
+  val newVideoCount: Int = 0,
+)
+
 class FolderListViewModel(
   application: Application,
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val foldersPreferences: FoldersPreferences by inject()
   private val appearancePreferences: AppearancePreferences by inject()
+  private val playbackStateRepository: PlaybackStateRepository by inject()
 
   private val _allVideoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   val videoFolders: StateFlow<List<VideoFolder>> = _videoFolders.asStateFlow()
+
+  private val _foldersWithNewCount = MutableStateFlow<List<FolderWithNewCount>>(emptyList())
+  val foldersWithNewCount: StateFlow<List<FolderWithNewCount>> = _foldersWithNewCount.asStateFlow()
 
   companion object {
     private const val TAG = "FolderListViewModel"
@@ -62,6 +71,56 @@ class FolderListViewModel(
         folders.filter { folder -> folder.path !in blacklist }
       }.collectLatest { filteredFolders ->
         _videoFolders.value = filteredFolders
+        // Calculate new video counts for each folder
+        calculateNewVideoCounts(filteredFolders)
+      }
+    }
+  }
+
+  private fun calculateNewVideoCounts(folders: List<VideoFolder>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val showLabel = appearancePreferences.showUnplayedOldVideoLabel.get()
+        if (!showLabel) {
+          // If feature is disabled, just return folders with 0 count
+          _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
+          return@launch
+        }
+
+        val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
+        val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+        val currentTime = System.currentTimeMillis()
+
+        val foldersWithCounts = folders.map { folder ->
+          try {
+            // Get all videos in this folder
+            val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
+              .getVideosInFolder(getApplication(), folder.bucketId)
+
+            // Count new unplayed videos
+            val newCount = videos.count { video ->
+              // Check if video was added within threshold days
+              val videoAge = currentTime - (video.dateAdded * 1000)
+              val isRecent = videoAge <= thresholdMillis
+
+              // Check if video has been played
+              val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+              val isUnplayed = playbackState == null
+
+              isRecent && isUnplayed
+            }
+
+            FolderWithNewCount(folder, newCount)
+          } catch (e: Exception) {
+            Log.e(TAG, "Error counting new videos for folder ${folder.name}", e)
+            FolderWithNewCount(folder, 0)
+          }
+        }
+
+        _foldersWithNewCount.value = foldersWithCounts
+      } catch (e: Exception) {
+        Log.e(TAG, "Error calculating new video counts", e)
+        _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
       }
     }
   }

@@ -110,6 +110,7 @@ object FolderListScreen : Screen {
     val viewModel: FolderListViewModel =
       viewModel(factory = FolderListViewModel.factory(context.applicationContext as android.app.Application))
     val videoFolders by viewModel.videoFolders.collectAsState()
+    val foldersWithNewCount by viewModel.foldersWithNewCount.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
@@ -502,6 +503,7 @@ object FolderListScreen : Screen {
             // Normal mode - show folder list
             FolderListContent(
               folders = filteredFolders,
+              foldersWithNewCount = foldersWithNewCount,
               listState = listState,
               isRefreshing = isRefreshing,
               recentlyPlayedFilePath = recentlyPlayedFilePath,
@@ -559,6 +561,7 @@ object FolderListScreen : Screen {
 @Composable
 private fun FolderListContent(
   folders: List<VideoFolder>,
+  foldersWithNewCount: List<FolderWithNewCount>,
   listState: LazyListState,
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
@@ -628,6 +631,9 @@ private fun FolderListContent(
               file.parent == folder.path
             } ?: false
 
+          // Get new video count for this folder
+          val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
+
           FolderCard(
             folder = folder,
             isSelected = selectionManager.isSelected(folder),
@@ -639,6 +645,7 @@ private fun FolderListContent(
             } else {
               { onFolderClick(folder) }
             },
+            newVideoCount = newCount,
           )
         }
 

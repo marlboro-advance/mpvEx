@@ -535,6 +535,7 @@ private fun VideoListContent(
                 progressPercentage = videoWithInfo.progressPercentage,
                 isRecentlyPlayed = isRecentlyPlayed,
                 isSelected = selectionManager.isSelected(videoWithInfo.video),
+                isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
                 onClick = { onVideoClick(videoWithInfo.video) },
                 onLongClick = { onVideoLongClick(videoWithInfo.video) },
                 onThumbClick = if (tapThumbnailToSelect) {
