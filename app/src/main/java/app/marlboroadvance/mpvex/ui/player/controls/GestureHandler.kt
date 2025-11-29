@@ -103,7 +103,7 @@ fun GestureHandler(
       .fillMaxSize()
       .windowInsetsPadding(WindowInsets.safeGestures)
       .pointerInput(Unit) {
-        var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
+        var originalSpeed = 1f
         detectTapGestures(
           onTap = {
             if (controlsShown) viewModel.hideControls() else viewModel.showControls()
@@ -154,7 +154,7 @@ fun GestureHandler(
           onLongPress = {
             if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
             if (!isLongPressing && paused == false) {
-              originalSpeed = playbackSpeed ?: return@detectTapGestures
+              originalSpeed = MPVLib.getPropertyFloat("speed") ?: playbackSpeed ?: 1f
               haptics.performHapticFeedback(HapticFeedbackType.LongPress)
               isLongPressing = true
               MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
