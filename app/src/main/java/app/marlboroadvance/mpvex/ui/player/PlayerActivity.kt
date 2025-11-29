@@ -1289,10 +1289,19 @@ class PlayerActivity :
 
     lifecycleScope.launch(Dispatchers.IO) {
       // Load playback state (will skip track restoration if preferred language configured)
-      loadVideoPlaybackState(fileName)
+      val hasState = loadVideoPlaybackState(fileName)
 
       // Apply preferred language settings (will override if configured)
       trackSelector.onFileLoaded()
+
+      // Apply default zoom only if there's no saved state
+      if (!hasState) {
+        withContext(Dispatchers.Main) {
+          val zoomPreference = playerPreferences.defaultVideoZoom.get()
+          MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
+          viewModel.setVideoZoom(zoomPreference)
+        }
+      }
     }
 
     // Save to recently played when video actually loads and plays
@@ -1309,10 +1318,6 @@ class PlayerActivity :
     setOrientation()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
-
-    val zoomPreference = playerPreferences.defaultVideoZoom.get()
-    MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
-    viewModel.setVideoZoom(zoomPreference)
 
     MPVLib.setPropertyString("force-media-title", fileName)
     viewModel.setMediaTitle(fileName)
@@ -1490,6 +1495,7 @@ class PlayerActivity :
             mediaTitle = mediaIdentifier,
             lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
+            videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
             sid = player.sid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
@@ -1536,18 +1542,21 @@ class PlayerActivity :
    * Loads and applies saved playback state from the database.
    *
    * @param mediaTitle The title of the media being played
+   * @return true if saved state was found and applied, false otherwise
    */
-  private suspend fun loadVideoPlaybackState(mediaTitle: String) {
-    if (mediaIdentifier.isBlank()) return
+  private suspend fun loadVideoPlaybackState(mediaTitle: String): Boolean {
+    if (mediaIdentifier.isBlank()) return false
 
-    runCatching {
+    return runCatching {
       val state = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
 
       applyPlaybackState(state)
       applyDefaultSettings(state)
+
+      state != null
     }.onFailure { e ->
       Log.e(TAG, "Error loading playback state", e)
-    }
+    }.getOrDefault(false)
   }
 
   /**
@@ -1597,6 +1606,10 @@ class PlayerActivity :
     MPVLib.setPropertyDouble("speed", state.playbackSpeed)
     MPVLib.setPropertyDouble("audio-delay", audioDelay)
     MPVLib.setPropertyDouble("sub-speed", state.subSpeed)
+
+    // Restore video zoom from saved state
+    MPVLib.setPropertyDouble("video-zoom", state.videoZoom.toDouble())
+    viewModel.setVideoZoom(state.videoZoom)
 
     if (playerPreferences.savePositionOnQuit.get() && state.lastPosition != 0) {
       MPVLib.setPropertyInt("time-pos", state.lastPosition)

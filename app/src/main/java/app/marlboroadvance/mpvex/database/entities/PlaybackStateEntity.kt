@@ -8,6 +8,7 @@ data class PlaybackStateEntity(
   @PrimaryKey val mediaTitle: String,
   val lastPosition: Int, // in seconds
   val playbackSpeed: Double,
+  val videoZoom: Float = 0f,
   val sid: Int,
   val subDelay: Int,
   val subSpeed: Double,
