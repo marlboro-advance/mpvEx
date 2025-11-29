@@ -326,12 +326,12 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(brightnessSlider) {
               if (swapVolumeAndBrightness) {
-                start.linkTo(parent.start, spacing.medium)
+                start.linkTo(parent.start, spacing.extraLarge)
               } else {
-                end.linkTo(parent.end, spacing.medium)
+                end.linkTo(parent.end, spacing.extraLarge)
               }
-              top.linkTo(parent.top)
-              bottom.linkTo(parent.bottom)
+              top.linkTo(parent.top, spacing.larger)
+              bottom.linkTo(parent.bottom, spacing.larger)
             },
         ) { BrightnessSlider(brightness, 0f..1f) }
 
@@ -356,12 +356,12 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(volumeSlider) {
               if (swapVolumeAndBrightness) {
-                end.linkTo(parent.end, spacing.medium)
+                end.linkTo(parent.end, spacing.extraLarge)
               } else {
-                start.linkTo(parent.start, spacing.medium)
+                start.linkTo(parent.start, spacing.extraLarge)
               }
-              top.linkTo(parent.top)
-              bottom.linkTo(parent.bottom)
+              top.linkTo(parent.top, spacing.larger)
+              bottom.linkTo(parent.bottom, spacing.larger)
             },
         ) {
           val boostCap by audioPreferences.volumeBoostCap.collectAsState()

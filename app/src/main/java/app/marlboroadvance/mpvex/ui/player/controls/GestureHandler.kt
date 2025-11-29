@@ -100,7 +100,7 @@ fun GestureHandler(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .padding(horizontal = 16.dp)
+      .padding(horizontal = 16.dp, vertical = 16.dp)
       .pointerInput(Unit) {
         var originalSpeed = 1f
         detectTapGestures(
