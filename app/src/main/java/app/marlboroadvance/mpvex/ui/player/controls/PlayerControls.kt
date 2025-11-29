@@ -252,8 +252,7 @@ fun PlayerControls(
                 Pair(1f, Color.Black),
               ),
               alpha = transparentOverlay,
-            )
-            .padding(horizontal = MaterialTheme.spacing.medium),
+            ),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -727,8 +726,8 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(seekbar) {
               bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
-              start.linkTo(parent.start, spacing.small)
-              end.linkTo(parent.end, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
+              end.linkTo(parent.end, spacing.medium)
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
@@ -795,10 +794,10 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(topLeftControls) {
               top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
-              start.linkTo(parent.start, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
               if (isPortrait) {
                 width = Dimension.fillToConstraints
-                end.linkTo(parent.end, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
               } else {
                 width = Dimension.fillToConstraints
                 end.linkTo(topRightControls.start, spacing.extraSmall)
@@ -841,7 +840,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(topRightControls) {
               top.linkTo(parent.top, spacing.small)
-              end.linkTo(parent.end, spacing.small)
+              end.linkTo(parent.end, spacing.medium)
             },
         ) {
           TopRightPlayerControlsLandscape(
@@ -883,11 +882,11 @@ fun PlayerControls(
             Modifier.constrainAs(bottomRightControls) {
               bottom.linkTo(seekbar.top, spacing.small)
               if (isPortrait) {
-                start.linkTo(parent.start, spacing.small)
-                end.linkTo(parent.end, spacing.small)
+                start.linkTo(parent.start, spacing.medium)
+                end.linkTo(parent.end, spacing.medium)
                 width = Dimension.fillToConstraints
               } else {
-                end.linkTo(parent.end, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
               }
             },
         ) {
@@ -949,7 +948,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(bottomLeftControls) {
               bottom.linkTo(seekbar.top, spacing.small)
-              start.linkTo(parent.start, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
               width = Dimension.fillToConstraints
               end.linkTo(bottomRightControls.start, spacing.small)
             },
