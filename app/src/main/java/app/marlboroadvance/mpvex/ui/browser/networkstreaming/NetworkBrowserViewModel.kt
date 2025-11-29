@@ -107,6 +107,9 @@ class NetworkBrowserViewModel(
         intent.putExtra("launch_source", "network_stream")
         intent.putExtra("title", file.name)
         intent.putExtra("filename", file.name)
+        // Pass the original network file path for stable media identifier (position saving)
+        intent.putExtra("network_file_path", file.path)
+        intent.putExtra("network_connection_id", connectionId)
         intent.setDataAndType(uri, file.mimeType ?: "video/*")
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

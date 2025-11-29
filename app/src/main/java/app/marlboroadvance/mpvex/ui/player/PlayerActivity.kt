@@ -2494,12 +2494,28 @@ class PlayerActivity :
    * Generate a unique identifier for this media for playback state/history.
    *
    * For local/offline files, uses fileName (display name or path).
-   * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
+   * For network streams via proxy (SMB/WebDAV/FTP), uses the stable network file path from intent extras.
+   * For other network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
   private fun getMediaIdentifier(intent: Intent, fileName: String): String {
+    // Check if this is a network file played via proxy (SMB/WebDAV/FTP)
+    // Use the stable network file path instead of the temporary proxy URL
+    val networkFilePath = intent.getStringExtra("network_file_path")
+    val networkConnectionId = intent.getLongExtra("network_connection_id", -1L)
+
+    if (networkFilePath != null && networkConnectionId != -1L) {
+      // For network files via proxy: use connection ID + file path for stable identifier
+      val identifier = "network_${networkConnectionId}_${networkFilePath.hashCode()}"
+      Log.d(
+        TAG,
+        "Using network file identifier: $identifier (connection: $networkConnectionId, path: $networkFilePath)",
+      )
+      return identifier
+    }
+
     val uri = extractUriFromIntent(intent)
     return if (uri != null && (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms")) {
-      // For remoting protocols: hash the URI so position is per-episode or per-stream.
+      // For remote protocols: hash the URI so position is per-episode or per-stream.
       "${fileName}_${uri.toString().hashCode()}"
     } else {
       // For local/file uris and unknown: just use fileName.
