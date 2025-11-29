@@ -125,6 +125,8 @@ class PlayerViewModel(
   val playerUpdate = MutableStateFlow<PlayerUpdates>(PlayerUpdates.None)
   val isBrightnessSliderShown = MutableStateFlow(false)
   val isVolumeSliderShown = MutableStateFlow(false)
+  val volumeSliderTimestamp = MutableStateFlow(0L)
+  val brightnessSliderTimestamp = MutableStateFlow(0L)
   val currentBrightness =
     MutableStateFlow(
       runCatching {
@@ -500,6 +502,7 @@ class PlayerViewModel(
 
   fun displayBrightnessSlider() {
     isBrightnessSliderShown.value = true
+    brightnessSliderTimestamp.value = System.currentTimeMillis()
   }
 
   fun changeVolumeBy(change: Int) {
@@ -530,6 +533,7 @@ class PlayerViewModel(
 
   fun displayVolumeSlider() {
     isVolumeSliderShown.value = true
+    volumeSliderTimestamp.value = System.currentTimeMillis()
   }
 
   // ==================== Video Aspect ====================

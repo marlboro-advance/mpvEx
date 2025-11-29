@@ -225,7 +225,7 @@ fun PlayerControls(
     interactionSource = interactionSource,
   )
 
-  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, interactionSource)
+  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, showSeekTime, interactionSource)
 
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
@@ -283,17 +283,25 @@ fun PlayerControls(
           }
         }
 
-        // Slider display duration: 500ms shown + 300ms exit animation = 800ms total
-        val sliderDisplayDuration = 500L
+        // Slider display duration: 1000ms shown + 300ms exit animation = 1300ms total
+        val sliderDisplayDuration = 1000L
 
-        LaunchedEffect(volume, mpvVolume, isVolumeSliderShown) {
-          delay(sliderDisplayDuration)
-          if (isVolumeSliderShown) viewModel.isVolumeSliderShown.update { false }
+        val volumeSliderTimestamp by viewModel.volumeSliderTimestamp.collectAsState()
+        val brightnessSliderTimestamp by viewModel.brightnessSliderTimestamp.collectAsState()
+
+        // Track timestamp to restart timer on every gesture event
+        LaunchedEffect(volumeSliderTimestamp) {
+          if (isVolumeSliderShown && volumeSliderTimestamp > 0) {
+            delay(sliderDisplayDuration)
+            viewModel.isVolumeSliderShown.update { false }
+          }
         }
 
-        LaunchedEffect(brightness, isBrightnessSliderShown) {
-          delay(sliderDisplayDuration)
-          if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
+        LaunchedEffect(brightnessSliderTimestamp) {
+          if (isBrightnessSliderShown && brightnessSliderTimestamp > 0) {
+            delay(sliderDisplayDuration)
+            viewModel.isBrightnessSliderShown.update { false }
+          }
         }
 
         val areSlidersShown = isBrightnessSliderShown || isVolumeSliderShown
