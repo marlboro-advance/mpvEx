@@ -97,6 +97,11 @@ fun GestureHandler(
   val currentBrightness by viewModel.currentBrightness.collectAsState()
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
   val haptics = LocalHapticFeedback.current
+
+  var lastSeekRegion by remember { mutableStateOf<String?>(null) }
+  var lastSeekTime by remember { mutableStateOf<Long?>(null) }
+  val multiTapContinueWindow = 650L
+
   Box(
     modifier = modifier
       .fillMaxSize()
@@ -110,13 +115,17 @@ fun GestureHandler(
           onDoubleTap = {
             if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
             if (it.x > size.width * 3 / 5) {
+              isDoubleTapSeeking = true
+              lastSeekRegion = "right"
+              lastSeekTime = System.currentTimeMillis()
               if (!isSeekingForwards) viewModel.updateSeekAmount(0)
               viewModel.handleRightDoubleTap()
-              isDoubleTapSeeking = true
             } else if (it.x < size.width * 2 / 5) {
+              isDoubleTapSeeking = true
+              lastSeekRegion = "left"
+              lastSeekTime = System.currentTimeMillis()
               if (isSeekingForwards) viewModel.updateSeekAmount(0)
               viewModel.handleLeftDoubleTap()
-              isDoubleTapSeeking = true
             } else {
               viewModel.handleCenterDoubleTap()
             }
@@ -125,19 +134,39 @@ fun GestureHandler(
             if (panelShown != Panels.None && !allowGesturesInPanels) {
               viewModel.panelShown.update { Panels.None }
             }
-            if (!areControlsLocked && isDoubleTapSeeking && seekAmount != 0) {
-              if (it.x > size.width * 3 / 5) {
-                if (!isSeekingForwards) viewModel.updateSeekAmount(0)
-                viewModel.handleRightDoubleTap()
-              } else if (it.x < size.width * 2 / 5) {
-                if (isSeekingForwards) viewModel.updateSeekAmount(0)
-                viewModel.handleLeftDoubleTap()
-              } else {
-                viewModel.handleCenterDoubleTap()
-              }
-            } else {
-              isDoubleTapSeeking = false
+
+            val now = System.currentTimeMillis()
+            val xFraction = it.x / size.width
+            val region = when {
+              xFraction > 3f / 5f -> "right"
+              xFraction < 2f / 5f -> "left"
+              else -> "center"
             }
+            val shouldContinueSeek =
+              !areControlsLocked &&
+                isDoubleTapSeeking &&
+                seekAmount != 0 &&
+                lastSeekRegion == region &&
+                lastSeekTime != null &&
+                now - lastSeekTime!! < multiTapContinueWindow
+
+            if (shouldContinueSeek) {
+              lastSeekTime = now
+              when (region) {
+                "right" -> {
+                  if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+                  viewModel.handleRightDoubleTap()
+                }
+
+                "left" -> {
+                  if (isSeekingForwards) viewModel.updateSeekAmount(0)
+                  viewModel.handleLeftDoubleTap()
+                }
+
+                else -> viewModel.handleCenterDoubleTap()
+              }
+            }
+
             val press = PressInteraction.Press(
               it.copy(x = if (it.x > size.width * 3 / 5) it.x - size.width * 0.6f else it.x),
             )
