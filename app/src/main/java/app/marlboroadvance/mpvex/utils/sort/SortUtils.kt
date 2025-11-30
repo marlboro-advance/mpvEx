@@ -158,12 +158,8 @@ object SortUtils {
             ia = numA.exclusiveEndIndex
             ib = numB.exclusiveEndIndex
           }
-
-          numA != null -> return -1  // Number < text when types differ
-          numB != null -> return 1   // Text > number when types differ
-
           else -> {
-            // Both text => compare single character
+            // Compare single character
             val ca = if (ignoreCase) a[ia].lowercaseChar() else a[ia]
             val cb = if (ignoreCase) b[ib].lowercaseChar() else b[ib]
             val cmp = ca.compareTo(cb)
@@ -179,9 +175,6 @@ object SortUtils {
 
     private fun parseNumber(s: String, start: Int): ParsedNumber? {
       var i = start
-
-      // Optional sign
-      if (i < s.length && (s[i] == '+' || s[i] == '-')) i++
 
       var hasDigit = false
 
