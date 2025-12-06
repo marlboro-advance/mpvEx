@@ -414,9 +414,9 @@ fun GestureHandler(
                     }
 
                     GestureType.PAN -> {
-                      val sensitivity = 2.0f
-                      val newPanX = startPanX - (totalDragX / size.width) * sensitivity
-                      val newPanY = startPanY - (totalDragY / size.height) * sensitivity
+                      val sensitivity = 1.0f
+                      val newPanX = startPanX + (totalDragX / size.width) * sensitivity
+                      val newPanY = startPanY + (totalDragY / size.height) * sensitivity/3
 
                       MPVLib.setPropertyDouble("video-pan-x", newPanX.coerceIn(-1.0, 1.0))
                       MPVLib.setPropertyDouble("video-pan-y", newPanY.coerceIn(-1.0, 1.0))
