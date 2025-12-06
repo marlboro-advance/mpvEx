@@ -606,11 +606,42 @@ private suspend fun takeSnapshot(
       // Create a temporary file first
       val tempFile = File(context.cacheDir, filename)
 
-      // Take screenshot using MPV
-      if (includeSubtitles) {
-        MPVLib.command("screenshot-to-file", tempFile.absolutePath, "subtitles")
-      } else {
+      // Save current subtitle states
+      val currentPrimarySid = MPVLib.getPropertyInt("sid")
+      val currentSecondarySid = MPVLib.getPropertyInt("secondary-sid")
+
+      if (!includeSubtitles) {
+        // Temporarily disable subtitles to exclude them from screenshot
+        MPVLib.setPropertyBoolean("sid", false)
+        MPVLib.setPropertyBoolean("secondary-sid", false)
+      }
+
+      try {
+        // Take screenshot using MPV with "window" mode to preserve zoom and pan
         MPVLib.command("screenshot-to-file", tempFile.absolutePath, "window")
+      } finally {
+        if (!includeSubtitles) {
+          // Restore subtitle states
+          currentPrimarySid?.let { primarySid ->
+            if (primarySid > 0) {
+              MPVLib.setPropertyInt("sid", primarySid)
+            } else {
+              MPVLib.setPropertyBoolean("sid", false)
+            }
+          } ?: run {
+            MPVLib.setPropertyBoolean("sid", false)
+          }
+
+          currentSecondarySid?.let { secondarySid ->
+            if (secondarySid > 0) {
+              MPVLib.setPropertyInt("secondary-sid", secondarySid)
+            } else {
+              MPVLib.setPropertyBoolean("secondary-sid", false)
+            }
+          } ?: run {
+            MPVLib.setPropertyBoolean("secondary-sid", false)
+          }
+        }
       }
 
       // Wait a bit for MPV to finish writing the file
