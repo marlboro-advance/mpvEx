@@ -34,8 +34,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
@@ -56,6 +59,7 @@ fun VideoCard(
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   progressPercentage: Float? = null,
+  isOldAndUnplayed: Boolean = false,
   onThumbClick: () -> Unit = {},
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -65,6 +69,8 @@ fun VideoCard(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
+  val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
   Card(
@@ -149,6 +155,35 @@ fun VideoCard(
           )
         }
 
+        // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
+        // Like MX Player: show NEW for videos added within threshold days that haven't been played
+        if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
+          // Check if video is recently added (within threshold days)
+          val currentTime = System.currentTimeMillis()
+          val videoAge = currentTime - (video.dateAdded * 1000) // dateAdded is in seconds
+          val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
+
+          if (videoAge <= thresholdMillis) {
+            Box(
+              modifier =
+                Modifier
+                  .align(Alignment.TopStart)
+                  .padding(6.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .background(Color(0xFFD32F2F)) // Warning red color
+                  .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+              Text(
+                text = stringResource(R.string.video_label_new),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                ),
+                color = Color.White,
+              )
+            }
+          }
+        }
+
         // Duration timestamp overlay at bottom-right of the thumbnail
         Box(
           modifier =
@@ -206,7 +241,7 @@ fun VideoCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row {
-          if (showSizeChip) {
+          if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
             Text(
               video.sizeFormatted,
               style = MaterialTheme.typography.labelSmall,
@@ -221,7 +256,7 @@ fun VideoCard(
             )
           }
           if (showResolutionChip && video.resolution != "--") {
-            if (showSizeChip) {
+            if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
               Spacer(modifier = Modifier.width(4.dp))
             }
 

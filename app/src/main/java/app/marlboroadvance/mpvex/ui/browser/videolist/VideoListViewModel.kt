@@ -7,10 +7,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
-import app.marlboroadvance.mpvex.repository.VideoRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
-import app.marlboroadvance.mpvex.utils.media.MediaStoreObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +24,7 @@ data class VideoWithPlaybackInfo(
   val video: Video,
   val timeRemaining: Long? = null, // in seconds
   val progressPercentage: Float? = null, // 0.0 to 1.0
+  val isOldAndUnplayed: Boolean = false, // true if video is older than threshold and never played
 )
 
 class VideoListViewModel(
@@ -33,7 +33,7 @@ class VideoListViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
-  private val videoRepository: VideoRepository by inject()
+  // Using MediaFileRepository singleton directly
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
@@ -41,55 +41,42 @@ class VideoListViewModel(
   private val _videosWithPlaybackInfo = MutableStateFlow<List<VideoWithPlaybackInfo>>(emptyList())
   val videosWithPlaybackInfo: StateFlow<List<VideoWithPlaybackInfo>> = _videosWithPlaybackInfo.asStateFlow()
 
-  private val _isLoading = MutableStateFlow(false)
+  private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-  // MediaStore observer for external changes
-  private val mediaStoreObserver = MediaStoreObserver(application, viewModelScope)
+  
 
   private val tag = "VideoListViewModel"
 
   init {
     loadVideos()
-    // Start observing MediaStore for external changes
-    viewModelScope.launch {
-      mediaStoreObserver.startObserving()
-    }
+
     // Listen for global media library changes and refresh this list when they occur
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
+        // Clear cache when media library changes
+        MediaFileRepository.clearCacheForFolder(bucketId)
         loadVideos()
       }
     }
   }
 
   override fun refresh() {
+    // Clear cache for this folder to force fresh data
+    MediaFileRepository.clearCacheForFolder(bucketId)
     loadVideos()
-  }
-
-  override fun onCleared() {
-    super.onCleared()
-    // Stop observing when ViewModel is destroyed
-    viewModelScope.launch {
-      mediaStoreObserver.stopObserving()
-    }
   }
 
   private fun loadVideos() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
-        _isLoading.value = true
-
         // First attempt to load videos
-        val videoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
+        val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
 
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          // Trigger a media scan to refresh MediaStore
           triggerMediaScan()
-          // Wait longer for MediaStore to update
           delay(1000)
-          val retryVideoList = videoRepository.getVideosInFolder(getApplication(), bucketId)
+          val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
         } else {
@@ -125,10 +112,16 @@ class VideoListViewModel(
           null
         }
 
+        // Check if video is old and unplayed
+        // Video is old if it's been more than threshold days since it was added/modified
+        // Video is unplayed if there's no playback state record
+        val isOldAndUnplayed = playbackState == null
+
         VideoWithPlaybackInfo(
           video = video,
           timeRemaining = playbackState?.timeRemaining?.toLong(),
           progressPercentage = progress,
+          isOldAndUnplayed = isOldAndUnplayed,
         )
       }
     _videosWithPlaybackInfo.value = videosWithInfo

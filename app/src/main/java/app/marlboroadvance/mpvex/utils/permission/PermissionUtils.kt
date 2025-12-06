@@ -28,9 +28,6 @@ import java.io.File
 
 /**
  * Simplified storage permission utilities with MANAGE_EXTERNAL_STORAGE support.
- *
- * With MANAGE_EXTERNAL_STORAGE permission, all file operations (delete, rename, read)
- * work directly without MediaStore confirmation sheets.
  */
 object PermissionUtils {
   /**
@@ -176,7 +173,6 @@ object PermissionUtils {
             MediaLibraryEvents.notifyChanged()
 
             Log.d(TAG, "✓ Renamed: ${video.displayName} -> $newDisplayName")
-            // Trigger media scan so MediaStore reflects the new file
             try {
               android.media.MediaScannerConnection.scanFile(
                 context,

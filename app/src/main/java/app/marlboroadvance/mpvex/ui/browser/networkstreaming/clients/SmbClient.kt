@@ -204,11 +204,20 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         val relativePath = when {
           path.startsWith("smb://") -> {
             // Extract path from smb:// URL
-            val uri = java.net.URI(path)
-            // uri.path is like: /shareName/folder/file
-            // Remove /shareName to get: folder/file
-            val pathParts = uri.path.trim('/').split('/', limit = 2)
-            val extracted = pathParts.getOrNull(1) ?: ""
+            // Use try-catch for URI parsing as spaces might not be encoded
+            val extracted = try {
+              val uri = java.net.URI(path)
+              // uri.path is like: /shareName/folder/file
+              // Remove /shareName to get: folder/file
+              val pathParts = uri.path.trim('/').split('/', limit = 2)
+              pathParts.getOrNull(1) ?: ""
+            } catch (e: Exception) {
+              // If URI parsing fails (e.g., due to spaces), extract manually
+              val pathAfterProtocol = path.substringAfter("smb://")
+              val pathPart = pathAfterProtocol.substringAfter("/") // Remove host
+              val pathParts = pathPart.trim('/').split('/', limit = 2)
+              pathParts.getOrNull(1) ?: ""
+            }
             android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
             extracted
           }
@@ -288,6 +297,8 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
               val fileSize = if (isDirectory) 0 else fileInfo.endOfFile
 
               // Build the full SMB path for this file
+              // Store the path with the actual file names (not URL encoded)
+              // URL encoding will be done when creating URIs for external use
               val fullPath = if (relativePath.isEmpty()) {
                 "smb://${resolvedHostIp}/${shareName}/${fileName}"
               } else {
@@ -327,9 +338,18 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         val relativePath = when {
           path.startsWith("smb://") -> {
             // Extract path from smb:// URL
-            val uri = java.net.URI(path)
-            val pathParts = uri.path.trim('/').split('/', limit = 2)
-            pathParts.getOrNull(1) ?: ""
+            // Use try-catch for URI parsing as spaces might not be encoded
+            try {
+              val uri = java.net.URI(path)
+              val pathParts = uri.path.trim('/').split('/', limit = 2)
+              pathParts.getOrNull(1) ?: ""
+            } catch (e: Exception) {
+              // If URI parsing fails (e.g., due to spaces), extract manually
+              val pathAfterProtocol = path.substringAfter("smb://")
+              val pathPart = pathAfterProtocol.substringAfter("/") // Remove host
+              val pathParts = pathPart.trim('/').split('/', limit = 2)
+              pathParts.getOrNull(1) ?: ""
+            }
           }
 
           else -> {

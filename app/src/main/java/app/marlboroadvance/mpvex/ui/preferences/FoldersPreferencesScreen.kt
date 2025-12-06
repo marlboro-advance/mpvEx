@@ -50,10 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.repository.VideoFolderRepository
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionState
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -192,7 +192,7 @@ object FoldersPreferencesScreen : Screen {
                 isLoading = true
                 coroutineScope.launch(Dispatchers.IO) {
                   try {
-                    availableFolders = VideoFolderRepository.getVideoFolders(context.applicationContext as Application)
+                    availableFolders = scanAllVideoFolders(context.applicationContext as Application)
                   } finally {
                     isLoading = false
                   }
@@ -475,3 +475,23 @@ private fun AddFolderDialog(
     },
   )
 }
+
+/**
+ * Scans all storage volumes for folders containing videos
+ * Now uses unified MediaFileRepository
+ */
+private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> {
+  val appearancePreferences =
+    org.koin.java.KoinJavaComponent.get<AppearancePreferences>(AppearancePreferences::class.java)
+
+  val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
+
+  // Use unified repository
+  return app.marlboroadvance.mpvex.repository.MediaFileRepository
+    .getAllVideoFolders(
+      context = context,
+      showHiddenFiles = showHiddenFiles,
+    )
+}
+
+
