@@ -12,6 +12,9 @@ interface RecentlyPlayedDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insert(recentlyPlayed: RecentlyPlayedEntity)
 
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
+  suspend fun deleteExistingEntriesForFile(filePath: String)
+
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
 
@@ -41,6 +44,9 @@ interface RecentlyPlayedDao {
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
+  fun observeRecentlyPlayed(limit: Int = 50): Flow<List<RecentlyPlayedEntity>>
+
   @Query("SELECT * FROM RecentlyPlayedEntity WHERE launchSource = :launchSource ORDER BY timestamp DESC LIMIT :limit")
   suspend fun getRecentlyPlayedBySource(
     launchSource: String,
@@ -61,5 +67,50 @@ interface RecentlyPlayedDao {
     oldPath: String,
     newPath: String,
     newFileName: String,
+  )
+
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle WHERE filePath = :filePath")
+  suspend fun updateVideoTitle(
+    filePath: String,
+    videoTitle: String,
+  )
+
+  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle, duration = :duration, fileSize = :fileSize, width = :width, height = :height WHERE filePath = :filePath")
+  suspend fun updateVideoMetadata(
+    filePath: String,
+    videoTitle: String?,
+    duration: Long,
+    fileSize: Long,
+    width: Int,
+    height: Int,
+  )
+
+  @Query(
+    """
+    SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
+    FROM RecentlyPlayedEntity 
+    WHERE playlistId IS NOT NULL
+    GROUP BY playlistId
+    ORDER BY timestamp DESC
+    LIMIT :limit
+  """,
+  )
+  suspend fun getRecentlyPlayedPlaylists(limit: Int = 10): List<RecentlyPlayedPlaylistInfo>
+
+  @Query(
+    """
+    SELECT DISTINCT playlistId, MAX(timestamp) as timestamp
+    FROM RecentlyPlayedEntity 
+    WHERE playlistId IS NOT NULL
+    GROUP BY playlistId
+    ORDER BY timestamp DESC
+    LIMIT :limit
+  """,
+  )
+  fun observeRecentlyPlayedPlaylists(limit: Int = 50): Flow<List<RecentlyPlayedPlaylistInfo>>
+
+  data class RecentlyPlayedPlaylistInfo(
+    val playlistId: Int,
+    val timestamp: Long,
   )
 }

@@ -63,10 +63,10 @@ fun MultiCardPanel(
       Column(
         modifier =
           Modifier.constrainAs(settingsCards) {
-            top.linkTo(parent.top, 32.dp)
+            top.linkTo(parent.top)
             start.linkTo(parent.start)
           },
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
         TopAppBar(
           title = {
@@ -96,15 +96,16 @@ fun MultiCardPanel(
     } else {
       Column(
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         modifier =
           Modifier
             .constrainAs(settingsCards) {
               top.linkTo(parent.top)
               end.linkTo(parent.end, 32.dp)
-            }.verticalScroll(rememberScrollState()),
+            }
+            .verticalScroll(rememberScrollState()),
       ) {
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
         Row(
           Modifier
             .width(CARDS_MAX_WIDTH),
@@ -122,7 +123,7 @@ fun MultiCardPanel(
           }
         }
         repeat(cardCount) { cards(it, Modifier) }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
       }
     }
   }

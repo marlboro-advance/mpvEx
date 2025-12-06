@@ -32,7 +32,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.repository.NetworkRepository
-import app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen
+import app.marlboroadvance.mpvex.ui.browser.MainScreen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
@@ -61,21 +61,31 @@ class MainActivity : ComponentActivity() {
       )
 
       LaunchedEffect(Unit) {
-        launch {
+        // Delay auto-connect to let UI settle first
+        kotlinx.coroutines.delay(500)
+        launch(kotlinx.coroutines.Dispatchers.IO) {
           try {
             val autoConnectConnections = networkRepository.getAutoConnectConnections()
             autoConnectConnections.forEach { connection ->
-              Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
+              kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
+              }
               networkRepository.connect(connection)
                 .onSuccess {
-                  Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
+                  kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
+                  }
                 }
                 .onFailure { e ->
-                  Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
+                  kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
+                  }
                 }
             }
           } catch (e: Exception) {
-            Log.e("MainActivity", "Error during auto-connect", e)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+              Log.e("MainActivity", "Error during auto-connect", e)
+            }
           }
         }
       }
@@ -98,7 +108,7 @@ class MainActivity : ComponentActivity() {
 
   @Composable
   fun Navigator() {
-    val backstack = rememberNavBackStack(FolderListScreen)
+    val backstack = rememberNavBackStack(MainScreen)
 
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>

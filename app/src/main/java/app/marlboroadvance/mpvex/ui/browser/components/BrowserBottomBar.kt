@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,11 +28,13 @@ fun BrowserBottomBar(
   onMoveClick: () -> Unit,
   onRenameClick: () -> Unit,
   onDeleteClick: () -> Unit,
+  onAddToPlaylistClick: () -> Unit,
   modifier: Modifier = Modifier,
   showCopy: Boolean = true,
   showMove: Boolean = true,
   showRename: Boolean = true,
   showDelete: Boolean = true,
+  showAddToPlaylist: Boolean = true,
 ) {
   AnimatedVisibility(
     visible = isSelectionMode,
@@ -68,14 +71,27 @@ fun BrowserBottomBar(
           }
         }
 
-        if (showRename) {
-          IconButton(onClick = onRenameClick) {
+        if (showAddToPlaylist) {
+          IconButton(onClick = onAddToPlaylistClick) {
             Icon(
-              imageVector = Icons.Default.DriveFileRenameOutline,
-              contentDescription = "Rename",
+              imageVector = Icons.Default.PlaylistAdd,
+              contentDescription = "Add to Playlist",
               tint = MaterialTheme.colorScheme.secondary,
             )
           }
+        }
+
+        IconButton(
+          onClick = onRenameClick,
+          enabled = showRename,
+        ) {
+          Icon(
+            imageVector = Icons.Default.DriveFileRenameOutline,
+            contentDescription = "Rename",
+            tint = if (showRename) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(
+              alpha = 0.38f,
+            ),
+          )
         }
 
         if (showDelete) {

@@ -105,7 +105,7 @@ fun SubtitleDelayPanel(
       onClose = onDismissRequest,
       modifier =
         Modifier.constrainAs(delayControlCard) {
-          linkTo(parent.top, parent.bottom, bias = 0.8f)
+          top.linkTo(parent.top)
           end.linkTo(parent.end)
         },
     )
@@ -184,14 +184,24 @@ fun DelayCard(
         .widthIn(max = CARDS_MAX_WIDTH)
         .animateContentSize(),
     colors = panelCardsColors(),
+    shape = MaterialTheme.shapes.large,
+    border = androidx.compose.foundation.BorderStroke(
+      1.dp,
+      MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+    ),
+    elevation = androidx.compose.material3.CardDefaults.cardElevation(
+      defaultElevation = 0.dp,
+      pressedElevation = 0.dp,
+      focusedElevation = 0.dp,
+      hoveredElevation = 0.dp,
+      draggedElevation = 0.dp,
+      disabledElevation = 0.dp,
+    ),
   ) {
     Column(
       Modifier
         .verticalScroll(rememberScrollState())
-        .padding(
-          horizontal = MaterialTheme.spacing.medium,
-          vertical = MaterialTheme.spacing.smaller,
-        ),
+        .padding(MaterialTheme.spacing.medium),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
       title()
@@ -301,7 +311,7 @@ fun SubtitleDelayTitle(
   ) {
     Text(
       stringResource(R.string.player_sheets_sub_delay_card_title),
-      style = MaterialTheme.typography.headlineMedium,
+      style = MaterialTheme.typography.titleLarge,
     )
     var showDropDownMenu by remember { mutableStateOf(false) }
     Row(modifier = Modifier.clickable { showDropDownMenu = true }) {
@@ -325,14 +335,6 @@ fun SubtitleDelayTitle(
           )
         }
       }
-    }
-    Spacer(Modifier.weight(1f))
-    IconButton(onClose) {
-      Icon(
-        Icons.Default.Close,
-        null,
-        modifier = Modifier.size(32.dp),
-      )
     }
   }
 }
