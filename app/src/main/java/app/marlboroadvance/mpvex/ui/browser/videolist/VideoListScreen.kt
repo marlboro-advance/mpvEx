@@ -54,7 +54,6 @@ import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefresh
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
-import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
@@ -138,7 +137,6 @@ data class VideoListScreen(
     val mediaInfoError = remember { mutableStateOf<String?>(null) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
 
     // Copy/Move state
     val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
@@ -233,8 +231,6 @@ data class VideoListScreen(
           },
           onRenameClick = { renameDialogOpen.value = true },
           onDeleteClick = { deleteDialogOpen.value = true },
-          onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-          showRename = selectionManager.isSingleSelection,
         )
       },
     ) { padding ->
@@ -411,17 +407,6 @@ data class VideoListScreen(
           },
         )
       }
-
-      // Add to Playlist Dialog
-      AddToPlaylistDialog(
-        isOpen = addToPlaylistDialogOpen.value,
-        videos = selectionManager.getSelectedItems(),
-        onDismiss = { addToPlaylistDialogOpen.value = false },
-        onSuccess = {
-          selectionManager.clear()
-          viewModel.refresh()
-        },
-      )
     }
   }
 }
@@ -448,7 +433,7 @@ private fun VideoListContent(
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
   when {
-    isLoading && videosWithInfo.isEmpty() -> {
+    isLoading -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -460,17 +445,13 @@ private fun VideoListContent(
       }
     }
 
-    videosWithInfo.isEmpty() && !isLoading -> {
-      Box(
+    videosWithInfo.isEmpty() -> {
+      EmptyState(
+        icon = Icons.Filled.VideoLibrary,
+        title = "No videos in this folder",
+        message = "Videos you add to this folder will appear here",
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-      ) {
-        EmptyState(
-          icon = Icons.Filled.VideoLibrary,
-          title = "No videos in this folder",
-          message = "Videos you add to this folder will appear here",
-        )
-      }
+      )
     }
 
     else -> {
@@ -535,7 +516,6 @@ private fun VideoListContent(
                 progressPercentage = videoWithInfo.progressPercentage,
                 isRecentlyPlayed = isRecentlyPlayed,
                 isSelected = selectionManager.isSelected(videoWithInfo.video),
-                isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
                 onClick = { onVideoClick(videoWithInfo.video) },
                 onLongClick = { onVideoLongClick(videoWithInfo.video) },
                 onThumbClick = if (tapThumbnailToSelect) {

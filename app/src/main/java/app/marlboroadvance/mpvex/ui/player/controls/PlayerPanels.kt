@@ -15,11 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.AudioDelayPanel
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.SubtitleDelayPanel
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.SubtitleSettingsPanel
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.VideoSettingsPanel
+import org.koin.compose.koinInject
 
 @Composable
 fun PlayerPanels(
@@ -59,13 +61,12 @@ fun PlayerPanels(
 
 val CARDS_MAX_WIDTH = 420.dp
 val panelCardsColors: @Composable () -> CardColors = {
-  // Higher alpha for better readability in panels (less transparent)
-  val alpha = 0.85f
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val transparency = playerPreferences.panelTransparency.get()
 
-  CardDefaults.cardColors(
-    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = alpha),
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha),
-    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+  val colors = CardDefaults.cardColors()
+  colors.copy(
+    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = transparency),
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceDim.copy(alpha = transparency),
   )
 }

@@ -31,10 +31,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
-import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
-import kotlin.math.roundToInt
 
 @Serializable
 object AppearancePreferencesScreen : Screen {
@@ -149,39 +147,6 @@ object AppearancePreferencesScreen : Screen {
                 text = stringResource(id = R.string.pref_appearance_show_hidden_files_summary),
               )
             },
-          )
-          val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
-          SwitchPreference(
-            value = showUnplayedOldVideoLabel,
-            onValueChange = { preferences.showUnplayedOldVideoLabel.set(it) },
-            title = {
-              Text(
-                text = stringResource(id = R.string.pref_appearance_show_unplayed_old_video_label_title),
-              )
-            },
-            summary = {
-              Text(
-                text = stringResource(id = R.string.pref_appearance_show_unplayed_old_video_label_summary),
-              )
-            },
-          )
-          val unplayedOldVideoDays by preferences.unplayedOldVideoDays.collectAsState()
-          SliderPreference(
-            value = unplayedOldVideoDays.toFloat(),
-            onValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-            title = { Text(text = stringResource(id = R.string.pref_appearance_unplayed_old_video_days_title)) },
-            valueRange = 1f..30f,
-            summary = {
-              Text(
-                text = stringResource(
-                  id = R.string.pref_appearance_unplayed_old_video_days_summary,
-                  unplayedOldVideoDays,
-                ),
-              )
-            },
-            onSliderValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
-            sliderValue = unplayedOldVideoDays.toFloat(),
-            enabled = showUnplayedOldVideoLabel,
           )
         }
       }

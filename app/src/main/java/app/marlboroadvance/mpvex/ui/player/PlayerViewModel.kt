@@ -44,12 +44,6 @@ import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-enum class RepeatMode {
-  OFF,      // No repeat
-  ONE,      // Repeat current file
-  ALL       // Repeat all (playlist)
-}
-
 class PlayerViewModelProviderFactory(
   private val host: PlayerHost,
 ) : ViewModelProvider.Factory {
@@ -168,15 +162,16 @@ class PlayerViewModel(
   private var currentMediaTitle: String = ""
   private var lastAutoSelectedMediaTitle: String? = null
 
-  // Repeat and Shuffle state
-  private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
-  val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
-
-  private val _shuffleEnabled = MutableStateFlow(false)
-  val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
-
   init {
-    // Track selection is now handled by TrackSelector in PlayerActivity
+    viewModelScope.launch {
+      subtitleTracks.collect { tracks ->
+        if (tracks.isNotEmpty() && currentMediaTitle.isNotEmpty() && lastAutoSelectedMediaTitle != currentMediaTitle) {
+          if (applySubtitleFilter(tracks)) {
+            lastAutoSelectedMediaTitle = currentMediaTitle
+          }
+        }
+      }
+    }
   }
 
   // Cached values
@@ -263,6 +258,13 @@ class PlayerViewModel(
     if (currentMediaTitle != mediaTitle) {
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
+      // Check immediately in case tracks are already loaded
+      val tracks = subtitleTracks.value
+      if (tracks.isNotEmpty()) {
+        if (applySubtitleFilter(tracks)) {
+          lastAutoSelectedMediaTitle = mediaTitle
+        }
+      }
     }
     viewModelScope.launch {
       delay(100) // Allow MPV to set media title first
@@ -770,47 +772,54 @@ class PlayerViewModel(
 
   fun getCurrentMediaTitle(): String = currentMediaTitle
 
-  // ==================== Repeat and Shuffle ====================
-
-  fun cycleRepeatMode() {
-    val hasPlaylist = (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
-
-    _repeatMode.value = when (_repeatMode.value) {
-      RepeatMode.OFF -> RepeatMode.ONE
-      RepeatMode.ONE -> if (hasPlaylist) RepeatMode.ALL else RepeatMode.OFF
-      RepeatMode.ALL -> RepeatMode.OFF
-    }
-
-    // Show overlay update instead of toast
-    playerUpdate.value = PlayerUpdates.RepeatMode(_repeatMode.value)
-  }
-
-  fun toggleShuffle() {
-    _shuffleEnabled.value = !_shuffleEnabled.value
-    val activity = host as? PlayerActivity
-
-    // Notify activity to handle shuffle state change
-    activity?.onShuffleToggled(_shuffleEnabled.value)
-
-    // Show overlay update instead of toast
-    playerUpdate.value = PlayerUpdates.Shuffle(_shuffleEnabled.value)
-  }
-
-  fun shouldRepeatCurrentFile(): Boolean {
-    return _repeatMode.value == RepeatMode.ONE ||
-      (_repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isEmpty() == true)
-  }
-
-  fun shouldRepeatPlaylist(): Boolean {
-    return _repeatMode.value == RepeatMode.ALL && (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
-  }
-
   // ==================== Utility ====================
 
   private fun showToast(message: String) {
     Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
   }
 
+  private fun applySubtitleFilter(tracks: List<TrackNode>): Boolean {
+    val priorityKeywords =
+      subtitlesPreferences.priorityKeywords.get().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    val excludedKeywords =
+      subtitlesPreferences.excludedKeywords.get().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+    if (priorityKeywords.isEmpty() && excludedKeywords.isEmpty()) return true
+
+    val selectedTrack = tracks.find { it.isSelected }
+    val targetLang = selectedTrack?.lang ?: run {
+      val preferredLangs = subtitlesPreferences.preferredLanguages.get().split(",").map { it.trim() }
+      preferredLangs.firstOrNull { lang -> tracks.any { it.lang == lang } }
+    }
+
+    if (targetLang == null) return true
+
+    val candidates = tracks.filter { it.lang == targetLang }
+
+    if (candidates.isEmpty()) return true
+
+    fun score(track: TrackNode): Int {
+      val title = track.title ?: ""
+      var s = 0
+      if (priorityKeywords.any { title.contains(it, ignoreCase = true) }) s += 10
+      if (excludedKeywords.any { title.contains(it, ignoreCase = true) }) s -= 10
+      return s
+    }
+
+    val scoredCandidates = candidates.map { it to score(it) }
+    val maxScore = scoredCandidates.maxOf { it.second }
+
+    if (selectedTrack != null && candidates.contains(selectedTrack)) {
+      val currentScore = score(selectedTrack)
+      if (currentScore == maxScore) return true
+    }
+
+    val bestTrack = scoredCandidates.first { it.second == maxScore }.first
+
+    selectSub(bestTrack.id)
+
+    return true
+  }
 }
 
 // Extension functions

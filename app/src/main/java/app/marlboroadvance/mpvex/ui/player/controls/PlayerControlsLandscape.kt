@@ -61,7 +61,7 @@ fun TopLeftPlayerControlsLandscape(
           )
         },
       contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-      tonalElevation = 0.dp,
+      tonalElevation = if (hideBackground) 0.dp else 2.dp,
       shadowElevation = 0.dp,
       border =
         if (hideBackground) {

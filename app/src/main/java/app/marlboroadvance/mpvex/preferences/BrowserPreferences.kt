@@ -17,7 +17,8 @@ class BrowserPreferences(
   val videoSortType = preferenceStore.getEnum("video_sort_type", VideoSortType.Title)
   val videoSortOrder = preferenceStore.getEnum("video_sort_order", SortOrder.Ascending)
 
-  val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
+  // Browser mode preference
+  val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.MediaStore)
 
   // Visibility preferences for video card chips
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
@@ -88,14 +89,14 @@ enum class VideoSortType {
  * Folder view mode options
  */
 enum class FolderViewMode {
-  AlbumView,
+  MediaStore,
   FileManager,
   ;
 
   val displayName: String
     get() =
       when (this) {
-        AlbumView -> "Folder View"
+        MediaStore -> "Folder View"
         FileManager -> "Tree View"
       }
 }

@@ -24,8 +24,6 @@ class AppearancePreferences(
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
   val hidePlayerButtonsBackground = preferenceStore.getBoolean("hide_player_buttons_background", false)
   val showHiddenFiles = preferenceStore.getBoolean("show_hidden_files", false)
-  val showUnplayedOldVideoLabel = preferenceStore.getBoolean("show_unplayed_old_video_label", true)
-  val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
 
   val topLeftControls =
     preferenceStore.getString(
@@ -48,13 +46,13 @@ class AppearancePreferences(
   val bottomLeftControls =
     preferenceStore.getString(
       "bottom_left_controls",
-      "LOCK_CONTROLS,SCREEN_ROTATION,PLAYBACK_SPEED,REPEAT_MODE,SHUFFLE,CURRENT_CHAPTER",
+      "LOCK_CONTROLS,SCREEN_ROTATION,PLAYBACK_SPEED,CURRENT_CHAPTER",
     )
 
   val portraitBottomControls =
     preferenceStore.getString(
       "portrait_bottom_controls",
-      "DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,ASPECT_RATIO,PICTURE_IN_PICTURE,SCREEN_ROTATION,LOCK_CONTROLS,MORE_OPTIONS",
+      "DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,VIDEO_ZOOM,FRAME_NAVIGATION,ASPECT_RATIO,PICTURE_IN_PICTURE,SCREEN_ROTATION,LOCK_CONTROLS,MORE_OPTIONS",
     )
 
   fun parseButtons(

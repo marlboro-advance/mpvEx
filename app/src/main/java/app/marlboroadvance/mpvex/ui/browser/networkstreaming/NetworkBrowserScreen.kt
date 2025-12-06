@@ -172,29 +172,21 @@ private fun NetworkBrowserContent(
     }
 
     error != null -> {
-      Box(
+      EmptyState(
+        icon = Icons.Filled.Folder,
+        title = "Error loading files",
+        message = error,
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-      ) {
-        EmptyState(
-          icon = Icons.Filled.Folder,
-          title = "Error loading files",
-          message = error,
-        )
-      }
+      )
     }
 
     files.isEmpty() -> {
-      Box(
+      EmptyState(
+        icon = Icons.Filled.Folder,
+        title = "Empty folder",
+        message = "This folder contains no files or directories",
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-      ) {
-        EmptyState(
-          icon = Icons.Filled.Folder,
-          title = "Empty folder",
-          message = "This folder contains no files or directories",
-        )
-      }
+      )
     }
 
     else -> {

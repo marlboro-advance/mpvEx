@@ -166,6 +166,7 @@ dependencies {
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
   implementation(libs.aboutlibraries.compose.m3)
+  implementation(libs.simple.icons)
 
   implementation(libs.accompanist.permissions)
 
@@ -196,7 +197,6 @@ dependencies {
   }
   implementation(libs.nanohttpd) // Local proxy server for streaming
   implementation(libs.lazycolumnscrollbar)
-  implementation(libs.reorderable)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"

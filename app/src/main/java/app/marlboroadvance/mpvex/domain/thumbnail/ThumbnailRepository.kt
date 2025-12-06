@@ -18,16 +18,29 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Ultra-fast thumbnail provider with optimized caching and generation.
+ *
+ * Optimizations:
+ * - Prefer platform thumbnails (MediaStore.loadThumbnail) for content URIs.
+ * - Fallback to ThumbnailUtils for file paths.
+ * - Multi-level caching: Memory (LruCache) + Disk cache with concurrent access.
+ * - Parallel thumbnail generation with coroutines.
+ * - JPEG compression with optimized quality for smaller file sizes.
+ * - Prefetching support for upcoming thumbnails.
+ */
 class ThumbnailRepository(
   private val context: Context,
 ) {
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
+
+  // Track ongoing operations to prevent duplicate work
   private val ongoingOperations = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Bitmap?>>()
 
   init {
     val maxMemoryKb = (Runtime.getRuntime().maxMemory() / 1024L).toInt()
-    val cacheSizeKb = maxMemoryKb / 6
+    val cacheSizeKb = maxMemoryKb / 6 // Increased from 1/8 to 1/6 for better hit rate
     memoryCache =
       object : LruCache<String, Bitmap>(cacheSizeKb) {
         override fun sizeOf(
@@ -37,6 +50,9 @@ class ThumbnailRepository(
       }
   }
 
+  /**
+   * Get thumbnail with optimized caching and generation.
+   */
   suspend fun getThumbnail(
     video: Video,
     widthPx: Int,
@@ -45,15 +61,19 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val key = buildKey(video, widthPx, heightPx)
 
+      // 1) Check memory cache
       memoryCache.get(key)?.let { return@withContext it }
 
+      // 2) Check if operation is already in progress
       ongoingOperations[key]?.let {
         return@withContext it.await()
       }
 
+      // 3) Start new operation
       val deferred =
         async {
           try {
+            // Check disk cache
             val diskFile = File(diskDir, keyToFileName(key))
             if (diskFile.exists()) {
               val options =
@@ -66,11 +86,14 @@ class ThumbnailRepository(
               }
             }
 
+            // Generate new thumbnail
             val generated = generateThumbnail(video, widthPx, heightPx)
             if (generated != null) {
+              // Persist to disk cache asynchronously
               async(Dispatchers.IO) {
                 runCatching {
                   FileOutputStream(diskFile).use { out ->
+                    // Optimized JPEG compression (85 quality for better size/quality balance)
                     generated.compress(Bitmap.CompressFormat.JPEG, 85, out)
                     out.flush()
                   }
@@ -88,6 +111,10 @@ class ThumbnailRepository(
       return@withContext deferred.await()
     }
 
+  /**
+   * Synchronously check if thumbnail exists in memory cache.
+   * Useful for immediate UI updates without suspending.
+   */
   fun getThumbnailFromMemory(
     video: Video,
     widthPx: Int,
@@ -97,14 +124,20 @@ class ThumbnailRepository(
     return memoryCache.get(key)
   }
 
+  /**
+   * Prefetch thumbnails for a list of videos (non-blocking).
+   * Useful for preloading upcoming items in a list.
+   */
   suspend fun prefetchThumbnails(
     videos: List<Video>,
     widthPx: Int,
     heightPx: Int,
   ) = withContext(Dispatchers.IO) {
     videos.take(10).map { video ->
+      // Prefetch next 10 items
       async {
         val key = buildKey(video, widthPx, heightPx)
+        // Only prefetch if not in memory and not already being processed
         if (memoryCache.get(key) == null && !ongoingOperations.containsKey(key)) {
           getThumbnail(video, widthPx, heightPx)
         }
@@ -133,53 +166,28 @@ class ThumbnailRepository(
     width: Int,
     height: Int,
   ): Bitmap? {
-    val isNetworkVideo = video.uri.scheme in listOf("http", "https", "smb", "ftp", "webdav", "rtmp", "rtsp")
-    if (isNetworkVideo) {
-      android.util.Log.d("ThumbnailRepository", "Network video: ${video.uri}")
-
-      val cacheDir = File(context.cacheDir, "recently_played_thumbs")
-      val thumbnailFile = File(cacheDir, "thumb_${video.uri.toString().hashCode()}.jpg")
-
-      if (thumbnailFile.exists()) {
-        android.util.Log.d("ThumbnailRepository", "Found cached thumbnail")
-        return runCatching {
-          val options = BitmapFactory.Options().apply {
-            inPreferredConfig = Bitmap.Config.RGB_565
-          }
-          BitmapFactory.decodeFile(thumbnailFile.absolutePath, options)?.let { bmp ->
-            if (bmp.width != width || bmp.height != height) {
-              bmp.scale(width, height)
-            } else {
-              bmp
-            }
-          }
-        }.getOrNull()
-      }
-      return null
-    }
-
+    // 1) Try platform thumbnail for indexed content URIs (fastest method)
     if (video.uri.scheme == "content" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      return runCatching {
-        context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
-      }.getOrNull()
+      runCatching {
+        return context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
+      }
     }
 
+    // 2) Fallback to ThumbnailUtils for file paths
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       runCatching {
         ThumbnailUtils.createVideoThumbnail(File(video.path), Size(width, height), null)
       }.getOrNull()
     } else {
+      // Deprecated API for pre-Q. May not match exact size; scale down if needed.
       val raw =
         runCatching {
           @Suppress("DEPRECATION")
           ThumbnailUtils.createVideoThumbnail(video.path, MediaStore.Images.Thumbnails.MINI_KIND)
         }.getOrNull()
       raw?.let { bmp ->
-        if (bmp.width == width && bmp.height == height) {
-          bmp
-        } else {
-          bmp.scale(width, height)
-        }
+        if (bmp.width == width && bmp.height == height) return bmp
+        bmp.scale(width, height)
       }
     }
   }

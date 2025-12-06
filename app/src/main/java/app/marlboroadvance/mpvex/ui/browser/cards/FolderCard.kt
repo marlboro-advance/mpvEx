@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
@@ -44,9 +43,6 @@ fun FolderCard(
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   onThumbClick: () -> Unit = {},
-  showDateModified: Boolean = false,
-  customIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-  newVideoCount: Int = 0,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -93,32 +89,11 @@ fun FolderCard(
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          customIcon ?: Icons.Filled.Folder,
+          Icons.Filled.Folder,
           contentDescription = "Folder",
           modifier = Modifier.size(48.dp),
           tint = MaterialTheme.colorScheme.secondary,
         )
-
-        // Show "NEW" badge if folder contains new videos
-        if (newVideoCount > 0) {
-          Box(
-            modifier =
-              Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFFD32F2F)) // Warning red color
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-          ) {
-            Text(
-              text = "NEW",
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-              ),
-              color = Color.White,
-            )
-          }
-        }
       }
       Spacer(modifier = Modifier.width(16.dp))
       Column(
@@ -131,7 +106,7 @@ fun FolderCard(
           maxLines = maxLines,
           overflow = TextOverflow.Ellipsis,
         )
-        if (showFolderPath && parentPath.isNotEmpty()) {
+        if (showFolderPath) {
           Text(
             parentPath,
             style = MaterialTheme.typography.bodySmall,
@@ -139,10 +114,8 @@ fun FolderCard(
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
           )
-          Spacer(modifier = Modifier.height(4.dp))
-        } else {
-          Spacer(modifier = Modifier.height(4.dp))
         }
+        Spacer(modifier = Modifier.height(4.dp))
         Row {
           // Hide chips at storage root level (when videoCount is 0)
           var hasChip = false
@@ -198,25 +171,6 @@ fun FolderCard(
                   .padding(horizontal = 8.dp, vertical = 4.dp),
               color = MaterialTheme.colorScheme.onSurface,
             )
-            hasChip = true
-          }
-
-          if (showDateModified && folder.lastModified > 0) {
-            if (hasChip) {
-              Spacer(modifier = Modifier.width(4.dp))
-            }
-            Text(
-              formatDate(folder.lastModified),
-              style = MaterialTheme.typography.labelSmall,
-              modifier =
-                Modifier
-                  .background(
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                    RoundedCornerShape(8.dp),
-                  )
-                  .padding(horizontal = 8.dp, vertical = 4.dp),
-              color = MaterialTheme.colorScheme.onSurface,
-            )
           }
         }
       }
@@ -243,9 +197,4 @@ private fun formatFileSize(bytes: Long): String {
   val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
   val value = bytes / 1024.0.pow(digitGroups.toDouble())
   return String.format(java.util.Locale.getDefault(), "%.1f %s", value, units[digitGroups])
-}
-
-private fun formatDate(timestampSeconds: Long): String {
-  val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
-  return sdf.format(java.util.Date(timestampSeconds * 1000))
 }

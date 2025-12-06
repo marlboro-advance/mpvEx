@@ -62,6 +62,8 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity.Companion.collectDeviceInfo
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import compose.icons.SimpleIcons
+import compose.icons.simpleicons.Github
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -224,6 +226,8 @@ object AboutScreen : Screen {
                       contentColor = btnContent,
                     ),
                 ) {
+                  Icon(imageVector = SimpleIcons.Github, contentDescription = null)
+                  Spacer(Modifier.width(8.dp))
                   Text(
                     text = "GitHub",
                     style = MaterialTheme.typography.titleMedium,

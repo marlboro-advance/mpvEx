@@ -47,17 +47,14 @@ fun AudioDelayPanel(
     val delay by MPVLib.propDouble["audio-delay"].collectAsState()
     DelayCard(
       delayMs = ((delay ?: 0.0) * 1000).roundToInt(),
-      onDelayChange = {
-        val delayInSeconds = it / 1000.0
-        MPVLib.setPropertyDouble("audio-delay", delayInSeconds)
-      },
+      onDelayChange = { MPVLib.setPropertyDouble("audio-delay", it / 1000.0) },
       onApply = { preferences.defaultAudioDelay.set(((delay ?: 0.0) * 1000).roundToInt()) },
-      onReset = { MPVLib.setPropertyDouble("audio-delay", 0.0) },
+      onReset = { MPVLib.setPropertyDouble("audio-delay", (preferences.defaultAudioDelay.get() / 1000.0)) },
       title = { AudioDelayCardTitle(onClose = onDismissRequest) },
       delayType = DelayType.Audio,
       modifier =
         Modifier.constrainAs(delayControlCard) {
-          top.linkTo(parent.top)
+          linkTo(parent.top, parent.bottom, bias = 0.8f)
           end.linkTo(parent.end)
         },
     )
@@ -69,9 +66,21 @@ fun AudioDelayCardTitle(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Text(
-    stringResource(R.string.player_sheets_audio_delay_card_title),
-    style = MaterialTheme.typography.titleLarge,
-    modifier = modifier,
-  )
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      stringResource(R.string.player_sheets_audio_delay_card_title),
+      style = MaterialTheme.typography.headlineMedium,
+    )
+    IconButton(onClose) {
+      Icon(
+        Icons.Default.Close,
+        null,
+        modifier = Modifier.size(32.dp),
+      )
+    }
+  }
 }

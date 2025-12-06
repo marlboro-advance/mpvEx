@@ -456,8 +456,8 @@ fun VideoTimer(
 @Composable
 private fun PreviewSeekBar() {
   SeekbarWithTimers(
-    position = 30f,
-    duration = 180f,
+    position = 5f,
+    duration = 20f,
     onValueChange = {},
     onValueChangeFinished = {},
     timersInverted = Pair(false, true),
@@ -465,6 +465,6 @@ private fun PreviewSeekBar() {
     durationTimerOnCLick = {},
     chapters = persistentListOf(),
     paused = false,
-    readAheadValue = 90f, // Buffer up to 60 seconds (1 minute)
+    readAheadValue = 8f, // Buffer up to 8 seconds
   )
 }

@@ -10,7 +10,7 @@ import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
-import app.marlboroadvance.mpvex.repository.MediaFileRepository
+import app.marlboroadvance.mpvex.repository.FileSystemRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
@@ -239,13 +239,13 @@ class FileSystemBrowserViewModel(
         if (path == STORAGE_ROOTS_MARKER) {
           Log.d(TAG, "Loading storage roots")
           _breadcrumbs.value = emptyList()
-          val roots = MediaFileRepository.getStorageRoots(getApplication())
+          val roots = FileSystemRepository.getStorageRoots(getApplication())
           _unsortedItems.value = roots
           Log.d(TAG, "Loaded ${roots.size} storage roots")
         } else {
           // Update breadcrumbs for real paths
           // Similar to Fossify's Breadcrumbs.setBreadcrumb()
-          _breadcrumbs.value = MediaFileRepository.getPathComponents(path)
+          _breadcrumbs.value = FileSystemRepository.getPathComponents(path)
           Log.d(TAG, "Breadcrumbs updated: ${_breadcrumbs.value.size} components")
 
           // Get hidden files preference
@@ -253,7 +253,7 @@ class FileSystemBrowserViewModel(
 
           // Scan directory - equivalent to Fossify's getRegularItemsOf()
           // Always show only videos (showAllFileTypes = false)
-          MediaFileRepository
+          FileSystemRepository
             .scanDirectory(getApplication(), path, showAllFileTypes = false, showHiddenFiles)
             .onSuccess { items ->
               _unsortedItems.value = items

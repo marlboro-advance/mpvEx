@@ -237,6 +237,24 @@ object PlayerPreferencesScreen : Screen {
             title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
             summary = { Text(text = "$playerTimeToDisappear ms") },
           )
+          val panelTransparency by preferences.panelTransparency.collectAsState()
+          SliderPreference(
+            value = panelTransparency,
+            onValueChange = { preferences.panelTransparency.set(it) },
+            title = { Text(stringResource(R.string.pref_player_display_panel_opacity)) },
+            valueRange = 0f..1f,
+            summary = {
+              Text(
+                text =
+                  stringResource(
+                    id = R.string.pref_player_display_panel_transparency_summary,
+                    panelTransparency.times(100).toInt(),
+                  ),
+              )
+            },
+            onSliderValueChange = { preferences.panelTransparency.set(it) },
+            sliderValue = panelTransparency,
+          )
         }
       }
     }

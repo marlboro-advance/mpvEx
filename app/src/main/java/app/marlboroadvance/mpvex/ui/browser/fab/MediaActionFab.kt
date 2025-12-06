@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Lan
+import androidx.compose.material.icons.filled.Webhook
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -21,10 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -62,40 +61,12 @@ fun MediaActionFab(
   onOpenFile: () -> Unit,
   onPlayRecentlyPlayed: () -> Unit,
   onPlayLink: () -> Unit,
+  onNetworkStreaming: () -> Unit,
   expanded: Boolean,
   onExpandedChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val focusRequester = remember { FocusRequester() }
-
-  // Track scroll position to determine direction
-  var previousIndex by remember { mutableIntStateOf(0) }
-  var previousScrollOffset by remember { mutableIntStateOf(0) }
-  var isFabVisible by remember { mutableStateOf(true) }
-
-  // Update FAB visibility based on scroll direction
-  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-    val currentIndex = listState.firstVisibleItemIndex
-    val currentScrollOffset = listState.firstVisibleItemScrollOffset
-
-    // Always show at top
-    if (currentIndex == 0 && currentScrollOffset == 0) {
-      isFabVisible = true
-    } else {
-      // Calculate if scrolling down or up
-      val isScrollingDown = if (currentIndex != previousIndex) {
-        currentIndex > previousIndex
-      } else {
-        currentScrollOffset > previousScrollOffset
-      }
-
-      // Hide when scrolling down, show when scrolling up
-      isFabVisible = !isScrollingDown
-    }
-
-    previousIndex = currentIndex
-    previousScrollOffset = currentScrollOffset
-  }
 
   // Auto-collapse menu when scrolling
   LaunchedEffect(listState.isScrollInProgress) {
@@ -116,6 +87,7 @@ fun MediaActionFab(
         add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
         add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
         add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
+        add(MediaActionItem(Icons.Filled.Webhook, "Local Network", onClick = onNetworkStreaming))
       }
     }
 
@@ -127,7 +99,6 @@ fun MediaActionFab(
         expanded = expanded,
         onToggle = { onExpandedChange(!expanded) },
         focusRequester = focusRequester,
-        visible = isFabVisible,
       )
     },
   ) {
@@ -188,7 +159,6 @@ private fun ToggleFabButton(
   expanded: Boolean,
   onToggle: () -> Unit,
   focusRequester: FocusRequester,
-  visible: Boolean,
 ) {
   ToggleFloatingActionButton(
     modifier =
@@ -199,7 +169,7 @@ private fun ToggleFabButton(
           contentDescription = "Toggle menu"
         }
         .animateFloatingActionButton(
-          visible = visible,
+          visible = true,
           alignment = Alignment.BottomEnd,
         )
         .focusRequester(focusRequester),

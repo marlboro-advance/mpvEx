@@ -394,16 +394,6 @@ private fun PreviewButton(
           color = Color.White,
         )
       }
-      PlayerButton.REPEAT_MODE,
-      PlayerButton.SHUFFLE,
-        -> {
-        Icon(
-          imageVector = button.icon,
-          contentDescription = null,
-          modifier = Modifier.size(size * 0.7f),
-          tint = Color.White,
-        )
-      }
       else -> {
         Icon(
           imageVector = button.icon,

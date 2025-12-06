@@ -292,6 +292,7 @@ object MediaInfoOps {
 
   /**
    * Quickly extract just size, duration, resolution, and framerate metadata from a video file
+   * This is optimized for external storage videos where MediaStore doesn't have metadata.
    * Uses MediaInfo library which is faster and more reliable than MediaMetadataRetriever.
    *
    * @param context Android context
