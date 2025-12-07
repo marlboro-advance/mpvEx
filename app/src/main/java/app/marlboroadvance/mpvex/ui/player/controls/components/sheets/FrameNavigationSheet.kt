@@ -617,8 +617,21 @@ private suspend fun takeSnapshot(
       }
 
       try {
-        // Take screenshot using MPV with "window" mode to preserve zoom and pan
-        MPVLib.command("screenshot-to-file", tempFile.absolutePath, "window")
+        // Determine if video is zoomed
+        val videoZoom = MPVLib.getPropertyDouble("video-zoom") ?: 0.0
+        val videoPanX = MPVLib.getPropertyDouble("video-pan-x") ?: 0.0
+        val videoPanY = MPVLib.getPropertyDouble("video-pan-y") ?: 0.0
+        val panscan = MPVLib.getPropertyDouble("panscan") ?: 0.0
+
+        // Use unscaled "video" mode if not zoomed/panned, otherwise use "window" mode
+        val screenshotMode = if (videoZoom == 0.0 && videoPanX == 0.0 && videoPanY == 0.0 && panscan == 0.0) {
+          "video"
+        } else {
+          "window"
+        }
+
+        // Take screenshot using MPV
+        MPVLib.command("screenshot-to-file", tempFile.absolutePath, screenshotMode)
       } finally {
         if (!includeSubtitles) {
           // Restore subtitle states
