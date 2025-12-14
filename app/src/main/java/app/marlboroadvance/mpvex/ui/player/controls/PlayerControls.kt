@@ -443,6 +443,16 @@ fun PlayerControls(
               TextPlayerUpdate(text)
             }
 
+            is PlayerUpdates.FrameInfo -> {
+              val frameInfo = (currentPlayerUpdate as PlayerUpdates.FrameInfo)
+              val text = if (frameInfo.totalFrames > 0) {
+                "Frame: ${frameInfo.currentFrame}/${frameInfo.totalFrames}"
+              } else {
+                "Frame: ${frameInfo.currentFrame}"
+              }
+              TextPlayerUpdate(text)
+            }
+
             else -> {}
           }
         }

@@ -111,6 +111,11 @@ sealed class PlayerUpdates {
   data class Shuffle(
     val enabled: Boolean,
   ) : PlayerUpdates()
+
+  data class FrameInfo(
+    val currentFrame: Int,
+    val totalFrames: Int,
+  ) : PlayerUpdates()
 }
 
 enum class VideoFilters(
