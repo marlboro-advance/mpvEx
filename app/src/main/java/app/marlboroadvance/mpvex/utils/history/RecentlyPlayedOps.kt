@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.utils.history
 import android.annotation.SuppressLint
 import android.net.Uri
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,7 @@ import org.koin.java.KoinJavaComponent.inject
 
 object RecentlyPlayedOps {
   private val repository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
+  private val preferences: AdvancedPreferences by inject(AdvancedPreferences::class.java)
 
   suspend fun addRecentlyPlayed(
     filePath: String,
@@ -26,6 +28,9 @@ object RecentlyPlayedOps {
     launchSource: String? = null,
     playlistId: Int? = null,
   ) {
+    // Check if recently played feature is enabled
+    if (!preferences.enableRecentlyPlayed.get()) return
+
     val uri = Uri.parse(filePath)
 
     if (uri.scheme in listOf("smb", "ftp", "ftps", "webdav", "webdavs")) return
@@ -102,7 +107,10 @@ object RecentlyPlayedOps {
     }
   }
 
-  suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) { getLastPlayed() != null }
+  suspend fun hasRecentlyPlayed(): Boolean = withContext(Dispatchers.IO) {
+    if (!preferences.enableRecentlyPlayed.get()) return@withContext false
+    getLastPlayed() != null
+  }
   @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedPath(): Flow<String?> =
     repository

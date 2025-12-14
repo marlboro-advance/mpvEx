@@ -270,6 +270,13 @@ object AdvancedPreferencesScreen : Screen {
             title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
             summary = { Text(stringResource(R.string.pref_advanced_verbose_logging_summary)) },
           )
+          val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
+          SwitchPreference(
+            value = enableRecentlyPlayed,
+            onValueChange = preferences.enableRecentlyPlayed::set,
+            title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
+            summary = { Text(stringResource(R.string.pref_advanced_enable_recently_played_summary)) },
+          )
           // Removed: folder scan recursion depth (no longer used)
           var isConfirmDialogShown by remember { mutableStateOf(false) }
           val mpvexDatabase = koinInject<MpvExDatabase>()

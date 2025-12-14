@@ -124,6 +124,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val coroutineScope = rememberCoroutineScope()
   val browserPreferences = koinInject<BrowserPreferences>()
   val playerPreferences = koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
+  val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
   // ViewModel - use path parameter if provided, otherwise show roots
@@ -145,6 +146,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val isAtRoot by viewModel.isAtRoot.collectAsState()
   val breadcrumbs by viewModel.breadcrumbs.collectAsState()
   val playlistMode by playerPreferences.playlistMode.collectAsState()
+  val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
   // UI State
   val listState = rememberLazyListState()
@@ -448,6 +450,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
         MediaActionFab(
           listState = listState,
           hasRecentlyPlayed = true,
+          enableRecentlyPlayed = enableRecentlyPlayed,
           onOpenFile = { filePicker.launch(arrayOf("*/*")) },
           onPlayRecentlyPlayed = {
             val ctx = context

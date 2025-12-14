@@ -119,6 +119,8 @@ object FolderListScreen : Screen {
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
     val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
+    val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
+    val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
     // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -371,6 +373,7 @@ object FolderListScreen : Screen {
             MediaActionFab(
               listState = listState,
               hasRecentlyPlayed = hasRecentlyPlayed,
+              enableRecentlyPlayed = enableRecentlyPlayed,
               onOpenFile = { filePicker.launch(arrayOf("video/*")) },
               onPlayRecentlyPlayed = {
                 coroutineScope.launch {
