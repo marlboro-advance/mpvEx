@@ -131,8 +131,19 @@ class FolderListViewModel(
               val isRecent = videoAge <= thresholdMillis
 
               // Check if video has been played
+              // A video is considered "played" if it has playback state with meaningful progress (>1%)
               val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
-              val isUnplayed = playbackState == null
+              val isUnplayed = if (playbackState != null && video.duration > 0) {
+                // Calculate progress
+                val durationSeconds = video.duration / 1000
+                val watched = durationSeconds - playbackState.timeRemaining.toLong()
+                val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+                // Consider unplayed if progress is less than 1%
+                progressValue < 0.01f
+              } else {
+                // No playback state = truly unplayed
+                playbackState == null
+              }
 
               isRecent && isUnplayed
             }
@@ -156,6 +167,14 @@ class FolderListViewModel(
     // Clear cache to force fresh data
     app.marlboroadvance.mpvex.repository.MediaFileRepository.clearCache()
     loadVideoFolders()
+  }
+
+  /**
+   * Recalculate new video counts without refreshing the entire folder list
+   * Useful when returning to the screen after playing videos
+   */
+  fun recalculateNewVideoCounts() {
+    calculateNewVideoCounts(_videoFolders.value)
   }
 
   /**

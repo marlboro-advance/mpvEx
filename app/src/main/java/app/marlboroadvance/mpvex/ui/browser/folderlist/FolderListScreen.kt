@@ -32,6 +32,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -50,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
@@ -122,6 +125,7 @@ object FolderListScreen : Screen {
     val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
     val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -199,6 +203,21 @@ object FolderListScreen : Screen {
       hasRecentlyPlayed =
         app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
           .hasRecentlyPlayed()
+    }
+
+    // Listen for lifecycle resume events to refresh new video counts when coming back
+    DisposableEffect(lifecycleOwner) {
+      val observer =
+        LifecycleEventObserver { _, event ->
+          if (event == Lifecycle.Event.ON_RESUME) {
+            // Recalculate new video counts when returning to the screen
+            viewModel.recalculateNewVideoCounts()
+          }
+        }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      onDispose {
+        lifecycleOwner.lifecycle.removeObserver(observer)
+      }
     }
 
     LaunchedEffect(fabMenuExpanded) {

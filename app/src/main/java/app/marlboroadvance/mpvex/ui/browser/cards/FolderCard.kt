@@ -99,7 +99,7 @@ fun FolderCard(
           tint = MaterialTheme.colorScheme.secondary,
         )
 
-        // Show "NEW" badge if folder contains new videos
+        // Show new video count badge if folder contains new videos
         if (newVideoCount > 0) {
           Box(
             modifier =
@@ -111,7 +111,7 @@ fun FolderCard(
                 .padding(horizontal = 6.dp, vertical = 2.dp),
           ) {
             Text(
-              text = "NEW",
+              text = newVideoCount.toString(),
               style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
               ),
