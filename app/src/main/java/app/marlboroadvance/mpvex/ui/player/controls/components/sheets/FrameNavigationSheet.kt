@@ -99,6 +99,9 @@ fun FrameNavigationSheet(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val isPaused = paused ?: false
 
+  // Remember the initial pause state when the sheet opens
+  val wasPausedInitially = remember { isPaused }
+
   // Use the same logic as PlayerControls for position and duration
   val position by MPVLib.propInt["time-pos"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
@@ -127,10 +130,12 @@ fun FrameNavigationSheet(
     }
   }
 
-  // Always resume playback when closing the sheet
+  // Only resume playback when closing if it wasn't paused initially
   DisposableEffect(Unit) {
     onDispose {
-      currentOnUnpause()
+      if (!wasPausedInitially) {
+        currentOnUnpause()
+      }
     }
   }
 

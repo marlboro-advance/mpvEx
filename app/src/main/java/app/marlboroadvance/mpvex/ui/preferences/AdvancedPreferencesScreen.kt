@@ -270,6 +270,13 @@ object AdvancedPreferencesScreen : Screen {
             title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
             summary = { Text(stringResource(R.string.pref_advanced_verbose_logging_summary)) },
           )
+          val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
+          SwitchPreference(
+            value = enableRecentlyPlayed,
+            onValueChange = preferences.enableRecentlyPlayed::set,
+            title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
+            summary = { Text(stringResource(R.string.pref_advanced_enable_recently_played_summary)) },
+          )
           // Removed: folder scan recursion depth (no longer used)
           var isConfirmDialogShown by remember { mutableStateOf(false) }
           val mpvexDatabase = koinInject<MpvExDatabase>()
@@ -354,30 +361,6 @@ object AdvancedPreferencesScreen : Screen {
                     .makeText(
                       context,
                       context.getString(R.string.pref_advanced_cleared_fonts_cache),
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              }
-            },
-          )
-          Preference(
-            title = { Text(text = "Clear subtitle cache") },
-            summary = { Text("Delete all cached external subtitle files") },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val subtitleCacheDir = File(context.filesDir, "subtitle_cache")
-                val deletedCount =
-                  subtitleCacheDir.listFiles()?.count { it.isFile && it.delete() } ?: 0
-
-                mpvexDatabase.externalSubtitleDao().getAll().forEach {
-                  mpvexDatabase.externalSubtitleDao().deleteById(it.id)
-                }
-
-                withContext(Dispatchers.Main) {
-                  Toast
-                    .makeText(
-                      context,
-                      "Cleared $deletedCount cached subtitle files",
                       Toast.LENGTH_SHORT,
                     ).show()
                 }

@@ -373,6 +373,9 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
    */
   private suspend fun getFileSizeFTP(streamInfo: StreamInfo): Long {
     val ftpClient = org.apache.commons.net.ftp.FTPClient()
+
+    // Set UTF-8 encoding for proper handling of non-English characters
+    ftpClient.controlEncoding = "UTF-8"
     ftpClient.setConnectTimeout(10000)
 
     try {
@@ -398,6 +401,13 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
 
       // Set binary mode
       ftpClient.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE)
+
+      // Try to enable UTF-8 mode on the server (RFC 2640)
+      try {
+        ftpClient.sendCommand("OPTS UTF8 ON")
+      } catch (_: Exception) {
+        // Server may not support UTF-8 mode, continue anyway
+      }
 
       // Change to base directory if needed
       if (streamInfo.connection.path != "/" && streamInfo.connection.path.isNotEmpty()) {
@@ -495,6 +505,9 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
   private suspend fun getStreamWithOffsetFTP(streamInfo: StreamInfo, offset: Long): InputStream? {
     // Create a new FTP client for this specific range request
     val ftpClient = org.apache.commons.net.ftp.FTPClient()
+
+    // Set UTF-8 encoding for proper handling of non-English characters
+    ftpClient.controlEncoding = "UTF-8"
     ftpClient.setConnectTimeout(10000)
     ftpClient.setDataTimeout(30000)
     ftpClient.controlKeepAliveTimeout = 300
@@ -523,6 +536,14 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
       // Set binary mode and passive mode
       ftpClient.setFileType(org.apache.commons.net.ftp.FTP.BINARY_FILE_TYPE)
       ftpClient.enterLocalPassiveMode()
+
+      // Try to enable UTF-8 mode on the server (RFC 2640)
+      try {
+        ftpClient.sendCommand("OPTS UTF8 ON")
+      } catch (_: Exception) {
+        // Server may not support UTF-8 mode, continue anyway
+      }
+
       ftpClient.setBufferSize(1024 * 64)
 
       // Change to base directory if needed

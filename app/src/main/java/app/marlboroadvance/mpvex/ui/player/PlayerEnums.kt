@@ -81,8 +81,6 @@ enum class Sheets {
   VideoZoom,
   AspectRatios,
   FrameNavigation,
-
-  SubDL,
 }
 
 enum class Panels {
@@ -112,6 +110,11 @@ sealed class PlayerUpdates {
 
   data class Shuffle(
     val enabled: Boolean,
+  ) : PlayerUpdates()
+
+  data class FrameInfo(
+    val currentFrame: Int,
+    val totalFrames: Int,
   ) : PlayerUpdates()
 }
 

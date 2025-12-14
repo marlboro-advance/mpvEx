@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Info
@@ -70,6 +71,7 @@ fun BrowserTopBar(
   onInfoClick: (() -> Unit)? = null,
   onShareClick: (() -> Unit)? = null,
   onPlayClick: (() -> Unit)? = null,
+  onBlacklistClick: (() -> Unit)? = null,
   onSelectAll: (() -> Unit)? = null,
   onInvertSelection: (() -> Unit)? = null,
   onDeselectAll: (() -> Unit)? = null,
@@ -88,6 +90,7 @@ fun BrowserTopBar(
       onInfo = onInfoClick,
       onShare = onShareClick,
       onPlay = onPlayClick,
+      onBlacklist = onBlacklistClick,
       onSelectAll = onSelectAll,
       onInvertSelection = onInvertSelection,
       onDeselectAll = onDeselectAll,
@@ -286,6 +289,7 @@ private fun SelectionTopBar(
   onInfo: (() -> Unit)?,
   onShare: (() -> Unit)?,
   onPlay: (() -> Unit)?,
+  onBlacklist: (() -> Unit)?,
   onSelectAll: (() -> Unit)?,
   onInvertSelection: (() -> Unit)?,
   onDeselectAll: (() -> Unit)?,
@@ -428,6 +432,21 @@ private fun SelectionTopBar(
           Icon(
             Icons.Filled.Share,
             contentDescription = stringResource(R.string.generic_share),
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
+        }
+      }
+
+      // Blacklist icon
+      if (onBlacklist != null) {
+        IconButton(
+          onClick = onBlacklist,
+          modifier = Modifier.padding(horizontal = 2.dp),
+        ) {
+          Icon(
+            Icons.Filled.Block,
+            contentDescription = stringResource(R.string.pref_folders_blacklist),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
           )

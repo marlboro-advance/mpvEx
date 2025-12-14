@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "aad799cdfd6da33b7ffae2539b468aef",
+    "identityHash": "6db31376d1148ebfcc4aa9fb337e01d5",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `sid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `secondarySid` INTEGER NOT NULL, `secondarySubDelay` INTEGER NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, PRIMARY KEY(`mediaTitle`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `videoZoom` REAL NOT NULL, `sid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, PRIMARY KEY(`mediaTitle`))",
         "fields": [
           {
             "fieldPath": "mediaTitle",
@@ -27,6 +27,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "videoZoom",
+            "columnName": "videoZoom",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
             "fieldPath": "sid",
             "columnName": "sid",
             "affinity": "INTEGER",
@@ -42,18 +48,6 @@
             "fieldPath": "subSpeed",
             "columnName": "subSpeed",
             "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "secondarySid",
-            "columnName": "secondarySid",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "secondarySubDelay",
-            "columnName": "secondarySubDelay",
-            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -148,54 +142,6 @@
             "fieldPath": "playlistId",
             "columnName": "playlistId",
             "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "ExternalSubtitleEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `originalUri` TEXT NOT NULL, `originalFileName` TEXT NOT NULL, `cachedFilePath` TEXT NOT NULL, `mediaTitle` TEXT NOT NULL, `addedTimestamp` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "originalUri",
-            "columnName": "originalUri",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "originalFileName",
-            "columnName": "originalFileName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "cachedFilePath",
-            "columnName": "cachedFilePath",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mediaTitle",
-            "columnName": "mediaTitle",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "addedTimestamp",
-            "columnName": "addedTimestamp",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -472,7 +418,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aad799cdfd6da33b7ffae2539b468aef')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6db31376d1148ebfcc4aa9fb337e01d5')"
     ]
   }
 }

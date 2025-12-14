@@ -48,7 +48,7 @@ android {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
-        getDefaultProguardFile("proguard-android-optimize.txt"),
+         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
       ndk {
@@ -82,8 +82,6 @@ android {
   packaging {
     resources {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
-      excludes += "lib/*/libsubfont.so"
-      excludes += "**/subfont.ttf"
       excludes += "META-INF/DEPENDENCIES"
       excludes += "META-INF/LICENSE"
       excludes += "META-INF/LICENSE.txt"
@@ -100,6 +98,7 @@ android {
       useLegacyPackaging = true
     }
   }
+
   val abiCodes =
     mapOf(
       "armeabi-v7a" to 1,
@@ -175,13 +174,8 @@ dependencies {
 
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
-  implementation(libs.retrofit)
-  implementation(libs.retrofit.converter.moshi)
   implementation(libs.okhttp)
   implementation(libs.okhttp.logging)
-  implementation(libs.moshi)
-  implementation(libs.moshi.kotlin)
-  ksp(libs.moshi.codegen)
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)

@@ -151,6 +151,8 @@
     <string name="pref_advanced_cleared_playback_history">Cleared playback history</string>
     <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
     <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
+    <string name="pref_advanced_enable_recently_played_title">Recently Played</string>
+    <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>
 
     <string name="pref_about_title">About</string>
     <string name="pref_about_summary">Acknowledgments, licenses</string>
@@ -325,4 +327,6 @@
     <string name="pref_folders_clear_all">Clear all blacklisted folders</string>
     <string name="pref_folders_clear_all_confirm_title">Clear all blacklisted folders?</string>
     <string name="pref_folders_clear_all_confirm_message">This will remove all folders from the blacklist. You can add them back later.</string>
+    <string name="pref_folders_blacklist">Blacklist</string>
+    <string name="pref_folders_blacklisted">Folder(s) blacklisted</string>
 </resources>

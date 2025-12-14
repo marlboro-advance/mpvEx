@@ -43,7 +43,13 @@ class VideoListViewModel(
 
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-  
+
+  // Track if items were deleted/moved leaving folder empty
+  private val _videosWereDeletedOrMoved = MutableStateFlow(false)
+  val videosWereDeletedOrMoved: StateFlow<Boolean> = _videosWereDeletedOrMoved.asStateFlow()
+
+  // Track previous video count to detect if folder became empty
+  private var previousVideoCount = 0
 
   private val tag = "VideoListViewModel"
 
@@ -72,11 +78,32 @@ class VideoListViewModel(
         // First attempt to load videos
         val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
 
+        // Check if folder became empty after having videos
+        if (previousVideoCount > 0 && videoList.isEmpty()) {
+          _videosWereDeletedOrMoved.value = true
+          Log.d(tag, "Folder became empty (had $previousVideoCount videos before)")
+        } else if (videoList.isNotEmpty()) {
+          // Reset flag if folder now has videos
+          _videosWereDeletedOrMoved.value = false
+        }
+
+        // Update previous count
+        previousVideoCount = videoList.size
+
         if (videoList.isEmpty()) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
           triggerMediaScan()
           delay(1000)
           val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
+
+          // Update count after retry
+          if (previousVideoCount > 0 && retryVideoList.isEmpty()) {
+            _videosWereDeletedOrMoved.value = true
+          } else if (retryVideoList.isNotEmpty()) {
+            _videosWereDeletedOrMoved.value = false
+          }
+          previousVideoCount = retryVideoList.size
+
           _videos.value = retryVideoList
           loadPlaybackInfo(retryVideoList)
         } else {
@@ -91,6 +118,13 @@ class VideoListViewModel(
         _isLoading.value = false
       }
     }
+  }
+
+  /**
+   * Set flag indicating videos were deleted or moved
+   */
+  fun setVideosWereDeletedOrMoved() {
+    _videosWereDeletedOrMoved.value = true
   }
 
   private suspend fun loadPlaybackInfo(videos: List<Video>) {

@@ -1,13 +1,20 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,6 +25,9 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
@@ -32,19 +42,25 @@ import androidx.compose.material.icons.filled.RepeatOn
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.ShuffleOn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -262,16 +278,93 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.FRAME_NAVIGATION -> {
-      ControlsButton(
-        Icons.Default.Camera,
-        onClick = { viewModel.sheetShown.update { Sheets.FrameNavigation } },
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
+      val isExpanded by viewModel.isFrameNavigationExpanded.collectAsState()
+      val isSnapshotLoading by viewModel.isSnapshotLoading.collectAsState()
+      val context = LocalContext.current
+
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        // Previous frame button (only visible when expanded)
+        AnimatedVisibility(
+          visible = isExpanded,
+          enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(200)),
+          exit = fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(200)),
+        ) {
+          ControlsButton(
+            Icons.Default.FastRewind,
+            onClick = { viewModel.frameStepBackward() },
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(buttonSize),
+          )
+        }
+
+        // Camera button - shows loading indicator when taking snapshot
+        if (isExpanded && isSnapshotLoading) {
+          // Show loading indicator
+          Surface(
+            shape = CircleShape,
+            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = if (hideBackground) null else BorderStroke(
+              1.dp,
+              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            ),
+            modifier = Modifier.size(buttonSize),
+          ) {
+            Box(
+              contentAlignment = Alignment.Center,
+              modifier = Modifier.fillMaxSize(),
+            ) {
+              CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = if (hideBackground) controlColor else MaterialTheme.colorScheme.primary,
+              )
+            }
+          }
+        } else {
+          // Regular camera button
+          ControlsButton(
+            icon = if (isExpanded) Icons.Default.CameraAlt else Icons.Default.Camera,
+            onClick = {
+              if (isExpanded) {
+                // Take snapshot when expanded
+                viewModel.takeSnapshot(context)
+                viewModel.resetFrameNavigationTimer()
+              } else {
+                // Toggle expansion when collapsed
+                viewModel.toggleFrameNavigationExpanded()
+              }
+            },
+            onLongClick = { viewModel.sheetShown.update { Sheets.FrameNavigation } },
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(buttonSize),
+          )
+        }
+
+        // Next frame button (only visible when expanded)
+        AnimatedVisibility(
+          visible = isExpanded,
+          enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(200)),
+          exit = fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(200)),
+        ) {
+          ControlsButton(
+            Icons.Default.FastForward,
+            onClick = { viewModel.frameStepForward() },
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(buttonSize),
+          )
+        }
+      }
     }
 
     PlayerButton.VIDEO_ZOOM -> {
       if (currentZoom != 0f) {
+        @OptIn(ExperimentalFoundationApi::class)
         Surface(
           shape = CircleShape,
           color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
@@ -285,16 +378,20 @@ fun RenderPlayerButton(
           modifier = Modifier
             .height(buttonSize)
             .clip(CircleShape)
-            .clickable(
+            .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
               onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+              onLongClick = { viewModel.resetVideoZoom() },
             ),
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.small),
+            modifier = Modifier.padding(
+              horizontal = MaterialTheme.spacing.small,
+              vertical = MaterialTheme.spacing.small,
+            ),
           ) {
             Icon(
               imageVector = Icons.Default.ZoomIn,
@@ -313,6 +410,7 @@ fun RenderPlayerButton(
         ControlsButton(
           Icons.Default.ZoomIn,
           onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+          onLongClick = { viewModel.resetVideoZoom() },
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           modifier = Modifier.size(buttonSize),
         )

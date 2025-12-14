@@ -24,6 +24,8 @@ features.**
 - Zoom gesture
 - External Audio support
 - Search Functionality
+- SMB/FTP/WebDAV support
+- Custom Playlist management support
 
 **This project is still in development and is expected to have bugs. Please report any bugs you find in
 the [Issues](https://github.com/marlboro-advance/mpvEx/issues) section.**

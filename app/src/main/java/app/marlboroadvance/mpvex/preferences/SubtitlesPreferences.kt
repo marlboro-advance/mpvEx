@@ -18,12 +18,9 @@ class SubtitlesPreferences(
   val preferredLanguages = preferenceStore.getString("sub_preferred_languages")
   val autoloadMatchingSubtitles = preferenceStore.getBoolean("sub_autoload_enabled", true)
 
-  // Subdl.com API key for online subtitle downloads
-  val subdlApiKey = preferenceStore.getString("subdl_api_key")
-
   val fontsFolder = preferenceStore.getString("sub_fonts_folder")
   val font = preferenceStore.getString("sub_font", "")
-  val fontSize = preferenceStore.getInt("sub_font_size", 55)
+  val fontSize = preferenceStore.getInt("sub_font_size", 65)
   val subScale = preferenceStore.getFloat("sub_scale", 1f)
   val borderSize = preferenceStore.getInt("sub_border_size", 3)
   val bold = preferenceStore.getBoolean("sub_bold", false)
@@ -43,7 +40,6 @@ class SubtitlesPreferences(
 
   val defaultSubDelay = preferenceStore.getInt("sub_default_delay")
   val defaultSubSpeed = preferenceStore.getFloat("sub_default_speed", 1f)
-  val defaultSecondarySubDelay = preferenceStore.getInt("sub_default_secondary_delay")
 }
 
 enum class SubtitleJustification(

@@ -159,12 +159,19 @@ fun MoreSheet(
             },
             onClick = {
               scope.launch(Dispatchers.IO) {
-                if ((page == 0) xor
-                  (statisticsPage == 0)
-                ) {
+                // If turning off (page 0) and stats are currently on
+                if (page == 0 && statisticsPage != 0) {
                   MPVLib.command("script-binding", "stats/display-stats-toggle")
                 }
-                if (page != 0) MPVLib.command("script-binding", "stats/display-page-$page")
+                // If turning on a specific page and stats are currently off
+                else if (page != 0 && statisticsPage == 0) {
+                  MPVLib.command("script-binding", "stats/display-stats-toggle")
+                  MPVLib.command("script-binding", "stats/display-page-$page")
+                }
+                // If switching between pages (both non-zero)
+                else if (page != 0 && statisticsPage != 0) {
+                  MPVLib.command("script-binding", "stats/display-page-$page")
+                }
               }
               advancedPreferences.enabledStatisticsPage.set(page)
             },

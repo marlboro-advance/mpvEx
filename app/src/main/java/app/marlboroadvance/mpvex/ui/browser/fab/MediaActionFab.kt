@@ -59,6 +59,7 @@ data class MediaActionItem(
 fun MediaActionFab(
   listState: LazyListState,
   hasRecentlyPlayed: Boolean,
+  enableRecentlyPlayed: Boolean,
   onOpenFile: () -> Unit,
   onPlayRecentlyPlayed: () -> Unit,
   onPlayLink: () -> Unit,
@@ -111,10 +112,16 @@ fun MediaActionFab(
 
   // Build menu items based on state
   val menuItems =
-    remember(hasRecentlyPlayed) {
+    remember(hasRecentlyPlayed, enableRecentlyPlayed) {
       buildList {
         add(MediaActionItem(Icons.Filled.FolderOpen, "Open File", onClick = onOpenFile))
-        add(MediaActionItem(Icons.Filled.History, "Recently Played", hasRecentlyPlayed, onPlayRecentlyPlayed))
+        add(
+          MediaActionItem(
+            Icons.Filled.History,
+            "Recently Played",
+            hasRecentlyPlayed && enableRecentlyPlayed, onPlayRecentlyPlayed,
+          ),
+        )
         add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
       }
     }
@@ -166,17 +173,24 @@ fun MediaActionFab(
               },
             ),
         onClick = {
-          onExpandedChange(false)
-          item.onClick()
+          if (item.enabled) {
+            onExpandedChange(false)
+            item.onClick()
+          }
         },
         icon = {
           Icon(
             item.icon,
             contentDescription = null,
-            modifier = if (item.enabled) Modifier else Modifier.alpha(0.5f),
+            modifier = if (item.enabled) Modifier else Modifier.alpha(0.38f),
           )
         },
-        text = { Text(item.label) },
+        text = {
+          Text(
+            item.label,
+            modifier = if (item.enabled) Modifier else Modifier.alpha(0.38f),
+          )
+        },
       )
     }
   }

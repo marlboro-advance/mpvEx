@@ -225,7 +225,7 @@ fun PlayerControls(
     interactionSource = interactionSource,
   )
 
-  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, interactionSource)
+  DoubleTapToSeekOvals(doubleTapSeekAmount, seekText, showDoubleTapOvals, showSeekTime, showSeekTime, interactionSource)
 
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
@@ -252,8 +252,7 @@ fun PlayerControls(
                 Pair(1f, Color.Black),
               ),
               alpha = transparentOverlay,
-            )
-            .padding(horizontal = MaterialTheme.spacing.medium),
+            ),
       ) {
         val (topLeftControls, topRightControls) = createRefs()
         val (volumeSlider, brightnessSlider) = createRefs()
@@ -283,17 +282,25 @@ fun PlayerControls(
           }
         }
 
-        // Slider display duration: 500ms shown + 300ms exit animation = 800ms total
-        val sliderDisplayDuration = 500L
+        // Slider display duration: 1000ms shown + 300ms exit animation = 1300ms total
+        val sliderDisplayDuration = 1000L
 
-        LaunchedEffect(volume, mpvVolume, isVolumeSliderShown) {
-          delay(sliderDisplayDuration)
-          if (isVolumeSliderShown) viewModel.isVolumeSliderShown.update { false }
+        val volumeSliderTimestamp by viewModel.volumeSliderTimestamp.collectAsState()
+        val brightnessSliderTimestamp by viewModel.brightnessSliderTimestamp.collectAsState()
+
+        // Track timestamp to restart timer on every gesture event
+        LaunchedEffect(volumeSliderTimestamp) {
+          if (isVolumeSliderShown && volumeSliderTimestamp > 0) {
+            delay(sliderDisplayDuration)
+            viewModel.isVolumeSliderShown.update { false }
+          }
         }
 
-        LaunchedEffect(brightness, isBrightnessSliderShown) {
-          delay(sliderDisplayDuration)
-          if (isBrightnessSliderShown) viewModel.isBrightnessSliderShown.update { false }
+        LaunchedEffect(brightnessSliderTimestamp) {
+          if (isBrightnessSliderShown && brightnessSliderTimestamp > 0) {
+            delay(sliderDisplayDuration)
+            viewModel.isBrightnessSliderShown.update { false }
+          }
         }
 
         val areSlidersShown = isBrightnessSliderShown || isVolumeSliderShown
@@ -319,12 +326,12 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(brightnessSlider) {
               if (swapVolumeAndBrightness) {
-                start.linkTo(parent.start, spacing.medium)
+                start.linkTo(parent.start, spacing.extraLarge)
               } else {
-                end.linkTo(parent.end, spacing.medium)
+                end.linkTo(parent.end, spacing.extraLarge)
               }
-              top.linkTo(parent.top)
-              bottom.linkTo(parent.bottom)
+              top.linkTo(parent.top, spacing.larger)
+              bottom.linkTo(parent.bottom, spacing.larger)
             },
         ) { BrightnessSlider(brightness, 0f..1f) }
 
@@ -349,12 +356,12 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(volumeSlider) {
               if (swapVolumeAndBrightness) {
-                end.linkTo(parent.end, spacing.medium)
+                end.linkTo(parent.end, spacing.extraLarge)
               } else {
-                start.linkTo(parent.start, spacing.medium)
+                start.linkTo(parent.start, spacing.extraLarge)
               }
-              top.linkTo(parent.top)
-              bottom.linkTo(parent.bottom)
+              top.linkTo(parent.top, spacing.larger)
+              bottom.linkTo(parent.bottom, spacing.larger)
             },
         ) {
           val boostCap by audioPreferences.volumeBoostCap.collectAsState()
@@ -432,6 +439,16 @@ fun PlayerControls(
                 }
               } else {
                 "Shuffle: Off"
+              }
+              TextPlayerUpdate(text)
+            }
+
+            is PlayerUpdates.FrameInfo -> {
+              val frameInfo = (currentPlayerUpdate as PlayerUpdates.FrameInfo)
+              val text = if (frameInfo.totalFrames > 0) {
+                "Frame: ${frameInfo.currentFrame}/${frameInfo.totalFrames}"
+              } else {
+                "Frame: ${frameInfo.currentFrame}"
               }
               TextPlayerUpdate(text)
             }
@@ -719,8 +736,8 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(seekbar) {
               bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
-              start.linkTo(parent.start, spacing.small)
-              end.linkTo(parent.end, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
+              end.linkTo(parent.end, spacing.medium)
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
@@ -787,10 +804,10 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(topLeftControls) {
               top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
-              start.linkTo(parent.start, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
               if (isPortrait) {
                 width = Dimension.fillToConstraints
-                end.linkTo(parent.end, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
               } else {
                 width = Dimension.fillToConstraints
                 end.linkTo(topRightControls.start, spacing.extraSmall)
@@ -833,7 +850,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(topRightControls) {
               top.linkTo(parent.top, spacing.small)
-              end.linkTo(parent.end, spacing.small)
+              end.linkTo(parent.end, spacing.medium)
             },
         ) {
           TopRightPlayerControlsLandscape(
@@ -875,11 +892,11 @@ fun PlayerControls(
             Modifier.constrainAs(bottomRightControls) {
               bottom.linkTo(seekbar.top, spacing.small)
               if (isPortrait) {
-                start.linkTo(parent.start, spacing.small)
-                end.linkTo(parent.end, spacing.small)
+                start.linkTo(parent.start, spacing.medium)
+                end.linkTo(parent.end, spacing.medium)
                 width = Dimension.fillToConstraints
               } else {
-                end.linkTo(parent.end, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
               }
             },
         ) {
@@ -941,7 +958,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(bottomLeftControls) {
               bottom.linkTo(seekbar.top, spacing.small)
-              start.linkTo(parent.start, spacing.small)
+              start.linkTo(parent.start, spacing.medium)
               width = Dimension.fillToConstraints
               end.linkTo(bottomRightControls.start, spacing.small)
             },

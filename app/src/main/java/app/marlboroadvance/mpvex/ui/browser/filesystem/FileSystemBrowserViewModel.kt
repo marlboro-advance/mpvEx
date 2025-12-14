@@ -82,6 +82,13 @@ class FileSystemBrowserViewModel(
       }
     }
 
+  // Track if items were deleted/moved leaving folder empty
+  private val _itemsWereDeletedOrMoved = MutableStateFlow(false)
+  val itemsWereDeletedOrMoved: StateFlow<Boolean> = _itemsWereDeletedOrMoved.asStateFlow()
+
+  // Track previous item count per path to detect if folder became empty
+  private val itemCountByPath = mutableMapOf<String, Int>()
+
   companion object {
     private const val TAG = "FileSystemBrowserVM"
 
@@ -131,7 +138,15 @@ class FileSystemBrowserViewModel(
    */
   override fun refresh() {
     Log.d(TAG, "Refreshing current directory: ${_currentPath.value}")
+    // Don't reset the flag on refresh, only on navigation
     loadCurrentDirectory()
+  }
+
+  /**
+   * Set flag indicating items were deleted or moved
+   */
+  fun setItemsWereDeletedOrMoved() {
+    _itemsWereDeletedOrMoved.value = true
   }
 
   /**
@@ -141,6 +156,8 @@ class FileSystemBrowserViewModel(
   fun navigateTo(path: String) {
     Log.d(TAG, "Navigating to: $path")
     _currentPath.value = path
+    // Reset the flag when navigating to a new directory (not back)
+    _itemsWereDeletedOrMoved.value = false
     loadCurrentDirectory()
   }
 
@@ -158,6 +175,8 @@ class FileSystemBrowserViewModel(
     }
 
     val parent = File(current).parent
+
+    // Don't reset the flag when navigating back - let the refresh check if folder is empty
 
     if (parent != null && parent != current) {
       Log.d(TAG, "Navigating up from $current to $parent")
@@ -197,6 +216,11 @@ class FileSystemBrowserViewModel(
       }
     }
 
+    // Set flag if any deletions were successful
+    if (successCount > 0) {
+      _itemsWereDeletedOrMoved.value = true
+    }
+
     Log.d(TAG, "Folder deletion complete: $successCount success, $failureCount failed")
     return Pair(successCount, failureCount)
   }
@@ -207,7 +231,14 @@ class FileSystemBrowserViewModel(
    */
   override suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
     Log.d(TAG, "Deleting ${videos.size} videos")
-    return super.deleteVideos(videos)
+    val result = super.deleteVideos(videos)
+
+    // Set flag if any deletions were successful
+    if (result.first > 0) {
+      _itemsWereDeletedOrMoved.value = true
+    }
+
+    return result
   }
 
   /**
@@ -230,6 +261,7 @@ class FileSystemBrowserViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       _isLoading.value = true
       _error.value = null
+      // Don't reset the flag here - let navigation handle it
 
       try {
         val path = _currentPath.value
@@ -256,6 +288,21 @@ class FileSystemBrowserViewModel(
           MediaFileRepository
             .scanDirectory(getApplication(), path, showAllFileTypes = false, showHiddenFiles)
             .onSuccess { items ->
+              // Get previous count for this path
+              val previousCount = itemCountByPath[path] ?: 0
+
+              // Check if folder became empty after having items
+              if (previousCount > 0 && items.isEmpty()) {
+                _itemsWereDeletedOrMoved.value = true
+                Log.d(TAG, "Folder became empty (had $previousCount items before)")
+              } else if (items.isNotEmpty()) {
+                // Reset flag if folder now has items
+                _itemsWereDeletedOrMoved.value = false
+              }
+
+              // Update count for this path
+              itemCountByPath[path] = items.size
+
               _unsortedItems.value = items
 
               val folderCount = items.filterIsInstance<FileSystemItem.Folder>().size

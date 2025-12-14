@@ -1289,10 +1289,19 @@ class PlayerActivity :
 
     lifecycleScope.launch(Dispatchers.IO) {
       // Load playback state (will skip track restoration if preferred language configured)
-      loadVideoPlaybackState(fileName)
+      val hasState = loadVideoPlaybackState(fileName)
 
       // Apply preferred language settings (will override if configured)
       trackSelector.onFileLoaded()
+
+      // Apply default zoom only if there's no saved state
+      if (!hasState) {
+        withContext(Dispatchers.Main) {
+          val zoomPreference = playerPreferences.defaultVideoZoom.get()
+          MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
+          viewModel.setVideoZoom(zoomPreference)
+        }
+      }
     }
 
     // Save to recently played when video actually loads and plays
@@ -1309,10 +1318,6 @@ class PlayerActivity :
     setOrientation()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
-
-    val zoomPreference = playerPreferences.defaultVideoZoom.get()
-    MPVLib.setPropertyDouble("video-zoom", zoomPreference.toDouble())
-    viewModel.setVideoZoom(zoomPreference)
 
     MPVLib.setPropertyString("force-media-title", fileName)
     viewModel.setMediaTitle(fileName)
@@ -1490,15 +1495,10 @@ class PlayerActivity :
             mediaTitle = mediaIdentifier,
             lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
+            videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
             sid = player.sid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
-            secondarySid = player.secondarySid,
-            secondarySubDelay =
-              (
-                (MPVLib.getPropertyDouble("secondary-sub-delay") ?: 0.0) *
-                  MILLISECONDS_TO_SECONDS
-              ).toInt(),
             aid = player.aid,
             audioDelay =
               (
@@ -1536,18 +1536,21 @@ class PlayerActivity :
    * Loads and applies saved playback state from the database.
    *
    * @param mediaTitle The title of the media being played
+   * @return true if saved state was found and applied, false otherwise
    */
-  private suspend fun loadVideoPlaybackState(mediaTitle: String) {
-    if (mediaIdentifier.isBlank()) return
+  private suspend fun loadVideoPlaybackState(mediaTitle: String): Boolean {
+    if (mediaIdentifier.isBlank()) return false
 
-    runCatching {
+    return runCatching {
       val state = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
 
       applyPlaybackState(state)
       applyDefaultSettings(state)
+
+      state != null
     }.onFailure { e ->
       Log.e(TAG, "Error loading playback state", e)
-    }
+    }.getOrDefault(false)
   }
 
   /**
@@ -1562,7 +1565,6 @@ class PlayerActivity :
     if (state == null) return
 
     val subDelay = state.subDelay / DELAY_DIVISOR
-    val secondarySubDelay = state.secondarySubDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
 
     // Check if user has preferred languages configured
@@ -1574,9 +1576,6 @@ class PlayerActivity :
     if (!hasSubtitlePreference) {
       if (state.sid >= 0) {
         player.sid = state.sid
-      }
-      if (state.secondarySid >= 0) {
-        player.secondarySid = state.secondarySid
       }
     } else {
       Log.d(TAG, "Skipping subtitle restoration - preferred language configured")
@@ -1593,10 +1592,13 @@ class PlayerActivity :
     }
 
     MPVLib.setPropertyDouble("sub-delay", subDelay)
-    MPVLib.setPropertyDouble("secondary-sub-delay", secondarySubDelay)
     MPVLib.setPropertyDouble("speed", state.playbackSpeed)
     MPVLib.setPropertyDouble("audio-delay", audioDelay)
     MPVLib.setPropertyDouble("sub-speed", state.subSpeed)
+
+    // Restore video zoom from saved state
+    MPVLib.setPropertyDouble("video-zoom", state.videoZoom.toDouble())
+    viewModel.setVideoZoom(state.videoZoom)
 
     if (playerPreferences.savePositionOnQuit.get() && state.lastPosition != 0) {
       MPVLib.setPropertyInt("time-pos", state.lastPosition)
@@ -2481,12 +2483,28 @@ class PlayerActivity :
    * Generate a unique identifier for this media for playback state/history.
    *
    * For local/offline files, uses fileName (display name or path).
-   * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
+   * For network streams via proxy (SMB/WebDAV/FTP), uses the stable network file path from intent extras.
+   * For other network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
   private fun getMediaIdentifier(intent: Intent, fileName: String): String {
+    // Check if this is a network file played via proxy (SMB/WebDAV/FTP)
+    // Use the stable network file path instead of the temporary proxy URL
+    val networkFilePath = intent.getStringExtra("network_file_path")
+    val networkConnectionId = intent.getLongExtra("network_connection_id", -1L)
+
+    if (networkFilePath != null && networkConnectionId != -1L) {
+      // For network files via proxy: use connection ID + file path for stable identifier
+      val identifier = "network_${networkConnectionId}_${networkFilePath.hashCode()}"
+      Log.d(
+        TAG,
+        "Using network file identifier: $identifier (connection: $networkConnectionId, path: $networkFilePath)",
+      )
+      return identifier
+    }
+
     val uri = extractUriFromIntent(intent)
     return if (uri != null && (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms")) {
-      // For remoting protocols: hash the URI so position is per-episode or per-stream.
+      // For remote protocols: hash the URI so position is per-episode or per-stream.
       "${fileName}_${uri.toString().hashCode()}"
     } else {
       // For local/file uris and unknown: just use fileName.
