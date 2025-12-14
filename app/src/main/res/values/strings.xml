@@ -325,4 +325,6 @@
     <string name="pref_folders_clear_all">Clear all blacklisted folders</string>
     <string name="pref_folders_clear_all_confirm_title">Clear all blacklisted folders?</string>
     <string name="pref_folders_clear_all_confirm_message">This will remove all folders from the blacklist. You can add them back later.</string>
+    <string name="pref_folders_blacklist">Blacklist</string>
+    <string name="pref_folders_blacklisted">Folder(s) blacklisted</string>
 </resources>

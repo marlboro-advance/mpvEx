@@ -118,6 +118,7 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
     // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -333,6 +334,27 @@ object FolderListScreen : Screen {
                   // Clear selection after starting playback
                   selectionManager.clear()
                 }
+              }
+            },
+            onBlacklistClick = {
+              // Add selected folders to blacklist
+              coroutineScope.launch {
+                val selectedFolders = selectionManager.getSelectedItems()
+                val blacklistedFolders = foldersPreferences.blacklistedFolders.get().toMutableSet()
+                selectedFolders.forEach { folder ->
+                  blacklistedFolders.add(folder.path)
+                }
+                foldersPreferences.blacklistedFolders.set(blacklistedFolders)
+                // Clear selection after blacklisting
+                selectionManager.clear()
+                // Refresh folder list to apply blacklist
+                viewModel.refresh()
+                // Show toast to confirm
+                android.widget.Toast.makeText(
+                  context,
+                  context.getString(app.marlboroadvance.mpvex.R.string.pref_folders_blacklisted),
+                  android.widget.Toast.LENGTH_SHORT,
+                ).show()
               }
             },
             onSelectAll = { selectionManager.selectAll() },
