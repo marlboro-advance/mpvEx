@@ -143,6 +143,8 @@ object FolderListScreen : Screen {
     var allVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var videosLoaded by remember { mutableStateOf(false) }
 
+
+
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
@@ -629,10 +631,9 @@ private fun FolderListContent(
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
 
   // Show loading or empty state based on loading status
-  // Only show empty state when truly empty (after scan completes with no results OR folders were deleted)
-  // Don't show during app launch or while loading
-  val showEmpty = folders.isEmpty() && !isLoading && (hasCompletedInitialLoad || foldersWereDeleted)
-  val showLoading = isLoading && folders.isEmpty() // Only show loading when there are no folders yet
+  // Only show empty state after initial scan completes with no results
+  val showEmpty = folders.isEmpty() && !isLoading && hasCompletedInitialLoad
+  val showLoading = isLoading && folders.isEmpty()
 
   // Check if at top of list to hide scrollbar during pull-to-refresh
   val isAtTop by remember {

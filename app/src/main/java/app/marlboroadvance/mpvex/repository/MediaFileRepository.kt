@@ -39,7 +39,7 @@ object MediaFileRepository : KoinComponent {
   // In-memory cache for fast subsequent loads
   private val videoFoldersCache = mutableMapOf<String, Pair<List<VideoFolder>, Long>>()
   private val videosCache = mutableMapOf<String, Pair<List<Video>, Long>>()
-  private const val CACHE_VALIDITY_MS = 30_000L // 30 seconds
+  private const val CACHE_VALIDITY_MS = Long.MAX_VALUE // Never expire - only clear on manual refresh
 
   /**
    * Clears all in-memory caches

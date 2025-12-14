@@ -68,8 +68,18 @@ class FolderListViewModel(
   }
 
   init {
-    // Load folders asynchronously on initialization
-    loadVideoFolders()
+    // Load cached folders instantly for immediate display
+    val hasCachedData = loadCachedFolders()
+
+    // If no cached data (first launch), scan immediately. Otherwise defer to not slow down app launch
+    if (!hasCachedData) {
+      loadVideoFolders()
+    } else {
+      viewModelScope.launch(Dispatchers.IO) {
+        kotlinx.coroutines.delay(2000) // Wait 2 seconds before refreshing
+        loadVideoFolders()
+      }
+    }
 
     // Refresh folders on global media library changes
     viewModelScope.launch(Dispatchers.IO) {
@@ -100,7 +110,79 @@ class FolderListViewModel(
         _videoFolders.value = filteredFolders
         // Calculate new video counts for each folder
         calculateNewVideoCounts(filteredFolders)
+
+        // Save to cache for next app launch (save unfiltered list)
+        saveFoldersToCache(_allVideoFolders.value)
       }
+    }
+  }
+
+  private fun loadCachedFolders(): Boolean {
+    var hasCachedData = false
+    val prefs =
+      getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
+    val cachedJson = prefs.getString("folders", null)
+
+    if (cachedJson != null) {
+      try {
+        // Parse JSON and restore folders
+        val folders = parseFoldersFromJson(cachedJson)
+        if (folders.isNotEmpty()) {
+          Log.d(TAG, "Loaded ${folders.size} folders from cache instantly")
+          hasCachedData = true
+          viewModelScope.launch(Dispatchers.IO) {
+            _allVideoFolders.value = folders
+            _hasCompletedInitialLoad.value = true
+          }
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error loading cached folders", e)
+      }
+    }
+
+    return hasCachedData
+  }
+
+  private fun saveFoldersToCache(folders: List<VideoFolder>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val prefs =
+          getApplication<Application>().getSharedPreferences("folder_cache", android.content.Context.MODE_PRIVATE)
+        val json = serializeFoldersToJson(folders)
+        prefs.edit().putString("folders", json).apply()
+        Log.d(TAG, "Saved ${folders.size} folders to cache")
+      } catch (e: Exception) {
+        Log.e(TAG, "Error saving folders to cache", e)
+      }
+    }
+  }
+
+  private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
+    // Simple JSON serialization
+    return folders.joinToString(separator = "|") { folder ->
+      "${folder.bucketId}::${folder.name}::${folder.path}::${folder.videoCount}::${folder.totalSize}::${folder.totalDuration}::${folder.lastModified}"
+    }
+  }
+
+  private fun parseFoldersFromJson(json: String): List<VideoFolder> {
+    return try {
+      json.split("|").mapNotNull { item ->
+        val parts = item.split("::")
+        if (parts.size == 7) {
+          VideoFolder(
+            bucketId = parts[0],
+            name = parts[1],
+            path = parts[2],
+            videoCount = parts[3].toIntOrNull() ?: 0,
+            totalSize = parts[4].toLongOrNull() ?: 0L,
+            totalDuration = parts[5].toLongOrNull() ?: 0L,
+            lastModified = parts[6].toLongOrNull() ?: 0L,
+          )
+        } else null
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Error parsing cached folders", e)
+      emptyList()
     }
   }
 
@@ -185,11 +267,9 @@ class FolderListViewModel(
   private fun loadVideoFolders() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
-        // Reset completed flag when starting a new scan from empty state
-        val hasExistingData = _allVideoFolders.value.isNotEmpty()
-        if (!hasExistingData) {
+        // Show loading state if no folders yet
+        if (_allVideoFolders.value.isEmpty()) {
           _isLoading.value = true
-          _hasCompletedInitialLoad.value = false // Reset to prevent empty state during loading
         }
 
         val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
@@ -202,10 +282,10 @@ class FolderListViewModel(
             showHiddenFiles = showHiddenFiles,
           )
 
-        Log.d(TAG, "Optimized scan completed: found ${videoFolders.size} folders with complete metadata")
+        Log.d(TAG, "Scan completed: found ${videoFolders.size} folders with complete metadata")
         _allVideoFolders.value = videoFolders
 
-        // Only mark as completed after folders are set to prevent empty state flicker
+        // Mark as completed after folders are set
         _hasCompletedInitialLoad.value = true
       } catch (e: Exception) {
         Log.e(TAG, "Error loading video folders", e)
