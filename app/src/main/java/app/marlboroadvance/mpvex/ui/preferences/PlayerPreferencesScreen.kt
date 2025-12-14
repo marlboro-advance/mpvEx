@@ -97,6 +97,13 @@ object PlayerPreferencesScreen : Screen {
               )
             },
           )
+          val autoPictureInPicture by preferences. autoPictureInPicture.collectAsState()
+          SwitchPreference(
+            value = autoPictureInPicture,
+            onValueChange = preferences.autoPictureInPicture:: set,
+            title = { Text(stringResource(R.string.pref_player_auto_pip_title)) },
+            summary = { Text(stringResource(R.string.pref_player_auto_pip_summary)) },
+          )
           val rememberBrightness by preferences.rememberBrightness.collectAsState()
           SwitchPreference(
             value = rememberBrightness,

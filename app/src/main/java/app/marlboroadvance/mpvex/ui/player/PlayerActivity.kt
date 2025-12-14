@@ -1811,6 +1811,18 @@ class PlayerActivity :
     }
   }
 
+  override fun onUserLeaveHint() {
+    super.onUserLeaveHint()
+
+    // Auto enter PiP when user leaves (home button, recent apps, etc.)
+    // Only for Android < S, as S+ uses setAutoEnterEnabled
+    if (Build. VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      if (playerPreferences. autoPictureInPicture.get() && ! isInPictureInPictureMode) {
+        enterPipModeHidingOverlay()
+      }
+    }
+  }
+
   /**
    * Restores window configuration when exiting Picture-in-Picture mode.
    * Hides system UI for immersive playback.

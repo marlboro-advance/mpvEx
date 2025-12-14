@@ -93,7 +93,7 @@ class MPVPipHelper(
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          setAutoEnterEnabled(false)
+          setAutoEnterEnabled(playerPreferences.autoPictureInPicture. get())
         }
 
         setActions(createPipActions())

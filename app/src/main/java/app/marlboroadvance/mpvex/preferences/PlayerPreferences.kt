@@ -39,6 +39,8 @@ class PlayerPreferences(
   val automaticBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
   val closeAfterReachingEndOfVideo = preferenceStore.getBoolean("close_after_eof", true)
 
+  val autoPictureInPicture = preferenceStore.getBoolean("auto_picture_in_picture", true)
+
   val rememberBrightness = preferenceStore.getBoolean("remember_brightness")
   val defaultBrightness = preferenceStore.getFloat("default_brightness", -1f)
 
@@ -54,4 +56,6 @@ class PlayerPreferences(
   val playlistMode = preferenceStore.getBoolean("playlist_mode", false)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
+
+
 }
