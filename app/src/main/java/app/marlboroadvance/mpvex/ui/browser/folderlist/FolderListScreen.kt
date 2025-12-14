@@ -115,6 +115,7 @@ object FolderListScreen : Screen {
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val hasCompletedInitialLoad by viewModel.hasCompletedInitialLoad.collectAsState()
+    val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
@@ -536,6 +537,7 @@ object FolderListScreen : Screen {
               isRefreshing = isRefreshing,
               isLoading = isLoading,
               hasCompletedInitialLoad = hasCompletedInitialLoad,
+              foldersWereDeleted = foldersWereDeleted,
               recentlyPlayedFilePath = recentlyPlayedFilePath,
               onRefresh = { viewModel.refresh() },
               selectionManager = selectionManager,
@@ -596,6 +598,7 @@ private fun FolderListContent(
   isRefreshing: MutableState<Boolean>,
   isLoading: Boolean,
   hasCompletedInitialLoad: Boolean,
+  foldersWereDeleted: Boolean,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
   selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<VideoFolder, String>,
@@ -607,9 +610,9 @@ private fun FolderListContent(
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
 
   // Show loading or empty state based on loading status
-  // Only show empty state when truly empty (after scan completes with no results)
+  // Only show empty state when truly empty (after scan completes with no results OR folders were deleted)
   // Don't show during app launch or while loading
-  val showEmpty = folders.isEmpty() && !isLoading && hasCompletedInitialLoad
+  val showEmpty = folders.isEmpty() && !isLoading && (hasCompletedInitialLoad || foldersWereDeleted)
   val showLoading = isLoading && folders.isEmpty() // Only show loading when there are no folders yet
 
   // Check if at top of list to hide scrollbar during pull-to-refresh

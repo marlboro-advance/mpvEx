@@ -147,6 +147,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val breadcrumbs by viewModel.breadcrumbs.collectAsState()
   val playlistMode by playerPreferences.playlistMode.collectAsState()
   val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+  val itemsWereDeletedOrMoved by viewModel.itemsWereDeletedOrMoved.collectAsState()
 
   // UI State
   val listState = rememberLazyListState()
@@ -529,6 +530,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           isAtRoot = isAtRoot,
           breadcrumbs = breadcrumbs,
           playlistMode = playlistMode,
+          itemsWereDeletedOrMoved = itemsWereDeletedOrMoved,
           onRefresh = { viewModel.refresh() },
           onFolderClick = { folder ->
             if (isInSelectionMode) {
@@ -696,6 +698,12 @@ fun FileSystemBrowserScreen(path: String? = null) {
         },
         onDismiss = {
           progressDialogOpen.value = false
+          // Set flag if move operation was successful
+          if (operationType.value is CopyPasteOps.OperationType.Move &&
+            operationProgress.isComplete &&
+            operationProgress.error == null) {
+            viewModel.setItemsWereDeletedOrMoved()
+          }
           operationType.value = null
           videoSelectionManager.clear()
           viewModel.refresh()
@@ -783,6 +791,7 @@ private fun FileSystemBrowserContent(
   isAtRoot: Boolean,
   breadcrumbs: List<app.marlboroadvance.mpvex.domain.browser.PathComponent>,
   playlistMode: Boolean,
+  itemsWereDeletedOrMoved: Boolean,
   onRefresh: suspend () -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onFolderLongClick: (FileSystemItem.Folder) -> Unit,
@@ -822,15 +831,15 @@ private fun FileSystemBrowserContent(
       }
     }
 
-    items.isEmpty() -> {
+    items.isEmpty() && itemsWereDeletedOrMoved && !isAtRoot -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
-          icon = if (isAtRoot) Icons.Filled.Folder else Icons.Filled.FolderOpen,
-          title = if (isAtRoot) "No storage volumes found" else "Empty folder",
-          message = if (isAtRoot) "No accessible storage volumes" else "This folder contains no videos or subfolders",
+          icon = Icons.Filled.FolderOpen,
+          title = "Empty folder",
+          message = "This folder contains no videos or subfolders",
         )
       }
     }

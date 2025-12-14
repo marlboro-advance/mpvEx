@@ -50,6 +50,13 @@ class FolderListViewModel(
   private val _hasCompletedInitialLoad = MutableStateFlow(false)
   val hasCompletedInitialLoad: StateFlow<Boolean> = _hasCompletedInitialLoad.asStateFlow()
 
+  // Track if folders were deleted leaving list empty
+  private val _foldersWereDeleted = MutableStateFlow(false)
+  val foldersWereDeleted: StateFlow<Boolean> = _foldersWereDeleted.asStateFlow()
+
+  // Track previous folder count to detect if all folders were deleted
+  private var previousFolderCount = 0
+
   companion object {
     private const val TAG = "FolderListViewModel"
 
@@ -78,6 +85,18 @@ class FolderListViewModel(
       combine(_allVideoFolders, foldersPreferences.blacklistedFolders.changes()) { folders, blacklist ->
         folders.filter { folder -> folder.path !in blacklist }
       }.collectLatest { filteredFolders ->
+        // Check if folders became empty after having folders
+        if (previousFolderCount > 0 && filteredFolders.isEmpty()) {
+          _foldersWereDeleted.value = true
+          Log.d(TAG, "Folders became empty (had $previousFolderCount folders before)")
+        } else if (filteredFolders.isNotEmpty()) {
+          // Reset flag if folders now exist
+          _foldersWereDeleted.value = false
+        }
+
+        // Update previous count
+        previousFolderCount = filteredFolders.size
+
         _videoFolders.value = filteredFolders
         // Calculate new video counts for each folder
         calculateNewVideoCounts(filteredFolders)
