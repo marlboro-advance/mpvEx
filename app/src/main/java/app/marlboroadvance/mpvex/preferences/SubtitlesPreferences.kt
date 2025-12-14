@@ -18,9 +18,6 @@ class SubtitlesPreferences(
   val preferredLanguages = preferenceStore.getString("sub_preferred_languages")
   val autoloadMatchingSubtitles = preferenceStore.getBoolean("sub_autoload_enabled", true)
 
-  // Subdl.com API key for online subtitle downloads
-  val subdlApiKey = preferenceStore.getString("subdl_api_key")
-
   val fontsFolder = preferenceStore.getString("sub_fonts_folder")
   val font = preferenceStore.getString("sub_font", "")
   val fontSize = preferenceStore.getInt("sub_font_size", 65)

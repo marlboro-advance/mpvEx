@@ -15,7 +15,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -74,7 +73,6 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
-  private val externalSubtitleRepository: ExternalSubtitleRepository by inject()
   private val json: Json by inject()
 
   // MPV properties with efficient collection
@@ -86,10 +84,6 @@ class PlayerViewModel(
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-
-  // Subtitle and audio tracks using StateFlow for better performance
-  private val _externalSubtitleMetadata = MutableStateFlow<Map<String, String>>(emptyMap())
-  val externalSubtitleMetadata: StateFlow<Map<String, String>> = _externalSubtitleMetadata.asStateFlow()
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
     MPVLib.propNode["track-list"]
@@ -245,13 +239,7 @@ class PlayerViewModel(
           return@launch showToast("Invalid subtitle file format")
         }
 
-        val cachedPath =
-          externalSubtitleRepository
-            .cacheSubtitle(uri, fileName, currentMediaTitle)
-            .getOrElse { return@launch showToast("Failed to cache subtitle") }
-
-        MPVLib.command("sub-add", cachedPath, "select")
-        _externalSubtitleMetadata.update { it + (cachedPath to fileName) }
+        MPVLib.command("sub-add", uri.toString(), "select")
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
         showToast("$displayName added")
@@ -266,58 +254,11 @@ class PlayerViewModel(
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
     }
-    viewModelScope.launch {
-      delay(100) // Allow MPV to set media title first
-      restoreCachedSubtitles(mediaTitle)
-    }
-  }
-
-  private suspend fun restoreCachedSubtitles(mediaTitle: String) {
-    val subtitles = externalSubtitleRepository.getSubtitlesForMedia(mediaTitle)
-    val metadata = mutableMapOf<String, String>()
-
-    withContext(Dispatchers.IO) {
-      subtitles.forEach { subtitle ->
-        if (File(subtitle.cachedFilePath).exists()) {
-          MPVLib.command("sub-add", subtitle.cachedFilePath, "select")
-          metadata[subtitle.cachedFilePath] = subtitle.originalFileName
-        } else {
-          externalSubtitleRepository.deleteSubtitle(subtitle.cachedFilePath)
-        }
-      }
-    }
-
-    _externalSubtitleMetadata.update { metadata }
   }
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch {
-      val tracks = MPVLib.propNode["track-list"].value?.toObject<List<TrackNode>>(json) ?: return@launch
-      val track = tracks.find { it.id == id && it.isSubtitle && it.external == true }
-
-      track?.externalFilename?.let { filename ->
-        externalSubtitleRepository.deleteSubtitle(filename)
-        _externalSubtitleMetadata.update { it - filename }
-      }
-
       MPVLib.command("sub-remove", id.toString())
-    }
-  }
-
-  fun addDownloadedSubtitle(
-    filePath: String,
-    fileName: String,
-  ) {
-    viewModelScope.launch {
-      runCatching {
-        MPVLib.command("sub-add", filePath, "select")
-        _externalSubtitleMetadata.update { it + (filePath to fileName) }
-
-        val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-        showToast("$displayName added")
-      }.onFailure {
-        showToast("Failed to add subtitle")
-      }
     }
   }
 

@@ -182,43 +182,6 @@ object SubtitlesPreferencesScreen : Screen {
             summary = { Text(stringResource(R.string.pref_subtitles_autoload_summary)) },
           )
 
-          val subdlApiKey by preferences.subdlApiKey.collectAsState()
-          TextFieldPreference(
-            value = subdlApiKey,
-            onValueChange = preferences.subdlApiKey::set,
-            textToValue = { it },
-            title = { Text("Subdl API Key") },
-            summary = {
-              if (subdlApiKey.isNotBlank()) {
-                Text("API key set (${subdlApiKey.take(8)}...)")
-              } else {
-                Text("Not set - Required for online subtitle downloads")
-              }
-            },
-            textField = { value, onValueChange, _ ->
-              Column(
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-              ) {
-                Text(
-                  text = "Get your free API key from subdl",
-                  style = MaterialTheme.typography.bodyMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextField(
-                  value = value,
-                  onValueChange = onValueChange,
-                  modifier = Modifier.fillMaxWidth(),
-                  placeholder = { Text("Enter API key") },
-                  singleLine = true,
-                )
-              }
-            },
-          )
-
           // Directory picker preference with reload and clear icons on the right
           Box(
             modifier =

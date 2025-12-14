@@ -38,15 +38,9 @@ fun SubtitlesSheet(
   onOpenSubtitleSettings: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
   onRemoveSubtitle: (Int) -> Unit,
-  onOpenOnlineSearch: () -> Unit,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
-  externalSubtitleMetadata: Map<String, String> = emptyMap(),
 ) {
-  val preferences = koinInject<SubtitlesPreferences>()
-  val subdlApiKey by preferences.subdlApiKey.collectAsState()
-  val download = null
-
   GenericTracksSheet(
     tracks,
     onDismissRequest = onDismissRequest,
@@ -55,12 +49,6 @@ fun SubtitlesSheet(
         stringResource(R.string.player_sheets_add_ext_sub),
         onAddSubtitle,
         actions = {
-          // Only show cloud download icon if API key is set
-          if (subdlApiKey.isNotBlank()) {
-            IconButton(onClick = onOpenOnlineSearch) {
-              Icon(Icons.Default.CloudDownload, download)
-            }
-          }
           IconButton(onClick = onOpenSubtitleSettings) {
             Icon(Icons.Default.Palette, null)
           }
@@ -72,7 +60,7 @@ fun SubtitlesSheet(
     },
     track = { track ->
       SubtitleTrackRow(
-        title = getTrackTitle(track, tracks, externalSubtitleMetadata),
+        title = getTrackTitle(track, tracks),
         selected = track.mainSelection?.toInt() ?: -1,
         isExternal = track.external == true,
         onClick = { onSelect(track.id) },

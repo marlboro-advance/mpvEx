@@ -5,7 +5,6 @@ import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepositor
 import app.marlboroadvance.mpvex.di.DatabaseModule
 import app.marlboroadvance.mpvex.di.FileManagerModule
 import app.marlboroadvance.mpvex.di.PreferencesModule
-import app.marlboroadvance.mpvex.di.networkModule
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
 import app.marlboroadvance.mpvex.presentation.crash.GlobalExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -44,7 +43,6 @@ class App :
         PreferencesModule,
         DatabaseModule,
         FileManagerModule,
-        networkModule,
       )
     }
 }

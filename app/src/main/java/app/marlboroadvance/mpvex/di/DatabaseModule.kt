@@ -10,7 +10,6 @@ import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.RecentlyPlayedRepositoryImpl
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
@@ -341,6 +340,27 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
   }
 }
 
+/**
+ * Migration from version 6 to version 7
+ * Removes ExternalSubtitleEntity table (subtitle download feature removed)
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_6_7", "Removing ExternalSubtitleEntity table")
+
+      // Drop the external subtitle table
+      db.execSQL("DROP TABLE IF EXISTS `ExternalSubtitleEntity`")
+
+      android.util.Log.d("Migration_6_7", "Migration completed successfully")
+
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_6_7", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -355,7 +375,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
         .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
         .build()
     }
@@ -364,13 +384,6 @@ val DatabaseModule =
 
     single<RecentlyPlayedRepository> {
       RecentlyPlayedRepositoryImpl(get<MpvExDatabase>().recentlyPlayedDao())
-    }
-
-    single<ExternalSubtitleRepository> {
-      ExternalSubtitleRepository(
-        context = androidContext(),
-        dao = get<MpvExDatabase>().externalSubtitleDao(),
-      )
     }
 
     single { ThumbnailRepository(androidContext()) }

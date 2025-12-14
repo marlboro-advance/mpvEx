@@ -174,13 +174,8 @@ dependencies {
 
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
-  implementation(libs.retrofit)
-  implementation(libs.retrofit.converter.moshi)
   implementation(libs.okhttp)
   implementation(libs.okhttp.logging)
-  implementation(libs.moshi)
-  implementation(libs.moshi.kotlin)
-  ksp(libs.moshi.codegen)
 
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)

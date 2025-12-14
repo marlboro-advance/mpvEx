@@ -360,30 +360,6 @@ object AdvancedPreferencesScreen : Screen {
               }
             },
           )
-          Preference(
-            title = { Text(text = "Clear subtitle cache") },
-            summary = { Text("Delete all cached external subtitle files") },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val subtitleCacheDir = File(context.filesDir, "subtitle_cache")
-                val deletedCount =
-                  subtitleCacheDir.listFiles()?.count { it.isFile && it.delete() } ?: 0
-
-                mpvexDatabase.externalSubtitleDao().getAll().forEach {
-                  mpvexDatabase.externalSubtitleDao().deleteById(it.id)
-                }
-
-                withContext(Dispatchers.Main) {
-                  Toast
-                    .makeText(
-                      context,
-                      "Cleared $deletedCount cached subtitle files",
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              }
-            },
-          )
         }
       }
     }
