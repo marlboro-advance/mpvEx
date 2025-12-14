@@ -202,7 +202,10 @@ class MPVView(
     MPVLib.setOptionString("sub-speed", subtitlesPreferences.defaultSubSpeed.get().toString())
 
     val preferredFont = subtitlesPreferences.font.get()
-    MPVLib.setOptionString("sub-font", preferredFont.ifBlank { "sans-serif" })
+    if (preferredFont.isNotBlank()) {
+      MPVLib.setOptionString("sub-font", preferredFont)
+    }
+    // If blank, MPV will use its default font (subfont.ttf)
 
     if (subtitlesPreferences.overrideAssSubs.get()) {
       MPVLib.setOptionString("sub-ass-override", "force")

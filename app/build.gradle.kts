@@ -117,7 +117,6 @@ android {
   @Suppress("UnstableApiUsage")
   androidResources {
     generateLocaleConfig = true
-    ignoreAssetsPattern = "!subfont.ttf"
   }
 }
 

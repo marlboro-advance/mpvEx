@@ -79,8 +79,6 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   }
   LaunchedEffect(Unit) {
     withContext(Dispatchers.IO) {
-      // Add system font as the first option
-      fonts.add("sans-serif")
       // Read fonts from the app's persistent cache: filesDir/fonts
       val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
       if (fileManager.exists(fontsDir)) {
