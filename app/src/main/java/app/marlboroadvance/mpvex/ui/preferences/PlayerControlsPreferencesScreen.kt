@@ -79,8 +79,10 @@ object PlayerControlsPreferencesScreen : Screen {
           appearancePrefs.bottomRightControls.delete()
           appearancePrefs.bottomLeftControls.delete()
           appearancePrefs.portraitBottomControls.delete()
+          showResetDialog = false
         },
         onCancel = {
+          showResetDialog = false
         },
       )
     }
@@ -117,7 +119,7 @@ object PlayerControlsPreferencesScreen : Screen {
             }
           },
           actions = {
-            IconButton(onClick = { }) {
+            IconButton(onClick = { showResetDialog = true }) {
               Icon(Icons.Outlined.Restore, contentDescription = stringResource(id = R.string.pref_layout_reset_default))
             }
           },

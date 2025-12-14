@@ -32,6 +32,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -50,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
@@ -75,6 +78,7 @@ import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScre
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.browser.states.LoadingState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
@@ -112,9 +116,16 @@ object FolderListScreen : Screen {
     val videoFolders by viewModel.videoFolders.collectAsState()
     val foldersWithNewCount by viewModel.foldersWithNewCount.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val hasCompletedInitialLoad by viewModel.hasCompletedInitialLoad.collectAsState()
+    val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
+    val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
+    val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -131,6 +142,8 @@ object FolderListScreen : Screen {
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var allVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var videosLoaded by remember { mutableStateOf(false) }
+
+
 
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
@@ -192,6 +205,21 @@ object FolderListScreen : Screen {
       hasRecentlyPlayed =
         app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
           .hasRecentlyPlayed()
+    }
+
+    // Listen for lifecycle resume events to refresh new video counts when coming back
+    DisposableEffect(lifecycleOwner) {
+      val observer =
+        LifecycleEventObserver { _, event ->
+          if (event == Lifecycle.Event.ON_RESUME) {
+            // Recalculate new video counts when returning to the screen
+            viewModel.recalculateNewVideoCounts()
+          }
+        }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      onDispose {
+        lifecycleOwner.lifecycle.removeObserver(observer)
+      }
     }
 
     LaunchedEffect(fabMenuExpanded) {
@@ -332,6 +360,27 @@ object FolderListScreen : Screen {
                 }
               }
             },
+            onBlacklistClick = {
+              // Add selected folders to blacklist
+              coroutineScope.launch {
+                val selectedFolders = selectionManager.getSelectedItems()
+                val blacklistedFolders = foldersPreferences.blacklistedFolders.get().toMutableSet()
+                selectedFolders.forEach { folder ->
+                  blacklistedFolders.add(folder.path)
+                }
+                foldersPreferences.blacklistedFolders.set(blacklistedFolders)
+                // Clear selection after blacklisting
+                selectionManager.clear()
+                // Refresh folder list to apply blacklist
+                viewModel.refresh()
+                // Show toast to confirm
+                android.widget.Toast.makeText(
+                  context,
+                  context.getString(app.marlboroadvance.mpvex.R.string.pref_folders_blacklisted),
+                  android.widget.Toast.LENGTH_SHORT,
+                ).show()
+              }
+            },
             onSelectAll = { selectionManager.selectAll() },
             onInvertSelection = { selectionManager.invertSelection() },
             onDeselectAll = { selectionManager.clear() },
@@ -346,6 +395,7 @@ object FolderListScreen : Screen {
             MediaActionFab(
               listState = listState,
               hasRecentlyPlayed = hasRecentlyPlayed,
+              enableRecentlyPlayed = enableRecentlyPlayed,
               onOpenFile = { filePicker.launch(arrayOf("video/*")) },
               onPlayRecentlyPlayed = {
                 coroutineScope.launch {
@@ -506,6 +556,9 @@ object FolderListScreen : Screen {
               foldersWithNewCount = foldersWithNewCount,
               listState = listState,
               isRefreshing = isRefreshing,
+              isLoading = isLoading,
+              hasCompletedInitialLoad = hasCompletedInitialLoad,
+              foldersWereDeleted = foldersWereDeleted,
               recentlyPlayedFilePath = recentlyPlayedFilePath,
               onRefresh = { viewModel.refresh() },
               selectionManager = selectionManager,
@@ -564,6 +617,9 @@ private fun FolderListContent(
   foldersWithNewCount: List<FolderWithNewCount>,
   listState: LazyListState,
   isRefreshing: MutableState<Boolean>,
+  isLoading: Boolean,
+  hasCompletedInitialLoad: Boolean,
+  foldersWereDeleted: Boolean,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
   selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<VideoFolder, String>,
@@ -574,19 +630,10 @@ private fun FolderListContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
 
-  // Avoid brief empty-state flicker by delaying its appearance slightly
-  val showEmpty =
-    remember(folders) {
-      mutableStateOf(false)
-    }
-  LaunchedEffect(folders) {
-    if (folders.isEmpty()) {
-      kotlinx.coroutines.delay(250)
-      showEmpty.value = folders.isEmpty()
-    } else {
-      showEmpty.value = false
-    }
-  }
+  // Show loading or empty state based on loading status
+  // Only show empty state after initial scan completes with no results
+  val showEmpty = folders.isEmpty() && !isLoading && hasCompletedInitialLoad
+  val showLoading = isLoading && folders.isEmpty()
 
   // Check if at top of list to hide scrollbar during pull-to-refresh
   val isAtTop by remember {
@@ -611,50 +658,64 @@ private fun FolderListContent(
     listState = listState,
     modifier = modifier.fillMaxSize(),
   ) {
-    LazyColumnScrollbar(
-      state = listState,
-      settings = ScrollbarSettings(
-        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-        thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-      ),
-    ) {
-      LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+    // Show centered states when loading or empty
+    if (showLoading || showEmpty) {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(bottom = 80.dp), // Account for bottom navigation bar
+        contentAlignment = Alignment.Center,
       ) {
-        // Regular folders
-        items(folders) { folder ->
-          val isRecentlyPlayed =
-            recentlyPlayedFilePath?.let { filePath ->
-              val file = File(filePath)
-              file.parent == folder.path
-            } ?: false
-
-          // Get new video count for this folder
-          val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
-
-          FolderCard(
-            folder = folder,
-            isSelected = selectionManager.isSelected(folder),
-            isRecentlyPlayed = isRecentlyPlayed,
-            onClick = { onFolderClick(folder) },
-            onLongClick = { onFolderLongClick(folder) },
-            onThumbClick = if (tapThumbnailToSelect) {
-              { onFolderLongClick(folder) }
-            } else {
-              { onFolderClick(folder) }
-            },
-            newVideoCount = newCount,
+        if (showLoading) {
+          LoadingState(
+            icon = Icons.Filled.Folder,
+            title = "Scanning for videos...",
+            message = "Please wait while we search your device",
+          )
+        } else if (showEmpty) {
+          EmptyState(
+            icon = Icons.Filled.Folder,
+            title = "No video folders found",
+            message = "Add some video files to your device to see them here",
           )
         }
+      }
+    } else {
+      // Show folder list
+      LazyColumnScrollbar(
+        state = listState,
+        settings = ScrollbarSettings(
+          thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+          thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+        ),
+      ) {
+        LazyColumn(
+          state = listState,
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+        ) {
+          items(folders) { folder ->
+            val isRecentlyPlayed =
+              recentlyPlayedFilePath?.let { filePath ->
+                val file = File(filePath)
+                file.parent == folder.path
+              } ?: false
 
-        if (showEmpty.value) {
-          item {
-            EmptyState(
-              icon = Icons.Filled.Folder,
-              title = "No video folders found",
-              message = "Add some video files to your device to see them here",
+            // Get new video count for this folder
+            val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
+
+            FolderCard(
+              folder = folder,
+              isSelected = selectionManager.isSelected(folder),
+              isRecentlyPlayed = isRecentlyPlayed,
+              onClick = { onFolderClick(folder) },
+              onLongClick = { onFolderLongClick(folder) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onFolderLongClick(folder) }
+              } else {
+                { onFolderClick(folder) }
+              },
+              newVideoCount = newCount,
             )
           }
         }

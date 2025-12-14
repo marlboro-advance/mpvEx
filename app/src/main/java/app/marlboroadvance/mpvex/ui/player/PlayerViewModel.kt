@@ -15,7 +15,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.domain.subtitle.repository.ExternalSubtitleRepository
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -74,7 +73,6 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
-  private val externalSubtitleRepository: ExternalSubtitleRepository by inject()
   private val json: Json by inject()
 
   // MPV properties with efficient collection
@@ -86,10 +84,6 @@ class PlayerViewModel(
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-
-  // Subtitle and audio tracks using StateFlow for better performance
-  private val _externalSubtitleMetadata = MutableStateFlow<Map<String, String>>(emptyMap())
-  val externalSubtitleMetadata: StateFlow<Map<String, String>> = _externalSubtitleMetadata.asStateFlow()
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
     MPVLib.propNode["track-list"]
@@ -125,6 +119,8 @@ class PlayerViewModel(
   val playerUpdate = MutableStateFlow<PlayerUpdates>(PlayerUpdates.None)
   val isBrightnessSliderShown = MutableStateFlow(false)
   val isVolumeSliderShown = MutableStateFlow(false)
+  val volumeSliderTimestamp = MutableStateFlow(0L)
+  val brightnessSliderTimestamp = MutableStateFlow(0L)
   val currentBrightness =
     MutableStateFlow(
       runCatching {
@@ -154,6 +150,12 @@ class PlayerViewModel(
 
   private val _totalFrames = MutableStateFlow(0)
   val totalFrames: StateFlow<Int> = _totalFrames.asStateFlow()
+
+  private val _isFrameNavigationExpanded = MutableStateFlow(false)
+  val isFrameNavigationExpanded: StateFlow<Boolean> = _isFrameNavigationExpanded.asStateFlow()
+
+  private val _isSnapshotLoading = MutableStateFlow(false)
+  val isSnapshotLoading: StateFlow<Boolean> = _isSnapshotLoading.asStateFlow()
 
   // Video zoom
   private val _videoZoom = MutableStateFlow(0f)
@@ -243,13 +245,7 @@ class PlayerViewModel(
           return@launch showToast("Invalid subtitle file format")
         }
 
-        val cachedPath =
-          externalSubtitleRepository
-            .cacheSubtitle(uri, fileName, currentMediaTitle)
-            .getOrElse { return@launch showToast("Failed to cache subtitle") }
-
-        MPVLib.command("sub-add", cachedPath, "select")
-        _externalSubtitleMetadata.update { it + (cachedPath to fileName) }
+        MPVLib.command("sub-add", uri.toString(), "select")
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
         showToast("$displayName added")
@@ -264,79 +260,23 @@ class PlayerViewModel(
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
     }
-    viewModelScope.launch {
-      delay(100) // Allow MPV to set media title first
-      restoreCachedSubtitles(mediaTitle)
-    }
-  }
-
-  private suspend fun restoreCachedSubtitles(mediaTitle: String) {
-    val subtitles = externalSubtitleRepository.getSubtitlesForMedia(mediaTitle)
-    val metadata = mutableMapOf<String, String>()
-
-    withContext(Dispatchers.IO) {
-      subtitles.forEach { subtitle ->
-        if (File(subtitle.cachedFilePath).exists()) {
-          MPVLib.command("sub-add", subtitle.cachedFilePath, "select")
-          metadata[subtitle.cachedFilePath] = subtitle.originalFileName
-        } else {
-          externalSubtitleRepository.deleteSubtitle(subtitle.cachedFilePath)
-        }
-      }
-    }
-
-    _externalSubtitleMetadata.update { metadata }
   }
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch {
-      val tracks = MPVLib.propNode["track-list"].value?.toObject<List<TrackNode>>(json) ?: return@launch
-      val track = tracks.find { it.id == id && it.isSubtitle && it.external == true }
-
-      track?.externalFilename?.let { filename ->
-        externalSubtitleRepository.deleteSubtitle(filename)
-        _externalSubtitleMetadata.update { it - filename }
-      }
-
       MPVLib.command("sub-remove", id.toString())
     }
   }
 
-  fun addDownloadedSubtitle(
-    filePath: String,
-    fileName: String,
-  ) {
-    viewModelScope.launch {
-      runCatching {
-        MPVLib.command("sub-add", filePath, "select")
-        _externalSubtitleMetadata.update { it + (filePath to fileName) }
-
-        val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-        showToast("$displayName added")
-      }.onFailure {
-        showToast("Failed to add subtitle")
-      }
-    }
-  }
-
   fun selectSub(id: Int) {
-    val (primarySid, secondarySid) =
-      Pair(
-        MPVLib.getPropertyInt("sid"),
-        MPVLib.getPropertyInt("secondary-sid"),
-      )
+    val primarySid = MPVLib.getPropertyInt("sid")
 
-    val (newPrimary, newSecondary) =
-      when (id) {
-        primarySid -> Pair(secondarySid, null)
-        secondarySid -> Pair(primarySid, null)
-        else -> if (primarySid != null) Pair(primarySid, id) else Pair(id, null)
-      }
-
-    newSecondary?.let { MPVLib.setPropertyInt("secondary-sid", it) }
-      ?: MPVLib.setPropertyBoolean("secondary-sid", false)
-    newPrimary?.let { MPVLib.setPropertyInt("sid", it) }
-      ?: MPVLib.setPropertyBoolean("sid", false)
+    // Toggle subtitle: if clicking the current subtitle, turn it off, otherwise select the new one
+    if (id == primarySid) {
+      MPVLib.setPropertyBoolean("sid", false)
+    } else {
+      MPVLib.setPropertyInt("sid", id)
+    }
   }
 
   private fun getFileNameFromUri(uri: Uri): String? =
@@ -500,6 +440,7 @@ class PlayerViewModel(
 
   fun displayBrightnessSlider() {
     isBrightnessSliderShown.value = true
+    brightnessSliderTimestamp.value = System.currentTimeMillis()
   }
 
   fun changeVolumeBy(change: Int) {
@@ -530,6 +471,7 @@ class PlayerViewModel(
 
   fun displayVolumeSlider() {
     isVolumeSliderShown.value = true
+    volumeSliderTimestamp.value = System.currentTimeMillis()
   }
 
   // ==================== Video Aspect ====================
@@ -727,6 +669,10 @@ class PlayerViewModel(
     MPVLib.setPropertyDouble("video-zoom", zoom.toDouble())
   }
 
+  fun resetVideoZoom() {
+    setVideoZoom(0f)
+  }
+
   // ==================== Frame Navigation ====================
 
   fun updateFrameInfo() {
@@ -744,6 +690,198 @@ class PlayerViewModel(
       } else {
         0
       }
+  }
+
+  fun toggleFrameNavigationExpanded() {
+    val wasExpanded = _isFrameNavigationExpanded.value
+    _isFrameNavigationExpanded.update { !it }
+    // Update frame info and pause when expanding (going from false to true)
+    if (!wasExpanded) {
+      // Pause the video if it's playing
+      if (paused != true) {
+        pauseUnpause()
+      }
+      updateFrameInfo()
+      showFrameInfoOverlay()
+      resetFrameNavigationTimer()
+    } else {
+      // Cancel timer when manually collapsing
+      frameNavigationCollapseJob?.cancel()
+    }
+  }
+
+  private fun showFrameInfoOverlay() {
+    playerUpdate.value = PlayerUpdates.FrameInfo(_currentFrame.value, _totalFrames.value)
+  }
+
+  fun frameStepForward() {
+    viewModelScope.launch {
+      if (paused != true) {
+        pauseUnpause()
+        delay(50)
+      }
+      MPVLib.command("no-osd", "frame-step")
+      delay(100)
+      updateFrameInfo()
+      showFrameInfoOverlay()
+      // Reset the inactivity timer
+      resetFrameNavigationTimer()
+    }
+  }
+
+  fun frameStepBackward() {
+    viewModelScope.launch {
+      if (paused != true) {
+        pauseUnpause()
+        delay(50)
+      }
+      MPVLib.command("no-osd", "frame-back-step")
+      delay(100)
+      updateFrameInfo()
+      showFrameInfoOverlay()
+      // Reset the inactivity timer
+      resetFrameNavigationTimer()
+    }
+  }
+
+  private var frameNavigationCollapseJob: Job? = null
+
+  fun resetFrameNavigationTimer() {
+    frameNavigationCollapseJob?.cancel()
+    frameNavigationCollapseJob = viewModelScope.launch {
+      delay(10000) // 10 seconds
+      if (_isFrameNavigationExpanded.value) {
+        _isFrameNavigationExpanded.value = false
+      }
+    }
+  }
+
+  fun takeSnapshot(context: Context) {
+    viewModelScope.launch(Dispatchers.IO) {
+      _isSnapshotLoading.value = true
+      try {
+        val includeSubtitles = playerPreferences.includeSubtitlesInSnapshot.get()
+
+        // Generate filename with timestamp
+        val timestamp =
+          java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+        val filename = "mpv_snapshot_$timestamp.png"
+
+        // Create a temporary file first
+        val tempFile = File(context.cacheDir, filename)
+
+        // Take screenshot using MPV to temp file, with or without subtitles
+        if (includeSubtitles) {
+          MPVLib.command("screenshot-to-file", tempFile.absolutePath, "subtitles")
+        } else {
+          MPVLib.command("screenshot-to-file", tempFile.absolutePath, "video")
+        }
+
+        // Wait a bit for MPV to finish writing the file
+        delay(200)
+
+        // Check if file was created
+        if (!tempFile.exists() || tempFile.length() == 0L) {
+          withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Failed to create screenshot", Toast.LENGTH_SHORT).show()
+          }
+          return@launch
+        }
+
+        // Use different methods based on Android version
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+          // Android 10+ - Use MediaStore with RELATIVE_PATH
+          val contentValues =
+            android.content.ContentValues().apply {
+              put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, filename)
+              put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+              put(
+                android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                "${android.os.Environment.DIRECTORY_PICTURES}/mpvSnaps",
+              )
+              put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+            }
+
+          val resolver = context.contentResolver
+          val imageUri =
+            resolver.insert(
+              android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+              contentValues,
+            )
+
+          if (imageUri != null) {
+            // Copy temp file to MediaStore
+            resolver.openOutputStream(imageUri)?.use { outputStream ->
+              tempFile.inputStream().use { inputStream ->
+                inputStream.copyTo(outputStream)
+              }
+            }
+
+            // Mark as finished
+            contentValues.clear()
+            contentValues.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(imageUri, contentValues, null, null)
+
+            // Delete temp file
+            tempFile.delete()
+
+            // Show success toast
+            withContext(Dispatchers.Main) {
+              Toast
+                .makeText(
+                  context,
+                  context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+                  Toast.LENGTH_SHORT,
+                ).show()
+            }
+          } else {
+            throw Exception("Failed to create MediaStore entry")
+          }
+        } else {
+          // Android 9 and below - Use legacy external storage
+          val picturesDir =
+            android.os.Environment.getExternalStoragePublicDirectory(
+              android.os.Environment.DIRECTORY_PICTURES,
+            )
+          val snapshotsDir = File(picturesDir, "mpvSnaps")
+
+          // Create directory if it doesn't exist
+          if (!snapshotsDir.exists()) {
+            val created = snapshotsDir.mkdirs()
+            if (!created && !snapshotsDir.exists()) {
+              throw Exception("Failed to create mpvSnaps directory")
+            }
+          }
+
+          val destFile = File(snapshotsDir, filename)
+          tempFile.copyTo(destFile, overwrite = true)
+          tempFile.delete()
+
+          // Notify media scanner about the new file
+          android.media.MediaScannerConnection.scanFile(
+            context,
+            arrayOf(destFile.absolutePath),
+            arrayOf("image/png"),
+            null,
+          )
+
+          withContext(Dispatchers.Main) {
+            Toast
+              .makeText(
+                context,
+                context.getString(R.string.player_sheets_frame_navigation_snapshot_saved),
+                Toast.LENGTH_SHORT,
+              ).show()
+          }
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          Toast.makeText(context, "Failed to save snapshot: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+      } finally {
+        _isSnapshotLoading.value = false
+      }
+    }
   }
 
   // ==================== Playlist Management ====================

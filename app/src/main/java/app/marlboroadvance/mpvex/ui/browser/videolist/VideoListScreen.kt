@@ -105,6 +105,7 @@ data class VideoListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val playlistMode by playerPreferences.playlistMode.collectAsState()
+    val videosWereDeletedOrMoved by viewModel.videosWereDeletedOrMoved.collectAsState()
 
     // Sorting
     val videoSortType by browserPreferences.videoSortType.collectAsState()
@@ -243,6 +244,7 @@ data class VideoListScreen(
         isLoading = isLoading && videos.isEmpty(),
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
+        videosWereDeletedOrMoved = videosWereDeletedOrMoved,
         onRefresh = { viewModel.refresh() },
         selectionManager = selectionManager,
         onVideoClick = { video ->
@@ -371,6 +373,13 @@ data class VideoListScreen(
           },
           onDismiss = {
             progressDialogOpen.value = false
+            // Set flag if move operation was successful
+            if (operationType.value is CopyPasteOps.OperationType.Move &&
+              operationProgress.isComplete &&
+              operationProgress.error == null
+            ) {
+              viewModel.setVideosWereDeletedOrMoved()
+            }
             operationType.value = null
             selectionManager.clear()
             viewModel.refresh()
@@ -432,6 +441,7 @@ private fun VideoListContent(
   isLoading: Boolean,
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
+  videosWereDeletedOrMoved: Boolean,
   onRefresh: suspend () -> Unit,
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
@@ -460,7 +470,7 @@ private fun VideoListContent(
       }
     }
 
-    videosWithInfo.isEmpty() && !isLoading -> {
+    videosWithInfo.isEmpty() && !isLoading && videosWereDeletedOrMoved -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

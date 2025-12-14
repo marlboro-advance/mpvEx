@@ -56,7 +56,7 @@ fun VerticalSlider(
   overflowValue: Float? = null,
   overflowRange: ClosedFloatingPointRange<Float>? = null,
 ) {
-  require(range.contains(value)) { "Value must be within the provided range" }
+  val coercedValue = value.coerceIn(range)
   Box(
     modifier =
       modifier
@@ -71,7 +71,7 @@ fun VerticalSlider(
         ),
     contentAlignment = Alignment.BottomCenter,
   ) {
-    val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+    val targetHeight by animateFloatAsState(percentage(coercedValue, range), label = "vsliderheight")
     Box(
       Modifier
         .fillMaxWidth()
@@ -101,7 +101,7 @@ fun VerticalSlider(
   overflowValue: Int? = null,
   overflowRange: ClosedRange<Int>? = null,
 ) {
-  require(range.contains(value)) { "Value must be within the provided range" }
+  val coercedValue = value.coerceIn(range)
   Box(
     modifier =
       modifier
@@ -116,7 +116,7 @@ fun VerticalSlider(
         ),
     contentAlignment = Alignment.BottomCenter,
   ) {
-    val targetHeight by animateFloatAsState(percentage(value, range), label = "vsliderheight")
+    val targetHeight by animateFloatAsState(percentage(coercedValue, range), label = "vsliderheight")
     Box(
       Modifier
         .fillMaxWidth()
@@ -144,6 +144,7 @@ fun BrightnessSlider(
   range: ClosedFloatingPointRange<Float>,
   modifier: Modifier = Modifier,
 ) {
+  val coercedBrightness = brightness.coerceIn(range)
   Surface(
     modifier = modifier,
     shape = RoundedCornerShape(20.dp),
@@ -159,15 +160,15 @@ fun BrightnessSlider(
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
       Text(
-        (brightness * 100).toInt().toString(),
+        (coercedBrightness * 100).toInt().toString(),
         style = MaterialTheme.typography.bodySmall,
       )
       VerticalSlider(
-        brightness,
+        coercedBrightness,
         range,
       )
       Icon(
-        when (percentage(brightness, range)) {
+        when (percentage(coercedBrightness, range)) {
           in 0f..0.3f -> Icons.Default.BrightnessLow
           in 0.3f..0.6f -> Icons.Default.BrightnessMedium
           in 0.6f..1f -> Icons.Default.BrightnessHigh

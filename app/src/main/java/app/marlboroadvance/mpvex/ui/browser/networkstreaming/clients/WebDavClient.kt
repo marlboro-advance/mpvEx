@@ -16,6 +16,7 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
     private const val TAG = "WebDavClient"
   }
 
+  // Note: Sardine-Android uses OkHttp which properly handles UTF-8 encoding by default
   private var sardine: Sardine? = null
   private var baseUrl: String = ""
 

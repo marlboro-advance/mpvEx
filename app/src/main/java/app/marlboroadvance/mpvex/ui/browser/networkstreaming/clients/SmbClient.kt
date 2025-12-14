@@ -33,6 +33,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
     withContext(Dispatchers.IO) {
       try {
         // Configure SMBJ for SMB 2/3
+        // Note: SMBJ uses Unicode (UTF-16LE) by default for SMB 2.0+ which properly handles international characters
         val config = SmbConfig.builder()
           .withTimeout(30000, TimeUnit.MILLISECONDS)
           .withSoTimeout(35000, TimeUnit.MILLISECONDS)

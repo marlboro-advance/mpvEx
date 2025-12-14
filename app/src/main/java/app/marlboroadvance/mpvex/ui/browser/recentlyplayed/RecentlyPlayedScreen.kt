@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,18 +34,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
@@ -52,8 +58,11 @@ import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.LazyColumnScrollbar
 import my.nanihadesuka.compose.ScrollbarSettings
@@ -78,6 +87,9 @@ object RecentlyPlayedScreen : Screen {
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val playerPreferences = koinInject<PlayerPreferences>()
     val playlistMode by playerPreferences.playlistMode.collectAsState()
+    val advancedPreferences = koinInject<AdvancedPreferences>()
+    val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+    val mpvexDatabase = koinInject<MpvExDatabase>()
 
     Scaffold(
       topBar = {
@@ -109,6 +121,22 @@ object RecentlyPlayedScreen : Screen {
       },
     ) { padding ->
       when {
+        !enableRecentlyPlayed -> {
+          Box(
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(padding)
+              .padding(bottom = 80.dp), // Account for bottom navigation bar
+            contentAlignment = Alignment.Center,
+          ) {
+            EmptyState(
+              icon = Icons.Filled.History,
+              title = "Recently Played is disabled",
+              message = "Enable it in Advanced Settings to track your playback history",
+            )
+          }
+        }
+
         isLoading && recentItems.isEmpty() -> {
           Box(
             modifier = Modifier
@@ -179,18 +207,41 @@ object RecentlyPlayedScreen : Screen {
       }
 
       // Delete confirmation dialog
-      DeleteConfirmationDialog(
-        isOpen = deleteDialogOpen.value,
-        onDismiss = { deleteDialogOpen.value = false },
-        onConfirm = {
-          coroutineScope.launch {
-            viewModel.clearAllRecentlyPlayed()
-            deleteDialogOpen.value = false
-          }
-        },
-        itemType = "recently played history",
-        itemCount = recentVideos.size,
-      )
+      if (deleteDialogOpen.value) {
+        ConfirmDialog(
+          stringResource(R.string.pref_advanced_clear_playback_history_confirm_title),
+          stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
+          onConfirm = {
+            coroutineScope.launch(Dispatchers.IO) {
+              runCatching {
+                mpvexDatabase.videoDataDao().clearAllPlaybackStates()
+                RecentlyPlayedOps.clearAll()
+              }.onSuccess {
+                withContext(Dispatchers.Main) {
+                  deleteDialogOpen.value = false
+                  Toast
+                    .makeText(
+                      context,
+                      context.getString(R.string.pref_advanced_cleared_playback_history),
+                      Toast.LENGTH_SHORT,
+                    ).show()
+                }
+              }.onFailure { error ->
+                withContext(Dispatchers.Main) {
+                  deleteDialogOpen.value = false
+                  Toast
+                    .makeText(
+                      context,
+                      "Failed to clear: ${error.message}",
+                      Toast.LENGTH_LONG,
+                    ).show()
+                }
+              }
+            }
+          },
+          onCancel = { deleteDialogOpen.value = false },
+        )
+      }
     }
   }
 }

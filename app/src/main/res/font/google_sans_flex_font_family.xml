@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Variable font supporting weight 100-900 and width 75-100 -->
+    <font
+        android:font="@font/google_sans_flex"
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        app:font="@font/google_sans_flex"
+        app:fontStyle="normal"
+        app:fontWeight="400" />
+
+    <font
+        android:font="@font/google_sans_flex_italic"
+        android:fontStyle="italic"
+        android:fontWeight="400"
+        app:font="@font/google_sans_flex_italic"
+        app:fontStyle="italic"
+        app:fontWeight="400" />
+</font-family>

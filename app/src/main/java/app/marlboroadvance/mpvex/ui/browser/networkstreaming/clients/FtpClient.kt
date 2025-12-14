@@ -18,6 +18,9 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
       try {
         val client = FTPClient()
 
+        // Set UTF-8 encoding for proper handling of non-English characters
+        client.controlEncoding = "UTF-8"
+
         // Increase timeouts to prevent broken pipe
         client.setConnectTimeout(15000) // 15 seconds
         client.setDataTimeout(60000) // 60 seconds
@@ -52,6 +55,14 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         // Set binary mode for file transfers
         client.setFileType(FTP.BINARY_FILE_TYPE)
         client.enterLocalPassiveMode()
+
+        // Try to enable UTF-8 mode on the server (RFC 2640)
+        // This sends "OPTS UTF8 ON" command if the server supports it
+        try {
+          client.sendCommand("OPTS UTF8 ON")
+        } catch (_: Exception) {
+          // Server may not support UTF-8 mode, continue anyway
+        }
 
         // Set buffer size for better performance
         client.bufferSize = 1024 * 64 // 64KB buffer
@@ -169,6 +180,9 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         // Create a fresh FTP client for this stream to avoid connection conflicts
         val streamClient = FTPClient()
 
+        // Set UTF-8 encoding for proper handling of non-English characters
+        streamClient.controlEncoding = "UTF-8"
+
         // Increase timeouts to prevent broken pipe during streaming
         streamClient.setConnectTimeout(15000) // 15 seconds
         streamClient.setDataTimeout(120000) // 120 seconds (2 minutes) for video streaming
@@ -201,6 +215,14 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
         // Set binary mode and passive mode
         streamClient.setFileType(FTP.BINARY_FILE_TYPE)
         streamClient.enterLocalPassiveMode()
+
+        // Try to enable UTF-8 mode on the server (RFC 2640)
+        try {
+          streamClient.sendCommand("OPTS UTF8 ON")
+        } catch (_: Exception) {
+          // Server may not support UTF-8 mode, continue anyway
+        }
+
         streamClient.bufferSize = 1024 * 64 // 64KB buffer
 
         // Change to initial directory if specified (matching the connect() behavior)
