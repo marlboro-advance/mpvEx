@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,8 +10,8 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -98,19 +99,17 @@ fun SubtitleTrackRow(
         .clickable(onClick = onClick)
         .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    Checkbox(
-      selected > -1,
-      onCheckedChange = { _ -> onClick() },
+    RadioButton(
+      selected = selected > -1,
+      onClick = onClick,
     )
     Text(
       title,
       fontStyle = if (selected > -1) FontStyle.Italic else FontStyle.Normal,
       fontWeight = if (selected > -1) FontWeight.ExtraBold else FontWeight.Normal,
-      modifier =
-        Modifier
-          .weight(1f)
-          .padding(horizontal = MaterialTheme.spacing.smaller),
+      modifier = Modifier.weight(1f),
     )
     if (isExternal) {
       IconButton(onClick = onRemove) {
