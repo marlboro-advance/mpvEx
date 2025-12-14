@@ -25,6 +25,8 @@ class BrowserPreferences(
   val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)
   val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
 
+  val mediaLayoutMode = preferenceStore.getEnum("media_layout_mode", MediaLayoutMode. LIST)
+
   // Visibility preferences for folder card chips
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
   val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
@@ -98,4 +100,16 @@ enum class FolderViewMode {
         AlbumView -> "Folder View"
         FileManager -> "Tree View"
       }
+}
+
+enum class MediaLayoutMode {
+  LIST,
+  GRID,
+  ;
+
+  val displayName:  String
+    get() = when (this) {
+      LIST -> "List"
+      GRID -> "Grid"
+    }
 }

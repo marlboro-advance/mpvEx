@@ -9,6 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose. foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy. grid.LazyVerticalGrid
+import androidx.compose.foundation. lazy.grid.rememberLazyGridState
+import androidx. compose.material. icons.filled.GridView
+import androidx.compose.material. icons.filled.ViewList
+import androidx. compose.foundation.lazy.grid.GridItemSpan
+import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -566,19 +574,18 @@ private fun FolderListContent(
   isRefreshing: MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   onRefresh: suspend () -> Unit,
-  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<VideoFolder, String>,
+  selectionManager: app.marlboroadvance.mpvex.ui.browser. selection.SelectionManager<VideoFolder, String>,
   onFolderClick: (VideoFolder) -> Unit,
   onFolderLongClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
-  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val tapThumbnailToSelect by gesturePreferences. tapThumbnailToSelect. collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
 
-  // Avoid brief empty-state flicker by delaying its appearance slightly
-  val showEmpty =
-    remember(folders) {
-      mutableStateOf(false)
-    }
+  // Avoid brief empty-state flicker
+  val showEmpty = remember(folders) { mutableStateOf(false) }
   LaunchedEffect(folders) {
     if (folders.isEmpty()) {
       kotlinx.coroutines.delay(250)
@@ -588,22 +595,27 @@ private fun FolderListContent(
     }
   }
 
-  // Check if at top of list to hide scrollbar during pull-to-refresh
+  val gridState = rememberLazyGridState()
+
+  // Check if at top of list
   val isAtTop by remember {
     derivedStateOf {
-      listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+      gridState.firstVisibleItemIndex == 0 && gridState. firstVisibleItemScrollOffset == 0
     }
   }
 
-  // Only show scrollbar if list has more than 20 items
   val hasEnoughItems = folders.size > 20
 
-  // Animate scrollbar alpha
   val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
-    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+    targetValue = if (isAtTop || ! hasEnoughItems) 0f else 1f,
+    animationSpec = androidx.compose.animation. core.tween(durationMillis = 200),
     label = "scrollbarAlpha",
   )
+
+  val columns = when (mediaLayoutMode) {
+    MediaLayoutMode.LIST -> 1
+    MediaLayoutMode.GRID -> 4
+  }
 
   PullRefreshBox(
     isRefreshing = isRefreshing,
@@ -611,52 +623,52 @@ private fun FolderListContent(
     listState = listState,
     modifier = modifier.fillMaxSize(),
   ) {
-    LazyColumnScrollbar(
-      state = listState,
-      settings = ScrollbarSettings(
-        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-        thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-      ),
+    LazyVerticalGrid(
+      columns = GridCells. Fixed(columns),
+      state = gridState,
+      modifier = Modifier.fillMaxSize(),
+      contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+      horizontalArrangement = if (mediaLayoutMode == MediaLayoutMode.GRID)
+        Arrangement. spacedBy(8.dp) else Arrangement.spacedBy(0.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
-      ) {
-        // Regular folders
-        items(folders) { folder ->
-          val isRecentlyPlayed =
-            recentlyPlayedFilePath?.let { filePath ->
-              val file = File(filePath)
-              file.parent == folder.path
-            } ?: false
+      items(
+        count = folders.size,
+        key = { index -> folders[index].bucketId },
+      ) { index ->
+        val folder = folders[index]
+        val isRecentlyPlayed = recentlyPlayedFilePath?. let { filePath ->
+          val file = File(filePath)
+          file.parent == folder.path
+        } ?: false
 
-          // Get new video count for this folder
-          val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
+        val newCount = foldersWithNewCount.find { it.folder.bucketId == folder. bucketId }?. newVideoCount ?: 0
 
-          FolderCard(
-            folder = folder,
-            isSelected = selectionManager.isSelected(folder),
-            isRecentlyPlayed = isRecentlyPlayed,
-            onClick = { onFolderClick(folder) },
-            onLongClick = { onFolderLongClick(folder) },
-            onThumbClick = if (tapThumbnailToSelect) {
-              { onFolderLongClick(folder) }
-            } else {
-              { onFolderClick(folder) }
-            },
-            newVideoCount = newCount,
+        FolderCard(
+          folder = folder,
+          isSelected = selectionManager. isSelected(folder),
+          isRecentlyPlayed = isRecentlyPlayed,
+          onClick = { onFolderClick(folder) },
+          onLongClick = { onFolderLongClick(folder) },
+          onThumbClick = if (tapThumbnailToSelect) {
+            { onFolderLongClick(folder) }
+          } else {
+            { onFolderClick(folder) }
+          },
+          newVideoCount = newCount,
+          isGridMode = mediaLayoutMode == MediaLayoutMode. GRID,
+        )
+      }
+
+      if (showEmpty.value) {
+        item(
+          span = { GridItemSpan(maxLineSpan) }
+        ) {
+          EmptyState(
+            icon = Icons.Filled. Folder,
+            title = "No video folders found",
+            message = "Add some video files to your device to see them here",
           )
-        }
-
-        if (showEmpty.value) {
-          item {
-            EmptyState(
-              icon = Icons.Filled.Folder,
-              title = "No video folders found",
-              message = "Add some video files to your device to see them here",
-            )
-          }
         }
       }
     }
@@ -684,6 +696,7 @@ private fun FolderSortDialog(
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
 
   val isAlbumView = folderViewMode == FolderViewMode.AlbumView
 
@@ -734,6 +747,19 @@ private fun FolderSortDialog(
           )
         },
       ),
+    layoutModeSelector = ViewModeSelector(
+      label = "Layout",
+      firstOptionLabel = "List",
+      secondOptionLabel = "Grid",
+      firstOptionIcon = Icons.Filled.ViewList,
+      secondOptionIcon = Icons. Filled.GridView,
+      isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
+      onViewModeChange = { isFirstOption ->
+        browserPreferences. mediaLayoutMode.set(
+          if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode. GRID
+        )
+      },
+    ),
     visibilityToggles =
       listOf(
         VisibilityToggle(

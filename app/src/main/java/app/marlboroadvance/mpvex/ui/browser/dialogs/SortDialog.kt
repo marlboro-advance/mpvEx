@@ -52,6 +52,7 @@ fun SortDialog(
   modifier: Modifier = Modifier,
   visibilityToggles: List<VisibilityToggle> = emptyList(),
   viewModeSelector: ViewModeSelector? = null,
+  layoutModeSelector:  ViewModeSelector? = null,
   showSortOptions: Boolean = true,
 ) {
   if (!isOpen) return
@@ -97,6 +98,13 @@ fun SortDialog(
         if (viewModeSelector != null) {
           ViewModeSelectorComponent(
             viewModeSelector = viewModeSelector,
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
+
+        if (layoutModeSelector != null) {
+          ViewModeSelectorComponent(
+            viewModeSelector = layoutModeSelector,
             modifier = Modifier.fillMaxWidth(),
           )
         }

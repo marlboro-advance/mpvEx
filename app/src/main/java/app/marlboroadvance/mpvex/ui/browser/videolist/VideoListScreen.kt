@@ -3,79 +3,88 @@ package app.marlboroadvance.mpvex.ui.browser.videolist
 import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
+import androidx. compose.foundation.layout. Arrangement
+import androidx.compose.foundation. layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.layout. fillMaxSize
+import androidx.compose.foundation.layout. fillMaxWidth
+import androidx.compose.foundation. layout.padding
+import androidx.compose.foundation.layout. size
+import androidx.compose.foundation.lazy. LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose. foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy. grid.LazyVerticalGrid
+import androidx.compose.foundation. lazy.grid.rememberLazyGridState
+import androidx. compose.foundation.lazy.rememberLazyListState
+import androidx. compose.material.icons.Icons
+import androidx.compose.material.icons. filled.AccessTime
+import androidx. compose.material.icons.filled.CalendarToday
+import androidx.compose.material. icons.filled.GridView
+import androidx. compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled. Title
+import androidx.compose.material.icons. filled.VideoLibrary
+import androidx. compose.material. icons.filled.ViewList
+import androidx. compose.material3.CircularProgressIndicator
+import androidx.compose. material3.MaterialTheme
+import androidx.compose.material3. Scaffold
+import androidx. compose.material3.Text
+import androidx. compose.runtime.Composable
+import androidx.compose. runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime. derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime. mutableIntStateOf
+import androidx. compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
+import androidx.compose. ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui. unit.dp
+import androidx.lifecycle. Lifecycle
+import androidx. lifecycle. LifecycleEventObserver
+import androidx. lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
-import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance. mpvex.domain.thumbnail.ThumbnailRepository
+import app.marlboroadvance. mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
+import app.marlboroadvance.mpvex.preferences. MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
-import app.marlboroadvance.mpvex.preferences.VideoSortType
-import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance. mpvex.preferences.VideoSortType
+import app.marlboroadvance. mpvex.preferences.preference. collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
+import app.marlboroadvance. mpvex.presentation.components.pullrefresh.PullRefreshBox
+import app.marlboroadvance. mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
-import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
+import app.marlboroadvance. mpvex.ui.browser.components. BrowserTopBar
+import app.marlboroadvance.mpvex.ui. browser.dialogs. AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.LoadingDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
+import app. marlboroadvance.mpvex. ui.browser.dialogs.FolderPickerDialog
+import app.marlboroadvance.mpvex.ui.browser. dialogs.LoadingDialog
+import app.marlboroadvance.mpvex.ui.browser. dialogs.MediaInfoDialog
+import app. marlboroadvance.mpvex. ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
-import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
-import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
-import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
+import app.marlboroadvance.mpvex.ui.browser. dialogs. VisibilityToggle
+import app.marlboroadvance. mpvex.ui.browser.selection.SelectionManager
+import app.marlboroadvance.mpvex.ui.browser. selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.ui. browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
-import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
-import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
-import app.marlboroadvance.mpvex.utils.media.MediaUtils
-import app.marlboroadvance.mpvex.utils.sort.SortUtils
-import my.nanihadesuka.compose.LazyColumnScrollbar
+import app.marlboroadvance. mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance. mpvex.utils.media.CopyPasteOps
+import app.marlboroadvance. mpvex.utils.media.MediaInfoOps
+import app. marlboroadvance.mpvex. utils.media.MediaUtils
+import app.marlboroadvance. mpvex.utils.sort.SortUtils
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import my.nanihadesuka.compose.ScrollbarSettings
+import kotlinx.serialization. Serializable
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my. nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 import kotlin.math.roundToInt
@@ -440,6 +449,8 @@ private fun VideoListContent(
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val density = LocalDensity.current
   val thumbWidthDp = 128.dp
@@ -499,52 +510,57 @@ private fun VideoListContent(
         listState = listState,
         modifier = modifier.fillMaxSize(),
       ) {
-        LazyColumnScrollbar(
-          state = listState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
+
+        val columns = when (mediaLayoutMode) {
+          MediaLayoutMode.LIST -> 1
+          MediaLayoutMode.GRID -> 3
+        }
+
+        val gridState = rememberLazyGridState()
+
+        LazyVerticalGrid(
+          columns = GridCells.Fixed(columns),
+          state = gridState,
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(8.dp),
+          horizontalArrangement = if (mediaLayoutMode == MediaLayoutMode. GRID)
+            Arrangement. spacedBy(8.dp) else Arrangement.Start,
+          verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
-          ) {
-            items(
-              count = videosWithInfo.size,
-              key = { index -> videosWithInfo[index].video.id },
-            ) { index ->
-              val videoWithInfo = videosWithInfo[index]
-              val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+          items(
+            count = videosWithInfo.size,
+            key = { index -> videosWithInfo[index].video.id },
+          ) { index ->
+            val videoWithInfo = videosWithInfo[index]
+            val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?:  false
 
-              // Prefetch upcoming thumbnails
-              androidx.compose.runtime.LaunchedEffect(index) {
-                if (index < videosWithInfo.size - 1) {
-                  val upcomingVideos =
-                    videosWithInfo.subList(
-                      (index + 1).coerceAtMost(videosWithInfo.size),
-                      (index + 11).coerceAtMost(videosWithInfo.size),
-                    )
-                  thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
-                }
+            // Prefetch upcoming thumbnails
+            androidx.compose.runtime. LaunchedEffect(index) {
+              if (index < videosWithInfo.size - 1) {
+                val upcomingVideos =
+                  videosWithInfo.subList(
+                    (index + 1).coerceAtMost(videosWithInfo.size),
+                    (index + 11).coerceAtMost(videosWithInfo.size),
+                  )
+                thumbnailRepository. prefetchThumbnails(upcomingVideos. map { it.video }, thumbWidthPx, thumbHeightPx)
               }
-
-              VideoCard(
-                video = videoWithInfo.video,
-                progressPercentage = videoWithInfo.progressPercentage,
-                isRecentlyPlayed = isRecentlyPlayed,
-                isSelected = selectionManager.isSelected(videoWithInfo.video),
-                isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
-                onClick = { onVideoClick(videoWithInfo.video) },
-                onLongClick = { onVideoLongClick(videoWithInfo.video) },
-                onThumbClick = if (tapThumbnailToSelect) {
-                  { onVideoLongClick(videoWithInfo.video) }
-                } else {
-                  { onVideoClick(videoWithInfo.video) }
-                },
-              )
             }
+
+            VideoCard(
+              video = videoWithInfo.video,
+              progressPercentage = videoWithInfo.progressPercentage,
+              isRecentlyPlayed = isRecentlyPlayed,
+              isSelected = selectionManager. isSelected(videoWithInfo.video),
+              isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+              onClick = { onVideoClick(videoWithInfo. video) },
+              onLongClick = { onVideoLongClick(videoWithInfo.video) },
+              onThumbClick = if (tapThumbnailToSelect) {
+                { onVideoLongClick(videoWithInfo.video) }
+              } else {
+                { onVideoClick(videoWithInfo.video) }
+              },
+              isGridMode = mediaLayoutMode == MediaLayoutMode. GRID,
+            )
           }
         }
       }
@@ -568,6 +584,7 @@ private fun VideoSortDialog(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
 
   SortDialog(
     isOpen = isOpen,
@@ -604,6 +621,19 @@ private fun VideoSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
+    viewModeSelector = ViewModeSelector(
+      label = "Layout",
+      firstOptionLabel = "List",
+      secondOptionLabel = "Grid",
+      firstOptionIcon = Icons.Filled.ViewList,
+      secondOptionIcon = Icons. Filled.GridView,
+      isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
+      onViewModeChange = { isFirstOption ->
+        browserPreferences.mediaLayoutMode.set(
+          if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+        )
+      },
+    ),
     visibilityToggles =
       listOf(
         VisibilityToggle(
