@@ -130,6 +130,7 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+    val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
     val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
@@ -580,6 +581,7 @@ object FolderListScreen : Screen {
               },
               onFolderLongClick = { folder -> selectionManager.toggle(folder) },
               modifier = Modifier.padding(padding),
+              isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
             )
           }
         }
@@ -634,10 +636,11 @@ private fun FolderListContent(
   onFolderClick: (VideoFolder) -> Unit,
   onFolderLongClick: (VideoFolder) -> Unit,
   modifier: Modifier = Modifier,
+  isGridMode: Boolean = false
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
-  val tapThumbnailToSelect by gesturePreferences. tapThumbnailToSelect. collectAsState()
+  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
 
   // Show loading or empty state based on loading status
@@ -650,15 +653,15 @@ private fun FolderListContent(
   // Check if at top of list
   val isAtTop by remember {
     derivedStateOf {
-      gridState.firstVisibleItemIndex == 0 && gridState. firstVisibleItemScrollOffset == 0
+      gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
     }
   }
 
   val hasEnoughItems = folders.size > 20
 
   val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = if (isAtTop || ! hasEnoughItems) 0f else 1f,
-    animationSpec = androidx.compose.animation. core.tween(durationMillis = 200),
+    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
     label = "scrollbarAlpha",
   )
 
@@ -697,26 +700,24 @@ private fun FolderListContent(
       }
     } else {
       // Show folder list
-      LazyColumnScrollbar(
-        state = listState,
-        settings = ScrollbarSettings(
-          thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-          thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-        ),
-      ) {
-        LazyColumn(
-          state = listState,
+      if (isGridMode) {
+        // Grid layout
+        LazyVerticalGrid(
+          columns = GridCells.Fixed(4),
+          state = gridState,
           modifier = Modifier.fillMaxSize(),
           contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          items(folders) { folder ->
+          items(folders.size) { index ->
+            val folder = folders[index]
             val isRecentlyPlayed =
               recentlyPlayedFilePath?.let { filePath ->
                 val file = File(filePath)
                 file.parent == folder.path
               } ?: false
 
-            // Get new video count for this folder
             val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
 
             FolderCard(
@@ -731,7 +732,48 @@ private fun FolderListContent(
                 { onFolderClick(folder) }
               },
               newVideoCount = newCount,
+              isGridMode = true,
             )
+          }
+        }
+      } else {
+        // List layout
+        LazyColumnScrollbar(
+          state = listState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+          ),
+        ) {
+          LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          ) {
+            items(folders) { folder ->
+              val isRecentlyPlayed =
+                recentlyPlayedFilePath?.let { filePath ->
+                  val file = File(filePath)
+                  file.parent == folder.path
+                } ?: false
+
+              val newCount = foldersWithNewCount.find { it.folder.bucketId == folder.bucketId }?.newVideoCount ?: 0
+
+              FolderCard(
+                folder = folder,
+                isSelected = selectionManager.isSelected(folder),
+                isRecentlyPlayed = isRecentlyPlayed,
+                onClick = { onFolderClick(folder) },
+                onLongClick = { onFolderLongClick(folder) },
+                onThumbClick = if (tapThumbnailToSelect) {
+                  { onFolderLongClick(folder) }
+                } else {
+                  { onFolderClick(folder) }
+                },
+                newVideoCount = newCount,
+                isGridMode = false,
+              )
+            }
           }
         }
       }

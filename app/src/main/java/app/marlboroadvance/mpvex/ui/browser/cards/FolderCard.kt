@@ -99,24 +99,25 @@ fun FolderCard(
             tint = MaterialTheme.colorScheme.secondary,
           )
 
-        // Show new video count badge if folder contains new videos
-        if (newVideoCount > 0) {
-          Box(
-            modifier =
-              Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFFD32F2F)) // Warning red color
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-          ) {
-            Text(
-              text = newVideoCount.toString(),
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-              ),
-              color = Color.White,
-            )
+          // Show new video count badge if folder contains new videos
+          if (newVideoCount > 0) {
+            Box(
+              modifier =
+                Modifier
+                  .align(Alignment.TopEnd)
+                  .padding(4.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .background(Color(0xFFD32F2F)) // Warning red color
+                  .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+              Text(
+                text = newVideoCount.toString(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                ),
+                color = Color.White,
+              )
+            }
           }
         }
 
