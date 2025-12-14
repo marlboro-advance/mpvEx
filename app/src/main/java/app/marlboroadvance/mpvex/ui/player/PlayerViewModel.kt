@@ -322,23 +322,14 @@ class PlayerViewModel(
   }
 
   fun selectSub(id: Int) {
-    val (primarySid, secondarySid) =
-      Pair(
-        MPVLib.getPropertyInt("sid"),
-        MPVLib.getPropertyInt("secondary-sid"),
-      )
+    val primarySid = MPVLib.getPropertyInt("sid")
 
-    val (newPrimary, newSecondary) =
-      when (id) {
-        primarySid -> Pair(secondarySid, null)
-        secondarySid -> Pair(primarySid, null)
-        else -> if (primarySid != null) Pair(primarySid, id) else Pair(id, null)
-      }
-
-    newSecondary?.let { MPVLib.setPropertyInt("secondary-sid", it) }
-      ?: MPVLib.setPropertyBoolean("secondary-sid", false)
-    newPrimary?.let { MPVLib.setPropertyInt("sid", it) }
-      ?: MPVLib.setPropertyBoolean("sid", false)
+    // Toggle subtitle: if clicking the current subtitle, turn it off, otherwise select the new one
+    if (id == primarySid) {
+      MPVLib.setPropertyBoolean("sid", false)
+    } else {
+      MPVLib.setPropertyInt("sid", id)
+    }
   }
 
   private fun getFileNameFromUri(uri: Uri): String? =

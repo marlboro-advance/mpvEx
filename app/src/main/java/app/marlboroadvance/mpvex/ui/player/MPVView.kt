@@ -62,7 +62,6 @@ class MPVView(
   }
 
   var sid: Int by TrackDelegate("sid")
-  var secondarySid: Int by TrackDelegate("secondary-sid")
   var aid: Int by TrackDelegate("aid")
 
   override fun initOptions() {
@@ -201,10 +200,6 @@ class MPVView(
     MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
     MPVLib.setOptionString("sub-delay", (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("sub-speed", subtitlesPreferences.defaultSubSpeed.get().toString())
-    MPVLib.setOptionString(
-      "secondary-sub-delay",
-      (subtitlesPreferences.defaultSecondarySubDelay.get() / 1000.0).toString(),
-    )
 
     val preferredFont = subtitlesPreferences.font.get()
     MPVLib.setOptionString("sub-font", preferredFont.ifBlank { "sans-serif" })
@@ -226,5 +221,10 @@ class MPVView(
     MPVLib.setOptionString("sub-shadow-offset", subtitlesPreferences.shadowOffset.get().toString())
     MPVLib.setOptionString("sub-pos", subtitlesPreferences.subPos.get().toString())
     MPVLib.setOptionString("sub-scale", subtitlesPreferences.subScale.get().toString())
+
+    // VLC-style subtitle rendering: scale by video dimensions, not window
+    // This keeps subtitle size consistent across portrait/landscape orientations
+    MPVLib.setOptionString("sub-scale-by-window", "no")
+    MPVLib.setOptionString("sub-use-margins", "no")
   }
 }

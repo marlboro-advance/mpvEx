@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "d03c63a2e0610584f42e390775f72c78",
+    "identityHash": "86b64bb5fbd48e0ee953f50a1e32ec93",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `videoZoom` REAL NOT NULL, `sid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `secondarySid` INTEGER NOT NULL, `secondarySubDelay` INTEGER NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, PRIMARY KEY(`mediaTitle`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `videoZoom` REAL NOT NULL, `sid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, PRIMARY KEY(`mediaTitle`))",
         "fields": [
           {
             "fieldPath": "mediaTitle",
@@ -48,18 +48,6 @@
             "fieldPath": "subSpeed",
             "columnName": "subSpeed",
             "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "secondarySid",
-            "columnName": "secondarySid",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "secondarySubDelay",
-            "columnName": "secondarySubDelay",
-            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -478,7 +466,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd03c63a2e0610584f42e390775f72c78')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '86b64bb5fbd48e0ee953f50a1e32ec93')"
     ]
   }
 }

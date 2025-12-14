@@ -1499,12 +1499,6 @@ class PlayerActivity :
             sid = player.sid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
-            secondarySid = player.secondarySid,
-            secondarySubDelay =
-              (
-                (MPVLib.getPropertyDouble("secondary-sub-delay") ?: 0.0) *
-                  MILLISECONDS_TO_SECONDS
-              ).toInt(),
             aid = player.aid,
             audioDelay =
               (
@@ -1571,7 +1565,6 @@ class PlayerActivity :
     if (state == null) return
 
     val subDelay = state.subDelay / DELAY_DIVISOR
-    val secondarySubDelay = state.secondarySubDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
 
     // Check if user has preferred languages configured
@@ -1583,9 +1576,6 @@ class PlayerActivity :
     if (!hasSubtitlePreference) {
       if (state.sid >= 0) {
         player.sid = state.sid
-      }
-      if (state.secondarySid >= 0) {
-        player.secondarySid = state.secondarySid
       }
     } else {
       Log.d(TAG, "Skipping subtitle restoration - preferred language configured")
@@ -1602,7 +1592,6 @@ class PlayerActivity :
     }
 
     MPVLib.setPropertyDouble("sub-delay", subDelay)
-    MPVLib.setPropertyDouble("secondary-sub-delay", secondarySubDelay)
     MPVLib.setPropertyDouble("speed", state.playbackSpeed)
     MPVLib.setPropertyDouble("audio-delay", audioDelay)
     MPVLib.setPropertyDouble("sub-speed", state.subSpeed)

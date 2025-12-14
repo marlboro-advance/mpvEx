@@ -68,30 +68,17 @@ fun SubtitleDelayPanel(
   ) {
     val delayControlCard = createRef()
 
-    var affectedSubtitle by remember { mutableStateOf(SubtitleDelayType.Primary) }
     val delay by MPVLib.propDouble["sub-delay"].collectAsState()
     val delayInt by remember { derivedStateOf { ((delay ?: 0.0) * 1000).roundToInt() } }
-    val secondaryDelay by MPVLib.propDouble["secondary-sub-delay"].collectAsState()
-    val secondaryDelayInt by remember { derivedStateOf { ((secondaryDelay ?: 0.0) * 1000).roundToInt() } }
     val speed by MPVLib.propDouble["sub-speed"].collectAsState()
     val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
     SubtitleDelayCard(
-      delayMs = if (affectedSubtitle == SubtitleDelayType.Secondary) secondaryDelayInt else delayInt,
+      delayMs = delayInt,
       onDelayChange = {
-        when (affectedSubtitle) {
-          SubtitleDelayType.Both -> {
-            MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
-            MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
-          }
-
-          SubtitleDelayType.Primary -> MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
-          else -> MPVLib.setPropertyDouble("secondary-sub-delay", it / 1000.0)
-        }
+        MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
       },
       speed = speedFloat,
       onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
-      affectedSubtitle = affectedSubtitle,
-      onTypeChange = { affectedSubtitle = it },
       onApply = {
         preferences.defaultSubDelay.set(delayInt)
         val currentSpeed = speed ?: 1.0
@@ -99,7 +86,6 @@ fun SubtitleDelayPanel(
       },
       onReset = {
         MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
-        MPVLib.setPropertyDouble("secondary-sub-delay", preferences.defaultSecondarySubDelay.get() / 1000.0)
         MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
       },
       onClose = onDismissRequest,
@@ -118,8 +104,6 @@ fun SubtitleDelayCard(
   onDelayChange: (Int) -> Unit,
   speed: Float,
   onSpeedChange: (Float) -> Unit,
-  affectedSubtitle: SubtitleDelayType,
-  onTypeChange: (SubtitleDelayType) -> Unit,
   onApply: () -> Unit,
   onReset: () -> Unit,
   onClose: () -> Unit,
@@ -131,39 +115,21 @@ fun SubtitleDelayCard(
     onApply = onApply,
     onReset = onReset,
     title = {
-      SubtitleDelayTitle(
-        affectedSubtitle = affectedSubtitle,
-        onClose = onClose,
-        onTypeChange = onTypeChange,
-      )
+      SubtitleDelayTitle(onClose = onClose)
     },
     extraSettings = {
-      when (affectedSubtitle) {
-        SubtitleDelayType.Primary -> {
-          OutlinedNumericChooser(
-            label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
-            value = speed,
-            onChange = onSpeedChange,
-            max = 10f,
-            step = 0.01f,
-            min = 0.1f,
-          )
-        }
-
-        else -> {}
-      }
+      OutlinedNumericChooser(
+        label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
+        value = speed,
+        onChange = onSpeedChange,
+        max = 10f,
+        step = 0.01f,
+        min = 0.1f,
+      )
     },
     delayType = DelayType.Subtitle,
     modifier = modifier,
   )
-}
-
-enum class SubtitleDelayType(
-  @StringRes val title: Int,
-) {
-  Primary(R.string.player_sheets_sub_delay_subtitle_type_primary),
-  Secondary(R.string.player_sheets_sub_delay_subtitle_type_secondary),
-  Both(R.string.player_sheets_sub_delay_subtitle_type_primary_and_secondary),
 }
 
 @Suppress("LambdaParameterInRestartableEffect") // Intentional
@@ -299,42 +265,21 @@ fun DelayCard(
 
 @Composable
 fun SubtitleDelayTitle(
-  affectedSubtitle: SubtitleDelayType,
   onClose: () -> Unit,
-  onTypeChange: (SubtitleDelayType) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Row(
-    verticalAlignment = Alignment.Bottom,
-    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween,
     modifier = modifier.fillMaxWidth(),
   ) {
     Text(
       stringResource(R.string.player_sheets_sub_delay_card_title),
       style = MaterialTheme.typography.titleLarge,
     )
-    var showDropDownMenu by remember { mutableStateOf(false) }
-    Row(modifier = Modifier.clickable { showDropDownMenu = true }) {
-      Text(
-        stringResource(affectedSubtitle.title),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodyMedium,
-      )
-      Icon(Icons.Default.ArrowDropDown, null)
-      DropdownMenu(
-        expanded = showDropDownMenu,
-        onDismissRequest = { showDropDownMenu = false },
-      ) {
-        SubtitleDelayType.entries.forEach {
-          DropdownMenuItem(
-            text = { Text(stringResource(it.title)) },
-            onClick = {
-              onTypeChange(it)
-              showDropDownMenu = false
-            },
-          )
-        }
-      }
+    Spacer(Modifier.weight(1f))
+    IconButton(onClick = onClose) {
+      Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
     }
   }
 }

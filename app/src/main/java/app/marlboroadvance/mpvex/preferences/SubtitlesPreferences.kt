@@ -43,7 +43,6 @@ class SubtitlesPreferences(
 
   val defaultSubDelay = preferenceStore.getInt("sub_default_delay")
   val defaultSubSpeed = preferenceStore.getFloat("sub_default_speed", 1f)
-  val defaultSecondarySubDelay = preferenceStore.getInt("sub_default_secondary_delay")
 }
 
 enum class SubtitleJustification(
