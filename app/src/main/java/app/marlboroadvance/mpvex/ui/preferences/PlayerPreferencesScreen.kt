@@ -88,7 +88,7 @@ object PlayerPreferencesScreen : Screen {
             value = playlistMode,
             onValueChange = preferences.playlistMode::set,
             title = { Text(text = "Playlist Mode") },
-            summary = { 
+            summary = {
               Text(
                 text = if (playlistMode)
                   "Automatically enable next/previous navigation for all videos in folder"
@@ -105,6 +105,13 @@ object PlayerPreferencesScreen : Screen {
           )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_seeking_title)) },
+          )
+          val bottomSeekbar by preferences.bottomSeekbar.collectAsState()
+          SwitchPreference(
+            value = bottomSeekbar,
+            onValueChange = preferences.bottomSeekbar::set,
+            title = { Text("Bottom seekbar") },
+            summary = { Text("Move seekbar to the bottom of the screen") },
           )
           val horizontalSeekGesture by preferences.horizontalSeekGesture.collectAsState()
           SwitchPreference(

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
@@ -304,6 +305,7 @@ fun PlayerControls(
         }
 
         val areSlidersShown = isBrightnessSliderShown || isVolumeSliderShown
+        val bottomSeekbar by playerPreferences.bottomSeekbar.collectAsState()
 
         AnimatedVisibility(
           isBrightnessSliderShown,
@@ -735,7 +737,11 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(seekbar) {
-              bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
+              if (bottomSeekbar) {
+                bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
+              } else {
+                bottom.linkTo(bottomRightControls.top, 0.dp)
+              }
               start.linkTo(parent.start, spacing.medium)
               end.linkTo(parent.end, spacing.medium)
             },
@@ -890,7 +896,11 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(bottomRightControls) {
-              bottom.linkTo(seekbar.top, spacing.small)
+              if (bottomSeekbar) {
+                bottom.linkTo(seekbar.top, spacing.small)
+              } else {
+                bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
+              }
               if (isPortrait) {
                 start.linkTo(parent.start, spacing.medium)
                 end.linkTo(parent.end, spacing.medium)
@@ -957,7 +967,11 @@ fun PlayerControls(
             },
           modifier =
             Modifier.constrainAs(bottomLeftControls) {
-              bottom.linkTo(seekbar.top, spacing.small)
+              if (bottomSeekbar) {
+                bottom.linkTo(seekbar.top, spacing.small)
+              } else {
+                bottom.linkTo(parent.bottom, spacing.small)
+              }
               start.linkTo(parent.start, spacing.medium)
               width = Dimension.fillToConstraints
               end.linkTo(bottomRightControls.start, spacing.small)

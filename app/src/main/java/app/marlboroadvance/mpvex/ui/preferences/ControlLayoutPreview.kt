@@ -43,6 +43,7 @@ fun ControlLayoutPreview(
   bottomRightButtons: List<PlayerButton>,
   bottomLeftButtons: List<PlayerButton>,
   portraitBottomButtons: List<PlayerButton>,
+  bottomSeekbar: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   Column(modifier = modifier) {
@@ -57,6 +58,7 @@ fun ControlLayoutPreview(
       topRightButtons = topRightButtons,
       bottomLeftButtons = bottomLeftButtons,
       bottomRightButtons = bottomRightButtons,
+      bottomSeekbar = bottomSeekbar,
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -70,6 +72,7 @@ fun ControlLayoutPreview(
     PortraitPreview(
       topButtons = topLeftButtons, // Back + Title
       bottomButtons = portraitBottomButtons,
+      bottomSeekbar = bottomSeekbar,
     )
   }
 }
@@ -80,6 +83,7 @@ private fun LandscapePreview(
   topRightButtons: List<PlayerButton>,
   bottomLeftButtons: List<PlayerButton>,
   bottomRightButtons: List<PlayerButton>,
+  bottomSeekbar: Boolean,
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -91,7 +95,7 @@ private fun LandscapePreview(
         Modifier
           .fillMaxWidth()
           .padding(12.dp)
-          .height(180.dp), // Slightly taller
+          .height(200.dp), // Increased height to prevent congestion
     ) {
       val (
         topLeft, topRight,
@@ -151,12 +155,70 @@ private fun LandscapePreview(
         PreviewIconButton(icon = Icons.Default.SkipNext, size = 28.dp)
       }
 
+      // --- SEEKBAR ---
+      LinearProgressIndicator(
+        progress = { 0.3f },
+        modifier =
+          Modifier.constrainAs(seekbar) {
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(bottomRight.top, 8.dp)
+            }
+            start.linkTo(positionTime.end, 8.dp)
+            end.linkTo(durationTime.start, 8.dp)
+            if (bottomSeekbar) {
+              top.linkTo(positionTime.top)
+              bottom.linkTo(positionTime.bottom)
+            }
+            width = Dimension.fillToConstraints
+          },
+        color = Color.White,
+        trackColor = Color.Gray,
+      )
+
+      Text(
+        "1:23",
+        modifier =
+          Modifier.constrainAs(positionTime) {
+            start.linkTo(parent.start)
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(seekbar.bottom)
+              top.linkTo(seekbar.top)
+            }
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+      Text(
+        "4:56",
+        modifier =
+          Modifier.constrainAs(durationTime) {
+            end.linkTo(parent.end)
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(seekbar.bottom)
+              top.linkTo(seekbar.top)
+            }
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+
+
       // --- BOTTOM BAR (LEFT) ---
       FlowRow(
         modifier =
           Modifier.constrainAs(bottomLeft) {
             start.linkTo(parent.start)
-            bottom.linkTo(seekbar.top, 10.dp) // More spacing above seekbar
+            if (bottomSeekbar) {
+              bottom.linkTo(seekbar.top, 10.dp)
+            } else {
+              bottom.linkTo(parent.bottom)
+            }
             end.linkTo(bottomRight.start, 8.dp)
             width = Dimension.fillToConstraints
           },
@@ -173,7 +235,11 @@ private fun LandscapePreview(
         modifier =
           Modifier.constrainAs(bottomRight) {
             end.linkTo(parent.end)
-            bottom.linkTo(seekbar.top, 10.dp) // More spacing above seekbar
+            if (bottomSeekbar) {
+              bottom.linkTo(seekbar.top, 10.dp)
+            } else {
+              bottom.linkTo(parent.bottom)
+            }
             width = Dimension.preferredWrapContent
           },
         horizontalArrangement = Arrangement.spacedBy(2.dp), // extraSmall
@@ -183,41 +249,6 @@ private fun LandscapePreview(
           PreviewButton(button = button, size = 20.dp)
         }
       }
-
-      // --- SEEKBAR (Now at bottom) ---
-      Text(
-        "1:23",
-        modifier =
-          Modifier.constrainAs(positionTime) {
-            start.linkTo(parent.start)
-            bottom.linkTo(parent.bottom)
-          },
-        fontSize = 10.sp,
-        color = Color.White,
-      )
-      Text(
-        "4:56",
-        modifier =
-          Modifier.constrainAs(durationTime) {
-            end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom)
-          },
-        fontSize = 10.sp,
-        color = Color.White,
-      )
-      LinearProgressIndicator(
-        progress = { 0.3f },
-        modifier =
-          Modifier.constrainAs(seekbar) {
-            start.linkTo(positionTime.end, 8.dp)
-            end.linkTo(durationTime.start, 8.dp)
-            bottom.linkTo(positionTime.bottom)
-            top.linkTo(positionTime.top)
-            width = Dimension.fillToConstraints
-          },
-        color = Color.White,
-        trackColor = Color.Gray,
-      )
     }
   }
 }
@@ -226,6 +257,7 @@ private fun LandscapePreview(
 private fun PortraitPreview(
   topButtons: List<PlayerButton>,
   bottomButtons: List<PlayerButton>,
+  bottomSeekbar: Boolean,
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -281,6 +313,59 @@ private fun PortraitPreview(
         PreviewIconButton(icon = Icons.Default.SkipNext, size = 28.dp)
       }
 
+      // --- SEEKBAR ---
+      LinearProgressIndicator(
+        progress = { 0.3f },
+        modifier =
+          Modifier.constrainAs(seekbar) {
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(bottomControls.top, 12.dp)
+            }
+            start.linkTo(positionTime.end, 8.dp)
+            end.linkTo(durationTime.start, 8.dp)
+            if (bottomSeekbar) {
+              top.linkTo(positionTime.top)
+              bottom.linkTo(positionTime.bottom)
+            }
+            width = Dimension.fillToConstraints
+          },
+        color = Color.White,
+        trackColor = Color.Gray,
+      )
+
+      Text(
+        "1:23",
+        modifier =
+          Modifier.constrainAs(positionTime) {
+            start.linkTo(parent.start)
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(seekbar.bottom)
+              top.linkTo(seekbar.top)
+            }
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+      Text(
+        "4:56",
+        modifier =
+          Modifier.constrainAs(durationTime) {
+            end.linkTo(parent.end)
+            if (bottomSeekbar) {
+              bottom.linkTo(parent.bottom)
+            } else {
+              bottom.linkTo(seekbar.bottom)
+              top.linkTo(seekbar.top)
+            }
+          },
+        fontSize = 10.sp,
+        color = Color.White,
+      )
+
       // --- BOTTOM BAR (Centered, Scrollable) ---
       Row(
         modifier =
@@ -288,7 +373,11 @@ private fun PortraitPreview(
             .constrainAs(bottomControls) {
               start.linkTo(parent.start)
               end.linkTo(parent.end)
-              bottom.linkTo(seekbar.top, 12.dp) // More spacing above seekbar
+              if (bottomSeekbar) {
+                bottom.linkTo(seekbar.top, 12.dp)
+              } else {
+                bottom.linkTo(parent.bottom)
+              }
               width = Dimension.fillToConstraints
             }
             .horizontalScroll(rememberScrollState()),
@@ -299,41 +388,6 @@ private fun PortraitPreview(
           PreviewButton(button = button, size = 22.dp) // Slightly larger (48dp scaled down)
         }
       }
-
-      // --- SEEKBAR (Now at bottom) ---
-      Text(
-        "1:23",
-        modifier =
-          Modifier.constrainAs(positionTime) {
-            start.linkTo(parent.start)
-            bottom.linkTo(parent.bottom)
-          },
-        fontSize = 10.sp,
-        color = Color.White,
-      )
-      Text(
-        "4:56",
-        modifier =
-          Modifier.constrainAs(durationTime) {
-            end.linkTo(parent.end)
-            bottom.linkTo(parent.bottom)
-          },
-        fontSize = 10.sp,
-        color = Color.White,
-      )
-      LinearProgressIndicator(
-        progress = { 0.3f },
-        modifier =
-          Modifier.constrainAs(seekbar) {
-            start.linkTo(positionTime.end, 8.dp)
-            end.linkTo(durationTime.start, 8.dp)
-            bottom.linkTo(positionTime.bottom)
-            top.linkTo(positionTime.top)
-            width = Dimension.fillToConstraints
-          },
-        color = Color.White,
-        trackColor = Color.Gray,
-      )
     }
   }
 }

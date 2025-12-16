@@ -54,4 +54,6 @@ class PlayerPreferences(
   val playlistMode = preferenceStore.getBoolean("playlist_mode", false)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
+
+  val bottomSeekbar = preferenceStore.getBoolean("bottom_seekbar", true)
 }

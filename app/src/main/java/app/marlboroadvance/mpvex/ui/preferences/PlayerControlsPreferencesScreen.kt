@@ -67,6 +67,9 @@ object PlayerControlsPreferencesScreen : Screen {
     val bottomLState by appearancePrefs.bottomLeftControls.collectAsState()
     val portraitBottomState by appearancePrefs.portraitBottomControls.collectAsState()
 
+    // Collect the bottom seekbar preference state
+    val bottomSeekbar by playerPrefs.bottomSeekbar.collectAsState()
+
     var showResetDialog by remember { mutableStateOf(false) }
 
     if (showResetDialog) {
@@ -185,6 +188,7 @@ object PlayerControlsPreferencesScreen : Screen {
               bottomRightButtons = bottomRightButtons,
               bottomLeftButtons = bottomLeftButtons,
               portraitBottomButtons = portraitBottomButtons,
+              bottomSeekbar = bottomSeekbar, // Pass the collected state here
             )
           }
         }
