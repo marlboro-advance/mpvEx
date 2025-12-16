@@ -65,6 +65,7 @@ fun GestureHandler(
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
+  val gesturePreferences = koinInject<app.marlboroadvance.mpvex.preferences.GesturePreferences>()
   val panelShown by viewModel.panelShown.collectAsState()
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
   val paused by MPVLib.propBoolean["pause"].collectAsState()
@@ -75,6 +76,8 @@ fun GestureHandler(
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val isSeekingForwards by viewModel.isSeekingForwards.collectAsState()
+  val useSingleTapForCenter by gesturePreferences.useSingleTapForCenter.collectAsState()
+  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   var isDoubleTapSeeking by remember { mutableStateOf(false) }
   LaunchedEffect(seekAmount) {
     delay(800)
@@ -106,21 +109,36 @@ fun GestureHandler(
     modifier = modifier
       .fillMaxSize()
       .padding(horizontal = 16.dp, vertical = 16.dp)
-      .pointerInput(Unit) {
+      .pointerInput(doubleTapSeekAreaWidth, useSingleTapForCenter) {
         var originalSpeed = 1f
         detectTapGestures(
           onTap = {
-            if (controlsShown) viewModel.hideControls() else viewModel.showControls()
+            // Calculate boundaries based on doubleTapSeekAreaWidth (percentage)
+            val seekAreaFraction = doubleTapSeekAreaWidth / 100f
+            val leftBoundary = size.width * seekAreaFraction
+            val rightBoundary = size.width * (1f - seekAreaFraction)
+            val isCenterTap = it.x > leftBoundary && it.x < rightBoundary
+            
+            if (useSingleTapForCenter && isCenterTap) {
+              viewModel.handleCenterSingleTap()
+            } else {
+              if (controlsShown) viewModel.hideControls() else viewModel.showControls()
+            }
           },
           onDoubleTap = {
             if (areControlsLocked || isDoubleTapSeeking) return@detectTapGestures
-            if (it.x > size.width * 3 / 5) {
+            // Calculate boundaries based on doubleTapSeekAreaWidth (percentage)
+            val seekAreaFraction = doubleTapSeekAreaWidth / 100f
+            val leftBoundary = size.width * seekAreaFraction
+            val rightBoundary = size.width * (1f - seekAreaFraction)
+            
+            if (it.x > rightBoundary) {
               isDoubleTapSeeking = true
               lastSeekRegion = "right"
               lastSeekTime = System.currentTimeMillis()
               if (!isSeekingForwards) viewModel.updateSeekAmount(0)
               viewModel.handleRightDoubleTap()
-            } else if (it.x < size.width * 2 / 5) {
+            } else if (it.x < leftBoundary) {
               isDoubleTapSeeking = true
               lastSeekRegion = "left"
               lastSeekTime = System.currentTimeMillis()
@@ -136,10 +154,13 @@ fun GestureHandler(
             }
 
             val now = System.currentTimeMillis()
-            val xFraction = it.x / size.width
+            // Calculate boundaries based on doubleTapSeekAreaWidth (percentage)
+            val seekAreaFraction = doubleTapSeekAreaWidth / 100f
+            val leftBoundary = size.width * seekAreaFraction
+            val rightBoundary = size.width * (1f - seekAreaFraction)
             val region = when {
-              xFraction > 3f / 5f -> "right"
-              xFraction < 2f / 5f -> "left"
+              it.x > rightBoundary -> "right"
+              it.x < leftBoundary -> "left"
               else -> "center"
             }
             val shouldContinueSeek =
@@ -167,8 +188,9 @@ fun GestureHandler(
               }
             }
 
+            // Adjust ripple position for right region (reuse the already calculated values)
             val press = PressInteraction.Press(
-              it.copy(x = if (it.x > size.width * 3 / 5) it.x - size.width * 0.6f else it.x),
+              it.copy(x = if (it.x > rightBoundary) it.x - size.width * (1f - seekAreaFraction) else it.x),
             )
             interactionSource.emit(press)
             tryAwaitRelease()
@@ -421,6 +443,10 @@ fun DoubleTapToSeekOvals(
   interactionSource: MutableInteractionSource,
   modifier: Modifier = Modifier,
 ) {
+  val gesturePreferences = koinInject<app.marlboroadvance.mpvex.preferences.GesturePreferences>()
+  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
+  val seekAreaFraction = doubleTapSeekAreaWidth / 100f
+  
   val alpha by animateFloatAsState(if (amount == 0) 0f else 0.2f, label = "double_tap_animation_alpha")
   Box(
     modifier = modifier.fillMaxSize(),
@@ -433,7 +459,7 @@ fun DoubleTapToSeekOvals(
         Box(
           modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.4f), // 2 fifths
+            .fillMaxWidth(seekAreaFraction),
           contentAlignment = Alignment.Center,
         ) {
           if (showOvals) {
