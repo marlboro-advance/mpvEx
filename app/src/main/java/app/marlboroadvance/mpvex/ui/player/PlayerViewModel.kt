@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -85,12 +86,35 @@ class PlayerViewModel(
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
+  // CHANGE LOG:
+  // 1. Used propString to correctly handle "no"/"auto".
+  // 2. Encoded selection state into mainSelection: 1L = Primary, 2L = Secondary.
+  // Impact: UI can now show "Primary" or "Secondary" labels.
   val subtitleTracks: StateFlow<List<TrackNode>> =
-    MPVLib.propNode["track-list"]
-      .map { node ->
-        node?.toObject<List<TrackNode>>(json)?.filter { it.isSubtitle }?.toImmutableList()
-          ?: persistentListOf()
-      }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
+    combine(
+      MPVLib.propNode["track-list"],
+      MPVLib.propString["sid"],
+      MPVLib.propString["secondary-sid"]
+    ) { node, sidStr, secSidStr ->
+      fun parseId(value: String?): Int? =
+        if (value == null || value == "no" || value == "auto") null else value.toIntOrNull()
+
+      val pSid = parseId(sidStr)
+      val sSid = parseId(secSidStr)
+
+      node?.toObject<List<TrackNode>>(json)
+        ?.filter { it.isSubtitle }
+        ?.map { track ->
+          val selectionState = when (track.id) {
+            pSid -> 1L // Primary
+            sSid -> 2L // Secondary
+            else -> null
+          }
+          track.copy(mainSelection = selectionState)
+        }
+        ?.toImmutableList()
+        ?: persistentListOf()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
   val audioTracks: StateFlow<List<TrackNode>> =
     MPVLib.propNode["track-list"]
@@ -268,14 +292,55 @@ class PlayerViewModel(
     }
   }
 
+  // CHANGE LOG:
+  // 1. Force clearing of secondary-sid FIRST. This releases the ID so it can be assigned to Primary without conflict.
+  // 2. Fixed order of operations to handle promotion (Secondary -> Primary) correctly.
+  // Impact: Fixes "turns off secondary instead of promoting" bug.
   fun selectSub(id: Int) {
-    val primarySid = MPVLib.getPropertyInt("sid")
+    val currentPrimary = MPVLib.getPropertyString("sid")
+    val currentSecondary = MPVLib.getPropertyString("secondary-sid")
 
-    // Toggle subtitle: if clicking the current subtitle, turn it off, otherwise select the new one
-    if (id == primarySid) {
-      MPVLib.setPropertyBoolean("sid", false)
+    fun parseSid(value: String?): Int? =
+      if (value == null || value == "no" || value == "auto") null else value.toIntOrNull()
+
+    val pSid = parseSid(currentPrimary)
+    val sSid = parseSid(currentSecondary)
+
+    val (newPrimary, newSecondary) = when (id) {
+      pSid -> Pair(sSid, null) // Deselect Primary, promote Secondary to Primary
+      sSid -> Pair(pSid, null) // Deselect Secondary, keep Primary
+      else -> if (pSid != null) {
+        Pair(pSid, id)       // Add as Secondary
+      } else {
+        Pair(id, null)       // Set as Primary
+      }
+    }
+
+    // CRITICAL FIX: Always clear Secondary FIRST.
+    // If we don't, MPV may block assigning the old Secondary ID to 'sid' because it's still 'busy' as secondary.
+    MPVLib.setPropertyString("secondary-sid", "no")
+
+    // Now safe to set Primary
+    if (newPrimary != null) {
+      MPVLib.setPropertyInt("sid", newPrimary)
     } else {
-      MPVLib.setPropertyInt("sid", id)
+      MPVLib.setPropertyString("sid", "no")
+    }
+
+    // Finally set new Secondary (if any)
+    if (newSecondary != null) {
+      MPVLib.setPropertyInt("secondary-sid", newSecondary)
+    }
+  }
+
+  fun selectSecondarySub(id: Int) {
+    val secondarySidVal = MPVLib.getPropertyString("secondary-sid")
+    val currentId = if (secondarySidVal == "no" || secondarySidVal == "auto") null else secondarySidVal?.toIntOrNull()
+
+    if (id == currentId) {
+      MPVLib.setPropertyString("secondary-sid", "no")
+    } else {
+      MPVLib.setPropertyInt("secondary-sid", id)
     }
   }
 
@@ -534,7 +599,7 @@ class PlayerViewModel(
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-        -> {
+          -> {
           playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
