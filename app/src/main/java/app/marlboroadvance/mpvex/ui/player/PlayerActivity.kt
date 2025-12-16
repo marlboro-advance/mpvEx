@@ -53,7 +53,6 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -747,8 +746,8 @@ class PlayerActivity :
 
       fileManager.deleteContent(scriptsDir)
 
-      assets.open("mpvrex.lua").use { input ->
-        File("$scriptsDir/mpvrex.lua").apply {
+      assets.open("mpvex.lua").use { input ->
+        File("$scriptsDir/mpvex.lua").apply {
           if (!exists()) createNewFile()
           writeText(input.bufferedReader().readText())
         }

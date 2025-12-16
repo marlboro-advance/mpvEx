@@ -113,15 +113,8 @@ object SubtitlesPreferencesScreen : Screen {
 
         // Load fonts when folder changes or trigger is fired
         LaunchedEffect(fontsFolder, fontLoadTrigger) {
-          val customEntries = loadCustomFontEntries(context)
-          customFontEntries = customEntries
-          val customFonts = customEntries.map { it.familyName }
-
-          // Add only default font, custom fonts can be added by user
-          val defaultFonts = listOf("Sans Serif (Default)")
-
-          // Combine default fonts with custom fonts
-          availableFonts = defaultFonts + customFonts
+          customFontEntries = loadCustomFontEntries(context)
+          availableFonts = listOf("Default") + customFontEntries.map { it.familyName }
         }
 
         // Auto-refresh fonts on app restart if directory is set
@@ -283,11 +276,7 @@ object SubtitlesPreferencesScreen : Screen {
             // Font picker dialog state
             var showFontPicker by remember { mutableStateOf(false) }
 
-            // Check if selected font is actually available and not default
-            val isCustomFontSelected =
-              selectedFont.isNotBlank() &&
-                availableFonts.contains(selectedFont) &&
-                selectedFont != "Sans Serif (Default)"
+            val isCustomFontSelected = selectedFont.isNotBlank() && selectedFont != "Default"
 
             // Font selection with clear icon
             Box(
@@ -311,13 +300,13 @@ object SubtitlesPreferencesScreen : Screen {
                     style = MaterialTheme.typography.titleMedium,
                   )
                   Text(
-                    if (isCustomFontSelected) selectedFont else "Default (Sans Serif)",
+                    if (selectedFont.isBlank()) "Default" else selectedFont,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                   )
                 }
 
-                // Right side: Clear icon (only shown if custom font is actually selected and available)
+                // Right side: Clear icon (only shown if custom font is selected)
                 if (isCustomFontSelected) {
                   IconButton(
                     onClick = {
@@ -345,23 +334,16 @@ object SubtitlesPreferencesScreen : Screen {
                   ) {
                     items(availableFonts.size) { index ->
                       val font = availableFonts[index]
-                      val typeface: Typeface? =
-                        when (font) {
-                          "Sans Serif (Default)" -> Typeface.SANS_SERIF
-                          else -> {
-                            // Custom font from user directory
-                            val entry = customFontEntries.firstOrNull { it.familyName == font }
-                            entry?.let {
-                              runCatching {
-                                Typeface.createFromFile(it.file)
-                              }.getOrNull()
-                            }
-                          }
-                        }
+                      val typeface = if (font == "Default") {
+                        Typeface.DEFAULT
+                      } else {
+                        val entry = customFontEntries.firstOrNull { it.familyName == font }
+                        entry?.let { runCatching { Typeface.createFromFile(it.file) }.getOrNull() }
+                      }
 
                       androidx.compose.material3.TextButton(
                         onClick = {
-                          preferences.font.set(font)
+                          preferences.font.set(if (font == "Default") "" else font)
                           showFontPicker = false
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -371,7 +353,7 @@ object SubtitlesPreferencesScreen : Screen {
                           modifier = Modifier.fillMaxWidth(),
                           color = MaterialTheme.colorScheme.onSurface,
                           style =
-                            if (font == selectedFont) {
+                            if ((font == "Default" && selectedFont.isBlank()) || font == selectedFont) {
                               MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                 fontFamily = typeface?.let { FontFamily(it) },
