@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,8 +55,6 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.PlayerSheet
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -73,7 +70,6 @@ fun MoreSheet(
   val audioPreferences = koinInject<AudioPreferences>()
   koinInject<PlayerPreferences>()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
-  val scope = rememberCoroutineScope()
 
   PlayerSheet(
     onDismissRequest,
@@ -158,21 +154,8 @@ fun MoreSheet(
               )
             },
             onClick = {
-              scope.launch(Dispatchers.IO) {
-                // If turning off (page 0) and stats are currently on
-                if (page == 0 && statisticsPage != 0) {
-                  MPVLib.command("script-binding", "stats/display-stats-toggle")
-                }
-                // If turning on a specific page and stats are currently off
-                else if (page != 0 && statisticsPage == 0) {
-                  MPVLib.command("script-binding", "stats/display-stats-toggle")
-                  MPVLib.command("script-binding", "stats/display-page-$page")
-                }
-                // If switching between pages (both non-zero)
-                else if (page != 0 && statisticsPage != 0) {
-                  MPVLib.command("script-binding", "stats/display-page-$page")
-                }
-              }
+              if ((page == 0) xor (statisticsPage == 0)) MPVLib.command("script-binding", "stats/display-stats-toggle")
+              if (page != 0) MPVLib.command("script-binding", "stats/display-page-$page")
               advancedPreferences.enabledStatisticsPage.set(page)
             },
             selected = statisticsPage == page,
@@ -189,14 +172,12 @@ fun MoreSheet(
             selected = audioChannels == it,
             onClick = {
               audioPreferences.audioChannels.set(it)
-              scope.launch(Dispatchers.IO) {
-                if (it == AudioChannels.ReverseStereo) {
-                  MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-                } else {
-                  MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
-                }
-                MPVLib.setPropertyString(it.property, it.value)
+              if (it == AudioChannels.ReverseStereo) {
+                MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+              } else {
+                MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
               }
+              MPVLib.setPropertyString(it.property, it.value)
             },
             label = { Text(text = stringResource(id = it.title)) },
           )
