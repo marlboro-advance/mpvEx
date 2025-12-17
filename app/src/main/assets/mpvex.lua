@@ -59,4 +59,20 @@ end
 function mpvex.toggle_software_keyboard()
     mp.set_property("user-data/mpvex/software_keyboard", "toggle")
 end
+
+-- Set referrer for HTTP/HTTPS URLs
+mp.register_event("start-file", function()
+    local path = mp.get_property("path")
+    if not path then return end
+    if not path:match("^https?://") then return end
+
+    -- Extract scheme + host as origin
+    local origin = path:match("^(https?://[^/]+)")
+    if not origin then return end
+
+    -- Set the referrer to the origin with trailing slash
+    mp.set_property("referrer", origin .. "/")
+    mp.msg.info("Set referrer to: " .. origin .. "/")
+end)
+
 return mpvex
