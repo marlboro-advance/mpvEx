@@ -91,6 +91,13 @@ object AudioPreferencesScreen : Screen {
             title = { Text(stringResource(R.string.pref_audio_pitch_correction_title)) },
             summary = { Text(stringResource(R.string.pref_audio_pitch_correction_summary)) },
           )
+          val volumeNormalization by preferences.volumeNormalization.collectAsState()
+          SwitchPreference(
+            value = volumeNormalization,
+            onValueChange = { preferences.volumeNormalization.set(it) },
+            title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
+            summary = { Text(stringResource(R.string.pref_audio_volume_normalization_summary)) },
+          )
           val automaticBackgroundPlayback by preferences.automaticBackgroundPlayback.collectAsState()
           SwitchPreference(
             value = automaticBackgroundPlayback,

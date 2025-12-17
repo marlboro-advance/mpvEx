@@ -188,6 +188,11 @@ class MPVView(
     MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
+    
+    // Volume normalization using dynamic audio normalization filter
+    if (audioPreferences.volumeNormalization.get()) {
+      MPVLib.setOptionString("af", "dynaudnorm")
+    }
   }
 
   // Setup
