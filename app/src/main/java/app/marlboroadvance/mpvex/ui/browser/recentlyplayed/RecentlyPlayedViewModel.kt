@@ -296,6 +296,28 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     }
   }
 
+  suspend fun deleteRecentlyPlayedItem(item: RecentlyPlayedItem) {
+    try {
+      when (item) {
+        is RecentlyPlayedItem.VideoItem -> {
+          // Delete by file path for video items
+          recentlyPlayedRepository.deleteByFilePath(item.video.path)
+        }
+        is RecentlyPlayedItem.PlaylistItem -> {
+          // For playlist items, we need to delete all entries with that playlistId
+          val db = org.koin.java.KoinJavaComponent.get<MpvExDatabase>(MpvExDatabase::class.java)
+          val allEntries = db.recentlyPlayedDao().getAllRecentlyPlayed()
+          allEntries.filter { it.playlistId == item.playlist.id }.forEach { entity ->
+            recentlyPlayedRepository.deleteById(entity.id)
+          }
+        }
+      }
+      // The observe flow will automatically update the UI
+    } catch (e: Exception) {
+      Log.e("RecentlyPlayedViewModel", "Error deleting recently played item", e)
+    }
+  }
+
   private fun formatDuration(durationMs: Long): String {
     if (durationMs <= 0) return "--"
     val seconds = durationMs / 1000

@@ -62,6 +62,9 @@ interface RecentlyPlayedDao {
   @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
   suspend fun deleteByFilePath(filePath: String)
 
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE id = :id")
+  suspend fun deleteById(id: Int)
+
   @Query("UPDATE RecentlyPlayedEntity SET filePath = :newPath, fileName = :newFileName WHERE filePath = :oldPath")
   suspend fun updateFilePath(
     oldPath: String,

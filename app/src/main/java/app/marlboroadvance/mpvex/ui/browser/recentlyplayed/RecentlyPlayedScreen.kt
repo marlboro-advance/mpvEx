@@ -2,11 +2,15 @@ package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -20,8 +24,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -172,6 +179,7 @@ object RecentlyPlayedScreen : Screen {
             recentItems = recentItems,
             playlistMode = playlistMode,
             playlistRepository = playlistRepository,
+            viewModel = viewModel,
             onVideoClick = { video ->
               // If playlist mode is enabled, play all videos starting from the clicked one
               if (playlistMode) {
@@ -246,11 +254,13 @@ object RecentlyPlayedScreen : Screen {
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecentItemsContent(
   recentItems: List<RecentlyPlayedItem>,
   playlistMode: Boolean,
   playlistRepository: PlaylistRepository,
+  viewModel: RecentlyPlayedViewModel,
   onVideoClick: (Video) -> Unit,
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
@@ -296,50 +306,101 @@ private fun RecentItemsContent(
           }
         },
       ) { index ->
-        when (val item = recentItems[index]) {
-          is RecentlyPlayedItem.VideoItem -> {
-            VideoCard(
-              video = item.video,
-              progressPercentage = null,
-              isSelected = false,
-              onClick = { onVideoClick(item.video) },
-              onLongClick = { },
-              onThumbClick = if (tapThumbnailToSelect) {
-                { }
-              } else {
-                { onVideoClick(item.video) }
-              },
-            )
-          }
+        val item = recentItems[index]
+        val dismissState = rememberSwipeToDismissBoxState(
+          confirmValueChange = { dismissValue ->
+            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+              coroutineScope.launch {
+                viewModel.deleteRecentlyPlayedItem(item)
+              }
+              true
+            } else {
+              false
+            }
+          },
+        )
 
-          is RecentlyPlayedItem.PlaylistItem -> {
-            val folderModel = VideoFolder(
-              bucketId = item.playlist.id.toString(),
-              name = item.playlist.name,
-              path = "",
-              videoCount = item.videoCount,
-              totalSize = 0,
-              totalDuration = 0,
-              lastModified = item.playlist.updatedAt / 1000,
-            )
-            FolderCard(
-              folder = folderModel,
-              isSelected = false,
-              isRecentlyPlayed = false,
-              onClick = {
-                coroutineScope.launch {
-                  onPlaylistClick(item)
+        SwipeToDismissBox(
+          state = dismissState,
+          backgroundContent = {
+            val backgroundColor = when (dismissState.dismissDirection) {
+              SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+              else -> MaterialTheme.colorScheme.surface
+            }
+            Box(
+              modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(horizontal = 20.dp),
+              contentAlignment = Alignment.CenterEnd,
+            ) {
+              if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                ) {
+                  Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    text = "Delete",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.labelLarge,
+                  )
                 }
-              },
-              onLongClick = { },
-              onThumbClick = {
-                coroutineScope.launch {
-                  onPlaylistClick(item)
-                }
-              },
-              customIcon = Icons.Filled.PlaylistPlay,
-              showDateModified = true,
-            )
+              }
+            }
+          },
+          enableDismissFromStartToEnd = false,
+          enableDismissFromEndToStart = true,
+        ) {
+          when (item) {
+            is RecentlyPlayedItem.VideoItem -> {
+              VideoCard(
+                video = item.video,
+                progressPercentage = null,
+                isSelected = false,
+                onClick = { onVideoClick(item.video) },
+                onLongClick = { },
+                onThumbClick = if (tapThumbnailToSelect) {
+                  { }
+                } else {
+                  { onVideoClick(item.video) }
+                },
+              )
+            }
+
+            is RecentlyPlayedItem.PlaylistItem -> {
+              val folderModel = VideoFolder(
+                bucketId = item.playlist.id.toString(),
+                name = item.playlist.name,
+                path = "",
+                videoCount = item.videoCount,
+                totalSize = 0,
+                totalDuration = 0,
+                lastModified = item.playlist.updatedAt / 1000,
+              )
+              FolderCard(
+                folder = folderModel,
+                isSelected = false,
+                isRecentlyPlayed = false,
+                onClick = {
+                  coroutineScope.launch {
+                    onPlaylistClick(item)
+                  }
+                },
+                onLongClick = { },
+                onThumbClick = {
+                  coroutineScope.launch {
+                    onPlaylistClick(item)
+                  }
+                },
+                customIcon = Icons.Filled.PlaylistPlay,
+                showDateModified = true,
+              )
+            }
           }
         }
       }

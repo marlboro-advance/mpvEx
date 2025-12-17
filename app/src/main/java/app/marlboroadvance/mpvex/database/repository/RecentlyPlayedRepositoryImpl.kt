@@ -66,6 +66,10 @@ class RecentlyPlayedRepositoryImpl(
     recentlyPlayedDao.deleteByFilePath(filePath)
   }
 
+  override suspend fun deleteById(id: Int) {
+    recentlyPlayedDao.deleteById(id)
+  }
+
   override suspend fun updateFilePath(
     oldPath: String,
     newPath: String,
