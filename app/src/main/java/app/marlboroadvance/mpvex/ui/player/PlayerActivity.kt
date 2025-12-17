@@ -1235,7 +1235,14 @@ class PlayerActivity :
   internal fun onObserverEvent(property: String) {
     when (property) {
       "video-params/aspect" -> {
+        // Safety check: don't access MPV during cleanup
+        if (!mpvInitialized || player.isExiting || isFinishing) return
+        
         pipHelper.updatePictureInPictureParams()
+        // Update orientation when video aspect ratio changes (fixes Video orientation mode)
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video) {
+          setOrientation()
+        }
       }
     }
   }
@@ -1857,10 +1864,23 @@ class PlayerActivity :
   /**
    * Determines the appropriate orientation based on video aspect ratio.
    *
-   * @return Orientation constant for landscape (if aspect > 1.0) or portrait
+   * @return Orientation constant for landscape (if aspect > 1.0) or portrait.
+   *         Returns sensor landscape as fallback if video aspect is not yet available.
    */
   private fun determineVideoOrientation(): Int {
-    val aspect = player.getVideoOutAspect() ?: 0.0
+    // Safety check: ensure MPV is initialized and not being cleaned up
+    if (!mpvInitialized || player.isExiting) {
+      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
+    
+    val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
+    
+    // If video aspect is not yet available, default to sensor landscape
+    // This will be updated when video-params/aspect becomes available
+    if (aspect == null || aspect <= 0.0) {
+      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
+    
     return if (aspect > 1.0) {
       ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
     } else {

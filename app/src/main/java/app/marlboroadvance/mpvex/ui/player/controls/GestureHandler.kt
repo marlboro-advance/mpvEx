@@ -110,7 +110,7 @@ fun GestureHandler(
       .fillMaxSize()
       .padding(horizontal = 16.dp, vertical = 16.dp)
       .pointerInput(doubleTapSeekAreaWidth, useSingleTapForCenter) {
-        var originalSpeed = 1f
+        var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
         detectTapGestures(
           onTap = {
             // Calculate boundaries based on doubleTapSeekAreaWidth (percentage)
@@ -188,6 +188,11 @@ fun GestureHandler(
               }
             }
 
+            // Capture the original speed at the start of press gesture
+            playbackSpeed?.let { speed ->
+              originalSpeed = speed
+            }
+            
             // Adjust ripple position for right region (reuse the already calculated values)
             val press = PressInteraction.Press(
               it.copy(x = if (it.x > rightBoundary) it.x - size.width * (1f - seekAreaFraction) else it.x),
@@ -204,7 +209,6 @@ fun GestureHandler(
           onLongPress = {
             if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
             if (!isLongPressing && paused == false) {
-              originalSpeed = MPVLib.getPropertyFloat("speed") ?: playbackSpeed ?: 1f
               haptics.performHapticFeedback(HapticFeedbackType.LongPress)
               isLongPressing = true
               MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
