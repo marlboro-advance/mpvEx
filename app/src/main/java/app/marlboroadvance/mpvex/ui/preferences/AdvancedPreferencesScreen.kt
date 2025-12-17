@@ -8,20 +8,26 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -248,6 +254,61 @@ object AdvancedPreferencesScreen : Screen {
               }
             },
           )
+          
+          // Lua Scripts Section
+          val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+          SwitchPreference(
+            value = enableLuaScripts,
+            onValueChange = preferences.enableLuaScripts::set,
+            title = { Text("Enable Lua Scripts") },
+            summary = { Text("Load Lua scripts from configuration directory") },
+          )
+          
+          var showScriptDialog by remember { mutableStateOf(false) }
+          var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
+          val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+          
+          Preference(
+            title = { Text("Select Lua Scripts") },
+            summary = {
+              if (selectedScripts.isEmpty()) {
+                Text("No scripts selected")
+              } else {
+                Text("${selectedScripts.size} script(s) selected")
+              }
+            },
+            onClick = {
+              scope.launch(Dispatchers.IO) {
+                val scripts = mutableListOf<String>()
+                if (mpvConfStorageLocation.isNotBlank()) {
+                  val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                  tree?.listFiles()?.forEach { file ->
+                    if (file.isFile && file.name?.endsWith(".lua") == true) {
+                      file.name?.let { scripts.add(it) }
+                    }
+                  }
+                }
+                withContext(Dispatchers.Main) {
+                  availableScripts = scripts.sorted()
+                  showScriptDialog = true
+                }
+              }
+            },
+            enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
+          )
+          
+          if (showScriptDialog) {
+            LuaScriptSelectionDialog(
+              availableScripts = availableScripts,
+              selectedScripts = selectedScripts,
+              onScriptsSelected = { newSelection ->
+                preferences.selectedLuaScripts.set(newSelection)
+                showScriptDialog = false
+              },
+              onDismiss = { showScriptDialog = false },
+            )
+          }
+          
           val activity = LocalActivity.current!!
           val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
           Preference(
@@ -371,6 +432,62 @@ object AdvancedPreferencesScreen : Screen {
       }
     }
   }
+}
+
+@Composable
+fun LuaScriptSelectionDialog(
+  availableScripts: List<String>,
+  selectedScripts: Set<String>,
+  onScriptsSelected: (Set<String>) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var tempSelectedScripts by remember { mutableStateOf(selectedScripts) }
+  
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Select Lua Scripts") },
+    text = {
+      Column(
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        if (availableScripts.isEmpty()) {
+          Text("No Lua scripts found in the configuration directory.")
+        } else {
+          availableScripts.forEach { script ->
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Checkbox(
+                checked = tempSelectedScripts.contains(script),
+                onCheckedChange = { checked ->
+                  tempSelectedScripts = if (checked) {
+                    tempSelectedScripts + script
+                  } else {
+                    tempSelectedScripts - script
+                  }
+                },
+              )
+              Text(
+                text = script,
+                modifier = Modifier.padding(start = 8.dp),
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onScriptsSelected(tempSelectedScripts) }) {
+        Text("OK")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
 }
 
 fun getSimplifiedPathFromUri(uri: String): String =

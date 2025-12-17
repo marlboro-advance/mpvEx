@@ -33,6 +33,7 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
@@ -746,10 +747,37 @@ class PlayerActivity :
 
       fileManager.deleteContent(scriptsDir)
 
+      // Always copy the built-in mpvex.lua script
       assets.open("mpvex.lua").use { input ->
         File("$scriptsDir/mpvex.lua").apply {
           if (!exists()) createNewFile()
           writeText(input.bufferedReader().readText())
+        }
+      }
+      
+      // Copy user-selected Lua scripts if enabled
+      if (advancedPreferences.enableLuaScripts.get()) {
+        val selectedScripts = advancedPreferences.selectedLuaScripts.get()
+        val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+        
+        if (selectedScripts.isNotEmpty() && mpvConfStorageUri.isNotBlank()) {
+          val tree = DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
+          if (tree != null) {
+            selectedScripts.forEach { scriptName ->
+              val scriptFile = tree.findFile(scriptName)
+              if (scriptFile != null && scriptFile.exists()) {
+                contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+                  File("$scriptsDir/$scriptName").apply {
+                    if (!exists()) createNewFile()
+                    writeText(input.bufferedReader().readText())
+                  }
+                }
+                Log.d(TAG, "Copied Lua script: $scriptName")
+              } else {
+                Log.w(TAG, "Lua script not found: $scriptName")
+              }
+            }
+          }
         }
       }
     }.onFailure { e ->
