@@ -53,10 +53,6 @@ object RecentlyPlayedOps {
     repository.clearAll()
   }
 
-  suspend fun deleteById(id: Int) {
-    repository.deleteById(id)
-  }
-
   suspend fun updateVideoTitle(
     filePath: String,
     videoTitle: String,

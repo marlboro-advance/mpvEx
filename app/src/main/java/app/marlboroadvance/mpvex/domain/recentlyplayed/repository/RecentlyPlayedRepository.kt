@@ -37,8 +37,6 @@ interface RecentlyPlayedRepository {
 
   suspend fun deleteByFilePath(filePath: String)
 
-  suspend fun deleteById(id: Int)
-
   suspend fun updateFilePath(
     oldPath: String,
     newPath: String,
