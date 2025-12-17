@@ -541,7 +541,7 @@ class PlayerActivity :
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
-      val shouldPause = !playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing
+      val shouldPause = !audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing
 
       if (!isInPip && shouldPause) {
         viewModel.pause()
@@ -586,10 +586,10 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      if (!serviceBound && playerPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
+      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
         startBackgroundPlayback()
       } else {
-        if (!playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
+        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
           viewModel.pause()
         }
         if (serviceBound) {
