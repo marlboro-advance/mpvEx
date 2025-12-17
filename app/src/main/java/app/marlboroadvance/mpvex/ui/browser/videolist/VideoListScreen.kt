@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -239,12 +240,15 @@ data class VideoListScreen(
         )
       },
     ) { padding ->
+      val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
+      
       VideoListContent(
         videosWithInfo = sortedVideosWithInfo,
         isLoading = isLoading && videos.isEmpty(),
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
         videosWereDeletedOrMoved = videosWereDeletedOrMoved,
+        autoScrollToLastPlayed = autoScrollToLastPlayed,
         onRefresh = { viewModel.refresh() },
         selectionManager = selectionManager,
         onVideoClick = { video ->
@@ -442,6 +446,7 @@ private fun VideoListContent(
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   videosWereDeletedOrMoved: Boolean,
+  autoScrollToLastPlayed: Boolean,
   onRefresh: suspend () -> Unit,
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
@@ -485,6 +490,20 @@ private fun VideoListContent(
 
     else -> {
       val listState = rememberLazyListState()
+      val coroutineScope = rememberCoroutineScope()
+
+      // Auto-scroll to last played video when entering the screen
+      LaunchedEffect(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
+        if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
+          val lastPlayedIndex = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
+          if (lastPlayedIndex >= 0) {
+            // Scroll to the last played item with some offset to center it
+            coroutineScope.launch {
+              listState.animateScrollToItem(lastPlayedIndex, scrollOffset = -200)
+            }
+          }
+        }
+      }
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
