@@ -318,6 +318,28 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     }
   }
 
+  suspend fun deletePlaylistsFromHistory(playlistIds: List<Int>): Pair<Int, Int> {
+    return try {
+      var successCount = 0
+      var failCount = 0
+      
+      playlistIds.forEach { playlistId ->
+        try {
+          recentlyPlayedRepository.deleteByPlaylistId(playlistId)
+          successCount++
+        } catch (e: Exception) {
+          Log.e("RecentlyPlayedViewModel", "Error deleting playlist from history: $playlistId", e)
+          failCount++
+        }
+      }
+      
+      Pair(successCount, failCount)
+    } catch (e: Exception) {
+      Log.e("RecentlyPlayedViewModel", "Error deleting playlists from history", e)
+      Pair(0, playlistIds.size)
+    }
+  }
+
   private fun formatDuration(durationMs: Long): String {
     if (durationMs <= 0) return "--"
     val seconds = durationMs / 1000

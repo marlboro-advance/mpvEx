@@ -74,12 +74,39 @@ object RecentlyPlayedScreen : Screen {
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
-    // Selection manager for videos only
+    // Selection manager for all items (videos and playlists)
     val selectionManager =
       rememberSelectionManager(
-        items = recentVideos,
-        getId = { it.id },
-        onDeleteItems = { videos -> viewModel.deleteVideosFromHistory(videos) },
+        items = recentItems,
+        getId = { item ->
+          when (item) {
+            is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}"
+            is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
+          }
+        },
+        onDeleteItems = { items ->
+          val videos = items.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
+          val playlistIds = items.filterIsInstance<RecentlyPlayedItem.PlaylistItem>().map { it.playlist.id }
+          
+          var successCount = 0
+          var failCount = 0
+          
+          // Delete videos from history
+          if (videos.isNotEmpty()) {
+            val (videoSuccess, videoFail) = viewModel.deleteVideosFromHistory(videos)
+            successCount += videoSuccess
+            failCount += videoFail
+          }
+          
+          // Delete playlist items from history
+          if (playlistIds.isNotEmpty()) {
+            val (playlistSuccess, playlistFail) = viewModel.deletePlaylistsFromHistory(playlistIds)
+            successCount += playlistSuccess
+            failCount += playlistFail
+          }
+          
+          Pair(successCount, failCount)
+        },
         onRenameItem = null, // Cannot rename from history screen
         onOperationComplete = { },
       )
@@ -95,14 +122,41 @@ object RecentlyPlayedScreen : Screen {
           title = "Recently Played",
           isInSelectionMode = selectionManager.isInSelectionMode,
           selectedCount = selectionManager.selectedCount,
-          totalCount = recentVideos.size,
+          totalCount = recentItems.size,
           onBackClick = null, // No back button for recently played screen
           onCancelSelection = { selectionManager.clear() },
           onSortClick = null, // No sorting in recently played
           isSingleSelection = selectionManager.isSingleSelection,
           onInfoClick = null, // No info in recently played
-          onShareClick = { selectionManager.shareSelected() },
-          onPlayClick = { selectionManager.playSelected() },
+          onShareClick = { 
+            // Only share videos, not playlists
+            val selectedVideos = selectionManager.getSelectedItems()
+              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
+              .map { it.video }
+            if (selectedVideos.isNotEmpty()) {
+              app.marlboroadvance.mpvex.utils.media.MediaUtils.shareVideos(context, selectedVideos)
+            }
+          },
+          onPlayClick = { 
+            // Only play videos, not playlists
+            val selectedVideos = selectionManager.getSelectedItems()
+              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
+              .map { it.video }
+            if (selectedVideos.isNotEmpty()) {
+              if (selectedVideos.size == 1) {
+                MediaUtils.playFile(selectedVideos.first(), context)
+              } else {
+                val intent = Intent(Intent.ACTION_VIEW, selectedVideos.first().uri)
+                intent.setClass(context, PlayerActivity::class.java)
+                intent.putExtra("internal_launch", true)
+                intent.putParcelableArrayListExtra("playlist", ArrayList(selectedVideos.map { it.uri }))
+                intent.putExtra("playlist_index", 0)
+                intent.putExtra("launch_source", "playlist")
+                context.startActivity(intent)
+              }
+              selectionManager.clear()
+            }
+          },
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
@@ -164,36 +218,29 @@ object RecentlyPlayedScreen : Screen {
             playlistRepository = playlistRepository,
             selectionManager = selectionManager,
             onVideoClick = { video ->
-              if (selectionManager.isInSelectionMode) {
-                selectionManager.toggle(video)
-              } else {
-                // If playlist mode is enabled, play all videos starting from the clicked one
-                if (playlistMode) {
-                  val startIndex = recentVideos.indexOfFirst { it.id == video.id }
-                  if (startIndex >= 0) {
-                    if (recentVideos.size == 1) {
-                      // Single video - play normally
-                      MediaUtils.playFile(video, context, "recently_played")
-                    } else {
-                      // Multiple videos - play as playlist starting from clicked video
-                      val intent = Intent(Intent.ACTION_VIEW, recentVideos[startIndex].uri)
-                      intent.setClass(context, PlayerActivity::class.java)
-                      intent.putExtra("internal_launch", true)
-                      intent.putParcelableArrayListExtra("playlist", ArrayList(recentVideos.map { it.uri }))
-                      intent.putExtra("playlist_index", startIndex)
-                      intent.putExtra("launch_source", "recently_played_list")
-                      context.startActivity(intent)
-                    }
-                  } else {
+              // If playlist mode is enabled, play all videos starting from the clicked one
+              if (playlistMode) {
+                val startIndex = recentVideos.indexOfFirst { it.id == video.id }
+                if (startIndex >= 0) {
+                  if (recentVideos.size == 1) {
+                    // Single video - play normally
                     MediaUtils.playFile(video, context, "recently_played")
+                  } else {
+                    // Multiple videos - play as playlist starting from clicked video
+                    val intent = Intent(Intent.ACTION_VIEW, recentVideos[startIndex].uri)
+                    intent.setClass(context, PlayerActivity::class.java)
+                    intent.putExtra("internal_launch", true)
+                    intent.putParcelableArrayListExtra("playlist", ArrayList(recentVideos.map { it.uri }))
+                    intent.putExtra("playlist_index", startIndex)
+                    intent.putExtra("launch_source", "recently_played_list")
+                    context.startActivity(intent)
                   }
                 } else {
                   MediaUtils.playFile(video, context, "recently_played")
                 }
+              } else {
+                MediaUtils.playFile(video, context, "recently_played")
               }
-            },
-            onVideoLongClick = { video ->
-              selectionManager.toggle(video)
             },
             onPlaylistClick = { playlistItem ->
               // Navigate to playlist detail screen
@@ -228,9 +275,8 @@ private fun RecentItemsContent(
   recentItems: List<RecentlyPlayedItem>,
   playlistMode: Boolean,
   playlistRepository: PlaylistRepository,
-  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<Video, Long>,
+  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<RecentlyPlayedItem, String>,
   onVideoClick: (Video) -> Unit,
-  onVideoLongClick: (Video) -> Unit,
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -280,13 +326,25 @@ private fun RecentItemsContent(
             VideoCard(
               video = item.video,
               progressPercentage = null,
-              isSelected = selectionManager.isSelected(item.video),
-              onClick = { onVideoClick(item.video) },
-              onLongClick = { onVideoLongClick(item.video) },
+              isSelected = selectionManager.isSelected(item),
+              onClick = { 
+                if (selectionManager.isInSelectionMode) {
+                  selectionManager.toggle(item)
+                } else {
+                  onVideoClick(item.video)
+                }
+              },
+              onLongClick = { selectionManager.toggle(item) },
               onThumbClick = if (tapThumbnailToSelect) {
-                { onVideoLongClick(item.video) }
+                { selectionManager.toggle(item) }
               } else {
-                { onVideoClick(item.video) }
+                { 
+                  if (selectionManager.isInSelectionMode) {
+                    selectionManager.toggle(item)
+                  } else {
+                    onVideoClick(item.video)
+                  }
+                }
               },
             )
           }
@@ -303,17 +361,29 @@ private fun RecentItemsContent(
             )
             FolderCard(
               folder = folderModel,
-              isSelected = false,
+              isSelected = selectionManager.isSelected(item),
               isRecentlyPlayed = false,
               onClick = {
-                coroutineScope.launch {
-                  onPlaylistClick(item)
+                if (selectionManager.isInSelectionMode) {
+                  selectionManager.toggle(item)
+                } else {
+                  coroutineScope.launch {
+                    onPlaylistClick(item)
+                  }
                 }
               },
-              onLongClick = { },
+              onLongClick = { selectionManager.toggle(item) },
               onThumbClick = {
-                coroutineScope.launch {
-                  onPlaylistClick(item)
+                if (tapThumbnailToSelect) {
+                  selectionManager.toggle(item)
+                } else {
+                  if (selectionManager.isInSelectionMode) {
+                    selectionManager.toggle(item)
+                  } else {
+                    coroutineScope.launch {
+                      onPlaylistClick(item)
+                    }
+                  }
                 }
               },
               customIcon = Icons.Filled.PlaylistPlay,
