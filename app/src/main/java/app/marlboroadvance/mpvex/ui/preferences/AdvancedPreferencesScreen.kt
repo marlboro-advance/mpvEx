@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +48,7 @@ import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.SettingsManager
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
@@ -75,7 +78,106 @@ object AdvancedPreferencesScreen : Screen {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val preferences = koinInject<AdvancedPreferences>()
+    val settingsManager = koinInject<SettingsManager>()
     val scope = rememberCoroutineScope()
+    var showImportDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var importStats by remember { mutableStateOf<SettingsManager.ImportStats?>(null) }
+    var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
+
+    // Export settings launcher
+    val exportLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/xml"),
+      ) { uri ->
+        uri?.let {
+          scope.launch {
+            settingsManager.exportSettings(it).fold(
+              onSuccess = { stats ->
+                exportStats = stats
+                showExportDialog = true
+              },
+              onFailure = { error ->
+                Toast.makeText(
+                  context,
+                  "Export failed: ${error.message}",
+                  Toast.LENGTH_LONG,
+                ).show()
+              },
+            )
+          }
+        }
+      }
+
+    // Import settings launcher
+    val importLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+      ) { uri ->
+        uri?.let {
+          scope.launch {
+            settingsManager.importSettings(it).fold(
+              onSuccess = { stats ->
+                importStats = stats
+                showImportDialog = true
+              },
+              onFailure = { error ->
+                Toast.makeText(
+                  context,
+                  "Import failed: ${error.message}",
+                  Toast.LENGTH_LONG,
+                ).show()
+              },
+            )
+          }
+        }
+      }
+
+    // Export results dialog
+    if (showExportDialog && exportStats != null) {
+      AlertDialog(
+        onDismissRequest = { showExportDialog = false },
+        title = { Text("Export Complete") },
+        text = {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .verticalScroll(rememberScrollState()),
+          ) {
+            Text(
+              "Successfully exported ${exportStats?.totalExported} items!\n\n"
+            )
+          }
+        },
+        confirmButton = {
+          TextButton(onClick = { showExportDialog = false }) {
+            Text("OK")
+          }
+        },
+      )
+    }
+
+    // Import results dialog
+    if (showImportDialog && importStats != null) {
+      AlertDialog(
+        onDismissRequest = { showImportDialog = false },
+        title = { Text("Import Complete") },
+        text = {
+          Text(
+            "Successfully imported: ${importStats?.imported}\n" +
+              "Failed: ${importStats?.failed}\n" +
+              "Version: ${importStats?.version}\n\n" +
+              "Please restart the app for all changes to take effect.",
+          )
+        },
+        confirmButton = {
+          TextButton(onClick = { showImportDialog = false }) {
+            Text("OK")
+          }
+        },
+      )
+    }
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -108,6 +210,26 @@ object AdvancedPreferencesScreen : Screen {
             .verticalScroll(rememberScrollState())
             .padding(padding),
         ) {
+          // Export settings option
+          Preference(
+            title = { Text(text = "Export Settings") },
+            summary = { Text(text = "Export all settings to an XML file") },
+            icon = { Icon(Icons.Outlined.FileUpload, null) },
+            onClick = {
+              exportLauncher.launch(settingsManager.getDefaultExportFilename())
+            },
+          )
+
+          // Import settings option
+          Preference(
+            title = { Text(text = "Import Settings") },
+            summary = { Text(text = "Import settings from an XML file") },
+            icon = { Icon(Icons.Outlined.FileDownload, null) },
+            onClick = {
+              importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+            },
+          )
+
           TwoTargetIconButtonPreference(
             title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
             summary = {

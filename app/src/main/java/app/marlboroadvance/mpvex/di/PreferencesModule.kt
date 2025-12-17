@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.di
 
+import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
@@ -8,6 +9,7 @@ import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.SettingsManager
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.preferences.preference.AndroidPreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
@@ -29,4 +31,5 @@ val PreferencesModule =
     singleOf(::AdvancedPreferences)
     singleOf(::BrowserPreferences)
     singleOf(::FoldersPreferences)
+    singleOf(::SettingsManager)
   }
