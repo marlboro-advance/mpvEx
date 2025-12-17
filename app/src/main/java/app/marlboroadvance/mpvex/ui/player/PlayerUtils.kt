@@ -189,7 +189,68 @@ internal fun Uri.resolveUri(context: Context): String? {
 }
 
 /**
+ * Sanitizes JSON strings from MPV by fixing invalid escape sequences.
+ * 
+ * MPV's C library may generate JSON with unescaped backslashes (e.g., in file paths
+ * like "Signs\Songs"). This function fixes invalid escape sequences by properly
+ * escaping backslashes that aren't part of valid JSON escape sequences.
+ * 
+ * Valid JSON escape sequences: \" \\ \/ \b \f \n \r \t \uXXXX
+ */
+fun sanitizeJsonString(jsonString: String): String {
+  val result = StringBuilder(jsonString.length)
+  var i = 0
+  var inString = false
+  
+  while (i < jsonString.length) {
+    val char = jsonString[i]
+    
+    when {
+      // Track if we're inside a string literal
+      char == '"' && (i == 0 || jsonString[i - 1] != '\\') -> {
+        inString = !inString
+        result.append(char)
+        i++
+      }
+      // Handle backslashes inside string literals
+      char == '\\' && inString && i + 1 < jsonString.length -> {
+        val nextChar = jsonString[i + 1]
+        
+        // Check if this is a valid escape sequence
+        val isValidEscape = when (nextChar) {
+          '"', '\\', '/', 'b', 'f', 'n', 'r', 't' -> true
+          'u' -> i + 5 < jsonString.length // \uXXXX format
+          else -> false
+        }
+        
+        if (isValidEscape) {
+          // Valid escape sequence, keep as-is
+          result.append(char)
+          i++
+        } else {
+          // Invalid escape sequence, escape the backslash
+          result.append("\\\\")
+          i++
+        }
+      }
+      else -> {
+        result.append(char)
+        i++
+      }
+    }
+  }
+  
+  return result.toString()
+}
+
+/**
  * Deserializes MPV's native node structure to Kotlin data classes.
  * MPV uses C-style tree structures (MPVNode) which we convert to typed objects.
+ * 
+ * Sanitizes the JSON before parsing to handle invalid escape sequences from MPV.
  */
-inline fun <reified T> MPVNode.toObject(json: Json): T = json.decodeFromString<T>(toJson())
+inline fun <reified T> MPVNode.toObject(json: Json): T {
+  val jsonString = toJson()
+  val sanitizedJson = sanitizeJsonString(jsonString)
+  return json.decodeFromString<T>(sanitizedJson)
+}
