@@ -1185,6 +1185,9 @@ class PlayerActivity :
           isReady = true
         }
       }
+      "paused-for-cache" -> {
+        Log.d(TAG, "Buffering state: $value")
+      }
       "eof-reached" -> handleEndOfFile(value)
     }
   }

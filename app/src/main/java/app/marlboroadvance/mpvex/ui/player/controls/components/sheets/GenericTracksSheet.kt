@@ -117,7 +117,7 @@ fun getTrackTitle(
     hasTitle -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.title)
     hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, track.lang)
     track.isSubtitle -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
-    track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
+    track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_audio, track.id)
     else -> ""
   }
 }
