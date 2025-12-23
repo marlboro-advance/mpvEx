@@ -62,7 +62,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
@@ -158,7 +157,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
   var hasRecentlyPlayed by remember { mutableStateOf(false) }
   val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
-  val mediaInfoDialogOpen = rememberSaveable { mutableStateOf(false) }
   val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
 
   // Copy/Move state
@@ -166,12 +164,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
   val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
   val operationProgress by CopyPasteOps.operationProgress.collectAsState()
-
-  // Media info state
-  val selectedVideo = remember { mutableStateOf<app.marlboroadvance.mpvex.domain.media.model.Video?>(null) }
-  val mediaInfoData = remember { mutableStateOf<MediaInfoOps.MediaInfoData?>(null) }
-  val mediaInfoLoading = remember { mutableStateOf(false) }
-  val mediaInfoError = remember { mutableStateOf<String?>(null) }
 
   // Selection managers - separate for folders and videos
   val folders = items.filterIsInstance<FileSystemItem.Folder>()
@@ -307,23 +299,11 @@ fun FileSystemBrowserScreen(path: String? = null) {
           {
             val video = videoSelectionManager.getSelectedItems().firstOrNull()
             if (video != null) {
-              selectedVideo.value = video
-              mediaInfoDialogOpen.value = true
-              mediaInfoLoading.value = true
-              mediaInfoError.value = null
-              mediaInfoData.value = null
-
-              coroutineScope.launch {
-                MediaInfoOps
-                  .getMediaInfo(context, video.uri, video.displayName)
-                  .onSuccess { info ->
-                    mediaInfoData.value = info
-                    mediaInfoLoading.value = false
-                  }.onFailure { error ->
-                    mediaInfoError.value = error.message ?: "Unknown error"
-                    mediaInfoLoading.value = false
-                  }
-              }
+              val intent = Intent(context, app.marlboroadvance.mpvex.ui.mediainfo.MediaInfoActivity::class.java)
+              intent.action = Intent.ACTION_VIEW
+              intent.data = video.uri
+              context.startActivity(intent)
+              videoSelectionManager.clear()
             }
           }
         } else {
@@ -643,22 +623,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
         )
       }
     }
-
-    // Media Info Dialog
-    MediaInfoDialog(
-      isOpen = mediaInfoDialogOpen.value,
-      onDismiss = {
-        mediaInfoDialogOpen.value = false
-        selectedVideo.value = null
-        mediaInfoData.value = null
-        mediaInfoError.value = null
-      },
-      fileName = selectedVideo.value?.displayName ?: "",
-      mediaInfo = mediaInfoData.value,
-      isLoading = mediaInfoLoading.value,
-      error = mediaInfoError.value,
-      videoForShare = selectedVideo.value,
-    )
 
     // Folder Picker Dialog
     FolderPickerDialog(

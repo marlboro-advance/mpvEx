@@ -72,6 +72,31 @@ fun AddToPlaylistDialog(
 
   if (!isOpen) return
 
+  if (showCreateDialog) {
+    CreatePlaylistDialog(
+      onDismiss = { showCreateDialog = false },
+      onConfirm = { name ->
+        scope.launch {
+          val playlistId = repository.createPlaylist(name)
+          val items = videos.map { video ->
+            video.path to video.displayName
+          }
+          repository.addItemsToPlaylist(playlistId.toInt(), items)
+          val message = if (videos.size == 1) {
+            "Video added to \"$name\""
+          } else {
+            "${videos.size} videos added to \"$name\""
+          }
+          Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+          showCreateDialog = false
+          onSuccess()
+          onDismiss()
+        }
+      }
+    )
+    return
+  }
+
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
@@ -183,29 +208,6 @@ fun AddToPlaylistDialog(
     shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
-
-  // Create Playlist Dialog
-  if (showCreateDialog) {
-    CreatePlaylistDialog(
-      onDismiss = { showCreateDialog = false },
-      onConfirm = { name ->
-        scope.launch {
-          val playlistId = repository.createPlaylist(name)
-          val items = videos.map { video ->
-            video.path to video.displayName
-          }
-          repository.addItemsToPlaylist(playlistId.toInt(), items)
-          val message = if (videos.size == 1) {
-            "Video added to \"$name\""
-          } else {
-            "${videos.size} videos added to \"$name\""
-          }
-          Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-          showCreateDialog = false
-        }
-      },
-    )
-  }
 }
 
 @Composable
