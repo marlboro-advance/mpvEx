@@ -30,4 +30,10 @@ interface PlaybackStateDao {
     oldTitle: String,
     newTitle: String,
   )
+
+  @Query("SELECT * FROM PlaybackStateEntity")
+  suspend fun getAllPlaybackStates(): List<PlaybackStateEntity>
+
+  @Upsert
+  suspend fun upsertAll(playbackStates: List<PlaybackStateEntity>)
 }

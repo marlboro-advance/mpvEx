@@ -6,34 +6,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
-import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.TrackNode
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import kotlinx.collections.immutable.ImmutableList
-import org.koin.compose.koinInject
 
 @Composable
 fun SubtitlesSheet(
   tracks: ImmutableList<TrackNode>,
-  onSelect: (Int) -> Unit,
+  onToggleSubtitle: (Int) -> Unit,
+  isSubtitleSelected: (Int) -> Boolean,
   onAddSubtitle: () -> Unit,
   onOpenSubtitleSettings: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
@@ -61,9 +56,9 @@ fun SubtitlesSheet(
     track = { track ->
       SubtitleTrackRow(
         title = getTrackTitle(track, tracks),
-        selected = track.mainSelection?.toInt() ?: -1,
+        isSelected = isSubtitleSelected(track.id),
         isExternal = track.external == true,
-        onClick = { onSelect(track.id) },
+        onToggle = { onToggleSubtitle(track.id) },
         onRemove = { onRemoveSubtitle(track.id) },
       )
     },
@@ -74,9 +69,9 @@ fun SubtitlesSheet(
 @Composable
 fun SubtitleTrackRow(
   title: String,
-  selected: Int,
+  isSelected: Boolean,
   isExternal: Boolean,
-  onClick: () -> Unit,
+  onToggle: () -> Unit,
   onRemove: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -84,19 +79,18 @@ fun SubtitleTrackRow(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable(onClick = onClick)
+        .clickable(onClick = onToggle)
         .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    RadioButton(
-      selected = selected > -1,
-      onClick = onClick,
+    Checkbox(
+      checked = isSelected,
+      onCheckedChange = { onToggle() },
     )
     Text(
       title,
-      fontStyle = if (selected > -1) FontStyle.Italic else FontStyle.Normal,
-      fontWeight = if (selected > -1) FontWeight.ExtraBold else FontWeight.Normal,
+      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
       modifier = Modifier.weight(1f),
     )
     if (isExternal) {

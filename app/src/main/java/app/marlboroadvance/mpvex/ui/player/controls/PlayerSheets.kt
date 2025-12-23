@@ -32,7 +32,8 @@ fun PlayerSheets(
   // subtitles sheet
   subtitles: ImmutableList<TrackNode>,
   onAddSubtitle: (Uri) -> Unit,
-  onSelectSubtitle: (Int) -> Unit,
+  onToggleSubtitle: (Int) -> Unit,
+  isSubtitleSelected: (Int) -> Boolean,
   onRemoveSubtitle: (Int) -> Unit,
   // audio sheet
   audioTracks: ImmutableList<TrackNode>,
@@ -73,7 +74,8 @@ fun PlayerSheets(
         }
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
-        onSelect = onSelectSubtitle,
+        onToggleSubtitle = onToggleSubtitle,
+        isSubtitleSelected = isSubtitleSelected,
         onAddSubtitle = {
           subtitlesPicker.launch(
             arrayOf(

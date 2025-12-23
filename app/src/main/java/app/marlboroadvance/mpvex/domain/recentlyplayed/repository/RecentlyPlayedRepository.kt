@@ -37,6 +37,8 @@ interface RecentlyPlayedRepository {
 
   suspend fun deleteByFilePath(filePath: String)
 
+  suspend fun deleteByPlaylistId(playlistId: Int)
+
   suspend fun updateFilePath(
     oldPath: String,
     newPath: String,

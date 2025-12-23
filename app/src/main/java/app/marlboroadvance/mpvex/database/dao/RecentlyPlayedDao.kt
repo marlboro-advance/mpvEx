@@ -62,6 +62,9 @@ interface RecentlyPlayedDao {
   @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
   suspend fun deleteByFilePath(filePath: String)
 
+  @Query("DELETE FROM RecentlyPlayedEntity WHERE playlistId = :playlistId")
+  suspend fun deleteByPlaylistId(playlistId: Int)
+
   @Query("UPDATE RecentlyPlayedEntity SET filePath = :newPath, fileName = :newFileName WHERE filePath = :oldPath")
   suspend fun updateFilePath(
     oldPath: String,
@@ -113,4 +116,10 @@ interface RecentlyPlayedDao {
     val playlistId: Int,
     val timestamp: Long,
   )
+
+  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC")
+  suspend fun getAllRecentlyPlayed(): List<RecentlyPlayedEntity>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAll(items: List<RecentlyPlayedEntity>)
 }

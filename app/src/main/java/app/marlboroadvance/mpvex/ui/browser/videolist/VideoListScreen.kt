@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -59,7 +60,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.LoadingDialog
-import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
@@ -69,7 +69,6 @@ import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
-import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import my.nanihadesuka.compose.LazyColumnScrollbar
@@ -132,11 +131,6 @@ data class VideoListScreen(
     // UI State
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val mediaInfoDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val selectedVideo = remember { mutableStateOf<Video?>(null) }
-    val mediaInfoData = remember { mutableStateOf<MediaInfoOps.MediaInfoData?>(null) }
-    val mediaInfoLoading = remember { mutableStateOf(false) }
-    val mediaInfoError = remember { mutableStateOf<String?>(null) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
     val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
@@ -194,23 +188,11 @@ data class VideoListScreen(
             if (selectionManager.isSingleSelection) {
               val video = selectionManager.getSelectedItems().firstOrNull()
               if (video != null) {
-                selectedVideo.value = video
-                mediaInfoDialogOpen.value = true
-                mediaInfoLoading.value = true
-                mediaInfoError.value = null
-                mediaInfoData.value = null
-
-                coroutineScope.launch {
-                  MediaInfoOps
-                    .getMediaInfo(context, video.uri, video.displayName)
-                    .onSuccess { info ->
-                      mediaInfoData.value = info
-                      mediaInfoLoading.value = false
-                    }.onFailure { error ->
-                      mediaInfoError.value = error.message ?: "Unknown error"
-                      mediaInfoLoading.value = false
-                    }
-                }
+                val intent = Intent(context, app.marlboroadvance.mpvex.ui.mediainfo.MediaInfoActivity::class.java)
+                intent.action = Intent.ACTION_VIEW
+                intent.data = video.uri
+                context.startActivity(intent)
+                selectionManager.clear()
               }
             }
           },
@@ -239,12 +221,15 @@ data class VideoListScreen(
         )
       },
     ) { padding ->
+      val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
+      
       VideoListContent(
         videosWithInfo = sortedVideosWithInfo,
         isLoading = isLoading && videos.isEmpty(),
         isRefreshing = isRefreshing,
         recentlyPlayedFilePath = recentlyPlayedFilePath,
         videosWereDeletedOrMoved = videosWereDeletedOrMoved,
+        autoScrollToLastPlayed = autoScrollToLastPlayed,
         onRefresh = { viewModel.refresh() },
         selectionManager = selectionManager,
         onVideoClick = { video ->
@@ -289,22 +274,6 @@ data class VideoListScreen(
         sortOrder = videoSortOrder,
         onSortTypeChange = { browserPreferences.videoSortType.set(it) },
         onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
-      )
-
-      // Media Info Dialog
-      MediaInfoDialog(
-        isOpen = mediaInfoDialogOpen.value,
-        onDismiss = {
-          mediaInfoDialogOpen.value = false
-          selectedVideo.value = null
-          mediaInfoData.value = null
-          mediaInfoError.value = null
-        },
-        fileName = selectedVideo.value?.displayName ?: "",
-        mediaInfo = mediaInfoData.value,
-        isLoading = mediaInfoLoading.value,
-        error = mediaInfoError.value,
-        videoForShare = selectedVideo.value,
       )
 
       // Delete Dialog
@@ -442,6 +411,7 @@ private fun VideoListContent(
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   recentlyPlayedFilePath: String?,
   videosWereDeletedOrMoved: Boolean,
+  autoScrollToLastPlayed: Boolean,
   onRefresh: suspend () -> Unit,
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
@@ -485,6 +455,20 @@ private fun VideoListContent(
 
     else -> {
       val listState = rememberLazyListState()
+      val coroutineScope = rememberCoroutineScope()
+
+      // Auto-scroll to last played video when entering the screen
+      LaunchedEffect(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
+        if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
+          val lastPlayedIndex = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
+          if (lastPlayedIndex >= 0) {
+            // Scroll to the last played item with some offset to center it
+            coroutineScope.launch {
+              listState.animateScrollToItem(lastPlayedIndex, scrollOffset = -200)
+            }
+          }
+        }
+      }
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {

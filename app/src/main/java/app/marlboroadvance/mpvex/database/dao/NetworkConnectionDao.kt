@@ -40,4 +40,10 @@ interface NetworkConnectionDao {
 
   @Query("DELETE FROM network_connections WHERE id = :id")
   suspend fun deleteById(id: Long)
+
+  @Query("SELECT * FROM network_connections ORDER BY id ASC")
+  suspend fun getAllConnectionsList(): List<NetworkConnection>
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertAll(connections: List<NetworkConnection>)
 }

@@ -8,20 +8,28 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +48,7 @@ import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.SettingsManager
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
@@ -69,7 +78,106 @@ object AdvancedPreferencesScreen : Screen {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val preferences = koinInject<AdvancedPreferences>()
+    val settingsManager = koinInject<SettingsManager>()
     val scope = rememberCoroutineScope()
+    var showImportDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var importStats by remember { mutableStateOf<SettingsManager.ImportStats?>(null) }
+    var exportStats by remember { mutableStateOf<SettingsManager.ExportStats?>(null) }
+
+    // Export settings launcher
+    val exportLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/xml"),
+      ) { uri ->
+        uri?.let {
+          scope.launch {
+            settingsManager.exportSettings(it).fold(
+              onSuccess = { stats ->
+                exportStats = stats
+                showExportDialog = true
+              },
+              onFailure = { error ->
+                Toast.makeText(
+                  context,
+                  "Export failed: ${error.message}",
+                  Toast.LENGTH_LONG,
+                ).show()
+              },
+            )
+          }
+        }
+      }
+
+    // Import settings launcher
+    val importLauncher =
+      rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+      ) { uri ->
+        uri?.let {
+          scope.launch {
+            settingsManager.importSettings(it).fold(
+              onSuccess = { stats ->
+                importStats = stats
+                showImportDialog = true
+              },
+              onFailure = { error ->
+                Toast.makeText(
+                  context,
+                  "Import failed: ${error.message}",
+                  Toast.LENGTH_LONG,
+                ).show()
+              },
+            )
+          }
+        }
+      }
+
+    // Export results dialog
+    if (showExportDialog && exportStats != null) {
+      AlertDialog(
+        onDismissRequest = { showExportDialog = false },
+        title = { Text("Export Complete") },
+        text = {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .verticalScroll(rememberScrollState()),
+          ) {
+            Text(
+              "Successfully exported ${exportStats?.totalExported} items!\n\n"
+            )
+          }
+        },
+        confirmButton = {
+          TextButton(onClick = { showExportDialog = false }) {
+            Text("OK")
+          }
+        },
+      )
+    }
+
+    // Import results dialog
+    if (showImportDialog && importStats != null) {
+      AlertDialog(
+        onDismissRequest = { showImportDialog = false },
+        title = { Text("Import Complete") },
+        text = {
+          Text(
+            "Successfully imported: ${importStats?.imported}\n" +
+              "Failed: ${importStats?.failed}\n" +
+              "Version: ${importStats?.version}\n\n" +
+              "Please restart the app for all changes to take effect.",
+          )
+        },
+        confirmButton = {
+          TextButton(onClick = { showImportDialog = false }) {
+            Text("OK")
+          }
+        },
+      )
+    }
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -102,6 +210,26 @@ object AdvancedPreferencesScreen : Screen {
             .verticalScroll(rememberScrollState())
             .padding(padding),
         ) {
+          // Export settings option
+          Preference(
+            title = { Text(text = "Export Settings") },
+            summary = { Text(text = "Export all settings to an XML file") },
+            icon = { Icon(Icons.Outlined.FileUpload, null) },
+            onClick = {
+              exportLauncher.launch(settingsManager.getDefaultExportFilename())
+            },
+          )
+
+          // Import settings option
+          Preference(
+            title = { Text(text = "Import Settings") },
+            summary = { Text(text = "Import settings from an XML file") },
+            icon = { Icon(Icons.Outlined.FileDownload, null) },
+            onClick = {
+              importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+            },
+          )
+
           TwoTargetIconButtonPreference(
             title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
             summary = {
@@ -248,6 +376,61 @@ object AdvancedPreferencesScreen : Screen {
               }
             },
           )
+          
+          // Lua Scripts Section
+          val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+          SwitchPreference(
+            value = enableLuaScripts,
+            onValueChange = preferences.enableLuaScripts::set,
+            title = { Text("Enable Lua Scripts") },
+            summary = { Text("Load Lua scripts from configuration directory") },
+          )
+          
+          var showScriptDialog by remember { mutableStateOf(false) }
+          var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
+          val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+          
+          Preference(
+            title = { Text("Select Lua Scripts") },
+            summary = {
+              if (selectedScripts.isEmpty()) {
+                Text("No scripts selected")
+              } else {
+                Text("${selectedScripts.size} script(s) selected")
+              }
+            },
+            onClick = {
+              scope.launch(Dispatchers.IO) {
+                val scripts = mutableListOf<String>()
+                if (mpvConfStorageLocation.isNotBlank()) {
+                  val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                  tree?.listFiles()?.forEach { file ->
+                    if (file.isFile && file.name?.endsWith(".lua") == true) {
+                      file.name?.let { scripts.add(it) }
+                    }
+                  }
+                }
+                withContext(Dispatchers.Main) {
+                  availableScripts = scripts.sorted()
+                  showScriptDialog = true
+                }
+              }
+            },
+            enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
+          )
+          
+          if (showScriptDialog) {
+            LuaScriptSelectionDialog(
+              availableScripts = availableScripts,
+              selectedScripts = selectedScripts,
+              onScriptsSelected = { newSelection ->
+                preferences.selectedLuaScripts.set(newSelection)
+                showScriptDialog = false
+              },
+              onDismiss = { showScriptDialog = false },
+            )
+          }
+          
           val activity = LocalActivity.current!!
           val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
           Preference(
@@ -371,6 +554,62 @@ object AdvancedPreferencesScreen : Screen {
       }
     }
   }
+}
+
+@Composable
+fun LuaScriptSelectionDialog(
+  availableScripts: List<String>,
+  selectedScripts: Set<String>,
+  onScriptsSelected: (Set<String>) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var tempSelectedScripts by remember { mutableStateOf(selectedScripts) }
+  
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Select Lua Scripts") },
+    text = {
+      Column(
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        if (availableScripts.isEmpty()) {
+          Text("No Lua scripts found in the configuration directory.")
+        } else {
+          availableScripts.forEach { script ->
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Checkbox(
+                checked = tempSelectedScripts.contains(script),
+                onCheckedChange = { checked ->
+                  tempSelectedScripts = if (checked) {
+                    tempSelectedScripts + script
+                  } else {
+                    tempSelectedScripts - script
+                  }
+                },
+              )
+              Text(
+                text = script,
+                modifier = Modifier.padding(start = 8.dp),
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onScriptsSelected(tempSelectedScripts) }) {
+        Text("OK")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
 }
 
 fun getSimplifiedPathFromUri(uri: String): String =
