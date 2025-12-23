@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
-import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -43,7 +42,6 @@ object AppearancePreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val preferences = koinInject<AppearancePreferences>()
-    val browserPreferences = koinInject<BrowserPreferences>()
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     Scaffold(
@@ -184,17 +182,6 @@ object AppearancePreferencesScreen : Screen {
             onSliderValueChange = { preferences.unplayedOldVideoDays.set(it.roundToInt()) },
             sliderValue = unplayedOldVideoDays.toFloat(),
             enabled = showUnplayedOldVideoLabel,
-          )
-          val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
-          SwitchPreference(
-            value = autoScrollToLastPlayed,
-            onValueChange = { browserPreferences.autoScrollToLastPlayed.set(it) },
-            title = {
-              Text(text = "Auto-scroll to last played")
-            },
-            summary = {
-              Text(text = "Automatically scroll to the last played video when opening video lists")
-            },
           )
         }
       }

@@ -16,8 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -71,31 +71,6 @@ fun AddToPlaylistDialog(
   val context = LocalContext.current
 
   if (!isOpen) return
-
-  if (showCreateDialog) {
-    CreatePlaylistDialog(
-      onDismiss = { showCreateDialog = false },
-      onConfirm = { name ->
-        scope.launch {
-          val playlistId = repository.createPlaylist(name)
-          val items = videos.map { video ->
-            video.path to video.displayName
-          }
-          repository.addItemsToPlaylist(playlistId.toInt(), items)
-          val message = if (videos.size == 1) {
-            "Video added to \"$name\""
-          } else {
-            "${videos.size} videos added to \"$name\""
-          }
-          Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-          showCreateDialog = false
-          onSuccess()
-          onDismiss()
-        }
-      }
-    )
-    return
-  }
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -208,6 +183,29 @@ fun AddToPlaylistDialog(
     shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
+
+  // Create Playlist Dialog
+  if (showCreateDialog) {
+    CreatePlaylistDialog(
+      onDismiss = { showCreateDialog = false },
+      onConfirm = { name ->
+        scope.launch {
+          val playlistId = repository.createPlaylist(name)
+          val items = videos.map { video ->
+            video.path to video.displayName
+          }
+          repository.addItemsToPlaylist(playlistId.toInt(), items)
+          val message = if (videos.size == 1) {
+            "Video added to \"$name\""
+          } else {
+            "${videos.size} videos added to \"$name\""
+          }
+          Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+          showCreateDialog = false
+        }
+      },
+    )
+  }
 }
 
 @Composable
@@ -234,7 +232,7 @@ private fun PlaylistItemCard(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-        imageVector = Icons.Filled.PlaylistPlay,
+        imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
         contentDescription = null,
         modifier = Modifier.size(40.dp),
         tint = MaterialTheme.colorScheme.primary,
@@ -278,7 +276,7 @@ private fun EmptyPlaylistsMessage() {
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Icon(
-        imageVector = Icons.Outlined.PlaylistAdd,
+        imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
         contentDescription = null,
         modifier = Modifier.size(48.dp),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,

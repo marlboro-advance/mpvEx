@@ -93,10 +93,4 @@ interface VideoMetadataDao {
    */
   @Query("DELETE FROM video_metadata_cache WHERE path NOT IN (:existingPaths)")
   suspend fun deleteStaleEntries(existingPaths: List<String>)
-
-  /**
-   * Get all cached metadata
-   */
-  @Query("SELECT * FROM video_metadata_cache ORDER BY lastScanned DESC")
-  suspend fun getAllMetadata(): List<VideoMetadataEntity>
 }

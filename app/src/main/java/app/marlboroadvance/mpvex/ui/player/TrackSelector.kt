@@ -4,7 +4,6 @@ import android.util.Log
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import `is`.xyz.mpv.MPVLib
-import kotlinx.coroutines.delay
 
 /**
  * Handles automatic track selection based on user preferences.
@@ -27,15 +26,13 @@ class TrackSelector(
   /**
    * Called after a file loads in MPV.
    * Ensures proper track selection based on preferences.
-   * This is a suspend function to avoid blocking threads.
    */
-  suspend fun onFileLoaded() {
+  fun onFileLoaded() {
     Log.d(TAG, "File loaded, checking track selection...")
 
     // Give MPV a moment to process the alang/slang options
     // This is necessary because MPV processes options asynchronously
-    // Using delay instead of Thread.sleep to avoid blocking
-    delay(100)
+    Thread.sleep(100)
 
     ensureAudioTrackSelected()
     ensureSubtitleTrackSelected()

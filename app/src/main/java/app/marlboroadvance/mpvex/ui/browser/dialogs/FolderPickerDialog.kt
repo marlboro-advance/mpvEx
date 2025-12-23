@@ -71,18 +71,6 @@ fun FolderPickerDialog(
       selectedPath == currentPath
     }
 
-  if (showCreateFolderDialog) {
-    CreateFolderDialog(
-      parentPath = selectedPath,
-      onDismiss = { showCreateFolderDialog = false },
-      onFolderCreated = { newFolderPath ->
-        selectedPath = newFolderPath
-        showCreateFolderDialog = false
-      },
-    )
-    return
-  }
-
   AlertDialog(
     onDismissRequest = onDismiss,
     title = {
@@ -227,6 +215,17 @@ fun FolderPickerDialog(
     shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
+
+  if (showCreateFolderDialog) {
+    CreateFolderDialog(
+      parentPath = selectedPath,
+      onDismiss = { showCreateFolderDialog = false },
+      onFolderCreated = { newFolderPath ->
+        selectedPath = newFolderPath
+        showCreateFolderDialog = false
+      },
+    )
+  }
 }
 
 @Composable

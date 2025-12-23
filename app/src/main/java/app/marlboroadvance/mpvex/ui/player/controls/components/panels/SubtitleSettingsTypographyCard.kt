@@ -70,7 +70,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   val preferences = koinInject<SubtitlesPreferences>()
   val fileManager = koinInject<FileManager>()
   var isExpanded by remember { mutableStateOf(true) }
-  val fonts by remember { mutableStateOf(mutableListOf<String>("Default")) }
+  val fonts by remember { mutableStateOf(mutableListOf<String>()) }
   var fontsLoadingIndicator: (@Composable () -> Unit)? by remember {
     val indicator: (@Composable () -> Unit) = {
       CircularProgressIndicator(Modifier.size(32.dp))
@@ -79,18 +79,22 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
   }
   LaunchedEffect(Unit) {
     withContext(Dispatchers.IO) {
+      // Read fonts from the app's persistent cache: filesDir/fonts
       val fontsDir = fileManager.fromPath(context.filesDir.path + "/fonts")
       if (fileManager.exists(fontsDir)) {
-        fonts.addAll(
+        val familyNames =
           fileManager
             .listFiles(fontsDir)
-            .filter { fileManager.isFile(it) && fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex()) }
-            .mapNotNull {
+            .filter {
+              fileManager.isFile(it) &&
+                fileManager.getName(it).lowercase().matches(".*\\.[ot]tf$".toRegex())
+            }.mapNotNull {
               runCatching {
-                TTFFile.open(fileManager.getInputStream(it) ?: return@mapNotNull null).families.values.first()
+                val ttfFile = TTFFile.open(fileManager.getInputStream(it) ?: return@mapNotNull null)
+                ttfFile.families.values.firstOrNull()
               }.getOrNull()
             }.distinct()
-        )
+        fonts.addAll(familyNames)
       }
       fontsLoadingIndicator = null
     }
@@ -199,14 +203,12 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
           modifier = Modifier.size(32.dp),
         )
         ExposedTextDropDownMenu(
-          selectedValue = font!!.ifEmpty { "Default" },
+          selectedValue = font!!,
           options = fonts.toImmutableList(),
           label = stringResource(R.string.player_sheets_sub_typography_font),
           onValueChangedEvent = {
-            val actualFont = if (it == "Default") "" else it
-            preferences.font.set(actualFont)
-            MPVLib.setPropertyString("sub-font", actualFont)
-            MPVLib.setPropertyString("secondary-sub-font", actualFont)
+            preferences.font.set(it)
+            MPVLib.setPropertyString("sub-font", it)
           },
           leadingIcon = fontsLoadingIndicator,
         )
@@ -273,7 +275,6 @@ fun resetTypography(preferences: SubtitlesPreferences) {
   MPVLib.setPropertyBoolean("sub-ass-justify", false)
   MPVLib.setPropertyString("sub-justify", preferences.justification.deleteAndGet().value)
   MPVLib.setPropertyString("sub-font", preferences.font.deleteAndGet())
-  MPVLib.setPropertyString("secondary-sub-font", preferences.font.get())
   MPVLib.setPropertyInt("sub-font-size", preferences.fontSize.deleteAndGet())
   MPVLib.setPropertyInt("sub-border-size", preferences.borderSize.deleteAndGet())
   MPVLib.setPropertyInt("sub-shadow-offset", preferences.shadowOffset.deleteAndGet())

@@ -321,9 +321,9 @@ object MediaInfoOps {
           val fileSizeStr = mi.getInfo(MediaInfo.Stream.General, 0, "FileSize")
           val fileSize = fileSizeStr.toLongOrNull() ?: 0L
 
-          // Extract duration in milliseconds - handle both integer and decimal formats
+          // Extract duration in milliseconds
           val durationStr = mi.getInfo(MediaInfo.Stream.General, 0, "Duration")
-          val duration = durationStr.toDoubleOrNull()?.toLong() ?: 0L
+          val duration = durationStr.toLongOrNull() ?: 0L
 
           // Extract video resolution (width and height)
           val widthStr = mi.getInfo(MediaInfo.Stream.Video, 0, "Width")

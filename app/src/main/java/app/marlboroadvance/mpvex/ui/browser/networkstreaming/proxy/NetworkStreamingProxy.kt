@@ -19,6 +19,7 @@ import java.io.InputStream
 import java.util.EnumSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.time.Duration
 
 /**
  * Local HTTP proxy server that enables seeking for network streaming protocols
@@ -508,9 +509,9 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
 
     // Set UTF-8 encoding for proper handling of non-English characters
     ftpClient.controlEncoding = "UTF-8"
-    ftpClient.setConnectTimeout(10000)
-    ftpClient.setDataTimeout(30000)
-    ftpClient.controlKeepAliveTimeout = 300
+    ftpClient.connectTimeout = 10000
+    ftpClient.setDataTimeout(Duration.ofMillis(30000))
+    ftpClient.setControlKeepAliveTimeout(Duration.ofSeconds(300))
 
     try {
       // Connect

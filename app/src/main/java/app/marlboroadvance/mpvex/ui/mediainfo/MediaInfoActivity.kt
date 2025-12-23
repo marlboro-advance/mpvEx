@@ -217,42 +217,40 @@ class MediaInfoActivity : ComponentActivity() {
           },
           actions = {
             if (!isLoading && error == null && textContent != null) {
-              Row(modifier = Modifier.padding(end = 12.dp)) {
-                FilledTonalIconButton(
-                  onClick = {
-                    scope.launch {
-                      copyToClipboard(textContent!!, fileName)
-                    }
-                  },
-                  colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  ),
-                ) {
-                  Icon(
-                    imageVector = Icons.Filled.ContentCopy,
-                    contentDescription = "Copy",
-                  )
-                }
+              FilledTonalIconButton(
+                onClick = {
+                  scope.launch {
+                    copyToClipboard(textContent!!, fileName)
+                  }
+                },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+              ) {
+                Icon(
+                  imageVector = Icons.Filled.ContentCopy,
+                  contentDescription = "Copy",
+                )
+              }
 
-                Spacer(modifier = Modifier.width(8.dp))
+              Spacer(modifier = Modifier.width(8.dp))
 
-                FilledTonalIconButton(
-                  onClick = {
-                    scope.launch {
-                      shareMediaInfo(textContent!!, fileName, fileUri)
-                    }
-                  },
-                  colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  ),
-                ) {
-                  Icon(
-                    imageVector = Icons.Filled.Share,
-                    contentDescription = "Share",
-                  )
-                }
+              FilledTonalIconButton(
+                onClick = {
+                  scope.launch {
+                    shareMediaInfo(textContent!!, fileName, fileUri)
+                  }
+                },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+              ) {
+                Icon(
+                  imageVector = Icons.Filled.Share,
+                  contentDescription = "Share",
+                )
               }
             }
           },

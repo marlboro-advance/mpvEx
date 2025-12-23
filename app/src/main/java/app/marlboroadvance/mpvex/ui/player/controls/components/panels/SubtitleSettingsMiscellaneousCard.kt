@@ -63,25 +63,9 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           onValueChange = {
             overrideAssSubs = it
             preferences.overrideAssSubs.set(it)
-            MPVLib.setPropertyString("sub-ass-override", if (it) "force" else "no")
-            MPVLib.setPropertyString("secondary-sub-ass-override", if (it) "force" else "no")
+            MPVLib.setPropertyString("sub-ass-override", if (it) "force" else "scale")
           },
           { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
-        )
-        var scaleByWindow by remember {
-          mutableStateOf(MPVLib.getPropertyString("sub-scale-by-window") == "yes")
-        }
-        SwitchPreference(
-          scaleByWindow,
-          onValueChange = {
-            scaleByWindow = it
-            preferences.scaleByWindow.set(it)
-            val value = if (it) "yes" else "no"
-            MPVLib.setPropertyString("sub-scale-by-window", value)
-            MPVLib.setPropertyString("sub-use-margins", value)
-          },
-          { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
-          summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
         )
         val subScale by MPVLib.propFloat["sub-scale"].collectAsState()
         val subPos by MPVLib.propInt["sub-pos"].collectAsState()
@@ -132,15 +116,8 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
               preferences.subScale.deleteAndGet().let {
                 MPVLib.setPropertyFloat("sub-scale", it)
               }
-              val defaultOverride = preferences.overrideAssSubs.deleteAndGet()
-              overrideAssSubs = defaultOverride
-              MPVLib.setPropertyString("sub-ass-override", if (defaultOverride) "force" else "no")
-              MPVLib.setPropertyString("secondary-sub-ass-override", if (defaultOverride) "force" else "no")
-              val defaultScaleByWindow = preferences.scaleByWindow.deleteAndGet()
-              scaleByWindow = defaultScaleByWindow
-              val scaleValue = if (defaultScaleByWindow) "yes" else "no"
-              MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
-              MPVLib.setPropertyString("sub-use-margins", scaleValue)
+              preferences.overrideAssSubs.deleteAndGet().let { overrideAssSubs = it }
+              MPVLib.setPropertyString("sub-ass-override", "scale")
             },
           ) {
             Row {

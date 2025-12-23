@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircle
-import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
@@ -51,7 +51,10 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.MediaInfoDialog
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
@@ -148,11 +151,23 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               {
                 val item = selectionManager.getSelectedItems().firstOrNull()
                 if (item != null) {
-                  val intent = Intent(context, app.marlboroadvance.mpvex.ui.mediainfo.MediaInfoActivity::class.java)
-                  intent.action = Intent.ACTION_VIEW
-                  intent.data = item.video.uri
-                  context.startActivity(intent)
-                  selectionManager.clear()
+                  selectedVideo.value = item.video
+                  mediaInfoDialogOpen.value = true
+                  mediaInfoLoading.value = true
+                  mediaInfoError.value = null
+                  mediaInfoData.value = null
+
+                  coroutineScope.launch {
+                    MediaInfoOps
+                      .getMediaInfo(context, item.video.uri, item.video.displayName)
+                      .onSuccess { info ->
+                        mediaInfoData.value = info
+                        mediaInfoLoading.value = false
+                      }.onFailure { error ->
+                        mediaInfoError.value = error.message ?: "Unknown error"
+                        mediaInfoLoading.value = false
+                      }
+                  }
                 }
               }
             } else {
@@ -300,7 +315,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
           }
         },
         onVideoItemLongClick = { item ->
-          if (!isReorderMode) {
+        if (!isReorderMode) {
             selectionManager.toggle(item)
           }
         },
@@ -319,6 +334,21 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
         onDismiss = { deleteDialogOpen.value = false },
         onConfirm = { selectionManager.deleteSelected() },
         itemCount = selectionManager.selectedCount,
+      )
+
+      MediaInfoDialog(
+        isOpen = mediaInfoDialogOpen.value,
+        onDismiss = {
+          mediaInfoDialogOpen.value = false
+          selectedVideo.value = null
+          mediaInfoData.value = null
+          mediaInfoError.value = null
+        },
+        fileName = selectedVideo.value?.displayName ?: "",
+        mediaInfo = mediaInfoData.value,
+        isLoading = mediaInfoLoading.value,
+        error = mediaInfoError.value,
+        videoForShare = selectedVideo.value,
       )
     }
   }
@@ -368,7 +398,7 @@ private fun PlaylistVideoListContent(
           verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
           Icon(
-            imageVector = Icons.Outlined.PlaylistAdd,
+            imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,

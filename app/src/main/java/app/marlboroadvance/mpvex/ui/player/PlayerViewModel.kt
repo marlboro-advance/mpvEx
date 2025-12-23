@@ -279,25 +279,6 @@ class PlayerViewModel(
     }
   }
 
-  fun toggleSubtitle(id: Int) {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
-
-    when {
-      id == primarySid -> MPVLib.setPropertyString("sid", "no")
-      id == secondarySid -> MPVLib.setPropertyString("secondary-sid", "no")
-      primarySid <= 0 -> MPVLib.setPropertyInt("sid", id)
-      secondarySid <= 0 -> MPVLib.setPropertyInt("secondary-sid", id)
-      else -> MPVLib.setPropertyInt("sid", id)
-    }
-  }
-
-  fun isSubtitleSelected(id: Int): Boolean {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
-    return (id == primarySid && primarySid > 0) || (id == secondarySid && secondarySid > 0)
-  }
-
   private fun getFileNameFromUri(uri: Uri): String? =
     when (uri.scheme) {
       "content" ->

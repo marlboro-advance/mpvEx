@@ -33,7 +33,6 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
@@ -54,6 +53,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -320,22 +320,12 @@ class PlayerActivity :
     playlistIndex = intent.getIntExtra("playlist_index", 0)
     playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
 
-    if (playlist.isEmpty()) {
-      val path = parsePathFromIntent(intent)
-      if (path != null) {
-        generatePlaylistFromFolder(path)
-      }
-    }
-
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
       fileName = intent.data?.lastPathSegment ?: "Unknown Video"
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
-
-    // Set HTTP headers (including referer) BEFORE playing the file
-    setHttpHeadersFromExtras(intent.extras)
 
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
@@ -358,6 +348,7 @@ class PlayerActivity :
         val updatedConfiguration = Configuration(originalConfiguration).apply { fontScale = 1f }
         val configurationContext = newBase.createConfigurationContext(updatedConfiguration)
         val configurationDisplayMetrics = configurationContext.resources.displayMetrics
+        @Suppress("DEPRECATION")
         configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * configurationDisplayMetrics.density
         configurationContext
       }
@@ -552,7 +543,7 @@ class PlayerActivity :
   override fun onPause() {
     runCatching {
       val isInPip = isInPictureInPictureMode
-      val shouldPause = !audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing
+      val shouldPause = !playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing
 
       if (!isInPip && shouldPause) {
         viewModel.pause()
@@ -597,10 +588,10 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
+      if (!serviceBound && playerPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
         startBackgroundPlayback()
       } else {
-        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
+        if (!playerPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
           viewModel.pause()
         }
         if (serviceBound) {
@@ -732,12 +723,7 @@ class PlayerActivity :
       File("$applicationPath/mpv.conf").apply {
         if (!exists()) createNewFile()
         val content = advancedPreferences.mpvConf.get()
-        if (content.isNotBlank()) {
-          writeText(content)
-        } else {
-          // Default optimized config for fast stream loading
-          writeText(getDefaultMpvConfig())
-        }
+        if (content.isNotBlank()) writeText(content)
       }
 
       // Create input.conf
@@ -751,13 +737,6 @@ class PlayerActivity :
     }
   }
 
-  /**
-   * Returns default MPV configuration.
-   */
-  private fun getDefaultMpvConfig(): String {
-    return ""
-  }
-
   private fun copyMPVScripts() {
     runCatching {
       val applicationPath = filesDir.path
@@ -768,30 +747,11 @@ class PlayerActivity :
         ) ?: error("Failed to create scripts directory")
 
       fileManager.deleteContent(scriptsDir)
-      
-      // Copy user-selected Lua scripts if enabled
-      if (advancedPreferences.enableLuaScripts.get()) {
-        val selectedScripts = advancedPreferences.selectedLuaScripts.get()
-        val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
-        
-        if (selectedScripts.isNotEmpty() && mpvConfStorageUri.isNotBlank()) {
-          val tree = DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
-          if (tree != null) {
-            selectedScripts.forEach { scriptName ->
-              val scriptFile = tree.findFile(scriptName)
-              if (scriptFile != null && scriptFile.exists()) {
-                contentResolver.openInputStream(scriptFile.uri)?.use { input ->
-                  File("$scriptsDir/$scriptName").apply {
-                    if (!exists()) createNewFile()
-                    writeText(input.bufferedReader().readText())
-                  }
-                }
-                Log.d(TAG, "Copied Lua script: $scriptName")
-              } else {
-                Log.w(TAG, "Lua script not found: $scriptName")
-              }
-            }
-          }
+
+      assets.open("mpvrex.lua").use { input ->
+        File("$scriptsDir/mpvrex.lua").apply {
+          if (!exists()) createNewFile()
+          writeText(input.bufferedReader().readText())
         }
       }
     }.onFailure { e ->
@@ -898,79 +858,31 @@ class PlayerActivity :
    * of HTTP headers to set. It sets the User-Agent header and any additional headers
    * specified in the list.
    *
-   * Also automatically adds Referer header based on the URL origin if not already provided.
-   *
    * @param extras Bundle containing HTTP headers
    */
-  private fun setHttpHeadersFromExtras(extras: Bundle?) {
-    // Build header map starting with auto-detected referer
-    val headerMap = mutableMapOf<String, String>()
-    
-    // Automatically extract and set referer domain from the URL
-    val uri = extractUriFromIntent(intent)
-    if (uri != null && HttpUtils.isNetworkStream(uri)) {
-      HttpUtils.extractRefererDomain(uri)?.let { referer ->
-        headerMap["Referer"] = referer
-        Log.d(TAG, "Auto-detected Referer: $referer")
-      }
-    }
-
-    // Process headers from extras (these can override the auto-detected referer)
-    extras?.getStringArray("headers")?.let { headers ->
-      if (headers.isEmpty()) return@let
+  private fun setHttpHeadersFromExtras(extras: Bundle) {
+    extras.getStringArray("headers")?.let { headers ->
+      if (headers.isEmpty()) return
 
       if (headers[0].startsWith("User-Agent", ignoreCase = true)) {
         MPVLib.setPropertyString("user-agent", headers[1])
       }
 
       if (headers.size > 2) {
-        headers
-          .asSequence()
-          .drop(2)
-          .chunked(2)
-          .filter { it.size == 2 }
-          .forEach { (key, value) ->
-            headerMap[key] = value
-          }
+        val headersString =
+          headers
+            .asSequence()
+            .drop(2)
+            .chunked(2)
+            .filter { it.size == 2 }
+            .associate { it[0] to it[1] }
+            .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
+            .joinToString(",")
+
+        if (headersString.isNotEmpty()) {
+          MPVLib.setPropertyString("http-header-fields", headersString)
+        }
       }
-    }
-
-    // Set all headers in MPV
-    if (headerMap.isNotEmpty()) {
-      val headersString = headerMap
-        .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
-        .joinToString(",")
-      
-      MPVLib.setPropertyString("http-header-fields", headersString)
-      Log.d(TAG, "Set HTTP headers: $headersString")
-    }
-  }
-
-  /**
-   * Sets HTTP headers for a specific URI (used for playlist items).
-   * Automatically extracts and sets the Referer header based on the URI origin.
-   *
-   * @param uri The URI to extract referer from and set headers for
-   */
-  private fun setHttpHeadersForUri(uri: Uri) {
-    if (!HttpUtils.isNetworkStream(uri)) return
-
-    val headerMap = mutableMapOf<String, String>()
-    
-    // Automatically extract and set referer domain from the URI
-    HttpUtils.extractRefererDomain(uri)?.let { referer ->
-      headerMap["Referer"] = referer
-      Log.d(TAG, "Auto-detected Referer for playlist item: $referer")
-    }
-
-    // Set all headers in MPV
-    if (headerMap.isNotEmpty()) {
-      val headersString = headerMap
-        .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
-        .joinToString(",")
-      
-      MPVLib.setPropertyString("http-header-fields", headersString)
-      Log.d(TAG, "Set HTTP headers for playlist item: $headersString")
     }
   }
 
@@ -1192,9 +1104,6 @@ class PlayerActivity :
           isReady = true
         }
       }
-      "paused-for-cache" -> {
-        Log.d(TAG, "Buffering state: $value")
-      }
       "eof-reached" -> handleEndOfFile(value)
     }
   }
@@ -1316,7 +1225,16 @@ class PlayerActivity :
     property: String,
     value: Double,
   ) {
-    // Currently no Double properties are handled
+    if (property == "container-fps" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      runCatching {
+        val surface = player.holder.surface
+        if (surface?.isValid == true) {
+          surface.setFrameRate(value.toFloat(), android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error setting frame rate", e)
+      }
+    }
   }
 
   /**
@@ -1328,14 +1246,7 @@ class PlayerActivity :
   internal fun onObserverEvent(property: String) {
     when (property) {
       "video-params/aspect" -> {
-        // Safety check: don't access MPV during cleanup
-        if (!mpvInitialized || player.isExiting || isFinishing) return
-        
         pipHelper.updatePictureInPictureParams()
-        // Update orientation when video aspect ratio changes (fixes Video orientation mode)
-        if (playerPreferences.orientation.get() == PlayerOrientation.Video) {
-          setOrientation()
-        }
       }
     }
   }
@@ -1425,26 +1336,12 @@ class PlayerActivity :
 
     if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
       lifecycleScope.launch {
-        // For network files played via proxy (SMB/WebDAV/FTP), use the original network file path
-        val networkFilePath = intent.getStringExtra("network_file_path")
-        val networkConnectionId = intent.getLongExtra("network_connection_id", -1L)
-        
-        if (networkFilePath != null && networkConnectionId != -1L) {
-          // Pass network file path and connection ID for subtitle discovery
+        val videoFilePath = parsePathFromIntent(intent)
+        if (videoFilePath != null) {
           SubtitleOps.autoloadSubtitles(
-            videoFilePath = networkFilePath,
+            videoFilePath = videoFilePath,
             videoFileName = fileName,
-            networkConnectionId = networkConnectionId,
           )
-        } else {
-          // Regular file or direct network stream
-          val filePath = parsePathFromIntent(intent)
-          if (filePath != null) {
-            SubtitleOps.autoloadSubtitles(
-              videoFilePath = filePath,
-              videoFileName = fileName,
-            )
-          }
         }
       }
     }
@@ -1874,9 +1771,6 @@ class PlayerActivity :
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
     
-    // Set HTTP headers (including referer) BEFORE loading the new file
-    setHttpHeadersFromExtras(intent.extras)
-    
     // Load the new file
     getPlayableUri(intent)?.let { uri ->
       MPVLib.command("loadfile", uri)
@@ -1974,23 +1868,10 @@ class PlayerActivity :
   /**
    * Determines the appropriate orientation based on video aspect ratio.
    *
-   * @return Orientation constant for landscape (if aspect > 1.0) or portrait.
-   *         Returns sensor landscape as fallback if video aspect is not yet available.
+   * @return Orientation constant for landscape (if aspect > 1.0) or portrait
    */
   private fun determineVideoOrientation(): Int {
-    // Safety check: ensure MPV is initialized and not being cleaned up
-    if (!mpvInitialized || player.isExiting) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
-    val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
-    
-    // If video aspect is not yet available, default to sensor landscape
-    // This will be updated when video-params/aspect becomes available
-    if (aspect == null || aspect <= 0.0) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
+    val aspect = player.getVideoOutAspect() ?: 0.0
     return if (aspect > 1.0) {
       ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
     } else {
@@ -2457,9 +2338,6 @@ class PlayerActivity :
     // Generate new media identifier for playback state
     mediaIdentifier = getMediaIdentifierFromUri(uri, fileName)
 
-    // Set HTTP headers (including referer) for network streams
-    setHttpHeadersForUri(uri)
-
     // Update playlist play history if this is a custom playlist
     playlistId?.let { id ->
       lifecycleScope.launch(Dispatchers.IO) {
@@ -2655,41 +2533,6 @@ class PlayerActivity :
       "${fileName}_${uri.toString().hashCode()}"
     } else {
       fileName
-    }
-  }
-
-  private fun generatePlaylistFromFolder(currentPath: String) {
-    lifecycleScope.launch(Dispatchers.IO) {
-      runCatching {
-        val currentFile = File(currentPath)
-        if (!currentFile.exists()) return@runCatching
-
-        val parentFolder = currentFile.parentFile ?: return@runCatching
-
-        val videoExtensions = setOf("mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "3gp", "mpg", "mpeg", "ts")
-
-        val files = parentFolder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in videoExtensions
-        } ?: return@runCatching
-
-        val siblingFiles = files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-
-        if (siblingFiles.size <= 1) return@runCatching
-
-        val newPlaylist = siblingFiles.map { it.toUri() }
-
-        val newIndex = siblingFiles.indexOfFirst { it.absolutePath == currentFile.absolutePath }
-
-        if (newIndex != -1) {
-          withContext(Dispatchers.Main) {
-            playlist = newPlaylist
-            playlistIndex = newIndex
-            Log.d(TAG, "Auto-playlist generated: ${playlist.size} videos")
-          }
-        }
-      }.onFailure { e ->
-        Log.e(TAG, "Failed to auto-generate playlist", e)
-      }
     }
   }
 

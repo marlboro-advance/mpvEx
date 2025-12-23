@@ -583,7 +583,7 @@ fun PlayerControls(
                   Surface(
                     modifier =
                       Modifier
-                        .size(64.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                         .clickable(interaction, ripple(), onClick = viewModel::pauseUnpause)
                         .then(
@@ -741,7 +741,7 @@ fun PlayerControls(
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
-          val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
+          val seekbarStyle by playerPreferences.seekbarStyle.collectAsState()
 
           // Calculate read-ahead position (current position + buffered cache time)
           val readAheadPosition by remember(position, demuxerCacheDuration, cacheBufferingState, duration) {
@@ -781,7 +781,7 @@ fun PlayerControls(
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
             readAheadValue = readAheadPosition,
-            useWavySeekbar = useWavySeekbar,
+            seekbarStyle = seekbarStyle,
           )
         }
 
@@ -995,8 +995,7 @@ fun PlayerControls(
       sheetShown = sheetShown,
       subtitles = subtitles.toImmutableList(),
       onAddSubtitle = viewModel::addSubtitle,
-      onToggleSubtitle = viewModel::toggleSubtitle,
-      isSubtitleSelected = viewModel::isSubtitleSelected,
+      onSelectSubtitle = viewModel::selectSub,
       onRemoveSubtitle = viewModel::removeSubtitle,
       audioTracks = audioTracks.toImmutableList(),
       onAddAudio = viewModel::addAudio,

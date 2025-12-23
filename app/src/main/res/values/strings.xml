@@ -127,8 +127,6 @@
     <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
     <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
     <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
-    <string name="pref_audio_volume_normalization_title">Volume normalization</string>
-    <string name="pref_audio_volume_normalization_summary">Automatically adjust audio volume to maintain consistent loudness levels</string>
     <string name="pref_audio_channels">Audio channels</string>
     <string name="pref_audio_channels_auto">Auto</string>
     <string name="pref_audio_channels_auto_safe">Auto Safe</string>
@@ -176,7 +174,6 @@
     <string name="player_sheets_track_title_wo_lang" translatable="false">#%d: %s</string>
     <string name="player_sheets_track_lang_wo_title" translatable="false">#%d: %s</string>
     <string name="player_sheets_chapter_title_substitute_subtitle" translatable="false">Subtitle #%d</string>
-    <string name="player_sheets_chapter_title_substitute_audio" translatable="false">Audio #%d</string>
     <string name="player_sheets_subtitles_settings_title">Subtitles settings</string>
     <string name="player_sheets_subtitles_color_text">Text</string>
     <string name="player_sheets_subtitles_color_border">Border</string>
@@ -190,8 +187,6 @@
     <string name="player_sheets_sub_color_blue">Blue</string>
     <string name="player_sheets_sub_color_alpha">Alpha</string>
     <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
-    <string name="player_sheets_sub_scale_by_window">Scale by window</string>
-    <string name="player_sheets_sub_scale_by_window_summary">Scale subtitles by window size and use video margins</string>
     <string name="player_sheets_sub_scale">Scale</string>
     <string name="player_sheets_sub_position">Position</string>
     <string name="player_sheets_sub_typography_card_title">Typography</string>

@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.HeadsetOff
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -20,9 +23,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.TrackNode
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import kotlinx.collections.immutable.ImmutableList
+import org.koin.compose.koinInject
 
 @Composable
 fun AudioTracksSheet(
@@ -33,6 +39,9 @@ fun AudioTracksSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val isBackgroundPlayback by playerPreferences.automaticBackgroundPlayback.collectAsState()
+
   GenericTracksSheet(
     tracks,
     onDismissRequest = onDismissRequest,
@@ -41,6 +50,15 @@ fun AudioTracksSheet(
         stringResource(R.string.player_sheets_add_ext_audio),
         onAddAudioTrack,
         actions = {
+          IconToggleButton(
+            checked = isBackgroundPlayback,
+            onCheckedChange = { playerPreferences.automaticBackgroundPlayback.set(it) },
+          ) {
+            Icon(
+              imageVector = if (isBackgroundPlayback) Icons.Filled.Headset else Icons.Filled.HeadsetOff,
+              contentDescription = stringResource(R.string.background_playback_title),
+            )
+          }
           IconButton(onClick = onOpenDelayPanel) {
             Icon(Icons.Default.MoreTime, null)
           }

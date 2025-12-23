@@ -1,23 +1,29 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
 import android.content.Intent
-import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -28,12 +34,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.database.MpvExDatabase
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -41,18 +53,21 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen
-import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.LazyColumnScrollbar
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 
 @Serializable
 object RecentlyPlayedScreen : Screen {
@@ -60,6 +75,7 @@ object RecentlyPlayedScreen : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val backStack = LocalBackStack.current
     val playlistRepository = koinInject<PlaylistRepository>()
     val viewModel: RecentlyPlayedViewModel =
@@ -73,94 +89,34 @@ object RecentlyPlayedScreen : Screen {
     val playlistMode by playerPreferences.playlistMode.collectAsState()
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
-
-    // Selection manager for all items (videos and playlists)
-    val selectionManager =
-      rememberSelectionManager(
-        items = recentItems,
-        getId = { item ->
-          when (item) {
-            is RecentlyPlayedItem.VideoItem -> "video_${item.video.id}"
-            is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
-          }
-        },
-        onDeleteItems = { items ->
-          val videos = items.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
-          val playlistIds = items.filterIsInstance<RecentlyPlayedItem.PlaylistItem>().map { it.playlist.id }
-          
-          var successCount = 0
-          var failCount = 0
-          
-          // Delete videos from history
-          if (videos.isNotEmpty()) {
-            val (videoSuccess, videoFail) = viewModel.deleteVideosFromHistory(videos)
-            successCount += videoSuccess
-            failCount += videoFail
-          }
-          
-          // Delete playlist items from history
-          if (playlistIds.isNotEmpty()) {
-            val (playlistSuccess, playlistFail) = viewModel.deletePlaylistsFromHistory(playlistIds)
-            successCount += playlistSuccess
-            failCount += playlistFail
-          }
-          
-          Pair(successCount, failCount)
-        },
-        onRenameItem = null, // Cannot rename from history screen
-        onOperationComplete = { },
-      )
-
-    // Handle back button during selection mode
-    BackHandler(enabled = selectionManager.isInSelectionMode) {
-      selectionManager.clear()
-    }
+    val mpvexDatabase = koinInject<MpvExDatabase>()
 
     Scaffold(
       topBar = {
-        BrowserTopBar(
-          title = "Recently Played",
-          isInSelectionMode = selectionManager.isInSelectionMode,
-          selectedCount = selectionManager.selectedCount,
-          totalCount = recentItems.size,
-          onBackClick = null, // No back button for recently played screen
-          onCancelSelection = { selectionManager.clear() },
-          onSortClick = null, // No sorting in recently played
-          isSingleSelection = selectionManager.isSingleSelection,
-          onInfoClick = null, // No info in recently played
-          onShareClick = { 
-            // Only share videos, not playlists
-            val selectedVideos = selectionManager.getSelectedItems()
-              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
-              .map { it.video }
-            if (selectedVideos.isNotEmpty()) {
-              app.marlboroadvance.mpvex.utils.media.MediaUtils.shareVideos(context, selectedVideos)
-            }
+        TopAppBar(
+          title = {
+            Text(
+              text = "Recently Played",
+              style = MaterialTheme.typography.headlineMediumEmphasized,
+              fontWeight = FontWeight.ExtraBold,
+              color = MaterialTheme.colorScheme.primary,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.padding(start = 8.dp),
+            )
           },
-          onPlayClick = { 
-            // Only play videos, not playlists
-            val selectedVideos = selectionManager.getSelectedItems()
-              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
-              .map { it.video }
-            if (selectedVideos.isNotEmpty()) {
-              if (selectedVideos.size == 1) {
-                MediaUtils.playFile(selectedVideos.first(), context)
-              } else {
-                val intent = Intent(Intent.ACTION_VIEW, selectedVideos.first().uri)
-                intent.setClass(context, PlayerActivity::class.java)
-                intent.putExtra("internal_launch", true)
-                intent.putParcelableArrayListExtra("playlist", ArrayList(selectedVideos.map { it.uri }))
-                intent.putExtra("playlist_index", 0)
-                intent.putExtra("launch_source", "playlist")
-                context.startActivity(intent)
+          actions = {
+            if (recentVideos.isNotEmpty()) {
+              IconButton(
+                onClick = { deleteDialogOpen.value = true },
+              ) {
+                Icon(
+                  imageVector = Icons.Filled.Delete,
+                  contentDescription = "Clear all",
+                )
               }
-              selectionManager.clear()
             }
           },
-          onSelectAll = { selectionManager.selectAll() },
-          onInvertSelection = { selectionManager.invertSelection() },
-          onDeselectAll = { selectionManager.clear() },
-          onDeleteClick = { deleteDialogOpen.value = true },
         )
       },
     ) { padding ->
@@ -216,7 +172,6 @@ object RecentlyPlayedScreen : Screen {
             recentItems = recentItems,
             playlistMode = playlistMode,
             playlistRepository = playlistRepository,
-            selectionManager = selectionManager,
             onVideoClick = { video ->
               // If playlist mode is enabled, play all videos starting from the clicked one
               if (playlistMode) {
@@ -252,16 +207,37 @@ object RecentlyPlayedScreen : Screen {
       }
 
       // Delete confirmation dialog
-      if (deleteDialogOpen.value && selectionManager.isInSelectionMode) {
-        // Remove selected items from history
-        val itemCount = selectionManager.selectedCount
-        val itemText = if (itemCount == 1) "item" else "items"
+      if (deleteDialogOpen.value) {
         ConfirmDialog(
-          title = "Remove $itemCount $itemText from history?",
-          subtitle = "This will remove the selected $itemText from your recently played list. The video files will not be deleted.",
+          stringResource(R.string.pref_advanced_clear_playback_history_confirm_title),
+          stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
           onConfirm = {
-            selectionManager.deleteSelected()
-            deleteDialogOpen.value = false
+            coroutineScope.launch(Dispatchers.IO) {
+              runCatching {
+                mpvexDatabase.videoDataDao().clearAllPlaybackStates()
+                RecentlyPlayedOps.clearAll()
+              }.onSuccess {
+                withContext(Dispatchers.Main) {
+                  deleteDialogOpen.value = false
+                  Toast
+                    .makeText(
+                      context,
+                      context.getString(R.string.pref_advanced_cleared_playback_history),
+                      Toast.LENGTH_SHORT,
+                    ).show()
+                }
+              }.onFailure { error ->
+                withContext(Dispatchers.Main) {
+                  deleteDialogOpen.value = false
+                  Toast
+                    .makeText(
+                      context,
+                      "Failed to clear: ${error.message}",
+                      Toast.LENGTH_LONG,
+                    ).show()
+                }
+              }
+            }
           },
           onCancel = { deleteDialogOpen.value = false },
         )
@@ -275,7 +251,6 @@ private fun RecentItemsContent(
   recentItems: List<RecentlyPlayedItem>,
   playlistMode: Boolean,
   playlistRepository: PlaylistRepository,
-  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<RecentlyPlayedItem, String>,
   onVideoClick: (Video) -> Unit,
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
@@ -326,25 +301,13 @@ private fun RecentItemsContent(
             VideoCard(
               video = item.video,
               progressPercentage = null,
-              isSelected = selectionManager.isSelected(item),
-              onClick = { 
-                if (selectionManager.isInSelectionMode) {
-                  selectionManager.toggle(item)
-                } else {
-                  onVideoClick(item.video)
-                }
-              },
-              onLongClick = { selectionManager.toggle(item) },
+              isSelected = false,
+              onClick = { onVideoClick(item.video) },
+              onLongClick = { },
               onThumbClick = if (tapThumbnailToSelect) {
-                { selectionManager.toggle(item) }
+                { }
               } else {
-                { 
-                  if (selectionManager.isInSelectionMode) {
-                    selectionManager.toggle(item)
-                  } else {
-                    onVideoClick(item.video)
-                  }
-                }
+                { onVideoClick(item.video) }
               },
             )
           }
@@ -361,32 +324,20 @@ private fun RecentItemsContent(
             )
             FolderCard(
               folder = folderModel,
-              isSelected = selectionManager.isSelected(item),
+              isSelected = false,
               isRecentlyPlayed = false,
               onClick = {
-                if (selectionManager.isInSelectionMode) {
-                  selectionManager.toggle(item)
-                } else {
-                  coroutineScope.launch {
-                    onPlaylistClick(item)
-                  }
+                coroutineScope.launch {
+                  onPlaylistClick(item)
                 }
               },
-              onLongClick = { selectionManager.toggle(item) },
+              onLongClick = { },
               onThumbClick = {
-                if (tapThumbnailToSelect) {
-                  selectionManager.toggle(item)
-                } else {
-                  if (selectionManager.isInSelectionMode) {
-                    selectionManager.toggle(item)
-                  } else {
-                    coroutineScope.launch {
-                      onPlaylistClick(item)
-                    }
-                  }
+                coroutineScope.launch {
+                  onPlaylistClick(item)
                 }
               },
-              customIcon = Icons.Filled.PlaylistPlay,
+              customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
               showDateModified = true,
             )
           }

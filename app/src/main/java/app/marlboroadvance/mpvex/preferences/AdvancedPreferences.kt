@@ -15,7 +15,4 @@ class AdvancedPreferences(
   val enabledStatisticsPage = preferenceStore.getInt("enabled_stats_page", 0)
 
   val enableRecentlyPlayed = preferenceStore.getBoolean("enable_recently_played", true)
-
-  val enableLuaScripts = preferenceStore.getBoolean("enable_lua_scripts", false)
-  val selectedLuaScripts = preferenceStore.getStringSet("selected_lua_scripts", emptySet())
 }

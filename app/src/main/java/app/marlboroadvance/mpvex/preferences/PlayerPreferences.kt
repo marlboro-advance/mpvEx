@@ -36,6 +36,7 @@ class PlayerPreferences(
   val showLoadingCircle = preferenceStore.getBoolean("show_loading_circle", true)
   val savePositionOnQuit = preferenceStore.getBoolean("save_position", true)
 
+  val automaticBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
   val closeAfterReachingEndOfVideo = preferenceStore.getBoolean("close_after_eof", true)
 
   val rememberBrightness = preferenceStore.getBoolean("remember_brightness")
@@ -50,7 +51,14 @@ class PlayerPreferences(
 
   val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 
-  val playlistMode = preferenceStore.getBoolean("playlist_mode", true)
+  val playlistMode = preferenceStore.getBoolean("playlist_mode", false)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
+  val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Wavy)
+}
+
+enum class SeekbarStyle {
+  Standard,
+  Wavy,
+  Unique,
 }

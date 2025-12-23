@@ -2,12 +2,15 @@ package app.marlboroadvance.mpvex.ui.player.controls.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -48,6 +51,16 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import app.marlboroadvance.mpvex.preferences.SeekbarStyle
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun SeekbarWithTimers(
@@ -61,7 +74,7 @@ fun SeekbarWithTimers(
   chapters: ImmutableList<Segment>,
   paused: Boolean,
   readAheadValue: Float = position,
-  useWavySeekbar: Boolean = true,
+  seekbarStyle: SeekbarStyle = SeekbarStyle.Wavy,
   modifier: Modifier = Modifier,
 ) {
   val clickEvent = LocalPlayerButtonsClickEvent.current
@@ -109,29 +122,65 @@ fun SeekbarWithTimers(
         Modifier
           .weight(1f)
           .height(48.dp),
+      contentAlignment = Alignment.Center,
     ) {
-      SquigglySeekbar(
-        position = if (isUserInteracting) userPosition else animatedPosition.value,
-        duration = duration,
-        readAheadValue = readAheadValue,
-        chapters = chapters,
-        isPaused = paused,
-        isScrubbing = isUserInteracting,
-        useWavySeekbar = useWavySeekbar,
-        onSeek = { newPosition ->
-          if (!isUserInteracting) {
-            isUserInteracting = true
-          }
-          userPosition = newPosition
-          onValueChange(newPosition)
-        },
-        onSeekFinished = {
-          // Snap visual position to the last user position to avoid a brief jump
-          scope.launch { animatedPosition.snapTo(userPosition) }
-          isUserInteracting = false
-          onValueChangeFinished()
-        },
-      )
+      when (seekbarStyle) {
+        SeekbarStyle.Standard -> {
+          StandardSeekbar(
+            position = if (isUserInteracting) userPosition else animatedPosition.value,
+            duration = duration,
+            readAheadValue = readAheadValue,
+            onSeek = { newPosition ->
+              if (!isUserInteracting) isUserInteracting = true
+              userPosition = newPosition
+              onValueChange(newPosition)
+            },
+            onSeekFinished = {
+              scope.launch { animatedPosition.snapTo(userPosition) }
+              isUserInteracting = false
+              onValueChangeFinished()
+            },
+          )
+        }
+        SeekbarStyle.Wavy -> {
+          SquigglySeekbar(
+            position = if (isUserInteracting) userPosition else animatedPosition.value,
+            duration = duration,
+            readAheadValue = readAheadValue,
+            chapters = chapters,
+            isPaused = paused,
+            isScrubbing = isUserInteracting,
+            useWavySeekbar = true,
+            onSeek = { newPosition ->
+              if (!isUserInteracting) isUserInteracting = true
+              userPosition = newPosition
+              onValueChange(newPosition)
+            },
+            onSeekFinished = {
+              scope.launch { animatedPosition.snapTo(userPosition) }
+              isUserInteracting = false
+              onValueChangeFinished()
+            },
+          )
+        }
+        SeekbarStyle.Unique -> {
+             UniqueSeekbar(
+            position = if (isUserInteracting) userPosition else animatedPosition.value,
+            duration = duration,
+            readAheadValue = readAheadValue,
+            onSeek = { newPosition ->
+              if (!isUserInteracting) isUserInteracting = true
+              userPosition = newPosition
+              onValueChange(newPosition)
+            },
+            onSeekFinished = {
+              scope.launch { animatedPosition.snapTo(userPosition) }
+              isUserInteracting = false
+              onValueChangeFinished()
+            },
+          )
+        }
+      }
     }
 
     VideoTimer(
@@ -242,6 +291,7 @@ private fun SquigglySeekbar(
             change.consume()
             val newPosition = (change.position.x / size.width) * duration
             onSeek(newPosition.coerceIn(0f, duration))
+            onSeekFinished()
           }
         },
   ) {
@@ -452,19 +502,109 @@ fun VideoTimer(
   )
 }
 
-@Preview
 @Composable
-private fun PreviewSeekBar() {
-  SeekbarWithTimers(
-    position = 30f,
-    duration = 180f,
-    onValueChange = {},
-    onValueChangeFinished = {},
-    timersInverted = Pair(false, true),
-    positionTimerOnClick = {},
-    durationTimerOnCLick = {},
-    chapters = persistentListOf(),
-    paused = false,
-    readAheadValue = 90f, // Buffer up to 60 seconds (1 minute)
-  )
+fun StandardSeekbar(
+  position: Float,
+  duration: Float,
+  readAheadValue: Float,
+  onSeek: (Float) -> Unit,
+  onSeekFinished: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isDragged by interactionSource.collectIsDraggedAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isInteracting = isDragged || isPressed
+    val thumbWidth by animateDpAsState(targetValue = if (isInteracting) 2.dp else 4.dp, label = "thumbWidth")
+
+    Slider(
+        value = position,
+        onValueChange = onSeek,
+        onValueChangeFinished = onSeekFinished,
+        valueRange = 0f..duration.coerceAtLeast(0.1f),
+        modifier = Modifier.fillMaxWidth(),
+        interactionSource = interactionSource,
+        track = { sliderState ->
+            SliderDefaults.Track(
+                sliderState = sliderState,
+                modifier = Modifier.height(8.dp),
+                thumbTrackGapSize = 6.dp
+            )
+        },
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .width(thumbWidth)
+                    .height(24.dp)
+                    .background(MaterialTheme.colorScheme.onSurface, CircleShape)
+            )
+        }
+    )
+}
+
+@Composable
+fun UniqueSeekbar(
+  position: Float,
+  duration: Float,
+  readAheadValue: Float,
+  onSeek: (Float) -> Unit,
+  onSeekFinished: () -> Unit,
+) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    
+    Canvas(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .height(32.dp)
+        .pointerInput(Unit) {
+          detectTapGestures { offset ->
+            val newPosition = (offset.x / size.width) * duration
+            onSeek(newPosition.coerceIn(0f, duration))
+            onSeekFinished()
+          }
+        }
+        .pointerInput(Unit) {
+          detectDragGestures(
+            onDragStart = { },
+            onDragEnd = { onSeekFinished() },
+            onDragCancel = { onSeekFinished() },
+          ) { change, _ ->
+            change.consume()
+            val newPosition = (change.position.x / size.width) * duration
+            onSeek(newPosition.coerceIn(0f, duration))
+            onSeekFinished()
+          }
+        },
+    ) {
+        val width = size.width
+        val height = size.height
+        val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
+        
+        // Gradient Track
+        drawRoundRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(primaryColor, secondaryColor, tertiaryColor)
+            ),
+            size = androidx.compose.ui.geometry.Size(width, 8.dp.toPx()),
+            topLeft = Offset(0f, height / 2f - 4.dp.toPx()),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+        )
+        
+        // Thumb (Diamond shape)
+        val thumbX = width * progress
+        val thumbSize = 20.dp.toPx()
+        
+        val path = Path().apply {
+            moveTo(thumbX, height / 2f - thumbSize / 2f) // Top
+            lineTo(thumbX + thumbSize / 2f, height / 2f) // Right
+            lineTo(thumbX, height / 2f + thumbSize / 2f) // Bottom
+            lineTo(thumbX - thumbSize / 2f, height / 2f) // Left
+            close()
+        }
+        
+        drawPath(path = path, color = Color.White)
+        drawPath(path = path, color = primaryColor, style = Stroke(width = 2.dp.toPx()))
+    }
 }

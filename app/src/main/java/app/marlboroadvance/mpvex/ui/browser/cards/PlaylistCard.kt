@@ -1,7 +1,7 @@
 package app.marlboroadvance.mpvex.ui.browser.cards
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
@@ -36,7 +36,7 @@ fun PlaylistCard(
     onLongClick = onLongClick,
     onThumbClick = onThumbClick,
     showDateModified = true,
-    customIcon = Icons.Filled.PlaylistPlay,
+    customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
     modifier = modifier,
   )
 }

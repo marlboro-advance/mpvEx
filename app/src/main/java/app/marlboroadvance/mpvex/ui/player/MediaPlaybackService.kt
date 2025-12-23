@@ -182,10 +182,11 @@ class MediaPlaybackService :
         )
 
         // Set flags to handle media buttons and transport controls
-        setFlags(
-          MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
-        )
+        // Deprecated: Actions are handled via PlaybackStateCompat.Builder.setActions
+        // setFlags(
+        //  MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+        //    MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,
+        // )
 
         isActive = true
       }

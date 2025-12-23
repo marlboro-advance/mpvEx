@@ -158,59 +158,29 @@ class ThumbnailRepository(
       return null
     }
 
-    // For local videos, use MediaStore thumbnails exclusively
-    return runCatching {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        // Android 10+ - use ContentResolver.loadThumbnail
-        if (video.uri.scheme == "content") {
-          // If we have a content URI, use it directly
-          context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
-        } else {
-          // If we have a file path, query MediaStore for the content URI
-          val contentUri = getMediaStoreUri(video.path)
-          if (contentUri != null) {
-            context.contentResolver.loadThumbnail(contentUri, Size(width, height), null)
-          } else {
-            // Fallback to ThumbnailUtils if not in MediaStore
-            ThumbnailUtils.createVideoThumbnail(File(video.path), Size(width, height), null)
-          }
-        }
-      } else {
-        // Android 9 and below - use legacy ThumbnailUtils with MediaStore
-        @Suppress("DEPRECATION")
-        val raw = ThumbnailUtils.createVideoThumbnail(video.path, MediaStore.Images.Thumbnails.MINI_KIND)
-        raw?.let { bmp ->
-          if (bmp.width != width || bmp.height != height) {
-            bmp.scale(width, height)
-          } else {
-            bmp
-          }
-        }
-      }
-    }.getOrNull()
-  }
+    if (video.uri.scheme == "content" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      return runCatching {
+        context.contentResolver.loadThumbnail(video.uri, Size(width, height), null)
+      }.getOrNull()
+    }
 
-  private fun getMediaStoreUri(filePath: String): android.net.Uri? {
-    return runCatching {
-      val projection = arrayOf(MediaStore.Video.Media._ID)
-      val selection = "${MediaStore.Video.Media.DATA} = ?"
-      val selectionArgs = arrayOf(filePath)
-      
-      context.contentResolver.query(
-        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        selectionArgs,
-        null
-      )?.use { cursor ->
-        if (cursor.moveToFirst()) {
-          val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-          val id = cursor.getLong(idColumn)
-          android.content.ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      runCatching {
+        ThumbnailUtils.createVideoThumbnail(File(video.path), Size(width, height), null)
+      }.getOrNull()
+    } else {
+      val raw =
+        runCatching {
+          @Suppress("DEPRECATION")
+          ThumbnailUtils.createVideoThumbnail(video.path, MediaStore.Images.Thumbnails.MINI_KIND)
+        }.getOrNull()
+      raw?.let { bmp ->
+        if (bmp.width == width && bmp.height == height) {
+          bmp
         } else {
-          null
+          bmp.scale(width, height)
         }
       }
-    }.getOrNull()
+    }
   }
 }

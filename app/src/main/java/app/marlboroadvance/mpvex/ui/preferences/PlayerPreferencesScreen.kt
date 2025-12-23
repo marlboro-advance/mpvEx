@@ -7,6 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +28,15 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.player.PlayerOrientation
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.toFixed
+import app.marlboroadvance.mpvex.ui.player.controls.components.SeekbarWithTimers
+import app.marlboroadvance.mpvex.preferences.SeekbarStyle
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
@@ -136,13 +148,36 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.usePreciseSeeking::set,
             title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
           )
-          val useWavySeekbar by preferences.useWavySeekbar.collectAsState()
-          SwitchPreference(
-            value = useWavySeekbar,
-            onValueChange = preferences.useWavySeekbar::set,
-            title = { Text("Use wavy seekbar") },
-            summary = { Text("Disable to show a normal seekbar instead of the animated wavy seekbar") },
+          val seekbarStyle by preferences.seekbarStyle.collectAsState()
+          androidx.compose.material3.Text(
+            text = "Seekbar Style",
+            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
           )
+          app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton(
+              choices = SeekbarStyle.entries.map { it.name }.toImmutableList(),
+              selectedIndices = persistentListOf(SeekbarStyle.entries.indexOf(seekbarStyle)),
+              onClick = { preferences.seekbarStyle.set(SeekbarStyle.entries[it]) },
+              modifier = Modifier.padding(horizontal = 16.dp)
+          )
+          
+          Text(text = "Preview", modifier = Modifier.padding(start = 16.dp, top = 8.dp), style = androidx.compose.material3.MaterialTheme.typography.labelLarge)
+          Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            var previewPosition by remember { androidx.compose.runtime.mutableFloatStateOf(30f) }
+            SeekbarWithTimers(
+                position = previewPosition,
+                duration = 100f,
+                onValueChange = { previewPosition = it },
+                onValueChangeFinished = {},
+                timersInverted = Pair(false, false),
+                positionTimerOnClick = {},
+                durationTimerOnCLick = {},
+                chapters = persistentListOf(),
+                paused = true,
+                seekbarStyle = seekbarStyle
+            )
+          }
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_gestures)) },
           )

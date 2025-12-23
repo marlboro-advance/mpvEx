@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -137,7 +137,7 @@ object PlaylistScreen : Screen {
           contentAlignment = Alignment.Center,
         ) {
           EmptyState(
-            icon = Icons.Outlined.PlaylistAdd,
+            icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
             title = "No playlists yet",
             message = "Create a playlist to get started",
           )
