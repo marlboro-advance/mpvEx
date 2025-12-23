@@ -393,25 +393,45 @@ object AdvancedPreferencesScreen : Screen {
           Preference(
             title = { Text("Select Lua Scripts") },
             summary = {
-              if (selectedScripts.isEmpty()) {
-                Text("No scripts selected")
-              } else {
-                Text("${selectedScripts.size} script(s) selected")
+              when {
+                !enableLuaScripts -> Text("Enable Lua scripts first")
+                mpvConfStorageLocation.isBlank() -> Text("Set MPV config storage location first")
+                selectedScripts.isEmpty() -> Text("No scripts selected")
+                else -> Text("${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}")
               }
             },
             onClick = {
               scope.launch(Dispatchers.IO) {
                 val scripts = mutableListOf<String>()
                 if (mpvConfStorageLocation.isNotBlank()) {
-                  val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                  tree?.listFiles()?.forEach { file ->
-                    if (file.isFile && file.name?.endsWith(".lua") == true) {
-                      file.name?.let { scripts.add(it) }
+                  runCatching {
+                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                    if (tree != null && tree.exists()) {
+                      tree.listFiles().forEach { file ->
+                        if (file.isFile && file.name?.endsWith(".lua") == true) {
+                          file.name?.let { scripts.add(it) }
+                        }
+                      }
+                    }
+                  }.onFailure { e ->
+                    withContext(Dispatchers.Main) {
+                      Toast.makeText(
+                        context,
+                        "Error reading scripts directory: ${e.message}",
+                        Toast.LENGTH_LONG
+                      ).show()
                     }
                   }
                 }
                 withContext(Dispatchers.Main) {
                   availableScripts = scripts.sorted()
+                  if (scripts.isEmpty()) {
+                    Toast.makeText(
+                      context,
+                      "No .lua files found in the config directory",
+                      Toast.LENGTH_SHORT
+                    ).show()
+                  }
                   showScriptDialog = true
                 }
               }
@@ -563,30 +583,40 @@ fun LuaScriptSelectionDialog(
   onScriptsSelected: (Set<String>) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  var tempSelectedScripts by remember { mutableStateOf(selectedScripts) }
+  var tempSelectedScripts by remember(selectedScripts) { 
+    mutableStateOf(selectedScripts.toMutableSet()) 
+  }
   
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("Select Lua Scripts") },
     text = {
       Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
       ) {
         if (availableScripts.isEmpty()) {
           Text("No Lua scripts found in the configuration directory.")
         } else {
+          Text(
+            text = "Select the Lua scripts to load with MPV:",
+            modifier = Modifier.padding(bottom = 8.dp),
+          )
           availableScripts.forEach { script ->
             Row(
-              modifier = Modifier.fillMaxWidth(),
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
               verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
               Checkbox(
                 checked = tempSelectedScripts.contains(script),
                 onCheckedChange = { checked ->
                   tempSelectedScripts = if (checked) {
-                    tempSelectedScripts + script
+                    (tempSelectedScripts + script).toMutableSet()
                   } else {
-                    tempSelectedScripts - script
+                    (tempSelectedScripts - script).toMutableSet()
                   }
                 },
               )
@@ -600,7 +630,11 @@ fun LuaScriptSelectionDialog(
       }
     },
     confirmButton = {
-      TextButton(onClick = { onScriptsSelected(tempSelectedScripts) }) {
+      TextButton(
+        onClick = { 
+          onScriptsSelected(tempSelectedScripts.toSet())
+        }
+      ) {
         Text("OK")
       }
     },
