@@ -96,6 +96,11 @@ sealed class PlayerUpdates {
 
   data object MultipleSpeed : PlayerUpdates()
 
+  data class DynamicSpeedControl(
+    val speed: Float,
+    val showFullOverlay: Boolean = true,
+  ) : PlayerUpdates()
+
   data object AspectRatio : PlayerUpdates()
 
   data object VideoZoom : PlayerUpdates()

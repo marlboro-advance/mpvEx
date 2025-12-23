@@ -320,6 +320,13 @@ class PlayerActivity :
     playlistIndex = intent.getIntExtra("playlist_index", 0)
     playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
 
+    // Only auto-generate playlist from folder if playlist mode is enabled
+    if (playlist.isEmpty() && playerPreferences.playlistMode.get()) {
+      val path = parsePathFromIntent(intent)
+      if (path != null) {
+        generatePlaylistFromFolder(path)
+      }
+    }
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
@@ -690,25 +697,34 @@ class PlayerActivity :
 
   /**
    * Initializes the MPV player with the necessary paths and observers.
-   * Fast synchronous initialization - assets are copied asynchronously.
+   * CRITICAL: Must copy config and scripts BEFORE initializing MPV, as MPV loads scripts during init.
    */
   private fun setupMPV() {
-    // Initialize player first (this is fast)
+    // Copy essential files FIRST, before MPV initialization
+    // MPV will load scripts during initialize(), so they must exist beforehand
+    runCatching {
+      Utils.copyAssets(this@PlayerActivity)
+      copyMPVConfigFiles()
+      copyMPVScripts()
+      Log.d(TAG, "MPV config and scripts prepared successfully")
+    }.onFailure { e ->
+      Log.e(TAG, "Error copying MPV config and scripts", e)
+    }
+
+    // NOW initialize MPV - it will find and load the scripts we just copied
     player.initialize(filesDir.path, cacheDir.path)
     mpvInitialized = true
+    Log.d(TAG, "MPV initialized")
 
     // Add observer after initialization
     MPVLib.addObserver(playerObserver)
-
-    // Copy assets asynchronously (non-blocking)
+    
+    // Copy fonts asynchronously (not critical for initial playback)
     lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
-        Utils.copyAssets(this@PlayerActivity)
-        copyMPVConfigFiles()
-        copyMPVScripts()
         copyMPVFonts()
       }.onFailure { e ->
-        Log.e(TAG, "Error copying MPV assets", e)
+        Log.e(TAG, "Error copying MPV fonts", e)
       }
     }
   }
@@ -744,18 +760,83 @@ class PlayerActivity :
         fileManager.createDir(
           fileManager.fromPath(applicationPath),
           "scripts",
-        ) ?: error("Failed to create scripts directory")
+        ) ?: run {
+          Log.e(TAG, "Failed to create scripts directory")
+          return@runCatching
+        }
 
+      // Clean existing scripts first
       fileManager.deleteContent(scriptsDir)
 
       assets.open("mpvrex.lua").use { input ->
         File("$scriptsDir/mpvrex.lua").apply {
           if (!exists()) createNewFile()
           writeText(input.bufferedReader().readText())
+          
+      Log.d(TAG, "Cleaned scripts directory")
+      
+      // Copy user-selected Lua scripts if enabled
+      if (advancedPreferences.enableLuaScripts.get()) {
+        val selectedScripts = advancedPreferences.selectedLuaScripts.get()
+        val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+        
+        Log.d(TAG, "Lua scripts enabled: ${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString()}")
+        
+        if (selectedScripts.isEmpty()) {
+          Log.d(TAG, "No Lua scripts selected, skipping copy")
+          return@runCatching
         }
+        
+        if (mpvConfStorageUri.isBlank()) {
+          Log.w(TAG, "MPV config storage URI not set, cannot copy Lua scripts")
+          return@runCatching
+        }
+        
+        val tree = DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
+        if (tree == null) {
+          Log.e(TAG, "Failed to access MPV config storage directory")
+          return@runCatching
+        }
+        
+        if (!tree.exists() || !tree.canRead()) {
+          Log.e(TAG, "MPV config storage directory does not exist or cannot be read")
+          return@runCatching
+        }
+        
+        var successCount = 0
+        var failCount = 0
+        
+        selectedScripts.forEach { scriptName ->
+          runCatching {
+            val scriptFile = tree.findFile(scriptName)
+            if (scriptFile != null && scriptFile.exists() && scriptFile.canRead()) {
+              contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+                val scriptsDirPath = File(filesDir.path, "scripts")
+                scriptsDirPath.mkdirs()
+                val targetFile = File(scriptsDirPath, scriptName)
+                targetFile.writeText(input.bufferedReader().readText())
+                Log.d(TAG, "Successfully copied Lua script: $scriptName to ${targetFile.absolutePath}")
+                successCount++
+              } ?: run {
+                Log.e(TAG, "Failed to open input stream for Lua script: $scriptName")
+                failCount++
+              }
+            } else {
+              Log.w(TAG, "Lua script not found or not readable: $scriptName")
+              failCount++
+            }
+          }.onFailure { e ->
+            Log.e(TAG, "Error copying Lua script: $scriptName", e)
+            failCount++
+          }
+        }
+        
+        Log.d(TAG, "Lua scripts copy completed: $successCount succeeded, $failCount failed")
+      } else {
+        Log.d(TAG, "Lua scripts disabled in preferences")
       }
     }.onFailure { e ->
-      Log.e(TAG, "Error copying MPV scripts", e)
+      Log.e(TAG, "Error in copyMPVScripts", e)
     }
   }
 

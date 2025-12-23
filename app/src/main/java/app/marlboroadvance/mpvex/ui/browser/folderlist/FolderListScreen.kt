@@ -739,10 +739,6 @@ private fun FolderSortDialog(
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
-  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
-  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
-  val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
-  val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
@@ -821,26 +817,6 @@ private fun FolderSortDialog(
           label = "Folder Size",
           checked = showTotalSizeChip,
           onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Size",
-          checked = showSizeChip,
-          onCheckedChange = { browserPreferences.showSizeChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Resolution",
-          checked = showResolutionChip,
-          onCheckedChange = { browserPreferences.showResolutionChip.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Framerate",
-          checked = showFramerateInResolution,
-          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
-        ),
-        VisibilityToggle(
-          label = "Progress Bar",
-          checked = showProgressBar,
-          onCheckedChange = { browserPreferences.showProgressBar.set(it) },
         ),
       ),
   )

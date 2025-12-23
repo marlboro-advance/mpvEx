@@ -248,6 +248,81 @@ object AdvancedPreferencesScreen : Screen {
               }
             },
           )
+          
+          // Lua Scripts Section
+          val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+          SwitchPreference(
+            value = enableLuaScripts,
+            onValueChange = preferences.enableLuaScripts::set,
+            title = { Text("Enable Lua Scripts") },
+            summary = { Text("Load Lua scripts from configuration directory") },
+          )
+          
+          var showScriptDialog by remember { mutableStateOf(false) }
+          var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
+          val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+          
+          Preference(
+            title = { Text("Select Lua Scripts") },
+            summary = {
+              when {
+                !enableLuaScripts -> Text("Enable Lua scripts first")
+                mpvConfStorageLocation.isBlank() -> Text("Set MPV config storage location first")
+                selectedScripts.isEmpty() -> Text("No scripts selected")
+                else -> Text("${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}")
+              }
+            },
+            onClick = {
+              scope.launch(Dispatchers.IO) {
+                val scripts = mutableListOf<String>()
+                if (mpvConfStorageLocation.isNotBlank()) {
+                  runCatching {
+                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                    if (tree != null && tree.exists()) {
+                      tree.listFiles().forEach { file ->
+                        if (file.isFile && file.name?.endsWith(".lua") == true) {
+                          file.name?.let { scripts.add(it) }
+                        }
+                      }
+                    }
+                  }.onFailure { e ->
+                    withContext(Dispatchers.Main) {
+                      Toast.makeText(
+                        context,
+                        "Error reading scripts directory: ${e.message}",
+                        Toast.LENGTH_LONG
+                      ).show()
+                    }
+                  }
+                }
+                withContext(Dispatchers.Main) {
+                  availableScripts = scripts.sorted()
+                  if (scripts.isEmpty()) {
+                    Toast.makeText(
+                      context,
+                      "No .lua files found in the config directory",
+                      Toast.LENGTH_SHORT
+                    ).show()
+                  }
+                  showScriptDialog = true
+                }
+              }
+            },
+            enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
+          )
+          
+          if (showScriptDialog) {
+            LuaScriptSelectionDialog(
+              availableScripts = availableScripts,
+              selectedScripts = selectedScripts,
+              onScriptsSelected = { newSelection ->
+                preferences.selectedLuaScripts.set(newSelection)
+                showScriptDialog = false
+              },
+              onDismiss = { showScriptDialog = false },
+            )
+          }
+          
           val activity = LocalActivity.current!!
           @Suppress("DEPRECATION")
           val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
@@ -372,6 +447,76 @@ object AdvancedPreferencesScreen : Screen {
       }
     }
   }
+}
+
+@Composable
+fun LuaScriptSelectionDialog(
+  availableScripts: List<String>,
+  selectedScripts: Set<String>,
+  onScriptsSelected: (Set<String>) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var tempSelectedScripts by remember(selectedScripts) { 
+    mutableStateOf(selectedScripts.toMutableSet()) 
+  }
+  
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Select Lua Scripts") },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+      ) {
+        if (availableScripts.isEmpty()) {
+          Text("No Lua scripts found in the configuration directory.")
+        } else {
+          Text(
+            text = "Select the Lua scripts to load with MPV:",
+            modifier = Modifier.padding(bottom = 8.dp),
+          )
+          availableScripts.forEach { script ->
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Checkbox(
+                checked = tempSelectedScripts.contains(script),
+                onCheckedChange = { checked ->
+                  tempSelectedScripts = if (checked) {
+                    (tempSelectedScripts + script).toMutableSet()
+                  } else {
+                    (tempSelectedScripts - script).toMutableSet()
+                  }
+                },
+              )
+              Text(
+                text = script,
+                modifier = Modifier.padding(start = 8.dp),
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = { 
+          onScriptsSelected(tempSelectedScripts.toSet())
+        }
+      ) {
+        Text("OK")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
 }
 
 fun getSimplifiedPathFromUri(uri: String): String =
