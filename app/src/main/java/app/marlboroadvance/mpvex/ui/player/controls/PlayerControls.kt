@@ -22,14 +22,18 @@ import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -66,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import app.marlboroadvance.mpvex.R
@@ -83,9 +88,11 @@ import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.controls.components.BrightnessSlider
+import app.marlboroadvance.mpvex.ui.player.controls.components.CompactSpeedIndicator
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.player.controls.components.MultipleSpeedPlayerUpdate
 import app.marlboroadvance.mpvex.ui.player.controls.components.SeekbarWithTimers
+import app.marlboroadvance.mpvex.ui.player.controls.components.SpeedControlSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.TextPlayerUpdate
 import app.marlboroadvance.mpvex.ui.player.controls.components.VolumeSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.toFixed
@@ -159,6 +166,7 @@ fun PlayerControls(
   }
   val playerTimeToDisappear by playerPreferences.playerTimeToDisappear.collectAsState()
   val chapters by viewModel.chapters.collectAsState(persistentListOf())
+  val playlistMode by playerPreferences.playlistMode.collectAsState()
 
   val onOpenSheet: (Sheets) -> Unit = {
     viewModel.sheetShown.update { _ -> it }
@@ -382,6 +390,7 @@ fun PlayerControls(
 
         LaunchedEffect(currentPlayerUpdate, aspectRatio, videoZoom) {
           if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed ||
+            currentPlayerUpdate is PlayerUpdates.DynamicSpeedControl ||
             currentPlayerUpdate is PlayerUpdates.None
           ) {
             return@LaunchedEffect
@@ -402,6 +411,36 @@ fun PlayerControls(
         ) {
           when (currentPlayerUpdate) {
             is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed)
+            is PlayerUpdates.DynamicSpeedControl -> {
+              val speedUpdate = currentPlayerUpdate as PlayerUpdates.DynamicSpeedControl
+              val currentSpeed = speedUpdate.speed
+              val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
+              val shouldShowFull = speedUpdate.showFullOverlay
+              var isCollapsed by remember { mutableStateOf(false) }
+              
+              LaunchedEffect(currentSpeed, shouldShowFull) {
+                if (shouldShowFull) {
+                  isCollapsed = false
+                  delay(1500)
+                  isCollapsed = true
+                } else {
+                  isCollapsed = true
+                }
+              }
+              
+              if (showDynamicSpeedOverlay) {
+                if (isCollapsed) {
+                  // Simple compact indicator
+                  CompactSpeedIndicator(currentSpeed = currentSpeed)
+                } else {
+                  // Full speed control slider
+                  SpeedControlSlider(currentSpeed = currentSpeed)
+                }
+              } else {
+                // fallback, simple indicator
+                CompactSpeedIndicator(currentSpeed = currentSpeed)
+              }
+            }
             is PlayerUpdates.AspectRatio -> TextPlayerUpdate(stringResource(aspectRatio.titleRes))
             is PlayerUpdates.ShowText ->
               TextPlayerUpdate(
@@ -419,7 +458,7 @@ fun PlayerControls(
                 app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> "Repeat: Off"
                 app.marlboroadvance.mpvex.ui.player.RepeatMode.ONE -> "Repeat: Current file"
                 app.marlboroadvance.mpvex.ui.player.RepeatMode.ALL -> {
-                  if (viewModel.hasPlaylistSupport()) {
+                  if (playlistMode && viewModel.hasPlaylistSupport()) {
                     "Repeat: All playlist"
                   } else {
                     "Repeat: Current file"
@@ -432,7 +471,7 @@ fun PlayerControls(
             is PlayerUpdates.Shuffle -> {
               val enabled = (currentPlayerUpdate as PlayerUpdates.Shuffle).enabled
               val text = if (enabled) {
-                if (viewModel.hasPlaylistSupport()) {
+                if (playlistMode && viewModel.hasPlaylistSupport()) {
                   "Shuffle: On"
                 } else {
                   "Shuffle: Not available"
@@ -523,7 +562,7 @@ fun PlayerControls(
                   1.0f to Color.Transparent,
                 )
 
-              if (viewModel.hasPlaylistSupport()) {
+              if (playlistMode && viewModel.hasPlaylistSupport()) {
                 androidx.compose.foundation.layout.Row(
                   horizontalArrangement = Arrangement.spacedBy(24.dp),
                   verticalAlignment = Alignment.CenterVertically,

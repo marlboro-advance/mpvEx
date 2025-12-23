@@ -905,7 +905,10 @@ class PlayerViewModel(
 
   // ==================== Playlist Management ====================
 
-  fun hasPlaylistSupport(): Boolean = (host as? PlayerActivity)?.playlist?.isNotEmpty() ?: false
+  fun hasPlaylistSupport(): Boolean {
+    val playlistModeEnabled = playerPreferences.playlistMode.get()
+    return playlistModeEnabled && ((host as? PlayerActivity)?.playlist?.isNotEmpty() ?: false)
+  }
 
   fun getPlaylistInfo(): String? {
     val activity = host as? PlayerActivity ?: return null
