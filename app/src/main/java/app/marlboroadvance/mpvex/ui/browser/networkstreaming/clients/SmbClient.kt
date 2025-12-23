@@ -411,38 +411,16 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
       try {
         // For SMB, we'll use the smb:// URI with credentials embedded
         val fullPath =
-          if (path.startsWith("smb://")) {
-            path
-          } else {
-            "$baseUrl${if (path.startsWith("/")) path else "/$path"}"
-          }
+          if (path.startsWith("smb://")) path else "$baseUrl${if (path.startsWith("/")) path else "/$path"}"
 
         // Build URI with credentials for mpv
         val uriString =
           if (connection.isAnonymous) {
             fullPath
           } else {
-            if (path.startsWith("smb://")) {
-              // Path already contains full SMB URL, insert credentials
-              val pathAfterProtocol = path.substringAfter("smb://")
-              "smb://${connection.username}:${connection.password}@$pathAfterProtocol"
-            } else {
-              val hostPart = "${connection.host}${if (connection.port != 445) ":${connection.port}" else ""}"
-              // connection.path is the share name, path is the file within the share
-              // Avoid duplication: if path already starts with share name, don't prepend it
-              val pathPart = if (path.startsWith("/")) path else "/$path"
-              val cleanedPath = if (pathPart.trimStart('/').startsWith("${shareName}/")) {
-                // Path already includes share name
-                pathPart
-              } else if (pathPart.trimStart('/') == shareName) {
-                // Path is just the share name
-                "/$shareName"
-              } else {
-                // Path is relative to share
-                "/${shareName}${pathPart}"
-              }
-              "smb://${connection.username}:${connection.password}@$hostPart${cleanedPath}"
-            }
+            val hostPart = "${connection.host}${if (connection.port != 445) ":${connection.port}" else ""}"
+            val pathPart = if (path.startsWith("/")) path else "/$path"
+            "smb://${connection.username}:${connection.password}@$hostPart${connection.path}$pathPart"
           }
 
         Result.success(Uri.parse(uriString))
