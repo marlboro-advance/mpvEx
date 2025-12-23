@@ -70,21 +70,7 @@ fun MultipleSpeedPlayerUpdate(
   currentSpeed: Float,
   modifier: Modifier = Modifier,
 ) {
-  PlayerUpdate(modifier) {
-    Row(
-      verticalAlignment = Alignment.Bottom,
-    ) {
-      Text(
-        stringResource(R.string.player_speed, currentSpeed),
-        fontWeight = FontWeight.Bold,
-        style = MaterialTheme.typography.bodyLarge,
-      )
-      Icon(
-        Icons.Filled.DoubleArrow,
-        null,
-      )
-    }
-  }
+  CompactSpeedIndicator(currentSpeed = currentSpeed, modifier = modifier)
 }
 
 @Composable

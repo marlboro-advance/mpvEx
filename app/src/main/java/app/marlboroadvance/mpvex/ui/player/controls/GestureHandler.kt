@@ -88,6 +88,7 @@ fun GestureHandler(
     viewModel.hideSeekBar()
   }
   val multipleSpeedGesture by playerPreferences.holdForMultipleSpeed.collectAsState()
+  val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
   val brightnessGesture = playerPreferences.brightnessGesture.get()
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
@@ -95,6 +96,11 @@ fun GestureHandler(
   val showSeekbarWhenSeeking by playerPreferences.showSeekBarWhenSeeking.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
+  var isDynamicSpeedControlActive by remember { mutableStateOf(false) }
+  var dynamicSpeedStartX by remember { mutableStateOf(0f) }
+  var dynamicSpeedStartValue by remember { mutableStateOf(2f) }
+  var lastAppliedSpeed by remember { mutableStateOf(2f) }
+  var hasSwipedEnough by remember { mutableStateOf(false) }
   val currentVolume by viewModel.currentVolume.collectAsState()
   val currentMPVVolume by MPVLib.propInt["volume"].collectAsState()
   val currentBrightness by viewModel.currentBrightness.collectAsState()
@@ -109,7 +115,7 @@ fun GestureHandler(
     modifier = modifier
       .fillMaxSize()
       .padding(horizontal = 16.dp, vertical = 16.dp)
-      .pointerInput(doubleTapSeekAreaWidth, useSingleTapForCenter) {
+      .pointerInput(doubleTapSeekAreaWidth, useSingleTapForCenter, multipleSpeedGesture) {
         var originalSpeed = MPVLib.getPropertyFloat("speed") ?: 1f
         detectTapGestures(
           onTap = {
@@ -201,28 +207,46 @@ fun GestureHandler(
             tryAwaitRelease()
             if (isLongPressing) {
               isLongPressing = false
+              isDynamicSpeedControlActive = false
+              hasSwipedEnough = false
+              
+              // Always restore the original speed after releasing the hold gesture
               MPVLib.setPropertyFloat("speed", originalSpeed)
+              
               viewModel.playerUpdate.update { PlayerUpdates.None }
             }
             interactionSource.emit(PressInteraction.Release(press))
           },
-          onLongPress = {
+          onLongPress = { offset ->
             if (multipleSpeedGesture == 0f || areControlsLocked) return@detectTapGestures
             if (!isLongPressing && paused == false) {
               haptics.performHapticFeedback(HapticFeedbackType.LongPress)
               isLongPressing = true
+              originalSpeed = playbackSpeed ?: 1f
               MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
-              viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
+              
+              if (showDynamicSpeedOverlay) {
+                // Show dynamic overlay only if enabled
+                isDynamicSpeedControlActive = true
+                hasSwipedEnough = false
+                dynamicSpeedStartX = offset.x
+                dynamicSpeedStartValue = multipleSpeedGesture
+                lastAppliedSpeed = multipleSpeedGesture
+                viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(multipleSpeedGesture, false) }
+              } else {
+                // Show simple speed indicator
+                viewModel.playerUpdate.update { PlayerUpdates.MultipleSpeed }
+              }
             }
           },
         )
       }
-      .pointerInput(areControlsLocked) {
+      .pointerInput(areControlsLocked, multipleSpeedGesture, seekGesture, brightnessGesture, volumeGesture) {
         if ((!seekGesture && !brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
         
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)
-          var gestureType: String? = null // "horizontal", "vertical", or null
+          var gestureType: String? = null // "horizontal", "vertical", "speed_control", or null
           val startPosition = down.position
           
           // State for horizontal seeking
@@ -265,19 +289,31 @@ fun GestureHandler(
                   
                   // Determine gesture type based on initial drag direction
                   if (gestureType == null && (abs(deltaX) > 10f || abs(deltaY) > 10f)) {
-                    // Use a higher threshold ratio to strongly prefer the dominant direction
-                    gestureType = if (abs(deltaX) > abs(deltaY) * 1.5f) {
-                      "horizontal"
-                    } else if (abs(deltaY) > abs(deltaX) * 1.5f) {
-                      "vertical"
+                    // Check if we're in long press mode with dynamic speed control (only if overlay is enabled)
+                    if (isLongPressing && isDynamicSpeedControlActive && showDynamicSpeedOverlay && abs(deltaX) > 10f) {
+                      gestureType = "speed_control"
                     } else {
-                      null
+                      // Use a higher threshold ratio to strongly prefer the dominant direction
+                      gestureType = if (abs(deltaX) > abs(deltaY) * 1.5f) {
+                        "horizontal"
+                      } else if (abs(deltaY) > abs(deltaX) * 1.5f) {
+                        "vertical"
+                      } else {
+                        null
+                      }
                     }
                     
                     // Initialize gesture-specific state
                     when (gestureType) {
+                      "speed_control" -> {
+                        // Capture the starting X position for delta-based speed control
+                        // Use the current position (where drag started) not the initial press position
+                        dynamicSpeedStartX = currentPosition.x
+                        // Keep the speed that was set during long press
+                        dynamicSpeedStartValue = MPVLib.getPropertyFloat("speed") ?: multipleSpeedGesture
+                      }
                       "horizontal" -> {
-                        if (seekGesture) {
+                        if (seekGesture && !isLongPressing) {
                           startingPosition = position ?: 0
                           startingX = startPosition.x
                           wasPlayerAlreadyPause = paused ?: false
@@ -301,8 +337,55 @@ fun GestureHandler(
                   
                   // Handle the appropriate gesture
                   when (gestureType) {
+                    "speed_control" -> {
+                      if (!showDynamicSpeedOverlay) return@forEach
+                      if (isLongPressing && isDynamicSpeedControlActive && paused == false) {
+                        change.consume()
+                        
+                        // Define available speed presets
+                        val speedPresets = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f, 4.0f)
+                        val screenWidth = size.width.toFloat()
+                        
+                        // Calculate delta from starting position
+                        val deltaX = currentPosition.x - dynamicSpeedStartX
+                        
+                        // Check if user has started swiping (small threshold to detect movement)
+                        val swipeDetectionThreshold = 10.dp.toPx()
+                        if (!hasSwipedEnough && kotlin.math.abs(deltaX) >= swipeDetectionThreshold) {
+                          hasSwipedEnough = true
+                          // Show full overlay immediately when swipe is detected
+                          viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed, true) }
+                        }
+                        
+                        // Only update speed if overlay is showing
+                        if (hasSwipedEnough) {
+                          // Map screen width to preset indices with moderate sensitivity
+                          // Slightly less sensitive for more precise control
+                          val presetsRange = speedPresets.size - 1
+                          val indexDelta = (deltaX / screenWidth) * presetsRange * 3.5f // Multiply by 3.5 for moderate sensitivity
+                          
+                          // Find starting index
+                          val startIndex = speedPresets.indexOfFirst { 
+                            kotlin.math.abs(it - dynamicSpeedStartValue) < 0.01f 
+                          }.takeIf { it >= 0 } ?: 4 // Default to 2.0x if not found
+                          
+                          // Calculate new index based on delta
+                          val newIndex = (startIndex + indexDelta.toInt()).coerceIn(0, speedPresets.size - 1)
+                          val newSpeed = speedPresets[newIndex]
+                          
+                          // Update speed only if it changed from the last applied speed
+                          if (kotlin.math.abs(lastAppliedSpeed - newSpeed) > 0.01f) {
+                            // Haptic feedback for each speed change
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            lastAppliedSpeed = newSpeed
+                            MPVLib.setPropertyFloat("speed", newSpeed)
+                            viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed, true) }
+                          }
+                        }
+                      }
+                    }
                     "horizontal" -> {
-                      if (seekGesture) {
+                      if (seekGesture && !isLongPressing) {
                         val dragAmount = currentPosition.x - startPosition.x
                         if ((position ?: 0) <= 0f && dragAmount < 0) continue
                         if ((position ?: 0) >= (duration ?: 0) && dragAmount > 0) continue
@@ -414,6 +497,9 @@ fun GestureHandler(
               if (gestureType != null) {
                 // Clean up ongoing gesture
                 when (gestureType) {
+                  "speed_control" -> {
+                    // Speed control cleanup is handled in press release
+                  }
                   "horizontal" -> {
                     if (seekGesture) {
                       viewModel.gestureSeekAmount.update { null }
@@ -439,6 +525,9 @@ fun GestureHandler(
           
           // Handle drag end
           when (gestureType) {
+            "speed_control" -> {
+              // Speed control cleanup is handled in press release
+            }
             "horizontal" -> {
               if (seekGesture) {
                 viewModel.gestureSeekAmount.update { null }

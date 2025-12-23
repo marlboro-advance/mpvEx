@@ -320,7 +320,8 @@ class PlayerActivity :
     playlistIndex = intent.getIntExtra("playlist_index", 0)
     playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
 
-    if (playlist.isEmpty()) {
+    // Only auto-generate playlist from folder if playlist mode is enabled
+    if (playlist.isEmpty() && playerPreferences.playlistMode.get()) {
       val path = parsePathFromIntent(intent)
       if (path != null) {
         generatePlaylistFromFolder(path)

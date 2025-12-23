@@ -182,6 +182,13 @@ object PlayerPreferencesScreen : Screen {
             onSliderValueChange = { preferences.holdForMultipleSpeed.set(it.toFixed(2)) },
             sliderValue = holdForMultipleSpeed,
           )
+          val showDynamicSpeedOverlay by preferences.showDynamicSpeedOverlay.collectAsState()
+          SwitchPreference(
+            value = showDynamicSpeedOverlay,
+            onValueChange = preferences.showDynamicSpeedOverlay::set,
+            title = { Text("Dynamic Speed Overlay") },
+            summary = { Text("Show advance overlay for speed control during long press and swipe") }
+          )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_controls)) },
           )

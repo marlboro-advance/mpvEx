@@ -11,6 +11,7 @@ class PlayerPreferences(
   val orientation = preferenceStore.getEnum("player_orientation", PlayerOrientation.SensorLandscape)
   val invertDuration = preferenceStore.getBoolean("invert_duration")
   val holdForMultipleSpeed = preferenceStore.getFloat("hold_for_multiple_speed", 2f)
+  val showDynamicSpeedOverlay = preferenceStore.getBoolean("show_dynamic_speed_overlay", true)
   val horizontalSeekGesture = preferenceStore.getBoolean("horizontal_seek_gesture", true)
   val showSeekBarWhenSeeking = preferenceStore.getBoolean("show_seekbar_when_seeking")
   val showDoubleTapOvals = preferenceStore.getBoolean("show_double_tap_ovals", true)
