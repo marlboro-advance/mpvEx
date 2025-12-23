@@ -320,6 +320,13 @@ class PlayerActivity :
     playlistIndex = intent.getIntExtra("playlist_index", 0)
     playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
 
+    if (playlist.isEmpty()) {
+      val path = parsePathFromIntent(intent)
+      if (path != null) {
+        generatePlaylistFromFolder(path)
+      }
+    }
+
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
@@ -2648,6 +2655,41 @@ class PlayerActivity :
       "${fileName}_${uri.toString().hashCode()}"
     } else {
       fileName
+    }
+  }
+
+  private fun generatePlaylistFromFolder(currentPath: String) {
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        val currentFile = File(currentPath)
+        if (!currentFile.exists()) return@runCatching
+
+        val parentFolder = currentFile.parentFile ?: return@runCatching
+
+        val videoExtensions = setOf("mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "3gp", "mpg", "mpeg", "ts")
+
+        val files = parentFolder.listFiles { file ->
+          file.isFile && file.extension.lowercase() in videoExtensions
+        } ?: return@runCatching
+
+        val siblingFiles = files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+
+        if (siblingFiles.size <= 1) return@runCatching
+
+        val newPlaylist = siblingFiles.map { it.toUri() }
+
+        val newIndex = siblingFiles.indexOfFirst { it.absolutePath == currentFile.absolutePath }
+
+        if (newIndex != -1) {
+          withContext(Dispatchers.Main) {
+            playlist = newPlaylist
+            playlistIndex = newIndex
+            Log.d(TAG, "Auto-playlist generated: ${playlist.size} videos")
+          }
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Failed to auto-generate playlist", e)
+      }
     }
   }
 
