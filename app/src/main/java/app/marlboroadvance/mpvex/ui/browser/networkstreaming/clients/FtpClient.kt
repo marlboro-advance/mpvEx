@@ -313,12 +313,28 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
+        // Build the correct path - if connection.path is set and path starts with it, use path as-is
+        // Otherwise, combine them (but connection.path should already be the working directory)
+        val fullPath = if (connection.path != "/" && connection.path.isNotEmpty()) {
+          // If path already includes connection.path, don't duplicate
+          if (path.startsWith(connection.path)) {
+            path
+          } else if (path.trimStart('/').startsWith(connection.path.trimStart('/'))) {
+            "/${path.trimStart('/')}"
+          } else {
+            // Path is relative to connection.path
+            "${connection.path.trimEnd('/')}/$path".replace("//", "/")
+          }
+        } else {
+          path
+        }
+        
         // Build FTP URI for mpv
         val uriString =
           if (connection.isAnonymous) {
-            "ftp://${connection.host}:${connection.port}$path"
+            "ftp://${connection.host}:${connection.port}$fullPath"
           } else {
-            "ftp://${connection.username}:${connection.password}@${connection.host}:${connection.port}$path"
+            "ftp://${connection.username}:${connection.password}@${connection.host}:${connection.port}$fullPath"
           }
 
         Result.success(Uri.parse(uriString))

@@ -61,9 +61,16 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         } else {
           // Remove trailing slash from baseUrl to prevent double slashes
           val cleanBaseUrl = baseUrl.trimEnd('/')
-          // Ensure path starts with / for proper URL construction
-          val cleanPath = if (path.startsWith("/")) path else "/$path"
-          "$cleanBaseUrl$cleanPath"
+          
+          // If the requested path is the same as the connection path, use baseUrl directly
+          // This prevents duplication when browsing the initial connection path
+          if (path == connection.path || path.trimStart('/') == connection.path.trimStart('/')) {
+            cleanBaseUrl
+          } else {
+            // Ensure path starts with / for proper URL construction
+            val cleanPath = if (path.startsWith("/")) path else "/$path"
+            "$cleanBaseUrl$cleanPath"
+          }
         }
 
         val resources = client.list(url)
@@ -112,8 +119,14 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         } else {
           // Properly construct URL without double slashes
           val cleanBasePath = connection.path.trimEnd('/')
-          val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-          "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+          
+          // If path equals connection.path, don't append it again
+          if (path == connection.path || path.trimStart('/') == connection.path.trimStart('/')) {
+            "$protocol://${connection.host}:${connection.port}$cleanBasePath"
+          } else {
+            val cleanFilePath = if (path.startsWith("/")) path else "/$path"
+            "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+          }
         }
 
         // Use PROPFIND to get file properties including size
@@ -145,8 +158,14 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         } else {
           // Properly construct URL without double slashes
           val cleanBasePath = connection.path.trimEnd('/')
-          val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-          "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+          
+          // If path equals connection.path, don't append it again
+          if (path == connection.path || path.trimStart('/') == connection.path.trimStart('/')) {
+            "$protocol://${connection.host}:${connection.port}$cleanBasePath"
+          } else {
+            val cleanFilePath = if (path.startsWith("/")) path else "/$path"
+            "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+          }
         }
 
         val rawStream = streamClient.get(url)
@@ -188,8 +207,14 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
           path
         } else {
           val cleanBaseUrl = baseUrl.trimEnd('/')
-          val cleanPath = if (path.startsWith("/")) path else "/$path"
-          "$cleanBaseUrl$cleanPath"
+          
+          // If path equals connection.path, don't append it again
+          if (path == connection.path || path.trimStart('/') == connection.path.trimStart('/')) {
+            cleanBaseUrl
+          } else {
+            val cleanPath = if (path.startsWith("/")) path else "/$path"
+            "$cleanBaseUrl$cleanPath"
+          }
         }
 
         // Build WebDAV URI for mpv
@@ -199,8 +224,14 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
           } else {
             val protocol = if (connection.port == 443) "https" else "http"
             val cleanBasePath = connection.path.trimEnd('/')
-            val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-            "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+            
+            // If path equals connection.path, don't append it again
+            if (path == connection.path || path.trimStart('/') == connection.path.trimStart('/')) {
+              "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}$cleanBasePath"
+            } else {
+              val cleanFilePath = if (path.startsWith("/")) path else "/$path"
+              "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
+            }
           }
 
         Result.success(Uri.parse(uriString))
