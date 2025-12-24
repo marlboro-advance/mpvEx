@@ -780,7 +780,7 @@ fun PlayerControls(
             },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
-          val useWavySeekbar by playerPreferences.useWavySeekbar.collectAsState()
+          val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
 
           // Calculate read-ahead position (current position + buffered cache time)
           val readAheadPosition by remember(position, demuxerCacheDuration, cacheBufferingState, duration) {
@@ -820,7 +820,7 @@ fun PlayerControls(
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
             readAheadValue = readAheadPosition,
-            useWavySeekbar = useWavySeekbar,
+            seekbarStyle = seekbarStyle,
           )
         }
 

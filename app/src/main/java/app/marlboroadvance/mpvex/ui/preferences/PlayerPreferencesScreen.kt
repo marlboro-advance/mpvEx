@@ -34,6 +34,20 @@ import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
 
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.SeekbarStyle
+import app.marlboroadvance.mpvex.ui.player.controls.components.SeekbarPreview
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.compose.ui.unit.dp
+
 @Serializable
 object PlayerPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +56,7 @@ object PlayerPreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val preferences = koinInject<PlayerPreferences>()
+    val appearancePreferences = koinInject<AppearancePreferences>()
     Scaffold(
       topBar = {
         TopAppBar(
@@ -136,12 +151,49 @@ object PlayerPreferencesScreen : Screen {
             onValueChange = preferences.usePreciseSeeking::set,
             title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
           )
-          val useWavySeekbar by preferences.useWavySeekbar.collectAsState()
+
+          val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
+          
+          
+          Column(Modifier.padding(vertical = 8.dp)) {
+               Text(
+                   text = "Seekbar Style",
+                   style = MaterialTheme.typography.titleSmall, // Smaller font as requested
+                   modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                   color = MaterialTheme.colorScheme.primary
+               )
+               SeekbarStyle.entries.forEach { style ->
+                   Row(
+                       modifier = Modifier
+                           .fillMaxWidth()
+                           .clickable { appearancePreferences.seekbarStyle.set(style) }
+                           .padding(horizontal = 16.dp, vertical = 8.dp),
+                       verticalAlignment = Alignment.CenterVertically
+                   ) {
+                       RadioButton(
+                           selected = seekbarStyle == style,
+                           onClick = null 
+                       )
+                       Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
+                           Text(
+                               text = style.name,
+                               style = MaterialTheme.typography.bodyMedium
+                           )
+                           SeekbarPreview(
+                               style = style, 
+                               modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                           )
+                       }
+                   }
+               }
+          }
+          
+          val shrinkOnPress by appearancePreferences.shrinkOnPress.collectAsState()
           SwitchPreference(
-            value = useWavySeekbar,
-            onValueChange = preferences.useWavySeekbar::set,
-            title = { Text("Use wavy seekbar") },
-            summary = { Text("Disable to show a normal seekbar instead of the animated wavy seekbar") },
+            value = shrinkOnPress,
+            onValueChange = appearancePreferences.shrinkOnPress::set,
+            title = { Text("Shrink thumb on press") },
+            summary = { Text("Reduce thumb size when dragging/pressing") },
           )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_gestures)) },
