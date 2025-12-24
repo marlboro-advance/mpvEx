@@ -745,7 +745,16 @@ fun DiamondSeekbar(
         val waveEnd = progressPx + waveLength 
 
         fun computeAmplitude(x: Float, sign: Float): Float {
-             return sign * lineAmplitude
+             // Progressive Amplitude: Start small (flat), ramp up, then constant
+             
+             // Ramp up over the first 50% of the screen width
+             val rampDistance = width * 0.5f
+             val ratio = (x / rampDistance).coerceIn(0f, 1f) // x here is pixel position.
+             
+             // Start at 10% amplitude, quadratic ramp to 200% max
+             val scaleFactor = 0.05f + (1.9f * ratio * ratio)
+             
+             return sign * lineAmplitude * scaleFactor
         }
         
         val dist = waveLength / 2f
