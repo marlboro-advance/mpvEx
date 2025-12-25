@@ -226,28 +226,36 @@ class PlayerViewModel(
   // ==================== Audio/Subtitle Management ====================
 
   fun addAudio(uri: Uri) {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       runCatching {
         val path =
           uri.resolveUri(host.context)
-            ?: return@launch showToast("Failed to load audio file: Invalid URI")
+            ?: return@launch withContext(Dispatchers.Main) {
+              showToast("Failed to load audio file: Invalid URI")
+            }
 
         MPVLib.command("audio-add", path, "cached")
-        showToast("Audio track added")
+        withContext(Dispatchers.Main) {
+          showToast("Audio track added")
+        }
       }.onFailure { e ->
-        showToast("Failed to load audio: ${e.message}")
+        withContext(Dispatchers.Main) {
+          showToast("Failed to load audio: ${e.message}")
+        }
         android.util.Log.e("PlayerViewModel", "Error adding audio", e)
       }
     }
   }
 
   fun addSubtitle(uri: Uri) {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       runCatching {
         val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
 
         if (!isValidSubtitleFile(fileName)) {
-          return@launch showToast("Invalid subtitle file format")
+          return@launch withContext(Dispatchers.Main) {
+            showToast("Invalid subtitle file format")
+          }
         }
 
         // Take persistent URI permission for content:// URIs
@@ -272,9 +280,13 @@ class PlayerViewModel(
         }
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-        showToast("$displayName added")
+        withContext(Dispatchers.Main) {
+          showToast("$displayName added")
+        }
       }.onFailure {
-        showToast("Failed to load subtitle")
+        withContext(Dispatchers.Main) {
+          showToast("Failed to load subtitle")
+        }
       }
     }
   }
@@ -294,7 +306,7 @@ class PlayerViewModel(
   }
 
   fun removeSubtitle(id: Int) {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       // Find the subtitle URI before removing
       val tracks = subtitleTracks.value
       val trackToRemove = tracks.firstOrNull { it.id == id }
@@ -358,11 +370,23 @@ class PlayerViewModel(
 
   // ==================== Playback Control ====================
 
-  fun pauseUnpause() = MPVLib.command("cycle", "pause")
+  fun pauseUnpause() {
+    viewModelScope.launch(Dispatchers.IO) {
+      MPVLib.command("cycle", "pause")
+    }
+  }
 
-  fun pause() = MPVLib.setPropertyBoolean("pause", true)
+  fun pause() {
+    viewModelScope.launch(Dispatchers.IO) {
+      MPVLib.setPropertyBoolean("pause", true)
+    }
+  }
 
-  fun unpause() = MPVLib.setPropertyBoolean("pause", false)
+  fun unpause() {
+    viewModelScope.launch(Dispatchers.IO) {
+      MPVLib.setPropertyBoolean("pause", false)
+    }
+  }
 
   // ==================== UI Control ====================
 
@@ -405,21 +429,23 @@ class PlayerViewModel(
   }
 
   fun seekTo(position: Int) {
-    val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
-    if (position !in 0..maxDuration) return
+    viewModelScope.launch(Dispatchers.IO) {
+      val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
+      if (position !in 0..maxDuration) return@launch
 
-    // Cancel pending relative seek before absolute seek
-    seekCoalesceJob?.cancel()
-    pendingSeekOffset = 0
-    val seekMode = if (playerPreferences.usePreciseSeeking.get()) "absolute+exact" else "absolute+keyframes"
-    MPVLib.command("seek", position.toString(), seekMode)
+      // Cancel pending relative seek before absolute seek
+      seekCoalesceJob?.cancel()
+      pendingSeekOffset = 0
+      val seekMode = if (playerPreferences.usePreciseSeeking.get()) "absolute+exact" else "absolute+keyframes"
+      MPVLib.command("seek", position.toString(), seekMode)
+    }
   }
 
   private fun coalesceSeek(offset: Int) {
     pendingSeekOffset += offset
     seekCoalesceJob?.cancel()
     seekCoalesceJob =
-      viewModelScope.launch {
+      viewModelScope.launch(Dispatchers.IO) {
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
@@ -694,7 +720,9 @@ class PlayerViewModel(
     when (gesturePreferences.leftSingleActionGesture.get()) {
       SingleActionGesture.Seek -> leftSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
+      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
+      }
       SingleActionGesture.None -> {}
     }
   }
@@ -702,7 +730,9 @@ class PlayerViewModel(
   fun handleCenterDoubleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      }
       SingleActionGesture.Seek, SingleActionGesture.None -> {}
     }
   }
@@ -710,7 +740,9 @@ class PlayerViewModel(
   fun handleCenterSingleTap() {
     when (gesturePreferences.centerSingleActionGesture.get()) {
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
+      }
       SingleActionGesture.Seek, SingleActionGesture.None -> {}
     }
   }
@@ -719,7 +751,9 @@ class PlayerViewModel(
     when (gesturePreferences.rightSingleActionGesture.get()) {
       SingleActionGesture.Seek -> rightSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
-      SingleActionGesture.Custom -> MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
+      SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
+        MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)
+      }
       SingleActionGesture.None -> {}
     }
   }
@@ -777,7 +811,7 @@ class PlayerViewModel(
   }
 
   fun frameStepForward() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       if (paused != true) {
         pauseUnpause()
         delay(50)
@@ -785,14 +819,16 @@ class PlayerViewModel(
       MPVLib.command("no-osd", "frame-step")
       delay(100)
       updateFrameInfo()
-      showFrameInfoOverlay()
-      // Reset the inactivity timer
-      resetFrameNavigationTimer()
+      withContext(Dispatchers.Main) {
+        showFrameInfoOverlay()
+        // Reset the inactivity timer
+        resetFrameNavigationTimer()
+      }
     }
   }
 
   fun frameStepBackward() {
-    viewModelScope.launch {
+    viewModelScope.launch(Dispatchers.IO) {
       if (paused != true) {
         pauseUnpause()
         delay(50)
@@ -800,9 +836,11 @@ class PlayerViewModel(
       MPVLib.command("no-osd", "frame-back-step")
       delay(100)
       updateFrameInfo()
-      showFrameInfoOverlay()
-      // Reset the inactivity timer
-      resetFrameNavigationTimer()
+      withContext(Dispatchers.Main) {
+        showFrameInfoOverlay()
+        // Reset the inactivity timer
+        resetFrameNavigationTimer()
+      }
     }
   }
 
