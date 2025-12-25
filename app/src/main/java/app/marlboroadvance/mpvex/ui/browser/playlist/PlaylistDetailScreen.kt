@@ -2,37 +2,47 @@ package app.marlboroadvance.mpvex.ui.browser.playlist
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.SwapVert
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +51,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
@@ -49,6 +62,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.ui.browser.cards.M3UVideoCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
@@ -64,6 +78,22 @@ import org.koin.compose.koinInject
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+/**
+ * Playlist detail screen showing videos in a playlist.
+ * 
+ * **M3U Playlist Behavior:**
+ * M3U playlists (streaming URLs) are handled differently to prevent ANR issues:
+ * - Each stream is played individually (no playlist navigation in PlayerActivity)
+ * - No next/previous buttons - each stream URL is opened standalone
+ * - This prevents loading thousands of URLs into memory at once
+ * - Users can manually select and play different streams from the list
+ * 
+ * **Regular Playlist Behavior:**
+ * Local file playlists support full playlist navigation:
+ * - Next/previous buttons available during playback
+ * - Playlist continuation and shuffle modes
+ * - Full playlist loaded into PlayerActivity
+ */
 @Serializable
 data class PlaylistDetailScreen(val playlistId: Int) : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
@@ -89,10 +119,35 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
     val videos = videoItems.map { it.video }
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // Selection manager - use playlist item ID as unique key
+    // Search state
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isSearching by rememberSaveable { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Filter video items based on search query
+    val filteredVideoItems = if (isSearching && searchQuery.isNotBlank()) {
+      videoItems.filter { item ->
+        item.video.displayName.contains(searchQuery, ignoreCase = true) ||
+        item.video.path.contains(searchQuery, ignoreCase = true)
+      }
+    } else {
+      videoItems
+    }
+    val filteredVideos = filteredVideoItems.map { it.video }
+
+    // Request focus when search is activated
+    LaunchedEffect(isSearching) {
+      if (isSearching) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+      }
+    }
+
+    // Selection manager - use playlist item ID as unique key, work with filtered items
     val selectionManager =
       rememberSelectionManager(
-        items = videoItems,
+        items = filteredVideoItems,
         getId = { it.playlistItem.id },
         onDeleteItems = { itemsToDelete ->
           itemsToDelete.forEach { item ->
@@ -113,34 +168,83 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
     val mediaInfoData = remember { mutableStateOf<MediaInfoOps.MediaInfoData?>(null) }
     val mediaInfoLoading = remember { mutableStateOf(false) }
     val mediaInfoError = remember { mutableStateOf<String?>(null) }
+    var showUrlDialog by rememberSaveable { mutableStateOf(false) }
+    var urlDialogContent by remember { mutableStateOf("") }
 
     // Reorder mode state
     var isReorderMode by rememberSaveable { mutableStateOf(false) }
 
-    // Predictive back: Only intercept when in selection mode or reorder mode
-    BackHandler(enabled = selectionManager.isInSelectionMode || isReorderMode) {
-      if (isReorderMode) {
-        isReorderMode = false
-      } else {
-        selectionManager.clear()
+    // Predictive back: Intercept when in selection mode, reorder mode, or searching
+    BackHandler(enabled = selectionManager.isInSelectionMode || isReorderMode || isSearching) {
+      when {
+        isReorderMode -> isReorderMode = false
+        isSearching -> {
+          isSearching = false
+          searchQuery = ""
+        }
+        selectionManager.isInSelectionMode -> selectionManager.clear()
       }
     }
 
     Scaffold(
       topBar = {
-        BrowserTopBar(
-          title = playlist?.name ?: "Playlist",
-          isInSelectionMode = selectionManager.isInSelectionMode,
-          selectedCount = selectionManager.selectedCount,
-          totalCount = videos.size,
-          onBackClick = {
-            when {
-              isReorderMode -> isReorderMode = false
-              selectionManager.isInSelectionMode -> selectionManager.clear()
-              else -> backStack.removeLastOrNull()
-            }
-          },
-          onCancelSelection = { selectionManager.clear() },
+        if (isSearching) {
+          // Search mode - show search bar
+          SearchBar(
+            inputField = {
+              SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { },
+                expanded = false,
+                onExpandedChange = { },
+                placeholder = { Text("Search videos...") },
+                leadingIcon = {
+                  Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                  )
+                },
+                trailingIcon = {
+                  IconButton(
+                    onClick = {
+                      isSearching = false
+                      searchQuery = ""
+                    },
+                  ) {
+                    Icon(
+                      imageVector = Icons.Filled.Close,
+                      contentDescription = "Cancel",
+                    )
+                  }
+                },
+                modifier = Modifier.focusRequester(focusRequester),
+              )
+            },
+            expanded = false,
+            onExpandedChange = { },
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+          ) {
+            // Empty content for SearchBar
+          }
+        } else {
+          BrowserTopBar(
+            title = playlist?.name ?: "Playlist",
+            isInSelectionMode = selectionManager.isInSelectionMode,
+            selectedCount = selectionManager.selectedCount,
+            totalCount = videos.size,
+            onBackClick = {
+              when {
+                isReorderMode -> isReorderMode = false
+                selectionManager.isInSelectionMode -> selectionManager.clear()
+                else -> backStack.removeLastOrNull()
+              }
+            },
+            onCancelSelection = { selectionManager.clear() },
           isSingleSelection = selectionManager.isSingleSelection,
           useRemoveIcon = true, // Show remove icon instead of delete for playlist
           onInfoClick =
@@ -148,19 +252,32 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               {
                 val item = selectionManager.getSelectedItems().firstOrNull()
                 if (item != null) {
-                  val intent = Intent(context, app.marlboroadvance.mpvex.ui.mediainfo.MediaInfoActivity::class.java)
-                  intent.action = Intent.ACTION_VIEW
-                  intent.data = item.video.uri
-                  context.startActivity(intent)
-                  selectionManager.clear()
+                  if (playlist?.isM3uPlaylist == true) {
+                    // For M3U playlists, show URL dialog
+                    urlDialogContent = item.video.path
+                    showUrlDialog = true
+                    selectionManager.clear()
+                  } else {
+                    // For regular playlists, show MediaInfo activity
+                    val intent = Intent(context, app.marlboroadvance.mpvex.ui.mediainfo.MediaInfoActivity::class.java)
+                    intent.action = Intent.ACTION_VIEW
+                    intent.data = item.video.uri
+                    context.startActivity(intent)
+                    selectionManager.clear()
+                  }
                 }
               }
             } else {
               null
             },
-          onShareClick = {
-            val videosToShare = selectionManager.getSelectedItems().map { it.video }
-            MediaUtils.shareVideos(context, videosToShare)
+          onShareClick = if (playlist?.isM3uPlaylist != true) {
+            // Hide share button for M3U playlists
+            {
+              val videosToShare = selectionManager.getSelectedItems().map { it.video }
+              MediaUtils.shareVideos(context, videosToShare)
+            }
+          } else {
+            null
           },
           onPlayClick = null, // Don't show play icon in selection mode for playlist
           onSelectAll = { selectionManager.selectAll() },
@@ -186,52 +303,111 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                 Row(
                   verticalAlignment = Alignment.CenterVertically,
                 ) {
-                  // Reorder button
+                  // Search button
                   IconButton(
-                    onClick = { isReorderMode = true },
+                    onClick = { isSearching = true },
                   ) {
                     Icon(
-                      imageVector = Icons.Outlined.SwapVert,
-                      contentDescription = "Reorder playlist",
+                      imageVector = Icons.Filled.Search,
+                      contentDescription = "Search videos",
                       tint = MaterialTheme.colorScheme.onSurface,
                     )
                   }
-
                   Spacer(modifier = Modifier.width(4.dp))
+                  
+                  // Show refresh button for M3U playlists
+                  if (playlist?.isM3uPlaylist == true) {
+                    IconButton(
+                      onClick = {
+                        coroutineScope.launch {
+                          val result = viewModel.refreshM3UPlaylist()
+                          result.onSuccess {
+                            Toast.makeText(
+                              context,
+                              "Playlist refreshed successfully",
+                              Toast.LENGTH_SHORT
+                            ).show()
+                          }.onFailure { error ->
+                            Toast.makeText(
+                              context,
+                              "Failed to refresh: ${error.message}",
+                              Toast.LENGTH_LONG
+                            ).show()
+                          }
+                        }
+                      },
+                    ) {
+                      Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Refresh M3U playlist",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                      )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                  }
+                  
+                  // Reorder button (hide for M3U playlists)
+                  if (playlist?.isM3uPlaylist != true) {
+                    IconButton(
+                      onClick = { isReorderMode = true },
+                    ) {
+                      Icon(
+                        imageVector = Icons.Outlined.SwapVert,
+                        contentDescription = "Reorder playlist",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                      )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                  }
 
                   // Play button
                   Button(
                     onClick = {
-                      // Find the most recently played video
-                      val mostRecentlyPlayedItem = videoItems
-                        .filter { it.playlistItem.lastPlayedAt > 0 }
-                        .maxByOrNull { it.playlistItem.lastPlayedAt }
+                      if (playlist?.isM3uPlaylist == true) {
+                        // M3U playlists: Play only the first/most recent stream (no playlist navigation)
+                        val mostRecentlyPlayedItem = videoItems
+                          .filter { it.playlistItem.lastPlayedAt > 0 }
+                          .maxByOrNull { it.playlistItem.lastPlayedAt }
 
-                      // Start from most recently played video, or first video if none played yet
-                      val startIndex = if (mostRecentlyPlayedItem != null) {
-                        videoItems.indexOfFirst { it.playlistItem.id == mostRecentlyPlayedItem.playlistItem.id }
+                        val itemToPlay = mostRecentlyPlayedItem ?: videoItems.firstOrNull()
+                        
+                        if (itemToPlay != null) {
+                          coroutineScope.launch {
+                            viewModel.updatePlayHistory(itemToPlay.video.path)
+                          }
+                          
+                          // Play single stream URL without playlist
+                          MediaUtils.playFile(itemToPlay.video, context, "m3u_playlist")
+                        }
                       } else {
-                        0
-                      }
+                        // Regular playlists: Play with full playlist navigation
+                        val mostRecentlyPlayedItem = videoItems
+                          .filter { it.playlistItem.lastPlayedAt > 0 }
+                          .maxByOrNull { it.playlistItem.lastPlayedAt }
 
-                      // Record play history for the video we're starting from
-                      if (videos.isNotEmpty() && startIndex >= 0) {
-                        coroutineScope.launch {
-                          viewModel.updatePlayHistory(videos[startIndex].path)
+                        val startIndex = if (mostRecentlyPlayedItem != null) {
+                          videoItems.indexOfFirst { it.playlistItem.id == mostRecentlyPlayedItem.playlistItem.id }
+                        } else {
+                          0
                         }
-                      }
 
-                      val videoUris = videos.map { it.uri }
-                      if (videoUris.isNotEmpty() && startIndex >= 0) {
-                        val intent = Intent(context, PlayerActivity::class.java).apply {
-                          action = Intent.ACTION_VIEW
-                          data = videoUris[startIndex]
-                          putParcelableArrayListExtra("playlist", ArrayList(videoUris))
-                          putExtra("playlist_index", startIndex)
-                          putExtra("launch_source", "playlist")
-                          putExtra("playlist_id", playlistId) // Pass playlist ID for tracking
+                        if (videos.isNotEmpty() && startIndex >= 0) {
+                          coroutineScope.launch {
+                            viewModel.updatePlayHistory(videos[startIndex].path)
+                          }
                         }
-                        context.startActivity(intent)
+
+                        val videoUris = videos.map { it.uri }
+                        if (videoUris.isNotEmpty() && startIndex >= 0) {
+                          val intent = Intent(context, PlayerActivity::class.java).apply {
+                            action = Intent.ACTION_VIEW
+                            data = videoUris[startIndex]
+                            putExtra("playlist_index", startIndex)
+                            putExtra("launch_source", "playlist")
+                            putExtra("playlist_id", playlistId)
+                          }
+                          context.startActivity(intent)
+                        }
                       }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -262,14 +438,47 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
             }
           },
         )
+        }
       },
       floatingActionButton = { },
     ) { padding ->
-      PlaylistVideoListContent(
-        videoItems = videoItems,
+      // Show "no results" message when searching with no results
+      if (isSearching && filteredVideoItems.isEmpty() && searchQuery.isNotBlank()) {
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(padding),
+          contentAlignment = Alignment.Center,
+        ) {
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            Icon(
+              imageVector = Icons.Filled.Search,
+              contentDescription = null,
+              modifier = Modifier.size(64.dp),
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+              text = "No videos found",
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+              text = "Try a different search term",
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+        }
+      } else {
+        PlaylistVideoListContent(
+          videoItems = filteredVideoItems,
         isLoading = isLoading && videoItems.isEmpty(),
         selectionManager = selectionManager,
         isReorderMode = isReorderMode,
+        isM3uPlaylist = playlist?.isM3uPlaylist == true,
         onVideoItemClick = { item ->
           if (selectionManager.isInSelectionMode) {
             selectionManager.toggle(item)
@@ -279,23 +488,27 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               viewModel.updatePlayHistory(item.video.path)
             }
 
-            // Always play as playlist from playlist screen
-            val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
-            if (startIndex >= 0) {
-              if (videos.size == 1) {
-                MediaUtils.playFile(item.video, context, "playlist_detail")
-              } else {
-                val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
-                intent.setClass(context, PlayerActivity::class.java)
-                intent.putExtra("internal_launch", true)
-                intent.putParcelableArrayListExtra("playlist", ArrayList(videos.map { it.uri }))
-                intent.putExtra("playlist_index", startIndex)
-                intent.putExtra("launch_source", "playlist")
-                intent.putExtra("playlist_id", playlistId) // Pass playlist ID for tracking
-                context.startActivity(intent)
-              }
+            if (playlist?.isM3uPlaylist == true) {
+              // M3U playlists: Play only the clicked stream (no playlist navigation)
+              MediaUtils.playFile(item.video, context, "m3u_playlist")
             } else {
-              MediaUtils.playFile(item.video, context, "playlist_detail")
+              // Regular playlists: Play with full playlist navigation
+              val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
+              if (startIndex >= 0) {
+                if (videos.size == 1) {
+                  MediaUtils.playFile(item.video, context, "playlist_detail")
+                } else {
+                  val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
+                  intent.setClass(context, PlayerActivity::class.java)
+                  intent.putExtra("internal_launch", true)
+                  intent.putExtra("playlist_index", startIndex)
+                  intent.putExtra("launch_source", "playlist")
+                  intent.putExtra("playlist_id", playlistId)
+                  context.startActivity(intent)
+                }
+              } else {
+                MediaUtils.playFile(item.video, context, "playlist_detail")
+              }
             }
           }
         },
@@ -312,6 +525,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
         listState = listState,
         modifier = Modifier.padding(padding),
       )
+      }
 
       // Dialogs
       RemoveFromPlaylistDialog(
@@ -320,6 +534,20 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
         onConfirm = { selectionManager.deleteSelected() },
         itemCount = selectionManager.selectedCount,
       )
+
+      // URL Dialog for M3U streams
+      if (showUrlDialog) {
+        StreamUrlDialog(
+          url = urlDialogContent,
+          onDismiss = { showUrlDialog = false },
+          onCopy = {
+            val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText("Stream URL", urlDialogContent)
+            clipboardManager.setPrimaryClip(clip)
+            android.widget.Toast.makeText(context, "URL copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+          }
+        )
+      }
     }
   }
 }
@@ -335,6 +563,7 @@ private fun PlaylistVideoListContent(
   onReorder: (Int, Int) -> Unit,
   listState: androidx.compose.foundation.lazy.LazyListState,
   modifier: Modifier = Modifier,
+  isM3uPlaylist: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
@@ -431,20 +660,33 @@ private fun PlaylistVideoListContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
               ) {
-                VideoCard(
-                  video = item.video,
-                  progressPercentage = progressPercentage,
-                  isRecentlyPlayed = item.playlistItem.id == mostRecentlyPlayedItem?.playlistItem?.id,
-                  isSelected = selectionManager.isSelected(item),
-                  onClick = { onVideoItemClick(item) },
-                  onLongClick = { onVideoItemLongClick(item) },
-                  onThumbClick = if (tapThumbnailToSelect) {
-                    { onVideoItemLongClick(item) }
-                  } else {
-                    { onVideoItemClick(item) }
-                  },
-                  modifier = Modifier.weight(1f),
-                )
+                // Use M3UVideoCard for streaming URLs, VideoCard for local files
+                if (isM3uPlaylist) {
+                  M3UVideoCard(
+                    title = item.video.displayName,
+                    url = item.video.path,
+                    onClick = { onVideoItemClick(item) },
+                    onLongClick = { onVideoItemLongClick(item) },
+                    isSelected = selectionManager.isSelected(item),
+                    isRecentlyPlayed = item.playlistItem.id == mostRecentlyPlayedItem?.playlistItem?.id,
+                    modifier = Modifier.weight(1f),
+                  )
+                } else {
+                  VideoCard(
+                    video = item.video,
+                    progressPercentage = progressPercentage,
+                    isRecentlyPlayed = item.playlistItem.id == mostRecentlyPlayedItem?.playlistItem?.id,
+                    isSelected = selectionManager.isSelected(item),
+                    onClick = { onVideoItemClick(item) },
+                    onLongClick = { onVideoItemLongClick(item) },
+                    onThumbClick = if (tapThumbnailToSelect) {
+                      { onVideoItemLongClick(item) }
+                    } else {
+                      { onVideoItemClick(item) }
+                    },
+                    modifier = Modifier.weight(1f),
+                  )
+                }
 
                 // Drag handle - only show when in reorder mode, positioned at the end
                 if (isReorderMode) {
@@ -468,6 +710,45 @@ private fun PlaylistVideoListContent(
       }
     }
   }
+}
+
+@Composable
+private fun StreamUrlDialog(
+  url: String,
+  onDismiss: () -> Unit,
+  onCopy: () -> Unit,
+) {
+  androidx.compose.material3.AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Stream URL") },
+    text = {
+      Text(
+        text = url,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.fillMaxWidth()
+      )
+    },
+    confirmButton = {
+      androidx.compose.material3.TextButton(
+        onClick = {
+          onCopy()
+          onDismiss()
+        }
+      ) {
+        Icon(
+          imageVector = Icons.Filled.ContentCopy,
+          contentDescription = null,
+          modifier = Modifier.padding(end = 4.dp).size(18.dp)
+        )
+        Text("Copy")
+      }
+    },
+    dismissButton = {
+      androidx.compose.material3.TextButton(onClick = onDismiss) {
+        Text("Close")
+      }
+    },
+  )
 }
 
 @Composable

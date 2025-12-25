@@ -185,6 +185,7 @@ object MediaFileRepository : KoinComponent {
 
   /**
    * Gets all videos in a specific folder
+   * OPTIMIZED: Uses batch metadata extraction for faster loading
    * @param bucketId Can be either a path or a bucket ID (path hash)
    */
   suspend fun getVideosInFolder(
@@ -199,9 +200,6 @@ object MediaFileRepository : KoinComponent {
           return@withContext cached
         }
       }
-
-      val videos = mutableListOf<Video>()
-      val processedPaths = mutableSetOf<String>()
 
       try {
         // Determine if bucketId is a path or hash
@@ -225,29 +223,43 @@ object MediaFileRepository : KoinComponent {
 
         Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath")
 
-        for (videoFile in videoFiles) {
+        // Batch extract metadata for all videos
+        val fileTriples = videoFiles.map { file ->
+          Triple(file, Uri.fromFile(file), file.name)
+        }
+
+        val metadataMap = metadataCache.getOrExtractMetadataBatch(fileTriples)
+
+        // Create video objects with metadata
+        val videos = videoFiles.mapNotNull { videoFile ->
           try {
-            val normalizedPath = videoFile.canonicalPath
-            if (processedPaths.add(normalizedPath) && videoFile.exists()) {
-              val video = createVideoFromFile(videoFile, folderPath, directory.name)
-              videos.add(video)
+            if (videoFile.exists()) {
+              createVideoFromFileWithMetadata(
+                videoFile,
+                folderPath,
+                directory.name,
+                metadataMap[videoFile.absolutePath],
+              )
+            } else {
+              null
             }
           } catch (e: Exception) {
             Log.w(TAG, "Error processing video file: ${videoFile.absolutePath}", e)
+            null
           }
         }
+
+        val result = videos.sortedBy { it.displayName.lowercase() }
+
+        // Update cache
+        videosCache[bucketId] = Pair(result, System.currentTimeMillis())
+
+        result
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
         // Return cached data even if expired on error
         return@withContext videosCache[bucketId]?.first ?: emptyList()
       }
-
-      val result = videos.sortedBy { it.displayName.lowercase() }
-
-      // Update cache
-      videosCache[bucketId] = Pair(result, System.currentTimeMillis())
-
-      result
     }
 
   /**
@@ -314,6 +326,62 @@ object MediaFileRepository : KoinComponent {
       width = metadata.width
       height = metadata.height
       fps = metadata.fps
+    }
+
+    return Video(
+      id = path.hashCode().toLong(),
+      title = title,
+      displayName = displayName,
+      path = path,
+      uri = uri,
+      duration = duration,
+      durationFormatted = formatDuration(duration),
+      size = size,
+      sizeFormatted = formatFileSize(size),
+      dateModified = dateModified,
+      dateAdded = dateModified,
+      mimeType = mimeType,
+      bucketId = bucketId,
+      bucketDisplayName = bucketDisplayName,
+      width = width,
+      height = height,
+      fps = fps,
+      resolution = formatResolutionWithFps(width, height, fps),
+    )
+  }
+
+  /**
+   * OPTIMIZED: Creates a Video object from a file with pre-fetched metadata
+   * Use this when metadata has already been batch-extracted
+   */
+  private fun createVideoFromFileWithMetadata(
+    file: File,
+    bucketId: String,
+    bucketDisplayName: String,
+    metadata: app.marlboroadvance.mpvex.utils.media.MediaInfoOps.VideoMetadata?,
+  ): Video {
+    val path = file.absolutePath
+    val displayName = file.name
+    val title = file.nameWithoutExtension
+    val dateModified = file.lastModified() / 1000
+
+    val extension = file.extension.lowercase()
+    val mimeType = StorageScanUtils.getMimeTypeFromExtension(extension)
+    val uri = Uri.fromFile(file)
+
+    // Use pre-fetched metadata
+    var size = file.length()
+    var duration = 0L
+    var width = 0
+    var height = 0
+    var fps = 0f
+
+    metadata?.let {
+      if (it.sizeBytes > 0) size = it.sizeBytes
+      duration = it.durationMs
+      width = it.width
+      height = it.height
+      fps = it.fps
     }
 
     return Video(

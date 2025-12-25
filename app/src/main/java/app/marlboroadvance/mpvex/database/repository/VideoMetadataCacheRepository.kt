@@ -26,7 +26,7 @@ class VideoMetadataCacheRepository(
 ) {
   companion object {
     private const val TAG = "VideoMetadataCache"
-    private const val PARALLEL_PROCESSING_LIMIT = 6 // Process 6 videos simultaneously
+    private const val PARALLEL_PROCESSING_LIMIT = 16 // Process 16 videos simultaneously for faster extraction
     private const val CACHE_VALIDITY_DAYS = 30L
   }
 
@@ -80,6 +80,107 @@ class VideoMetadataCacheRepository(
       }
 
       result.getOrNull()
+    }
+
+  /**
+   * OPTIMIZED: Batch get metadata from cache or extract using MediaInfo
+   * Processes multiple files with batch cache lookup and parallel extraction
+   * Returns map of paths to metadata (much faster than individual calls)
+   */
+  suspend fun getOrExtractMetadataBatch(
+    files: List<Triple<File, Uri, String>>,
+  ): Map<String, MediaInfoOps.VideoMetadata> =
+    withContext(Dispatchers.IO) {
+      if (files.isEmpty()) return@withContext emptyMap()
+
+      val results = mutableMapOf<String, MediaInfoOps.VideoMetadata>()
+
+      // Batch lookup from cache
+      val paths = files.map { it.first.absolutePath }
+      val cachedEntries = dao.getMetadataBatch(paths)
+      val cachedMap = cachedEntries.associateBy { it.path }
+
+      // Separate cached and uncached files
+      val cachedFiles = mutableListOf<Triple<String, File, VideoMetadataEntity>>()
+      val uncachedFiles = mutableListOf<Triple<File, Uri, String>>()
+
+      for ((file, uri, displayName) in files) {
+        val path = file.absolutePath
+        val size = file.length()
+        val dateModified = file.lastModified() / 1000
+
+        val cached = cachedMap[path]
+        if (cached != null && cached.dateModified == dateModified && cached.size == size) {
+          // Cache hit - valid entry
+          cachedFiles.add(Triple(path, file, cached))
+        } else {
+          // Cache miss or stale entry
+          uncachedFiles.add(Triple(file, uri, displayName))
+        }
+      }
+
+      Log.d(TAG, "Batch lookup: ${cachedFiles.size} cached, ${uncachedFiles.size} need extraction")
+
+      // Add cached results
+      for ((path, _, cached) in cachedFiles) {
+        results[path] = MediaInfoOps.VideoMetadata(
+          sizeBytes = cached.size,
+          durationMs = cached.duration,
+          width = cached.width,
+          height = cached.height,
+          fps = cached.fps,
+        )
+      }
+
+      // Extract metadata for uncached files in parallel
+      if (uncachedFiles.isNotEmpty()) {
+        val extractedMetadata = mutableListOf<VideoMetadataEntity>()
+
+        uncachedFiles.chunked(PARALLEL_PROCESSING_LIMIT).forEach { batch ->
+          coroutineScope {
+            val batchResults =
+              batch.map { (file, uri, displayName) ->
+                async {
+                  val path = file.absolutePath
+                  val size = file.length()
+                  val dateModified = file.lastModified() / 1000
+
+                  val result = MediaInfoOps.extractBasicMetadata(context, uri, displayName)
+                  result.onSuccess { metadata ->
+                    synchronized(extractedMetadata) {
+                      extractedMetadata.add(
+                        VideoMetadataEntity(
+                          path = path,
+                          size = size,
+                          dateModified = dateModified,
+                          duration = metadata.durationMs,
+                          width = metadata.width,
+                          height = metadata.height,
+                          fps = metadata.fps,
+                          lastScanned = System.currentTimeMillis(),
+                        ),
+                      )
+                    }
+                    path to metadata
+                  }.onFailure { error ->
+                    Log.w(TAG, "Failed to extract metadata for $displayName: ${error.message}")
+                  }
+                  result.getOrNull()?.let { path to it }
+                }
+              }.awaitAll().filterNotNull()
+
+            results.putAll(batchResults)
+          }
+        }
+
+        // Batch insert all extracted metadata into cache
+        if (extractedMetadata.isNotEmpty()) {
+          dao.insertMetadataBatch(extractedMetadata)
+          Log.d(TAG, "Batch inserted ${extractedMetadata.size} metadata entries to cache")
+        }
+      }
+
+      results
     }
 
   /**

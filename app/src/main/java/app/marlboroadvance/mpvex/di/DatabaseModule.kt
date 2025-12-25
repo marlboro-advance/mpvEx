@@ -176,7 +176,56 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
   }
 }
 
+/**
+ * Migration from version 2 to version 3
+ *
+ * Changes:
+ * - Adds externalSubtitles column to PlaybackStateEntity to persist external subtitle URIs
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_2_3", "Starting migration from version 2 to version 3")
 
+      // Add externalSubtitles column to PlaybackStateEntity
+      db.execSQL(
+        "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''"
+      )
+
+      android.util.Log.d("Migration_2_3", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_2_3", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
+/**
+ * Migration from version 3 to version 4
+ *
+ * Changes:
+ * - Adds m3uSourceUrl and isM3uPlaylist columns to PlaylistEntity for M3U/M3U8 playlist support
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_3_4", "Starting migration from version 3 to version 4")
+
+      // Add M3U-related columns to PlaylistEntity
+      db.execSQL(
+        "ALTER TABLE `PlaylistEntity` ADD COLUMN `m3uSourceUrl` TEXT DEFAULT NULL"
+      )
+      db.execSQL(
+        "ALTER TABLE `PlaylistEntity` ADD COLUMN `isM3uPlaylist` INTEGER NOT NULL DEFAULT 0"
+      )
+
+      android.util.Log.d("Migration_3_4", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_3_4", "Migration failed", e)
+      throw e
+    }
+  }
+}
 
 val DatabaseModule =
   module {
@@ -192,7 +241,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
         .build()
     }

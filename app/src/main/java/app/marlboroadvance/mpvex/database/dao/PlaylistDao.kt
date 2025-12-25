@@ -116,4 +116,24 @@ interface PlaylistDao {
     """,
   )
   suspend fun getPlaylistItemByPath(playlistId: Int, filePath: String): PlaylistItemEntity?
+
+  // Pagination support for large playlists
+  @Query(
+    """
+    SELECT * FROM PlaylistItemEntity 
+    WHERE playlistId = :playlistId 
+    ORDER BY position ASC 
+    LIMIT :limit OFFSET :offset
+    """,
+  )
+  suspend fun getPlaylistItemsWindow(playlistId: Int, offset: Int, limit: Int): List<PlaylistItemEntity>
+
+  @Query(
+    """
+    SELECT * FROM PlaylistItemEntity 
+    WHERE playlistId = :playlistId AND position >= :startPosition AND position < :endPosition
+    ORDER BY position ASC
+    """,
+  )
+  suspend fun getPlaylistItemsInRange(playlistId: Int, startPosition: Int, endPosition: Int): List<PlaylistItemEntity>
 }

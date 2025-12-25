@@ -36,6 +36,10 @@ class PlaylistViewModel(
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+  // Track if initial load has completed to prevent empty state flicker
+  private val _hasCompletedInitialLoad = MutableStateFlow(false)
+  val hasCompletedInitialLoad: StateFlow<Boolean> = _hasCompletedInitialLoad.asStateFlow()
+
   companion object {
     private const val TAG = "PlaylistViewModel"
 
@@ -47,6 +51,25 @@ class PlaylistViewModel(
   }
 
   init {
+    // Load cached playlists instantly for immediate display
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        // Get initial cached data synchronously
+        val cachedPlaylists = repository.getAllPlaylists()
+        if (cachedPlaylists.isNotEmpty()) {
+          // Show cached data immediately (without video counts for speed)
+          val quickLoad = cachedPlaylists.sortedBy { it.name.lowercase() }.map { playlist ->
+            PlaylistWithCount(playlist, 0) // Show 0 count initially
+          }
+          _playlistsWithCount.value = quickLoad
+          _hasCompletedInitialLoad.value = true
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error loading cached playlists", e)
+      }
+    }
+
+    // Then observe for updates with actual counts
     viewModelScope.launch(Dispatchers.IO) {
       repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
         val sortedPlaylists = playlistsFromDb.sortedBy { it.name.lowercase() }
@@ -57,6 +80,7 @@ class PlaylistViewModel(
         }
 
         _playlistsWithCount.value = playlistsWithCounts
+        _hasCompletedInitialLoad.value = true
       }
     }
   }
@@ -65,9 +89,16 @@ class PlaylistViewModel(
    * Get the actual count of videos that exist for a playlist
    */
   private suspend fun getActualVideoCount(playlistId: Int): Int {
+    val playlist = repository.getPlaylistById(playlistId)
     val items = repository.getPlaylistItems(playlistId)
     if (items.isEmpty()) return 0
 
+    // For M3U playlists, return item count directly (URLs don't need file system check)
+    if (playlist?.isM3uPlaylist == true) {
+      return items.size
+    }
+
+    // For regular playlists, check if files still exist
     val bucketIds = items.map { item ->
       File(item.filePath).parent ?: ""
     }.toSet()
@@ -102,6 +133,14 @@ class PlaylistViewModel(
 
   suspend fun createPlaylist(name: String): Long {
     return repository.createPlaylist(name)
+  }
+
+  suspend fun createM3UPlaylist(url: String): Result<Long> {
+    return repository.createM3UPlaylist(url)
+  }
+
+  suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> {
+    return repository.refreshM3UPlaylist(playlistId)
   }
 
   suspend fun deletePlaylist(playlist: PlaylistEntity) {

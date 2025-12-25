@@ -97,6 +97,7 @@ fun RenderPlayerButton(
   activity: PlayerActivity,
   buttonSize: Dp = 40.dp,
 ) {
+  val clickEvent = LocalPlayerButtonsClickEvent.current
   when (button) {
     PlayerButton.BACK_ARROW -> {
       ControlsButton(
@@ -189,7 +190,10 @@ fun RenderPlayerButton(
             .clickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
-              onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.PlaybackSpeed)
+              },
             ),
         ) {
           Row(
@@ -246,7 +250,17 @@ fun RenderPlayerButton(
               MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
           },
-        modifier = Modifier.height(buttonSize),
+        modifier = Modifier
+          .height(buttonSize)
+          .clip(CircleShape)
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = ripple(bounded = true),
+            onClick = {
+              clickEvent()
+              onOpenSheet(Sheets.Decoders)
+            },
+          ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
@@ -255,8 +269,7 @@ fun RenderPlayerButton(
               .padding(
                 horizontal = MaterialTheme.spacing.medium,
                 vertical = MaterialTheme.spacing.small,
-              )
-              .clickable(onClick = { onOpenSheet(Sheets.Decoders) }),
+              ),
         ) {
           Text(
             text = decoder.title,
@@ -381,8 +394,14 @@ fun RenderPlayerButton(
             .combinedClickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
-              onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
-              onLongClick = { viewModel.resetVideoZoom() },
+              onClick = {
+                clickEvent()
+                viewModel.sheetShown.update { Sheets.VideoZoom }
+              },
+              onLongClick = {
+                clickEvent()
+                viewModel.resetVideoZoom()
+              },
             ),
         ) {
           Row(

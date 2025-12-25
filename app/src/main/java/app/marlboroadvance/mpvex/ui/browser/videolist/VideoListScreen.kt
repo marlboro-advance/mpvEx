@@ -236,30 +236,10 @@ data class VideoListScreen(
           if (selectionManager.isInSelectionMode) {
             selectionManager.toggle(video)
           } else {
-            // If playlist mode is enabled, play all videos starting from the clicked one
-            if (playlistMode) {
-              val allVideos = sortedVideosWithInfo.map { it.video }
-              val startIndex = allVideos.indexOfFirst { it.id == video.id }
-              if (startIndex >= 0) {
-                if (allVideos.size == 1) {
-                  // Single video - play normally
-                  MediaUtils.playFile(video, context, "video_list")
-                } else {
-                  // Multiple videos - play as playlist starting from clicked video
-                  val intent = Intent(Intent.ACTION_VIEW, allVideos[startIndex].uri)
-                  intent.setClass(context, PlayerActivity::class.java)
-                  intent.putExtra("internal_launch", true)
-                  intent.putParcelableArrayListExtra("playlist", ArrayList(allVideos.map { it.uri }))
-                  intent.putExtra("playlist_index", startIndex)
-                  intent.putExtra("launch_source", "playlist")
-                  context.startActivity(intent)
-                }
-              } else {
-                MediaUtils.playFile(video, context, "video_list")
-              }
-            } else {
-              MediaUtils.playFile(video, context, "video_list")
-            }
+            // Always use MediaUtils.playFile which lets PlayerActivity auto-generate playlist
+            // This avoids TransactionTooLargeException from passing large playlists
+            // PlayerActivity will auto-generate playlist from folder if playlistMode is enabled
+            MediaUtils.playFile(video, context, "video_list")
           }
         },
         onVideoLongClick = { video -> selectionManager.toggle(video) },
@@ -454,21 +434,21 @@ private fun VideoListContent(
     }
 
     else -> {
-      val listState = rememberLazyListState()
-      val coroutineScope = rememberCoroutineScope()
-
-      // Auto-scroll to last played video when entering the screen
-      LaunchedEffect(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
+      // Calculate initial scroll position to avoid jank (like MX Player)
+      val initialScrollIndex = remember(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
         if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          val lastPlayedIndex = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
-          if (lastPlayedIndex >= 0) {
-            // Scroll to the last played item with some offset to center it
-            coroutineScope.launch {
-              listState.animateScrollToItem(lastPlayedIndex, scrollOffset = -200)
-            }
-          }
+          val index = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
+          if (index >= 0) index else 0
+        } else {
+          0
         }
       }
+      
+      val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialScrollIndex,
+        initialFirstVisibleItemScrollOffset = -200
+      )
+      val coroutineScope = rememberCoroutineScope()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
