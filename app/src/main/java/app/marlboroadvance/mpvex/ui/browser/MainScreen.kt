@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -61,6 +62,7 @@ object MainScreen : Screen {
   private var persistentSelectedTab: Int = 0
 
   @Composable
+  @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
   override fun Content() {
     var selectedTab by androidx.compose.runtime.remember {
       androidx.compose.runtime.mutableIntStateOf(persistentSelectedTab)
@@ -103,7 +105,7 @@ object MainScreen : Screen {
         // --- Floating Navigation Bar Section ---
         Surface(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 28.dp)
                 .height(80.dp)
                 .shadow(8.dp, RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp)),
@@ -183,8 +185,7 @@ object MainScreen : Screen {
                                 .weight(1f)
                                 .fillMaxSize()
                                 .padding(4.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { selectedTab = index },
+                                .clip(RoundedCornerShape(20.dp)),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
@@ -210,7 +211,7 @@ object MainScreen : Screen {
             }
         }
       },
-    ) { paddingValues ->
+    ) { _ ->
       // Each screen handles its own bottom padding for the navigation bar
       Box(modifier = Modifier.fillMaxSize()) {
         when (selectedTab) {

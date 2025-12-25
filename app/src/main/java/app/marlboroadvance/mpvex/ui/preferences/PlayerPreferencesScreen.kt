@@ -164,9 +164,7 @@ object PlayerPreferencesScreen : Screen {
           )
 
           val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
-          val shrinkOnPress by appearancePreferences.shrinkOnPress.collectAsState()
-          
-          
+
           Column(Modifier.padding(vertical = 8.dp)) {
                Text(
                    text = "Seekbar Style",
@@ -176,12 +174,16 @@ object PlayerPreferencesScreen : Screen {
                )
                SeekbarStyle.entries.forEach { style ->
                    ListItem(
-                       headlineContent = { Text(text = style.name) },
+                       headlineContent = {
+                         Text(
+                           text =
+                             style.name,
+                         )
+                       },
                        supportingContent = {
                            SeekbarPreview(
                                style = style, 
                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                               shrinkOnPress = shrinkOnPress
                            )
                        },
                        trailingContent = {
@@ -195,13 +197,6 @@ object PlayerPreferencesScreen : Screen {
                    )
                }
           }
-          
-          SwitchPreference(
-            value = shrinkOnPress,
-            onValueChange = appearancePreferences.shrinkOnPress::set,
-            title = { Text("Shrink thumb on press") },
-            summary = { Text("Reduce thumb size when dragging/pressing") },
-          )
           PreferenceCategory(
             title = { Text(stringResource(R.string.pref_player_gestures)) },
           )

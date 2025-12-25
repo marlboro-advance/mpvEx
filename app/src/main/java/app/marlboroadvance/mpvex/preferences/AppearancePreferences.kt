@@ -27,7 +27,6 @@ class AppearancePreferences(
   val showUnplayedOldVideoLabel = preferenceStore.getBoolean("show_unplayed_old_video_label", true)
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Standard)
-  val shrinkOnPress = preferenceStore.getBoolean("seekbar_shrink_on_press", true)
 
   val topLeftControls =
     preferenceStore.getString(

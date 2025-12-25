@@ -3,8 +3,6 @@ package app.marlboroadvance.mpvex.ui.player.controls.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,8 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -59,15 +55,12 @@ import androidx.compose.foundation.shape.CircleShape
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import app.marlboroadvance.mpvex.preferences.SeekbarStyle
-import app.marlboroadvance.mpvex.preferences.AppearancePreferences
-import org.koin.compose.koinInject
 import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 
 @Composable
 fun SeekbarWithTimers(
@@ -84,8 +77,6 @@ fun SeekbarWithTimers(
   seekbarStyle: SeekbarStyle = SeekbarStyle.Wavy,
   modifier: Modifier = Modifier,
 ) {
-  val appearancePreferences = koinInject<AppearancePreferences>()
-  val shrinkOnPress by appearancePreferences.shrinkOnPress.collectAsState()
   val clickEvent = LocalPlayerButtonsClickEvent.current
   var isUserInteracting by remember { mutableStateOf(false) }
   var userPosition by remember { mutableFloatStateOf(position) }
@@ -149,7 +140,6 @@ fun SeekbarWithTimers(
               isUserInteracting = false
               onValueChangeFinished()
             },
-            shrinkOnPress = shrinkOnPress,
           )
         }
         SeekbarStyle.Wavy -> {
@@ -162,7 +152,6 @@ fun SeekbarWithTimers(
             isScrubbing = isUserInteracting,
             useWavySeekbar = true,
             seekbarStyle = SeekbarStyle.Wavy,
-            shrinkOnPress = shrinkOnPress,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -185,7 +174,6 @@ fun SeekbarWithTimers(
             isScrubbing = isUserInteracting,
             useWavySeekbar = true,
             seekbarStyle = SeekbarStyle.Circular,
-            shrinkOnPress = shrinkOnPress,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -208,7 +196,6 @@ fun SeekbarWithTimers(
             isScrubbing = isUserInteracting,
             useWavySeekbar = false,
             seekbarStyle = SeekbarStyle.Simple, 
-            shrinkOnPress = shrinkOnPress,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -219,24 +206,6 @@ fun SeekbarWithTimers(
               isUserInteracting = false
               onValueChangeFinished()
             },
-          )
-        }
-        SeekbarStyle.Diamond -> {
-             DiamondSeekbar(
-            position = if (isUserInteracting) userPosition else animatedPosition.value,
-            duration = duration,
-            readAheadValue = readAheadValue,
-            onSeek = { newPosition ->
-              if (!isUserInteracting) isUserInteracting = true
-              userPosition = newPosition
-              onValueChange(newPosition)
-            },
-            onSeekFinished = {
-              scope.launch { animatedPosition.snapTo(userPosition) }
-              isUserInteracting = false
-              onValueChangeFinished()
-            },
-            shrinkOnPress = shrinkOnPress,
           )
         }
       }
@@ -264,7 +233,6 @@ private fun SquigglySeekbar(
   isScrubbing: Boolean,
   useWavySeekbar: Boolean,
   seekbarStyle: SeekbarStyle,
-  shrinkOnPress: Boolean,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
   modifier: Modifier = Modifier,
@@ -280,19 +248,6 @@ private fun SquigglySeekbar(
   // Animation state
   var phaseOffset by remember { mutableFloatStateOf(0f) }
   var heightFraction by remember { mutableFloatStateOf(1f) }
-  
-  // Animation for shrinking end bar (Wavy/Simple) or Circle thumb (Circular) on press
-  val thumbScale by animateFloatAsState(
-      targetValue = if (isInteracting && shrinkOnPress) 0f else 1f, 
-      animationSpec = tween(durationMillis = 200),
-      label = "thumbScale"
-  )
-  // For Circular: target is slightly smaller, not zero
-  val circularThumbScale by animateFloatAsState(
-      targetValue = if (isInteracting && shrinkOnPress) 0.8f else 1f,
-      animationSpec = tween(durationMillis = 200),
-      label = "circularThumbScale"
-  )
 
   val scope = rememberCoroutineScope()
 
@@ -547,25 +502,20 @@ private fun SquigglySeekbar(
 
 // SquigglySeekbar (Circular Thumb)
     if (seekbarStyle == SeekbarStyle.Circular) {
-         val thumbRadius = 10.dp.toPx() * circularThumbScale
+         val thumbRadius = 10.dp.toPx()
          drawCircle(
-            color = Color.White,
+            color = primaryColor,
             radius = thumbRadius,
             center = Offset(totalProgressPx, centerY)
          )
     } else {
         // Vertical Bar (Wavy/Simple Thumb)
-        var barCurrentHeightFraction = 1f
-        if (shrinkOnPress) {
-            barCurrentHeightFraction = thumbScale
-        }
-        
-        val barHalfHeight = (lineAmplitude + strokeWidth) * barCurrentHeightFraction
+        val barHalfHeight = (lineAmplitude + strokeWidth)
         val barWidth = 5.dp.toPx()
 
         if (barHalfHeight > 0.5f) {
             drawLine(
-              color = Color.White,
+              color = primaryColor,
               start = Offset(totalProgressPx, centerY - barHalfHeight),
               end = Offset(totalProgressPx, centerY + barHalfHeight),
               strokeWidth = barWidth,
@@ -607,15 +557,10 @@ fun StandardSeekbar(
   readAheadValue: Float,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
-  shrinkOnPress: Boolean = true,
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
     val interactionSource = remember { MutableInteractionSource() }
-    val isDragged by interactionSource.collectIsDraggedAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val isInteracting = isDragged || isPressed
-    
-    val targetWidth = if (shrinkOnPress && isInteracting) 2.dp else 4.dp
-    val thumbWidth by animateDpAsState(targetValue = targetWidth, label = "thumbWidth")
+    val thumbWidth = 4.dp
 
     Slider(
         value = position,
@@ -625,198 +570,85 @@ fun StandardSeekbar(
         modifier = Modifier.fillMaxWidth(),
         interactionSource = interactionSource,
         track = { sliderState ->
-            SliderDefaults.Track(
-                sliderState = sliderState,
-                modifier = Modifier.height(8.dp),
-                thumbTrackGapSize = 6.dp
-            )
+            val disabledAlpha = 77f / 255f
+            val bufferAlpha = 0.5f
+
+            Canvas(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .height(8.dp),
+            ) {
+              val min = sliderState.valueRange.start
+              val max = sliderState.valueRange.endInclusive
+              val range = (max - min).takeIf { it > 0f } ?: 1f
+
+              val playedFraction = ((sliderState.value - min) / range).coerceIn(0f, 1f)
+              val readAheadFraction = ((readAheadValue - min) / range).coerceIn(0f, 1f)
+
+              val playedPx = size.width * playedFraction
+              val readAheadPx = size.width * readAheadFraction
+
+              val cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+              // Match Material/old SliderDefaults.Track behavior: keep a small empty gap around the thumb.
+              val thumbTrackGapSize = 10.dp.toPx()
+              val gapHalf = thumbTrackGapSize / 2f
+              val leftEnd = (playedPx - gapHalf).coerceIn(0f, size.width)
+              val rightStart = (playedPx + gapHalf).coerceIn(0f, size.width)
+
+              // Base (unplayed) track: draw as two segments to leave a blank gap at the thumb.
+              if (leftEnd > 0f) {
+                drawRoundRect(
+                  color = primaryColor.copy(alpha = disabledAlpha),
+                  topLeft = Offset(0f, 0f),
+                  size = androidx.compose.ui.geometry.Size(leftEnd, size.height),
+                  cornerRadius = cornerRadius,
+                )
+              }
+              if (rightStart < size.width) {
+                drawRoundRect(
+                  color = primaryColor.copy(alpha = disabledAlpha),
+                  topLeft = Offset(rightStart, 0f),
+                  size = androidx.compose.ui.geometry.Size(size.width - rightStart, size.height),
+                  cornerRadius = cornerRadius,
+                )
+              }
+
+              // Buffered segment
+              if (readAheadPx > playedPx) {
+                val bufferStart = maxOf(rightStart, playedPx)
+                val bufferEnd = readAheadPx.coerceIn(0f, size.width)
+                val bufferWidth = bufferEnd - bufferStart
+                if (bufferWidth > 0f) {
+                  drawRoundRect(
+                    color = primaryColor.copy(alpha = bufferAlpha),
+                    topLeft = Offset(bufferStart, 0f),
+                    size = androidx.compose.ui.geometry.Size(bufferWidth, size.height),
+                    cornerRadius = cornerRadius,
+                  )
+                }
+              }
+
+              // Played segment (up to the left side of the thumb gap)
+              if (leftEnd > 0f) {
+                drawRoundRect(
+                  color = primaryColor,
+                  topLeft = Offset(0f, 0f),
+                  size = androidx.compose.ui.geometry.Size(leftEnd, size.height),
+                  cornerRadius = cornerRadius,
+                )
+              }
+            }
         },
         thumb = {
             Box(
                 modifier = Modifier
                     .width(thumbWidth)
                     .height(24.dp)
-                    .background(Color.White, CircleShape)
+                    .background(primaryColor, CircleShape)
             )
         }
     )
-}
-
-@Composable
-fun DiamondSeekbar(
-  position: Float,
-  duration: Float,
-  readAheadValue: Float,
-  onSeek: (Float) -> Unit,
-  onSeekFinished: () -> Unit,
-  shrinkOnPress: Boolean = true,
-) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    
-    // Manual Interaction Tracking
-    var isPressed by remember { mutableStateOf(false) }
-    var isDragged by remember { mutableStateOf(false) }
-    val isInteracting = isPressed || isDragged
-    
-    // Animate Scale: 1f (Normal) -> 0.7f (Small Pressed)
-    val scale by animateFloatAsState(
-        targetValue = if (shrinkOnPress && isInteracting) 0.7f else 1f,
-        label = "diamondScale",
-        animationSpec = tween(durationMillis = 200, easing = LinearEasing)
-    )
-
-    // Animate Rotation: 45f (Diamond) -> 0f (Square)
-    val rotation by animateFloatAsState(
-        targetValue = if (shrinkOnPress && isInteracting) 0f else 45f,
-        label = "diamondRotation",
-        animationSpec = tween(durationMillis = 200, easing = LinearEasing)
-    )
-
-    // Animation state for wave
-    var phaseOffset by remember { mutableFloatStateOf(0f) }
-    val useWavySeekbar = true
-    val waveLength = 80f
-    val lineAmplitude = 6f
-    val phaseSpeed = 10f
-    
-    LaunchedEffect(Unit) {
-        var lastFrameTime = withFrameMillis { it }
-        while (isActive) {
-            withFrameMillis { frameTimeMillis ->
-                val deltaTime = (frameTimeMillis - lastFrameTime) / 1000f
-                phaseOffset += deltaTime * phaseSpeed
-                phaseOffset %= waveLength
-                lastFrameTime = frameTimeMillis
-            }
-        }
-    }
-
-    Canvas(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .height(32.dp)
-        .pointerInput(Unit) {
-          detectTapGestures(
-            onPress = {
-                isPressed = true
-                tryAwaitRelease()
-                isPressed = false
-            },
-            onTap = { offset ->
-                val newPosition = (offset.x / size.width) * duration
-                onSeek(newPosition.coerceIn(0f, duration))
-                onSeekFinished()
-            }
-          )
-        }
-        .pointerInput(Unit) {
-          detectDragGestures(
-            onDragStart = { isDragged = true },
-            onDragEnd = { 
-                isDragged = false 
-                onSeekFinished()
-            },
-            onDragCancel = { 
-                isDragged = false 
-                onSeekFinished()
-            },
-          ) { change, _ ->
-            change.consume()
-            val newPosition = (change.position.x / size.width) * duration
-            onSeek(newPosition.coerceIn(0f, duration))
-          }
-        },
-    ) {
-        val width = size.width
-        val height = size.height
-        val centerY = height / 2f
-        val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
-        val progressPx = width * progress
-        
-        // --- Draw Wavy Played Part ---
-        val path = Path()
-        val waveStart = -phaseOffset - waveLength / 2f
-        
-        path.moveTo(waveStart, centerY)
-        var currentX = waveStart
-        var waveSign = 1f
-        val waveEnd = progressPx + waveLength 
-
-        fun computeAmplitude(x: Float, sign: Float): Float {
-             // Progressive Amplitude: Start small (flat), ramp up, then constant
-             
-             // Ramp up over the first 50% of the screen width
-             val rampDistance = width * 0.5f
-             val ratio = (x / rampDistance).coerceIn(0f, 1f) // x here is pixel position.
-             
-             // Start at 10% amplitude, quadratic ramp to 200% max
-             val scaleFactor = 0.05f + (1.9f * ratio * ratio)
-             
-             return sign * lineAmplitude * scaleFactor
-        }
-        
-        val dist = waveLength / 2f
-        while (currentX < waveEnd) {
-            waveSign = -waveSign
-            val nextX = currentX + dist
-            val midX = currentX + dist / 2f
-            val currentAmp = computeAmplitude(currentX, -waveSign) 
-            val nextAmp = computeAmplitude(nextX, waveSign)
-
-            path.cubicTo(
-                midX, centerY + currentAmp,
-                midX, centerY + nextAmp,
-                nextX, centerY + nextAmp
-            )
-            currentX = nextX
-        }
-        
-        clipRect(right = progressPx) {
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-            )
-        }
-        
-        // --- Draw Straight Unplayed Part ---
-        val unplayedStart = progressPx + 15.dp.toPx()
-        if (unplayedStart < width) {
-            val trackHeight = 8.dp.toPx()
-             drawRoundRect(
-                color = surfaceVariant.copy(alpha = 0.3f),
-                topLeft = Offset(unplayedStart, centerY - trackHeight / 2f),
-                size = androidx.compose.ui.geometry.Size(width - unplayedStart, trackHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
-            )
-        }
-        
-        
-        // --- Draw Diamond/Square Thumb ---
-        val thumbX = progressPx
-        // Base size, scaled by animation
-        val thumbSize = 16.dp.toPx() * scale
-        
-        // Rotate the thumb canvas for the animation (45 -> 0)
-        withTransform({
-            rotate(rotation, pivot = Offset(thumbX, centerY))
-        }) {
-            // Draw a Square (which becomes Diamond when rotated 45deg)
-            val rectPath = Path().apply {
-                addRect(
-                    androidx.compose.ui.geometry.Rect(
-                        left = thumbX - thumbSize / 2f,
-                        top = centerY - thumbSize / 2f,
-                        right = thumbX + thumbSize / 2f,
-                        bottom = centerY + thumbSize / 2f
-                    )
-                )
-            }
-            drawPath(path = rectPath, color = Color.White)
-        }
-    }
 }
 
 @Preview
@@ -840,7 +672,6 @@ private fun PreviewSeekBar() {
 fun SeekbarPreview(
   style: SeekbarStyle,
   modifier: Modifier = Modifier,
-  shrinkOnPress: Boolean = true,
 ) {
   val infiniteTransition = rememberInfiniteTransition(label = "seekbar_preview")
   val progress by infiniteTransition.animateFloat(
@@ -867,7 +698,6 @@ fun SeekbarPreview(
             readAheadValue = position,
             onSeek = {},
             onSeekFinished = {},
-            shrinkOnPress = shrinkOnPress,
           )
         }
         SeekbarStyle.Wavy -> {
@@ -880,7 +710,6 @@ fun SeekbarPreview(
             isScrubbing = false,
             useWavySeekbar = true,
             seekbarStyle = SeekbarStyle.Wavy,
-            shrinkOnPress = shrinkOnPress,
             onSeek = {},
             onSeekFinished = {},
           )
@@ -895,7 +724,6 @@ fun SeekbarPreview(
             isScrubbing = false,
             useWavySeekbar = true,
             seekbarStyle = SeekbarStyle.Circular,
-            shrinkOnPress = shrinkOnPress,
             onSeek = {},
             onSeekFinished = {},
           )
@@ -910,19 +738,8 @@ fun SeekbarPreview(
             isScrubbing = false,
             useWavySeekbar = false,
             seekbarStyle = SeekbarStyle.Simple,
-            shrinkOnPress = shrinkOnPress,
             onSeek = {},
             onSeekFinished = {},
-          )
-        }
-        SeekbarStyle.Diamond -> {
-             DiamondSeekbar(
-            position = position,
-            duration = duration,
-            readAheadValue = position,
-            onSeek = {},
-            onSeekFinished = {},
-            shrinkOnPress = shrinkOnPress
           )
         }
       }
