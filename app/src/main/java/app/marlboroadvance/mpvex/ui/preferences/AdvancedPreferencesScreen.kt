@@ -210,17 +210,17 @@ object AdvancedPreferencesScreen : Screen {
             .verticalScroll(rememberScrollState())
             .padding(padding),
         ) {
-          // Export settings option
+
           Preference(
             title = { Text(text = "Export Settings") },
-            summary = { Text(text = "Export all settings to an XML file") },
+            summary = { Text(text = "Export settings to an XML file") },
             icon = { Icon(Icons.Outlined.FileUpload, null) },
             onClick = {
               exportLauncher.launch(settingsManager.getDefaultExportFilename())
             },
           )
 
-          // Import settings option
+
           Preference(
             title = { Text(text = "Import Settings") },
             summary = { Text(text = "Import settings from an XML file") },
