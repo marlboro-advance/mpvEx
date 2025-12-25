@@ -23,6 +23,7 @@ import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton
+import app.marlboroadvance.mpvex.preferences.SeekbarStyle
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
@@ -196,6 +197,7 @@ object AppearancePreferencesScreen : Screen {
               Text(text = "Automatically scroll to the last played video when opening video lists")
             },
           )
+
         }
       }
     }
