@@ -21,7 +21,7 @@ import java.util.Locale
  */
 object FolderScanUtils {
   private const val TAG = "FolderScanUtils"
-  private const val MAX_CONCURRENT_FOLDERS = 4 // Limit parallel folder scanning
+  private const val MAX_CONCURRENT_FOLDERS = 8 // Limit parallel folder scanning (increased for faster processing)
 
   /**
    * Data class representing folder information during scanning
@@ -339,6 +339,7 @@ object FolderScanUtils {
 
   /**
    * Enriches a single folder with metadata
+   * OPTIMIZED: Uses batch processing for much faster metadata extraction
    */
   private suspend fun enrichSingleFolder(
     folderData: FolderData,
@@ -351,18 +352,17 @@ object FolderScanUtils {
       it.isFile && StorageScanUtils.isVideoFile(it)
     } ?: return folderData
 
-    var totalDuration = 0L
-    for (videoFile in videoFiles) {
-      try {
-        val uri = Uri.fromFile(videoFile)
-        val metadata = metadataCache.getOrExtractMetadata(videoFile, uri, videoFile.name)
-        if (metadata != null && metadata.durationMs > 0) {
-          totalDuration += metadata.durationMs
-        }
-      } catch (e: Exception) {
-        Log.w(TAG, "Failed to extract duration for ${videoFile.name}", e)
-      }
+    if (videoFiles.isEmpty()) return folderData
+
+    // Batch process all videos in this folder
+    val fileTriples = videoFiles.map { videoFile ->
+      Triple(videoFile, Uri.fromFile(videoFile), videoFile.name)
     }
+
+    val metadataMap = metadataCache.getOrExtractMetadataBatch(fileTriples)
+
+    // Sum up all durations
+    val totalDuration = metadataMap.values.sumOf { it.durationMs }
 
     return folderData.copy(totalDuration = totalDuration)
   }
