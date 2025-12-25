@@ -51,6 +51,7 @@ import app.marlboroadvance.mpvex.presentation.components.RightSideOvalShape
 import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
+import app.marlboroadvance.mpvex.ui.player.SingleActionGesture
 import app.marlboroadvance.mpvex.ui.player.controls.components.DoubleTapSeekTriangles
 import app.marlboroadvance.mpvex.ui.theme.playerRippleConfiguration
 import org.koin.compose.koinInject
@@ -139,18 +140,27 @@ fun GestureHandler(
             val rightBoundary = size.width * (1f - seekAreaFraction)
             
             if (it.x > rightBoundary) {
-              isDoubleTapSeeking = true
-              lastSeekRegion = "right"
-              lastSeekTime = System.currentTimeMillis()
-              if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+              // Right region gesture
+              val rightGesture = gesturePreferences.rightSingleActionGesture.get()
+              if (rightGesture == SingleActionGesture.Seek) {
+                isDoubleTapSeeking = true
+                lastSeekRegion = "right"
+                lastSeekTime = System.currentTimeMillis()
+                if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+              }
               viewModel.handleRightDoubleTap()
             } else if (it.x < leftBoundary) {
-              isDoubleTapSeeking = true
-              lastSeekRegion = "left"
-              lastSeekTime = System.currentTimeMillis()
-              if (isSeekingForwards) viewModel.updateSeekAmount(0)
+              // Left region gesture
+              val leftGesture = gesturePreferences.leftSingleActionGesture.get()
+              if (leftGesture == SingleActionGesture.Seek) {
+                isDoubleTapSeeking = true
+                lastSeekRegion = "left"
+                lastSeekTime = System.currentTimeMillis()
+                if (isSeekingForwards) viewModel.updateSeekAmount(0)
+              }
               viewModel.handleLeftDoubleTap()
             } else {
+              // Center region gesture
               viewModel.handleCenterDoubleTap()
             }
           },
@@ -181,12 +191,18 @@ fun GestureHandler(
               lastSeekTime = now
               when (region) {
                 "right" -> {
-                  if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+                  val rightGesture = gesturePreferences.rightSingleActionGesture.get()
+                  if (rightGesture == SingleActionGesture.Seek) {
+                    if (!isSeekingForwards) viewModel.updateSeekAmount(0)
+                  }
                   viewModel.handleRightDoubleTap()
                 }
 
                 "left" -> {
-                  if (isSeekingForwards) viewModel.updateSeekAmount(0)
+                  val leftGesture = gesturePreferences.leftSingleActionGesture.get()
+                  if (leftGesture == SingleActionGesture.Seek) {
+                    if (isSeekingForwards) viewModel.updateSeekAmount(0)
+                  }
                   viewModel.handleLeftDoubleTap()
                 }
 

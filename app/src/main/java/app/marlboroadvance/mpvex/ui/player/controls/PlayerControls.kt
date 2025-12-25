@@ -156,7 +156,7 @@ fun PlayerControls(
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
   var isSeeking by remember { mutableStateOf(false) }
-  var resetControls by remember { mutableStateOf(true) }
+  var resetControlsTimestamp by remember { mutableStateOf(0L) }
   val seekText by viewModel.seekText.collectAsState()
   val currentChapter by MPVLib.propInt["chapter"].collectAsState()
   val mpvDecoder by MPVLib.propString["hwdec-current"].collectAsState()
@@ -214,7 +214,7 @@ fun PlayerControls(
     controlsShown,
     paused,
     isSeeking,
-    resetControls,
+    resetControlsTimestamp,
   ) {
     if (controlsShown && paused == false && !isSeeking) {
       delay(playerTimeToDisappear.toLong())
@@ -237,7 +237,7 @@ fun PlayerControls(
 
   CompositionLocalProvider(
     LocalRippleConfiguration provides playerRippleConfiguration,
-    LocalPlayerButtonsClickEvent provides { },
+    LocalPlayerButtonsClickEvent provides { resetControlsTimestamp = System.currentTimeMillis() },
     LocalContentColor provides Color.White,
   ) {
     CompositionLocalProvider(
@@ -574,7 +574,10 @@ fun PlayerControls(
                         .clip(CircleShape)
                         .clickable(
                           enabled = viewModel.hasPrevious(),
-                          onClick = { if (viewModel.hasPrevious()) viewModel.playPrevious() },
+                          onClick = {
+                            resetControlsTimestamp = System.currentTimeMillis()
+                            if (viewModel.hasPrevious()) viewModel.playPrevious()
+                          },
                         )
                         .then(
                           if (hideBackground) {
@@ -624,7 +627,10 @@ fun PlayerControls(
                       Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .clickable(interaction, ripple(), onClick = viewModel::pauseUnpause)
+                        .clickable(interaction, ripple(), onClick = {
+                          resetControlsTimestamp = System.currentTimeMillis()
+                          viewModel.pauseUnpause()
+                        })
                         .then(
                           if (hideBackground) {
                             Modifier.background(brush = buttonShadow, shape = CircleShape)
@@ -666,7 +672,10 @@ fun PlayerControls(
                         .clip(CircleShape)
                         .clickable(
                           enabled = viewModel.hasNext(),
-                          onClick = { if (viewModel.hasNext()) viewModel.playNext() },
+                          onClick = {
+                            resetControlsTimestamp = System.currentTimeMillis()
+                            if (viewModel.hasNext()) viewModel.playNext()
+                          },
                         )
                         .then(
                           if (hideBackground) {
@@ -717,7 +726,10 @@ fun PlayerControls(
                     Modifier
                       .size(64.dp)
                       .clip(CircleShape)
-                      .clickable(interaction, ripple(), onClick = viewModel::pauseUnpause)
+                      .clickable(interaction, ripple(), onClick = {
+                        resetControlsTimestamp = System.currentTimeMillis()
+                        viewModel.pauseUnpause()
+                      })
                       .then(
                         if (hideBackground) {
                           Modifier.background(brush = buttonShadow, shape = CircleShape)
@@ -809,13 +821,18 @@ fun PlayerControls(
             duration = duration?.toFloat() ?: 0f,
             onValueChange = {
               isSeeking = true
+              resetControlsTimestamp = System.currentTimeMillis()
               viewModel.seekTo(it.toInt())
             },
             onValueChangeFinished = {
               isSeeking = false
+              resetControlsTimestamp = System.currentTimeMillis()
             },
             timersInverted = Pair(false, invertDuration),
-            durationTimerOnCLick = { playerPreferences.invertDuration.set(!invertDuration) },
+            durationTimerOnCLick = {
+              resetControlsTimestamp = System.currentTimeMillis()
+              playerPreferences.invertDuration.set(!invertDuration)
+            },
             positionTimerOnClick = {},
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
