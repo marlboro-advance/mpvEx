@@ -146,65 +146,72 @@ class PlaylistDetailViewModel(
 
   override fun refresh() {
     // Refresh is handled automatically through Flow observation
-    viewModelScope.launch(Dispatchers.IO) {
-      try {
-        _isLoading.value = true
-        // Trigger a refresh by reloading playlist items
-        val items = playlistRepository.getPlaylistItems(playlistId)
-        val playlist = _playlist.value
-        val isM3uPlaylist = playlist?.isM3uPlaylist == true
-        
-        if (items.isNotEmpty()) {
-          if (isM3uPlaylist) {
-            // For M3U playlists, create Video objects directly from URLs
-            val videoItems = items.mapNotNull { item ->
-              try {
-                val video = Video(
-                  id = item.id.toLong(),
-                  title = item.fileName,
-                  displayName = item.fileName,
-                  path = item.filePath,
-                  uri = android.net.Uri.parse(item.filePath),
-                  duration = 0L,
-                  durationFormatted = "00:00",
-                  size = 0L,
-                  sizeFormatted = "0 B",
-                  dateModified = item.addedAt,
-                  dateAdded = item.addedAt,
-                  mimeType = "video/*",
-                  bucketId = "m3u_playlist_$playlistId",
-                  bucketDisplayName = playlist?.name ?: "M3U Playlist",
-                  width = 0,
-                  height = 0,
-                  fps = 0f,
-                  resolution = "Unknown"
-                )
-                PlaylistVideoItem(item, video)
-              } catch (e: Exception) {
-                Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
-                null
-              }
+    viewModelScope.launch(Dispatchers.IO) { refreshNow() }
+  }
+
+  /**
+   * Refresh playlist items and associated [Video] metadata, awaiting completion.
+   *
+   * This is useful for UI gestures like pull-to-refresh that need to know when refreshing is done.
+   */
+  suspend fun refreshNow() {
+    try {
+      _isLoading.value = true
+      // Trigger a refresh by reloading playlist items
+      val items = playlistRepository.getPlaylistItems(playlistId)
+      val playlist = _playlist.value
+      val isM3uPlaylist = playlist?.isM3uPlaylist == true
+
+      if (items.isNotEmpty()) {
+        if (isM3uPlaylist) {
+          // For M3U playlists, create Video objects directly from URLs
+          val videoItems = items.mapNotNull { item ->
+            try {
+              val video = Video(
+                id = item.id.toLong(),
+                title = item.fileName,
+                displayName = item.fileName,
+                path = item.filePath,
+                uri = android.net.Uri.parse(item.filePath),
+                duration = 0L,
+                durationFormatted = "00:00",
+                size = 0L,
+                sizeFormatted = "0 B",
+                dateModified = item.addedAt,
+                dateAdded = item.addedAt,
+                mimeType = "video/*",
+                bucketId = "m3u_playlist_$playlistId",
+                bucketDisplayName = playlist?.name ?: "M3U Playlist",
+                width = 0,
+                height = 0,
+                fps = 0f,
+                resolution = "Unknown"
+              )
+              PlaylistVideoItem(item, video)
+            } catch (e: Exception) {
+              Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
+              null
             }
-            _videoItems.value = videoItems
-          } else {
-            // For regular playlists, use existing logic
-            val bucketIds = items.map { item ->
-              File(item.filePath).parent ?: ""
-            }.toSet()
-            val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
-            val videoItems = items.mapNotNull { item ->
-              allVideos.find { video -> video.path == item.filePath }?.let { video ->
-                PlaylistVideoItem(item, video)
-              }
-            }
-            _videoItems.value = videoItems
           }
+          _videoItems.value = videoItems
+        } else {
+          // For regular playlists, use existing logic
+          val bucketIds = items.map { item ->
+            File(item.filePath).parent ?: ""
+          }.toSet()
+          val allVideos = MediaFileRepository.getVideosForBuckets(getApplication(), bucketIds)
+          val videoItems = items.mapNotNull { item ->
+            allVideos.find { video -> video.path == item.filePath }?.let { video ->
+              PlaylistVideoItem(item, video)
+            }
+          }
+          _videoItems.value = videoItems
         }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error refreshing playlist videos", e)
-      } finally {
-        _isLoading.value = false
       }
+    } catch (e: Exception) {
+      Log.e(TAG, "Error refreshing playlist videos", e)
+    } finally {
+      _isLoading.value = false
     }
   }
 
@@ -220,6 +227,13 @@ class PlaylistDetailViewModel(
     itemToRemove?.let {
       playlistRepository.removeItemFromPlaylist(it)
     }
+  }
+
+  suspend fun removeVideosFromPlaylist(videos: List<Video>) {
+    val items = playlistRepository.getPlaylistItems(playlistId)
+    val videoPaths = videos.map { it.path }.toSet()
+    val itemsToRemove = items.filter { it.filePath in videoPaths }
+    playlistRepository.removeItemsFromPlaylist(itemsToRemove)
   }
 
   suspend fun updatePlayHistory(filePath: String, position: Long = 0) {

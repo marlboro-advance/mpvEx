@@ -1580,6 +1580,14 @@ class PlayerActivity :
           return@launch
         }
 
+         // Skip fetching for playlist items - they already have correct titles from playlist metadata
+        val launchSource = intent.getStringExtra("launch_source")
+        if (intent.hasExtra("title") && launchSource != null && 
+            (launchSource.contains("playlist") || launchSource == "m3u_playlist")) {
+          Log.d(TAG, "Skipping title fetch for playlist item with custom title: $fileName")
+          return@launch
+        }
+
         // Skip fetching for local proxy URLs (SMB/WebDAV/FTP files)
         // These already have correct filename from intent extras
         val host = uri.host?.lowercase()

@@ -174,7 +174,7 @@ fun PlaylistActionFab(
         onAddM3UPlaylist()
       },
       icon = { Icon(Icons.Filled.Link, contentDescription = null) },
-      text = { Text("Add from M3U/M3U8 URL") },
+      text = { Text("Add m3u playlist") },
       modifier = Modifier.semantics {
         traversalIndex = 1f
       },

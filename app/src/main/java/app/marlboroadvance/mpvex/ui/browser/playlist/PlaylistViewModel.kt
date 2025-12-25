@@ -139,6 +139,10 @@ class PlaylistViewModel(
     return repository.createM3UPlaylist(url)
   }
 
+  suspend fun createM3UPlaylistFromFile(uri: android.net.Uri): Result<Long> {
+    return repository.createM3UPlaylistFromFile(getApplication(), uri)
+  }
+
   suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> {
     return repository.refreshM3UPlaylist(playlistId)
   }

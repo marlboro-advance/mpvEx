@@ -47,6 +47,7 @@ fun FolderCard(
   showDateModified: Boolean = false,
   customIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
   newVideoCount: Int = 0,
+  customChipContent: @Composable (() -> Unit)? = null,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -144,9 +145,16 @@ fun FolderCard(
           Spacer(modifier = Modifier.height(4.dp))
         }
         Row {
-          // Hide chips at storage root level (when videoCount is 0)
+          // Render custom chip content first if provided
           var hasChip = false
-
+          
+          if (customChipContent != null) {
+            customChipContent()
+            hasChip = true
+            Spacer(modifier = Modifier.width(4.dp))
+          }
+          
+          // Hide chips at storage root level (when videoCount is 0)
           if (showTotalVideosChip && folder.videoCount > 0) {
             Text(
               if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",

@@ -19,13 +19,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.SwapVert
@@ -62,6 +62,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.ui.browser.cards.M3UVideoCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
@@ -96,7 +97,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  */
 @Serializable
 data class PlaylistDetailScreen(val playlistId: Int) : Screen {
-  @OptIn(ExperimentalMaterial3Api::class)
+  @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -118,6 +119,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
     val videoItems by viewModel.videoItems.collectAsState()
     val videos = videoItems.map { it.video }
     val isLoading by viewModel.isLoading.collectAsState()
+    val isRefreshing = remember { mutableStateOf(false) }
 
     // Search state
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -150,10 +152,10 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
         items = filteredVideoItems,
         getId = { it.playlistItem.id },
         onDeleteItems = { itemsToDelete ->
-          itemsToDelete.forEach { item ->
-            coroutineScope.launch {
-              viewModel.removeVideoFromPlaylist(item.video)
-            }
+          // Remove all items in a single coroutine to avoid concurrent deletion race conditions
+          coroutineScope.launch {
+            val videosToRemove = itemsToDelete.map { it.video }
+            viewModel.removeVideosFromPlaylist(videosToRemove)
           }
           Pair(itemsToDelete.size, 0)
         },
@@ -314,38 +316,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                     )
                   }
                   Spacer(modifier = Modifier.width(4.dp))
-                  
-                  // Show refresh button for M3U playlists
-                  if (playlist?.isM3uPlaylist == true) {
-                    IconButton(
-                      onClick = {
-                        coroutineScope.launch {
-                          val result = viewModel.refreshM3UPlaylist()
-                          result.onSuccess {
-                            Toast.makeText(
-                              context,
-                              "Playlist refreshed successfully",
-                              Toast.LENGTH_SHORT
-                            ).show()
-                          }.onFailure { error ->
-                            Toast.makeText(
-                              context,
-                              "Failed to refresh: ${error.message}",
-                              Toast.LENGTH_LONG
-                            ).show()
-                          }
-                        }
-                      },
-                    ) {
-                      Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = "Refresh M3U playlist",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                      )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                  }
-                  
+
                   // Reorder button (hide for M3U playlists)
                   if (playlist?.isM3uPlaylist != true) {
                     IconButton(
@@ -405,6 +376,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                             putExtra("playlist_index", startIndex)
                             putExtra("launch_source", "playlist")
                             putExtra("playlist_id", playlistId)
+                            putExtra("title", videos[startIndex].displayName)
                           }
                           context.startActivity(intent)
                         }
@@ -473,58 +445,84 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
           }
         }
       } else {
-        PlaylistVideoListContent(
-          videoItems = filteredVideoItems,
-        isLoading = isLoading && videoItems.isEmpty(),
-        selectionManager = selectionManager,
-        isReorderMode = isReorderMode,
-        isM3uPlaylist = playlist?.isM3uPlaylist == true,
-        onVideoItemClick = { item ->
-          if (selectionManager.isInSelectionMode) {
-            selectionManager.toggle(item)
-          } else if (!isReorderMode) {
-            // Record play history
-            coroutineScope.launch {
-              viewModel.updatePlayHistory(item.video.path)
-            }
+        val pullToRefreshEnabled =
+          !selectionManager.isInSelectionMode && !isReorderMode && !isSearching
 
-            if (playlist?.isM3uPlaylist == true) {
-              // M3U playlists: Play only the clicked stream (no playlist navigation)
-              MediaUtils.playFile(item.video, context, "m3u_playlist")
-            } else {
-              // Regular playlists: Play with full playlist navigation
-              val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
-              if (startIndex >= 0) {
-                if (videos.size == 1) {
-                  MediaUtils.playFile(item.video, context, "playlist_detail")
-                } else {
-                  val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
-                  intent.setClass(context, PlayerActivity::class.java)
-                  intent.putExtra("internal_launch", true)
-                  intent.putExtra("playlist_index", startIndex)
-                  intent.putExtra("launch_source", "playlist")
-                  intent.putExtra("playlist_id", playlistId)
-                  context.startActivity(intent)
+        PullRefreshBox(
+          isRefreshing = isRefreshing,
+          enabled = pullToRefreshEnabled,
+          listState = listState,
+          modifier = Modifier.fillMaxSize().padding(padding),
+          onRefresh = {
+            val isM3uPlaylist = playlist?.isM3uPlaylist == true
+            if (isM3uPlaylist) {
+              val result = viewModel.refreshM3UPlaylist()
+              result
+                .onSuccess {
+                  Toast.makeText(context, "Playlist refreshed successfully", Toast.LENGTH_SHORT).show()
                 }
-              } else {
-                MediaUtils.playFile(item.video, context, "playlist_detail")
-              }
+                .onFailure { error ->
+                  Toast.makeText(context, "Failed to refresh: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+              viewModel.refreshNow()
             }
-          }
-        },
-        onVideoItemLongClick = { item ->
-          if (!isReorderMode) {
-            selectionManager.toggle(item)
-          }
-        },
-        onReorder = { fromIndex, toIndex ->
-          coroutineScope.launch {
-            viewModel.reorderPlaylistItems(fromIndex, toIndex)
-          }
-        },
-        listState = listState,
-        modifier = Modifier.padding(padding),
-      )
+          },
+        ) {
+          PlaylistVideoListContent(
+            videoItems = filteredVideoItems,
+            isLoading = isLoading && videoItems.isEmpty(),
+            selectionManager = selectionManager,
+            isReorderMode = isReorderMode,
+            isM3uPlaylist = playlist?.isM3uPlaylist == true,
+            onVideoItemClick = { item ->
+              if (selectionManager.isInSelectionMode) {
+                selectionManager.toggle(item)
+              } else if (!isReorderMode) {
+                // Record play history
+                coroutineScope.launch {
+                  viewModel.updatePlayHistory(item.video.path)
+                }
+
+                if (playlist?.isM3uPlaylist == true) {
+                  // M3U playlists: Play only the clicked stream (no playlist navigation)
+                  MediaUtils.playFile(item.video, context, "m3u_playlist")
+                } else {
+                  // Regular playlists: Play with full playlist navigation
+                  val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
+                  if (startIndex >= 0) {
+                    if (videos.size == 1) {
+                      MediaUtils.playFile(item.video, context, "playlist_detail")
+                    } else {
+                      val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
+                      intent.setClass(context, PlayerActivity::class.java)
+                      intent.putExtra("internal_launch", true)
+                      intent.putExtra("playlist_index", startIndex)
+                      intent.putExtra("launch_source", "playlist")
+                      intent.putExtra("playlist_id", playlistId)
+                      intent.putExtra("title", videos[startIndex].displayName)
+                      context.startActivity(intent)
+                    }
+                  } else {
+                    MediaUtils.playFile(item.video, context, "playlist_detail")
+                  }
+                }
+              }
+            },
+            onVideoItemLongClick = { item ->
+              if (!isReorderMode) {
+                selectionManager.toggle(item)
+              }
+            },
+            onReorder = { fromIndex, toIndex ->
+              coroutineScope.launch {
+                viewModel.reorderPlaylistItems(fromIndex, toIndex)
+              }
+            },
+            listState = listState,
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
       }
 
       // Dialogs

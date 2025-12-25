@@ -130,6 +130,7 @@ fun SeekbarWithTimers(
             position = if (isUserInteracting) userPosition else animatedPosition.value,
             duration = duration,
             readAheadValue = readAheadValue,
+            chapters = chapters,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -555,6 +556,7 @@ fun StandardSeekbar(
   position: Float,
   duration: Float,
   readAheadValue: Float,
+  chapters: ImmutableList<Segment>,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
 ) {
@@ -596,47 +598,62 @@ fun StandardSeekbar(
               val leftEnd = (playedPx - gapHalf).coerceIn(0f, size.width)
               val rightStart = (playedPx + gapHalf).coerceIn(0f, size.width)
 
+              // Calculate chapter gaps
+              val chapterGapHalf = 1.dp.toPx()
+              val chapterGaps = chapters
+                .map { (it.start / duration).coerceIn(0f, 1f) * size.width }
+                .filter { it > 0f && it < size.width }
+                .sorted()
+                .map { x -> (x - chapterGapHalf) to (x + chapterGapHalf) }
+
+              // Helper to draw track with chapter gaps
+              fun drawTrackWithGaps(startX: Float, endX: Float, color: Color) {
+                if (endX <= startX) return
+                var segmentStart = startX
+                for ((gapStart, gapEnd) in chapterGaps) {
+                  if (gapStart > segmentStart && gapStart < endX) {
+                    val segmentEnd = gapStart.coerceAtMost(endX)
+                    if (segmentEnd > segmentStart) {
+                      drawRoundRect(
+                        color = color,
+                        topLeft = Offset(segmentStart, 0f),
+                        size = androidx.compose.ui.geometry.Size(segmentEnd - segmentStart, size.height),
+                        cornerRadius = cornerRadius,
+                      )
+                    }
+                    segmentStart = gapEnd.coerceAtLeast(segmentStart)
+                  }
+                }
+                if (segmentStart < endX) {
+                  drawRoundRect(
+                    color = color,
+                    topLeft = Offset(segmentStart, 0f),
+                    size = androidx.compose.ui.geometry.Size(endX - segmentStart, size.height),
+                    cornerRadius = cornerRadius,
+                  )
+                }
+              }
+
               // Base (unplayed) track: draw as two segments to leave a blank gap at the thumb.
               if (leftEnd > 0f) {
-                drawRoundRect(
-                  color = primaryColor.copy(alpha = disabledAlpha),
-                  topLeft = Offset(0f, 0f),
-                  size = androidx.compose.ui.geometry.Size(leftEnd, size.height),
-                  cornerRadius = cornerRadius,
-                )
+                drawTrackWithGaps(0f, leftEnd, primaryColor.copy(alpha = disabledAlpha))
               }
               if (rightStart < size.width) {
-                drawRoundRect(
-                  color = primaryColor.copy(alpha = disabledAlpha),
-                  topLeft = Offset(rightStart, 0f),
-                  size = androidx.compose.ui.geometry.Size(size.width - rightStart, size.height),
-                  cornerRadius = cornerRadius,
-                )
+                drawTrackWithGaps(rightStart, size.width, primaryColor.copy(alpha = disabledAlpha))
               }
 
               // Buffered segment
               if (readAheadPx > playedPx) {
                 val bufferStart = maxOf(rightStart, playedPx)
                 val bufferEnd = readAheadPx.coerceIn(0f, size.width)
-                val bufferWidth = bufferEnd - bufferStart
-                if (bufferWidth > 0f) {
-                  drawRoundRect(
-                    color = primaryColor.copy(alpha = bufferAlpha),
-                    topLeft = Offset(bufferStart, 0f),
-                    size = androidx.compose.ui.geometry.Size(bufferWidth, size.height),
-                    cornerRadius = cornerRadius,
-                  )
+                if (bufferEnd > bufferStart) {
+                  drawTrackWithGaps(bufferStart, bufferEnd, primaryColor.copy(alpha = bufferAlpha))
                 }
               }
 
               // Played segment (up to the left side of the thumb gap)
               if (leftEnd > 0f) {
-                drawRoundRect(
-                  color = primaryColor,
-                  topLeft = Offset(0f, 0f),
-                  size = androidx.compose.ui.geometry.Size(leftEnd, size.height),
-                  cornerRadius = cornerRadius,
-                )
+                drawTrackWithGaps(0f, leftEnd, primaryColor)
               }
             }
         },
@@ -696,6 +713,7 @@ fun SeekbarPreview(
             position = position,
             duration = duration,
             readAheadValue = position,
+            chapters = persistentListOf(),
             onSeek = {},
             onSeekFinished = {},
           )

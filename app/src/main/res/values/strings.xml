@@ -336,10 +336,10 @@
     <string name="pref_folders_blacklisted">Folder(s) blacklisted</string>
 
     <!-- M3U Playlist Strings -->
-    <string name="playlist_add_m3u_title">Add M3U/M3U8 Playlist</string>
-    <string name="playlist_add_m3u_description">Enter the URL of an M3U or M3U8 playlist file</string>
+    <string name="playlist_add_m3u_title">Add m3u Playlist</string>
+    <string name="playlist_add_m3u_description">Enter the URL of an m3u playlist file</string>
     <string name="playlist_url_label">Playlist URL</string>
-    <string name="playlist_url_placeholder">https://example.com/playlist.m3u8</string>
+    <string name="playlist_url_placeholder">https://example.com/playlist.m3u</string>
     <string name="playlist_url_hint">Supports .m3u and .m3u8 formats</string>
     <string name="playlist_add_success">M3U playlist added successfully</string>
     <string name="playlist_add_error">Failed to add M3U playlist: %s</string>

@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,8 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -35,7 +34,6 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
@@ -45,7 +43,6 @@ import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
-import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import kotlinx.coroutines.launch
@@ -69,8 +66,6 @@ object RecentlyPlayedScreen : Screen {
     val recentVideos by viewModel.recentVideos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
-    val playerPreferences = koinInject<PlayerPreferences>()
-    val playlistMode by playerPreferences.playlistMode.collectAsState()
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
@@ -128,35 +123,8 @@ object RecentlyPlayedScreen : Screen {
           onSortClick = null, // No sorting in recently played
           isSingleSelection = selectionManager.isSingleSelection,
           onInfoClick = null, // No info in recently played
-          onShareClick = { 
-            // Only share videos, not playlists
-            val selectedVideos = selectionManager.getSelectedItems()
-              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
-              .map { it.video }
-            if (selectedVideos.isNotEmpty()) {
-              app.marlboroadvance.mpvex.utils.media.MediaUtils.shareVideos(context, selectedVideos)
-            }
-          },
-          onPlayClick = { 
-            // Only play videos, not playlists
-            val selectedVideos = selectionManager.getSelectedItems()
-              .filterIsInstance<RecentlyPlayedItem.VideoItem>()
-              .map { it.video }
-            if (selectedVideos.isNotEmpty()) {
-              if (selectedVideos.size == 1) {
-                MediaUtils.playFile(selectedVideos.first(), context)
-              } else {
-                val intent = Intent(Intent.ACTION_VIEW, selectedVideos.first().uri)
-                intent.setClass(context, PlayerActivity::class.java)
-                intent.putExtra("internal_launch", true)
-                intent.putParcelableArrayListExtra("playlist", ArrayList(selectedVideos.map { it.uri }))
-                intent.putExtra("playlist_index", 0)
-                intent.putExtra("launch_source", "playlist")
-                context.startActivity(intent)
-              }
-              selectionManager.clear()
-            }
-          },
+          onShareClick = null,
+          onPlayClick = null,
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
@@ -214,33 +182,12 @@ object RecentlyPlayedScreen : Screen {
         else -> {
           RecentItemsContent(
             recentItems = recentItems,
-            playlistMode = playlistMode,
             playlistRepository = playlistRepository,
             selectionManager = selectionManager,
             onVideoClick = { video ->
-              // If playlist mode is enabled, play all videos starting from the clicked one
-              if (playlistMode) {
-                val startIndex = recentVideos.indexOfFirst { it.id == video.id }
-                if (startIndex >= 0) {
-                  if (recentVideos.size == 1) {
-                    // Single video - play normally
-                    MediaUtils.playFile(video, context, "recently_played")
-                  } else {
-                    // Multiple videos - play as playlist starting from clicked video
-                    val intent = Intent(Intent.ACTION_VIEW, recentVideos[startIndex].uri)
-                    intent.setClass(context, PlayerActivity::class.java)
-                    intent.putExtra("internal_launch", true)
-                    intent.putParcelableArrayListExtra("playlist", ArrayList(recentVideos.map { it.uri }))
-                    intent.putExtra("playlist_index", startIndex)
-                    intent.putExtra("launch_source", "recently_played_list")
-                    context.startActivity(intent)
-                  }
-                } else {
-                  MediaUtils.playFile(video, context, "recently_played")
-                }
-              } else {
-                MediaUtils.playFile(video, context, "recently_played")
-              }
+              // Always play individual videos without creating a playlist
+              // regardless of playlist mode setting
+              MediaUtils.playFile(video, context, "recently_played")
             },
             onPlaylistClick = { playlistItem ->
               // Navigate to playlist detail screen
@@ -273,7 +220,6 @@ object RecentlyPlayedScreen : Screen {
 @Composable
 private fun RecentItemsContent(
   recentItems: List<RecentlyPlayedItem>,
-  playlistMode: Boolean,
   playlistRepository: PlaylistRepository,
   selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<RecentlyPlayedItem, String>,
   onVideoClick: (Video) -> Unit,
@@ -386,7 +332,7 @@ private fun RecentItemsContent(
                   }
                 }
               },
-              customIcon = Icons.Filled.PlaylistPlay,
+              customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
               showDateModified = true,
             )
           }
@@ -396,64 +342,4 @@ private fun RecentItemsContent(
   }
 }
 
-@Composable
-private fun RecentVideosContent(
-  recentVideos: List<Video>,
-  playlistMode: Boolean,
-  onVideoClick: (Video) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  val gesturePreferences = koinInject<GesturePreferences>()
-  val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
-  val listState = rememberLazyListState()
 
-  // Check if at top of list to hide scrollbar
-  val isAtTop by remember {
-    derivedStateOf {
-      listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-    }
-  }
-
-  // Only show scrollbar if list has more than 20 items
-  val hasEnoughItems = recentVideos.size > 20
-
-  // Animate scrollbar alpha
-  val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
-    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
-    label = "scrollbarAlpha",
-  )
-
-  LazyColumnScrollbar(
-    state = listState,
-    settings = ScrollbarSettings(
-      thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-      thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-    ),
-  ) {
-    LazyColumn(
-      state = listState,
-      modifier = modifier.fillMaxSize(),
-      contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
-    ) {
-      items(
-        count = recentVideos.size,
-        key = { index -> "${recentVideos[index].id}_${recentVideos[index].path}_$index" },
-      ) { index ->
-        val video = recentVideos[index]
-        VideoCard(
-          video = video,
-          progressPercentage = null,
-          isSelected = false,
-          onClick = { onVideoClick(video) },
-          onLongClick = { },
-          onThumbClick = if (tapThumbnailToSelect) {
-            { }
-          } else {
-            { onVideoClick(video) }
-          },
-        )
-      }
-    }
-  }
-}

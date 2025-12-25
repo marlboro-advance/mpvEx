@@ -44,6 +44,7 @@ fun PullRefreshBox(
   isRefreshing: MutableState<Boolean>,
   onRefresh: suspend () -> Unit,
   modifier: Modifier = Modifier,
+  enabled: Boolean = true,
   listState: LazyListState? = null,
   refreshingOffset: Dp = 80.dp,
   refreshThreshold: Dp = 72.dp,
@@ -64,7 +65,7 @@ fun PullRefreshBox(
       refreshing = isRefreshing.value,
       onRefresh = {
         // Only trigger refresh if we're at the top or no listState provided
-        if (listState == null || canRefresh) {
+        if (enabled && (listState == null || canRefresh)) {
           isRefreshing.value = true
           coroutineScope.launch {
             onRefresh()
@@ -80,7 +81,7 @@ fun PullRefreshBox(
   Box(
     modifier = modifier.pullRefresh(
       state = pullRefreshState,
-      enabled = listState == null || canRefresh,
+      enabled = enabled && (listState == null || canRefresh),
     ),
   ) {
     content()

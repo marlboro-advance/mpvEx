@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.database.repository
 
+import android.content.Context
 import android.net.Uri
 import app.marlboroadvance.mpvex.database.dao.PlaylistDao
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
@@ -79,6 +80,16 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     playlistDao.deletePlaylistItem(item)
     // Update playlist's updatedAt timestamp
     getPlaylistById(item.playlistId)?.let { playlist ->
+      updatePlaylist(playlist)
+    }
+  }
+
+  suspend fun removeItemsFromPlaylist(items: List<PlaylistItemEntity>) {
+    if (items.isEmpty()) return
+    // Use batch delete for better performance and to avoid race conditions
+    playlistDao.deletePlaylistItems(items)
+    // Update playlist's updatedAt timestamp
+    getPlaylistById(items.first().playlistId)?.let { playlist ->
       updatePlaylist(playlist)
     }
   }
@@ -209,13 +220,54 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     }
   }
 
+  suspend fun createM3UPlaylistFromFile(context: Context, uri: Uri): Result<Long> {
+    return try {
+      val parseResult = M3UParser.parseFromUri(context, uri)
+      
+      when (parseResult) {
+        is M3UParseResult.Success -> {
+          val now = System.currentTimeMillis()
+          val playlistId = playlistDao.insertPlaylist(
+            PlaylistEntity(
+              name = parseResult.playlistName,
+              createdAt = now,
+              updatedAt = now,
+              m3uSourceUrl = null, // Local file, no URL to refresh from
+              isM3uPlaylist = true
+            )
+          )
+          
+          // Add all items from the M3U playlist
+          val items = parseResult.items.mapIndexed { index, m3uItem ->
+            PlaylistItemEntity(
+              playlistId = playlistId.toInt(),
+              filePath = m3uItem.url,
+              fileName = m3uItem.title ?: "Item ${index + 1}",
+              position = index,
+              addedAt = now
+            )
+          }
+          
+          playlistDao.insertPlaylistItems(items)
+          
+          Result.success(playlistId)
+        }
+        is M3UParseResult.Error -> {
+          Result.failure(Exception(parseResult.message, parseResult.exception))
+        }
+      }
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+  }
+
   suspend fun refreshM3UPlaylist(playlistId: Int): Result<Unit> {
     return try {
       val playlist = getPlaylistById(playlistId)
         ?: return Result.failure(Exception("Playlist not found"))
       
       if (!playlist.isM3uPlaylist || playlist.m3uSourceUrl == null) {
-        return Result.failure(Exception("Not an M3U playlist"))
+        return Result.failure(Exception("Not an M3U playlist or no source URL available"))
       }
       
       val parseResult = M3UParser.parseFromUrl(playlist.m3uSourceUrl)

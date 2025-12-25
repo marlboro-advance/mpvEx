@@ -1,5 +1,7 @@
 package app.marlboroadvance.mpvex.utils.media
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,6 +65,34 @@ object M3UParser {
       parseContent(content, url)
     } catch (e: Exception) {
       Log.e(TAG, "Error parsing M3U playlist", e)
+      M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
+    }
+  }
+  
+  /**
+   * Parse an M3U/M3U8 playlist from a local file URI
+   */
+  suspend fun parseFromUri(context: Context, uri: Uri): M3UParseResult = withContext(Dispatchers.IO) {
+    try {
+      Log.d(TAG, "Parsing M3U playlist from URI: $uri")
+      
+      val content = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+        BufferedReader(InputStreamReader(inputStream, "UTF-8")).use { reader ->
+          reader.readText()
+        }
+      } ?: return@withContext M3UParseResult.Error("Failed to open file")
+      
+      // Get filename for playlist name
+      val filename = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+        if (nameIndex >= 0 && cursor.moveToFirst()) {
+          cursor.getString(nameIndex)
+        } else null
+      } ?: uri.lastPathSegment ?: "Local M3U Playlist"
+      
+      parseContent(content, filename)
+    } catch (e: Exception) {
+      Log.e(TAG, "Error parsing M3U playlist from URI", e)
       M3UParseResult.Error("Failed to parse playlist: ${e.message}", e)
     }
   }
@@ -160,8 +190,20 @@ object M3UParser {
         return M3UParseResult.Error("No valid media URLs found in playlist")
       }
       
-      // Extract playlist name from source URL or use default
-      val playlistName = sourceUrl?.let { extractPlaylistNameFromUrl(it) } ?: "M3U Playlist"
+      // Extract playlist name from source URL/filename or use default
+      val playlistName = sourceUrl?.let { 
+        // Check if it's a URL or a filename
+        if (it.startsWith("http://") || it.startsWith("https://")) {
+          extractPlaylistNameFromUrl(it)
+        } else {
+          // It's a filename, extract name without extension
+          it.substringBeforeLast('.', it)
+            .replace('_', ' ')
+            .replace('-', ' ')
+            .trim()
+            .ifEmpty { "M3U Playlist" }
+        }
+      } ?: "M3U Playlist"
       
       Log.d(TAG, "Successfully parsed M3U playlist with ${items.size} items")
       return M3UParseResult.Success(playlistName, items)

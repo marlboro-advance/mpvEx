@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,10 +116,9 @@ object PlaylistScreen : Screen {
       items = filteredPlaylists,
       getId = { it.playlist.id },
       onDeleteItems = { itemsToDelete ->
+        // Delete all items sequentially (this is a suspend function, so it blocks until complete)
         itemsToDelete.forEach { item ->
-          scope.launch {
-            viewModel.deletePlaylist(item.playlist)
-          }
+          viewModel.deletePlaylist(item.playlist)
         }
         Pair(itemsToDelete.size, 0)
       },
@@ -256,7 +257,7 @@ object PlaylistScreen : Screen {
             EmptyState(
               icon = Icons.Outlined.PlaylistAdd,
               title = "No playlists yet",
-              message = "Create a playlist or add one from an M3U/M3U8 URL",
+              message = "Create a playlist or add one from an m3u URL",
             )
           }
         }
@@ -304,13 +305,32 @@ object PlaylistScreen : Screen {
             result.onSuccess {
               android.widget.Toast.makeText(
                 context,
-                "M3U playlist added successfully",
+                "Playlist added successfully",
                 android.widget.Toast.LENGTH_SHORT
               ).show()
             }.onFailure { error ->
               android.widget.Toast.makeText(
                 context,
-                "Failed to add M3U playlist: ${error.message}",
+                "Failed to add m3u playlist: ${error.message}",
+                android.widget.Toast.LENGTH_LONG
+              ).show()
+            }
+            showM3UDialog = false
+          }
+        },
+        onPickLocalFile = { uri ->
+          scope.launch {
+            val result = viewModel.createM3UPlaylistFromFile(uri)
+            result.onSuccess {
+              android.widget.Toast.makeText(
+                context,
+                "m3u playlist added successfully",
+                android.widget.Toast.LENGTH_SHORT
+              ).show()
+            }.onFailure { error ->
+              android.widget.Toast.makeText(
+                context,
+                "Failed to add m3u playlist: ${error.message}",
                 android.widget.Toast.LENGTH_LONG
               ).show()
             }
@@ -483,9 +503,20 @@ private fun CreatePlaylistDialog(
 private fun AddM3UPlaylistDialog(
   onDismiss: () -> Unit,
   onConfirm: (String) -> Unit,
+  onPickLocalFile: (android.net.Uri) -> Unit,
 ) {
   var playlistUrl by remember { mutableStateOf("") }
   var isLoading by remember { mutableStateOf(false) }
+  
+  // File picker launcher
+  val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+  ) { uri: android.net.Uri? ->
+    uri?.let {
+      isLoading = true
+      onPickLocalFile(it)
+    }
+  }
 
   androidx.compose.material3.AlertDialog(
     onDismissRequest = if (isLoading) {
@@ -493,14 +524,14 @@ private fun AddM3UPlaylistDialog(
     } else {
       onDismiss
     },
-    title = { Text("Add M3U/M3U8 Playlist") },
+    title = { Text("Add m3u Playlist") },
     text = {
       Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
         Text(
-          text = "Enter the URL of an M3U or M3U8 playlist file",
+          text = "Enter the URL of an m3u playlist file, or choose a local file",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -509,18 +540,43 @@ private fun AddM3UPlaylistDialog(
           value = playlistUrl,
           onValueChange = { playlistUrl = it },
           label = { Text("Playlist URL") },
-          placeholder = { Text("https://example.com/playlist.m3u8") },
           singleLine = false,
           maxLines = 3,
           modifier = Modifier.fillMaxWidth(),
-          enabled = !isLoading,
-          supportingText = {
-            Text(
-              text = "Supports .m3u and .m3u8 formats",
-              style = MaterialTheme.typography.bodySmall
-            )
-          }
+          enabled = !isLoading
         )
+        
+        // Divider with "OR" text
+        androidx.compose.foundation.layout.Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+          Text(
+            text = "OR",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+          androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+        }
+        
+        // Local file picker button
+        androidx.compose.material3.OutlinedButton(
+          onClick = {
+            filePickerLauncher.launch("*/*")
+          },
+          enabled = !isLoading,
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Icon(
+            imageVector = Icons.Filled.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+          )
+          androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+          Text("Choose Local m3u File")
+        }
         
         if (isLoading) {
           Box(
@@ -542,7 +598,7 @@ private fun AddM3UPlaylistDialog(
         },
         enabled = playlistUrl.isNotBlank() && !isLoading,
       ) {
-        Text("Add")
+        Text("Add from URL")
       }
     },
     dismissButton = {

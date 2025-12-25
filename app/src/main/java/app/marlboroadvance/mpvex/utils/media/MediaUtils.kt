@@ -58,6 +58,12 @@ object MediaUtils {
           intent.setClass(context, PlayerActivity::class.java)
           intent.putExtra("internal_launch", true) // Enables subtitle autoload
           launchSource?.let { intent.putExtra("launch_source", it) }
+          
+          // For playlist items, pass the title so it shows correctly in the player
+          if (launchSource != null && (launchSource.contains("playlist") || launchSource == "m3u_playlist")) {
+            intent.putExtra("title", source.displayName)
+          }
+          
           context.startActivity(intent)
           return
         }

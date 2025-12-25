@@ -48,8 +48,14 @@ interface PlaylistDao {
   @Delete
   suspend fun deletePlaylistItem(item: PlaylistItemEntity)
 
+  @Delete
+  suspend fun deletePlaylistItems(items: List<PlaylistItemEntity>)
+
   @Query("DELETE FROM PlaylistItemEntity WHERE id = :itemId")
   suspend fun deletePlaylistItemById(itemId: Int)
+
+  @Query("DELETE FROM PlaylistItemEntity WHERE id IN (:itemIds)")
+  suspend fun deletePlaylistItemsByIds(itemIds: List<Int>)
 
   @Query("SELECT * FROM PlaylistItemEntity WHERE playlistId = :playlistId ORDER BY position ASC")
   fun observePlaylistItems(playlistId: Int): Flow<List<PlaylistItemEntity>>

@@ -66,9 +66,23 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
       // Group videos by playlist and standalone videos
       val playlistMap = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
       val standaloneVideos = mutableListOf<Pair<String, Long>>()
+      
+      // Get a set of all network playlist IDs to filter them out
+      val networkPlaylistIds = mutableSetOf<Int>()
+      for (playlistId in allRecentEntities.mapNotNull { it.playlistId }.distinct()) {
+        val playlist = playlistRepository.getPlaylistById(playlistId)
+        if (playlist?.isM3uPlaylist == true) {
+          networkPlaylistIds.add(playlistId)
+        }
+      }
 
       for (entity in allRecentEntities) {
+        // Skip videos from network playlists
         if (entity.playlistId != null) {
+          if (entity.playlistId in networkPlaylistIds) {
+            // Skip videos from network playlists
+            continue
+          }
           playlistMap.getOrPut(entity.playlistId) { mutableListOf() }
             .add(Pair(entity.filePath, entity.timestamp))
         } else {
@@ -76,10 +90,12 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
         }
       }
 
-      // Create playlist items
+      // Create playlist items (excluding network/M3U playlists)
       for (playlistInfo in recentPlaylists) {
         val playlist = playlistRepository.getPlaylistById(playlistInfo.playlistId)
-        if (playlist != null) {
+        
+        // Skip M3U/network playlists - only include local playlists
+        if (playlist != null && !playlist.isM3uPlaylist) {
           val playlistVideos = playlistMap[playlistInfo.playlistId] ?: emptyList()
           val mostRecent = playlistVideos.maxByOrNull { it.second }
           if (mostRecent != null) {
@@ -105,15 +121,17 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
           filePath.startsWith("rtmp://", ignoreCase = true) ||
           filePath.startsWith("rtsp://", ignoreCase = true)
 
-        val video = if (isNetworkUri) {
-          createNetworkVideoFromUri(filePath, entity)
+        // Skip network URIs (streams) as per requirement
+        if (isNetworkUri) {
+          continue
+        }
+
+        // Process local files only
+        val file = File(filePath)
+        val video = if (file.exists()) {
+          createVideoFromFilePath(filePath, file, entity?.videoTitle)
         } else {
-          val file = File(filePath)
-          if (file.exists()) {
-            createVideoFromFilePath(filePath, file, entity?.videoTitle)
-          } else {
-            null
-          }
+          null
         }
 
         if (video != null) {
@@ -211,81 +229,9 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     }
   }
 
-  private fun createNetworkVideoFromUri(
-    uri: String,
-    entity: RecentlyPlayedEntity?,
-  ): Video {
-    val parsedUri = Uri.parse(uri)
+  // Network video creation function removed as it's no longer used
 
-    // For HTTP/HTTPS network streams, prefer parsed video title (e.g., from HTTP headers)
-    // Always use videoTitle first (parsed from MPV), then fileName, then URI fallback
-    val displayName =
-      entity?.videoTitle?.takeIf { it.isNotBlank() } ?: entity?.fileName ?: parsedUri.lastPathSegment ?: uri
-    val title = entity?.videoTitle?.takeIf { it.isNotBlank() }?.substringBeforeLast('.') ?: displayName.substringBeforeLast('.')
-
-    // Use cached duration, file size, resolution, and thumbnail from entity
-    val duration = entity?.duration ?: 0L
-    val fileSize = entity?.fileSize ?: 0L
-    val width = entity?.width ?: 0
-    val height = entity?.height ?: 0
-
-    val videoPath = uri
-
-    return Video(
-      id = uri.hashCode().toLong(),
-      title = title,
-      displayName = displayName,
-      path = videoPath,  // Use thumbnail path if available for thumbnail loading
-      uri = parsedUri,   // Keep original URI for playback
-      duration = duration,
-      durationFormatted = formatDuration(duration),
-      size = fileSize,
-      sizeFormatted = formatFileSize(fileSize),
-      dateModified = entity?.timestamp?.div(1000) ?: 0L,
-      dateAdded = entity?.timestamp?.div(1000) ?: 0L,
-      mimeType = "video/*",
-      bucketId = parsedUri.host?.hashCode()?.toString() ?: "0",
-      bucketDisplayName = parsedUri.host ?: "Network",
-      width = width,
-      height = height,
-      fps = 0f,
-      resolution = formatResolution(width, height),
-    )
-  }
-
-  private fun createBasicVideoFromFile(
-    file: File,
-    parsedVideoTitle: String? = null,
-  ): Video {
-    // For local videos, always use filename (ignore parsed title)
-    val displayName = file.name
-    val title = file.nameWithoutExtension
-    val size = file.length()
-    val dateModified = file.lastModified() / 1000
-    val uri = Uri.fromFile(file)
-    val parent = file.parent ?: ""
-
-    return Video(
-      id = file.absolutePath.hashCode().toLong(),
-      title = title,
-      displayName = displayName,
-      path = file.absolutePath,
-      uri = uri,
-      duration = 0L,
-      durationFormatted = "--",
-      size = size,
-      sizeFormatted = formatFileSize(size),
-      dateModified = dateModified,
-      dateAdded = dateModified,
-      mimeType = "video/*",
-      bucketId = parent.hashCode().toString(),
-      bucketDisplayName = File(parent).name,
-      width = 0,
-      height = 0,
-      fps = 0f,
-      resolution = "--",
-    )
-  }
+  // Basic video creation function removed as it's no longer used
 
   suspend fun clearAllRecentlyPlayed() {
     try {
