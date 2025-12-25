@@ -142,6 +142,9 @@ dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.ui)
   implementation(libs.androidx.ui.graphics)
+  implementation(libs.androidx.media3.exoplayer)
+  implementation(libs.androidx.media3.ui)
+  implementation(libs.androidx.media3.common)
   implementation(libs.androidx.material3.android)
   implementation(libs.androidx.compose.material)
   implementation(libs.androidx.ui.tooling.preview)
@@ -191,6 +194,7 @@ dependencies {
   implementation(libs.nanohttpd) // Local proxy server for streaming
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+  implementation(libs.jsoup)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"

@@ -1024,6 +1024,7 @@ private fun FileSystemBrowserContent(
                 } else {
                   { onVideoClick(videoFile.video) }
                 },
+                hasSubtitle = videoFile.hasSubtitle,
               )
             }
           }
@@ -1317,6 +1318,7 @@ private fun FileSystemSearchContent(
                   onClick = { onVideoClick(item.video) },
                   onLongClick = {},
                   onThumbClick = {},
+                  hasSubtitle = item.hasSubtitle,
                 )
               }
             }

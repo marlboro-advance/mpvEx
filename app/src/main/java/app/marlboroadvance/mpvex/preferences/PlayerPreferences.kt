@@ -19,7 +19,7 @@ class PlayerPreferences(
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)
-  val volumeGesture = preferenceStore.getBoolean("volume_brightness", true)
+  val volumeGesture = preferenceStore.getBoolean("gestures_volume", true)
   val pinchToZoomGesture = preferenceStore.getBoolean("pinch_to_zoom_gesture", true)
 
   val videoAspect = preferenceStore.getEnum("video_aspect", VideoAspect.Fit)

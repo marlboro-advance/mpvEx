@@ -18,6 +18,8 @@ okhttp = "5.3.0"
 moshi = "1.15.2"
 sardineAndroid = "0.8"
 reorderable = "3.0.0"
+media3 = "1.5.0"
+jsoup = "1.17.2"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -81,6 +83,11 @@ moshi = { module = "com.squareup.moshi:moshi", version.ref = "moshi" }
 moshi-kotlin = { module = "com.squareup.moshi:moshi-kotlin", version.ref = "moshi" }
 moshi-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.ref = "moshi" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+
+androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
+androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 
 [bundles]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel", "koin-startup"]

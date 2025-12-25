@@ -139,6 +139,8 @@ fun SeekbarWithTimers(
             position = if (isUserInteracting) userPosition else animatedPosition.value,
             duration = duration,
             readAheadValue = readAheadValue,
+            chapters = chapters,
+            shrinkOnPress = shrinkOnPress,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -149,7 +151,6 @@ fun SeekbarWithTimers(
               isUserInteracting = false
               onValueChangeFinished()
             },
-            shrinkOnPress = shrinkOnPress,
           )
         }
         SeekbarStyle.Wavy -> {
@@ -226,6 +227,7 @@ fun SeekbarWithTimers(
             position = if (isUserInteracting) userPosition else animatedPosition.value,
             duration = duration,
             readAheadValue = readAheadValue,
+            chapters = chapters,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -279,7 +281,7 @@ private fun SquigglySeekbar(
 
   // Animation state
   var phaseOffset by remember { mutableFloatStateOf(0f) }
-  var heightFraction by remember { mutableFloatStateOf(1f) }
+  var heightFraction by remember { mutableFloatStateOf(useWavySeekbar.let { if (it) 1f else 0f }) }
   
   // Animation for shrinking end bar (Wavy/Simple) or Circle thumb (Circular) on press
   val thumbScale by animateFloatAsState(
@@ -449,7 +451,7 @@ private fun SquigglySeekbar(
 
     // Draw path up to progress position using clipping
     val clipTop = lineAmplitude + strokeWidth
-    val gapHalf = 1.dp.toPx()
+    val gapHalf = 1.5.dp.toPx()
 
     fun drawPathWithGaps(
       startX: Float,
@@ -523,13 +525,14 @@ private fun SquigglySeekbar(
     }
 
     if (transitionEnabled) {
-      val disabledAlpha = 77f / 255f
+      val disabledAlpha = 0.2f // Darker/Neutral background
       val unplayedStart = maxOf(totalProgressPx, totalReadAheadPx)
-      drawPathWithGaps(unplayedStart, totalWidth, primaryColor.copy(alpha = disabledAlpha))
+      val unplayedColor = Color.White.copy(alpha = disabledAlpha)
+      drawPathWithGaps(unplayedStart, totalWidth, unplayedColor)
     } else {
       val flatLineStart = maxOf(totalProgressPx, totalReadAheadPx)
       drawLine(
-        color = surfaceVariant.copy(alpha = 0.4f),
+        color = Color.White.copy(alpha = 0.2f),
         start = Offset(flatLineStart, centerY),
         end = Offset(totalWidth, centerY),
         strokeWidth = strokeWidth,
@@ -545,8 +548,8 @@ private fun SquigglySeekbar(
       center = Offset(0f, centerY + startAmp * lineAmplitude * heightFraction),
     )
 
-// SquigglySeekbar (Circular Thumb)
-    if (seekbarStyle == SeekbarStyle.Circular) {
+    // SquigglySeekbar (Circular Thumb for Circular and Standard styles)
+    if (seekbarStyle == SeekbarStyle.Circular || seekbarStyle == SeekbarStyle.Standard) {
          val thumbRadius = 10.dp.toPx() * circularThumbScale
          drawCircle(
             color = Color.White,
@@ -559,8 +562,8 @@ private fun SquigglySeekbar(
         if (shrinkOnPress) {
             barCurrentHeightFraction = thumbScale
         }
-        
-        val barHalfHeight = (lineAmplitude + strokeWidth) * barCurrentHeightFraction
+        val baseHeight = if (lineAmplitude > 0f) lineAmplitude + strokeWidth else 8.dp.toPx()
+        val barHalfHeight = baseHeight * barCurrentHeightFraction
         val barWidth = 5.dp.toPx()
 
         if (barHalfHeight > 0.5f) {
@@ -605,41 +608,129 @@ fun StandardSeekbar(
   position: Float,
   duration: Float,
   readAheadValue: Float,
+  chapters: ImmutableList<Segment>,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
   shrinkOnPress: Boolean = true,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isDragged by interactionSource.collectIsDraggedAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val isInteracting = isDragged || isPressed
+    val primaryColor = MaterialTheme.colorScheme.primary
     
-    val targetWidth = if (shrinkOnPress && isInteracting) 2.dp else 4.dp
-    val thumbWidth by animateDpAsState(targetValue = targetWidth, label = "thumbWidth")
-
-    Slider(
-        value = position,
-        onValueChange = onSeek,
-        onValueChangeFinished = onSeekFinished,
-        valueRange = 0f..duration.coerceAtLeast(0.1f),
-        modifier = Modifier.fillMaxWidth(),
-        interactionSource = interactionSource,
-        track = { sliderState ->
-            SliderDefaults.Track(
-                sliderState = sliderState,
-                modifier = Modifier.height(8.dp),
-                thumbTrackGapSize = 6.dp
-            )
-        },
-        thumb = {
-            Box(
-                modifier = Modifier
-                    .width(thumbWidth)
-                    .height(24.dp)
-                    .background(Color.White, CircleShape)
-            )
-        }
+    // Manual Interaction Tracking
+    var isPressed by remember { mutableStateOf(false) }
+    var isDragged by remember { mutableStateOf(false) }
+    val isInteracting = isPressed || isDragged
+    
+    // Animate thumb width: 4.dp (Normal) -> 2.dp (Pressed)
+    val thumbWidth by animateDpAsState(
+        targetValue = if (shrinkOnPress && isInteracting) 2.dp else 4.dp,
+        label = "thumbWidth"
     )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { offset ->
+                        val newPosition = (offset.x / size.width) * duration
+                        onSeek(newPosition.coerceIn(0f, duration))
+                        onSeekFinished()
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { isDragged = true },
+                    onDragEnd = {
+                        isDragged = false
+                        onSeekFinished()
+                    },
+                    onDragCancel = {
+                        isDragged = false
+                        onSeekFinished()
+                    },
+                ) { change, _ ->
+                    change.consume()
+                    val newPosition = (change.position.x / size.width) * duration
+                    onSeek(newPosition.coerceIn(0f, duration))
+                }
+            }
+    ) {
+        val width = size.width
+        val height = size.height
+        val centerY = height / 2f
+        val strokeWidth = 4.dp.toPx()
+        val gapHalf = 2.dp.toPx() // Gap around chapters
+        val thumbGap = 8.dp.toPx() // Gap around the thumb
+        
+        val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
+        val progressPx = width * progress
+        
+        fun drawWithGaps(startX: Float, endX: Float, color: Color, excludeThumbGap: Boolean = false) {
+            if (endX <= startX || duration <= 0f) return
+            
+            val allGaps = mutableListOf<Pair<Float, Float>>()
+            
+            chapters
+                .map { (it.start / duration).coerceIn(0f, 1f) * width }
+                .filter { it in startX..endX }
+                .sorted()
+                .mapTo(allGaps) { x -> (x - gapHalf).coerceAtLeast(startX) to (x + gapHalf).coerceAtMost(endX) }
+            
+            // Draw segments
+            var segmentStart = startX
+            for ((gapStart, gapEnd) in allGaps.sortedBy { it.first }) {
+                if (gapStart > segmentStart) {
+                    drawLine(
+                        color = color,
+                        start = Offset(segmentStart, centerY),
+                        end = Offset(gapStart, centerY),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+                segmentStart = gapEnd
+            }
+            if (segmentStart < endX) {
+                drawLine(
+                    color = color,
+                    start = Offset(segmentStart, centerY),
+                    end = Offset(endX, centerY),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+        
+        // Draw played segment (up to thumb gap)
+        val playedEnd = (progressPx - thumbGap).coerceAtLeast(0f)
+        drawWithGaps(0f, playedEnd, primaryColor)
+        
+        // Draw unplayed segment (after thumb gap)
+        val unplayedStart = progressPx + thumbGap
+        val trackColor = Color(0xFF3D3D3D) // Dark gray like in image
+        if (unplayedStart < width) {
+            drawWithGaps(unplayedStart, width, trackColor)
+        }
+        
+        // Draw vertical thumb bar
+        val thumbWidthPx = thumbWidth.toPx()
+        val thumbHeight = 24.dp.toPx()
+        
+        drawLine(
+            color = Color.White,
+            start = Offset(progressPx, centerY - thumbHeight / 2f),
+            end = Offset(progressPx, centerY + thumbHeight / 2f),
+            strokeWidth = thumbWidthPx,
+            cap = StrokeCap.Round
+        )
+    }
 }
 
 @Composable
@@ -647,12 +738,12 @@ fun DiamondSeekbar(
   position: Float,
   duration: Float,
   readAheadValue: Float,
+  chapters: ImmutableList<Segment>,
   onSeek: (Float) -> Unit,
   onSeekFinished: () -> Unit,
   shrinkOnPress: Boolean = true,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     
     // Manual Interaction Tracking
     var isPressed by remember { mutableStateOf(false) }
@@ -673,13 +764,11 @@ fun DiamondSeekbar(
         animationSpec = tween(durationMillis = 200, easing = LinearEasing)
     )
 
-    // Animation state for wave
     var phaseOffset by remember { mutableFloatStateOf(0f) }
-    val useWavySeekbar = true
-    val waveLength = 80f
-    val lineAmplitude = 6f
-    val phaseSpeed = 10f
-    
+    val waveLength = 60f 
+    val maxAmplitude = 12f 
+    val phaseSpeed = 25f 
+
     LaunchedEffect(Unit) {
         var lastFrameTime = withFrameMillis { it }
         while (isActive) {
@@ -696,7 +785,7 @@ fun DiamondSeekbar(
     modifier =
       Modifier
         .fillMaxWidth()
-        .height(32.dp)
+        .height(40.dp)
         .pointerInput(Unit) {
           detectTapGestures(
             onPress = {
@@ -735,81 +824,133 @@ fun DiamondSeekbar(
         val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
         val progressPx = width * progress
         
-        // --- Draw Wavy Played Part ---
-        val path = Path()
-        val waveStart = -phaseOffset - waveLength / 2f
+        val strokeWidth = 3.dp.toPx()
+        val gapHalf = 2.dp.toPx() 
+        val thumbSize = 14.dp.toPx() * scale
+        val thumbGap = thumbSize * 1.8f 
         
-        path.moveTo(waveStart, centerY)
-        var currentX = waveStart
-        var waveSign = 1f
-        val waveEnd = progressPx + waveLength 
-
-        fun computeAmplitude(x: Float, sign: Float): Float {
-             // Progressive Amplitude: Start small (flat), ramp up, then constant
-             
-             // Ramp up over the first 50% of the screen width
-             val rampDistance = width * 0.5f
-             val ratio = (x / rampDistance).coerceIn(0f, 1f) // x here is pixel position.
-             
-             // Start at 10% amplitude, quadratic ramp to 200% max
-             val scaleFactor = 0.05f + (1.9f * ratio * ratio)
-             
-             return sign * lineAmplitude * scaleFactor
+        val rampUpZone = width * 0.30f 
+        val constantZoneStart = width * 0.50f
+        
+        fun getAmplitudeAtX(xPos: Float): Float {
+            val playedWidth = progressPx
+            if (playedWidth <= 0f) return 0f
+            
+            val relativePos = (xPos / playedWidth).coerceIn(0f, 1f)
+            
+            return when {
+                relativePos < 0.30f -> {
+                    val t = relativePos / 0.30f
+                    maxAmplitude * (0.15f + 0.85f * t * t) 
+                }
+                relativePos < 0.50f -> {
+                    maxAmplitude
+                }
+                else -> maxAmplitude
+            }
         }
         
-        val dist = waveLength / 2f
-        while (currentX < waveEnd) {
-            waveSign = -waveSign
-            val nextX = currentX + dist
-            val midX = currentX + dist / 2f
-            val currentAmp = computeAmplitude(currentX, -waveSign) 
-            val nextAmp = computeAmplitude(nextX, waveSign)
-
-            path.cubicTo(
-                midX, centerY + currentAmp,
-                midX, centerY + nextAmp,
-                nextX, centerY + nextAmp
+        val wavyPath = Path()
+        val waveStart = -phaseOffset - waveLength
+        
+        wavyPath.moveTo(waveStart, centerY)
+        
+        var x = waveStart
+        var sign = 1f
+        while (x < width + waveLength) {
+            val halfWave = waveLength / 2f
+            val nextX = x + halfWave
+            val midX = x + halfWave * 0.5f
+            
+            val amp = getAmplitudeAtX(midX.coerceIn(0f, progressPx))
+            
+            wavyPath.cubicTo(
+                midX, centerY + sign * amp,
+                midX, centerY + sign * amp,
+                nextX, centerY
             )
-            currentX = nextX
+            x = nextX
+            sign *= -1f
         }
         
-        clipRect(right = progressPx) {
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-            )
+        val clipTop = maxAmplitude + strokeWidth + 4f
+        
+        fun drawWavyWithGaps(startX: Float, endX: Float, color: Color) {
+            if (endX <= startX) return
+            
+            val chapterGaps = if (duration > 0f) {
+                chapters
+                    .map { (it.start / duration).coerceIn(0f, 1f) * width }
+                    .filter { it in startX..endX }
+                    .sorted()
+                    .map { cx -> (cx - gapHalf).coerceAtLeast(startX) to (cx + gapHalf).coerceAtMost(endX) }
+            } else emptyList()
+            
+            var segStart = startX
+            for ((gapStart, gapEnd) in chapterGaps) {
+                if (gapStart > segStart) {
+                    clipRect(left = segStart, top = centerY - clipTop, right = gapStart, bottom = centerY + clipTop) {
+                        drawPath(wavyPath, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+                    }
+                }
+                segStart = gapEnd
+            }
+            if (segStart < endX) {
+                clipRect(left = segStart, top = centerY - clipTop, right = endX, bottom = centerY + clipTop) {
+                    drawPath(wavyPath, color, style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+                }
+            }
         }
         
-        // --- Draw Straight Unplayed Part ---
-        val unplayedStart = progressPx + 15.dp.toPx()
+        val playedEnd = (progressPx - thumbGap / 2f).coerceAtLeast(0f)
+        drawWavyWithGaps(0f, playedEnd, primaryColor)
+        
+        val trackHeight = 8.dp.toPx()
+        val unplayedStart = progressPx + thumbGap / 2f
+        val trackColor = Color(0xFF3D3D3D) 
+        
         if (unplayedStart < width) {
-            val trackHeight = 8.dp.toPx()
-             drawRoundRect(
-                color = surfaceVariant.copy(alpha = 0.3f),
-                topLeft = Offset(unplayedStart, centerY - trackHeight / 2f),
-                size = androidx.compose.ui.geometry.Size(width - unplayedStart, trackHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
-            )
+            // Calculate chapter gaps for unplayed section
+            val unplayedGaps = if (duration > 0f) {
+                chapters
+                    .map { (it.start / duration).coerceIn(0f, 1f) * width }
+                    .filter { it in unplayedStart..width }
+                    .sorted()
+                    .map { cx -> (cx - gapHalf).coerceAtLeast(unplayedStart) to (cx + gapHalf).coerceAtMost(width) }
+            } else emptyList()
+            
+            var currentStart = unplayedStart
+            for ((gStart, gEnd) in unplayedGaps) {
+                if (gStart > currentStart) {
+                    drawRoundRect(
+                        color = trackColor,
+                        topLeft = Offset(currentStart, centerY - trackHeight / 2f),
+                        size = androidx.compose.ui.geometry.Size(gStart - currentStart, trackHeight),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
+                    )
+                }
+                currentStart = gEnd
+            }
+            if (currentStart < width) {
+                drawRoundRect(
+                    color = trackColor,
+                    topLeft = Offset(currentStart, centerY - trackHeight / 2f),
+                    size = androidx.compose.ui.geometry.Size(width - currentStart, trackHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
+                )
+            }
         }
         
-        
-        // --- Draw Diamond/Square Thumb ---
-        val thumbX = progressPx
-        // Base size, scaled by animation
-        val thumbSize = 16.dp.toPx() * scale
-        
-        // Rotate the thumb canvas for the animation (45 -> 0)
+        // --- Draw Diamond Thumb ---
         withTransform({
-            rotate(rotation, pivot = Offset(thumbX, centerY))
+            rotate(rotation, pivot = Offset(progressPx, centerY))
         }) {
-            // Draw a Square (which becomes Diamond when rotated 45deg)
             val rectPath = Path().apply {
                 addRect(
                     androidx.compose.ui.geometry.Rect(
-                        left = thumbX - thumbSize / 2f,
+                        left = progressPx - thumbSize / 2f,
                         top = centerY - thumbSize / 2f,
-                        right = thumbX + thumbSize / 2f,
+                        right = progressPx + thumbSize / 2f,
                         bottom = centerY + thumbSize / 2f
                     )
                 )
@@ -865,6 +1006,7 @@ fun SeekbarPreview(
             position = position,
             duration = duration,
             readAheadValue = position,
+            chapters = persistentListOf(),
             onSeek = {},
             onSeekFinished = {},
             shrinkOnPress = shrinkOnPress,
@@ -920,6 +1062,7 @@ fun SeekbarPreview(
             position = position,
             duration = duration,
             readAheadValue = position,
+            chapters = persistentListOf(),
             onSeek = {},
             onSeekFinished = {},
             shrinkOnPress = shrinkOnPress

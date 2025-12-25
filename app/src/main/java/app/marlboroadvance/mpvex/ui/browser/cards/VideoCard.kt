@@ -61,6 +61,7 @@ fun VideoCard(
   progressPercentage: Float? = null,
   isOldAndUnplayed: Boolean = false,
   onThumbClick: () -> Unit = {},
+  hasSubtitle: Boolean = false,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -227,6 +228,8 @@ fun VideoCard(
             )
           }
         }
+        
+
       }
       Spacer(modifier = Modifier.width(16.dp))
       Column(

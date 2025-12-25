@@ -8,11 +8,13 @@ import app.marlboroadvance.mpvex.database.dao.NetworkConnectionDao
 import app.marlboroadvance.mpvex.database.dao.PlaybackStateDao
 import app.marlboroadvance.mpvex.database.dao.PlaylistDao
 import app.marlboroadvance.mpvex.database.dao.RecentlyPlayedDao
+import app.marlboroadvance.mpvex.database.dao.SubtitleDao
 import app.marlboroadvance.mpvex.database.dao.VideoMetadataDao
 import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.database.entities.PlaylistItemEntity
 import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
+import app.marlboroadvance.mpvex.database.entities.SubtitleEntity
 import app.marlboroadvance.mpvex.database.entities.VideoMetadataEntity
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 
@@ -24,8 +26,9 @@ import app.marlboroadvance.mpvex.domain.network.NetworkConnection
     NetworkConnection::class,
     PlaylistEntity::class,
     PlaylistItemEntity::class,
+    SubtitleEntity::class,
   ],
-  version = 2,
+  version = 3,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class)
@@ -39,4 +42,6 @@ abstract class MpvExDatabase : RoomDatabase() {
   abstract fun networkConnectionDao(): NetworkConnectionDao
 
   abstract fun playlistDao(): PlaylistDao
+
+  abstract fun subtitleDao(): SubtitleDao
 }

@@ -441,12 +441,18 @@ object MediaFileRepository : KoinComponent {
         val videos = getVideosFromFiles(targetFiles)
 
         videos.forEach { video ->
+          // Check for associated subtitle in Downloads/Subtitles/{MovieName} folder
+          val cleanTitle = video.title.replace("/", "_").trim()
+          val subtitleFolder = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Subtitles/$cleanTitle")
+          val hasSubtitle = subtitleFolder.exists() && subtitleFolder.isDirectory && (subtitleFolder.list()?.isNotEmpty() == true)
+
           items.add(
             FileSystemItem.VideoFile(
               name = video.displayName,
               path = video.path,
               lastModified = File(video.path).lastModified(),
               video = video,
+              hasSubtitle = hasSubtitle,
             ),
           )
         }

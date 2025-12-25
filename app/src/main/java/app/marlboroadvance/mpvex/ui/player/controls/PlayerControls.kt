@@ -138,6 +138,7 @@ fun PlayerControls(
   val spacing = MaterialTheme.spacing
   val appearancePreferences = koinInject<AppearancePreferences>()
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
+
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
   val interactionSource = remember { MutableInteractionSource() }
@@ -269,6 +270,9 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
+        val subtitleLoadingRef = createRef()
+
+        val isSubtitleLoading by viewModel.isSubtitleLoading.collectAsState()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -804,6 +808,26 @@ fun PlayerControls(
             }
           }
 
+          val currentChapterName by remember(gestureSeekAmount, doubleTapSeekAmount, position) {
+              derivedStateOf { 
+                   val seekPos = if (gestureSeekAmount != null) {
+                       (gestureSeekAmount!!.first + gestureSeekAmount!!.second)
+                   } else {
+                       position ?: 0 
+                   }
+                   viewModel.getChapterNameAt(seekPos) 
+              }
+          }
+           val seekBias = remember(isSeeking, gestureSeekAmount, position, duration) {
+               val currentPos = if (gestureSeekAmount != null) {
+                   (gestureSeekAmount!!.first + gestureSeekAmount!!.second).toFloat()
+               } else {
+                   position?.toFloat() ?: 0f
+               }
+               val totalDuration = duration?.toFloat() ?: 1f
+               if (totalDuration > 0f) (currentPos / totalDuration).coerceIn(0f, 1f) else 0f
+           }
+
           SeekbarWithTimers(
             position = position?.toFloat() ?: 0f,
             duration = duration?.toFloat() ?: 0f,
@@ -979,6 +1003,39 @@ fun PlayerControls(
         }
 
         AnimatedVisibility(
+            visible = isSubtitleLoading && (controlsShown || !areSlidersShown),
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(subtitleLoadingRef) {
+                bottom.linkTo(bottomRightControls.top, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
+            }
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.padding(8.dp)
+            ) {
+                 Row(
+                     verticalAlignment = Alignment.CenterVertically,
+                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                 ) {
+                     androidx.compose.material3.CircularProgressIndicator(
+                         modifier = Modifier.size(16.dp),
+                         strokeWidth = 2.dp,
+                         color = Color.White
+                     )
+                     Text(
+                         text = "Downloading...",
+                         color = Color.White,
+                         style = MaterialTheme.typography.labelMedium,
+                         modifier = Modifier.padding(start = 8.dp)
+                     )
+                 }
+            }
+        }
+
+        AnimatedVisibility(
           visible = controlsShown && !areControlsLocked && !isPortrait && !areSlidersShown,
           enter =
             if (!reduceMotion) {
@@ -1037,6 +1094,8 @@ fun PlayerControls(
       onToggleSubtitle = viewModel::toggleSubtitle,
       isSubtitleSelected = viewModel::isSubtitleSelected,
       onRemoveSubtitle = viewModel::removeSubtitle,
+      onOpenSubtitleSearch = { onOpenSheet(Sheets.SubtitleSearch) },
+      onDownloadSubtitle = viewModel::downloadSubtitle,
       audioTracks = audioTracks.toImmutableList(),
       onAddAudio = viewModel::addAudio,
       onSelectAudio = {

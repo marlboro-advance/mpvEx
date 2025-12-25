@@ -47,7 +47,7 @@
     <string name="pref_layout_reset_summary">All custom player control layouts will be reset to their default positions.</string>
 
     <string name="pref_player">Player</string>
-    <string name="pref_player_summary">Orientation, gestures and controls</string>
+    <string name="pref_player_summary">Orientation, gestures, seekbar styles and controls</string>
     <string name="pref_player_orientation">Orientation</string>
     <string name="pref_player_orientation_free">Free</string>
     <string name="pref_player_orientation_video">Video</string>

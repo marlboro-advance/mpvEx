@@ -25,6 +25,7 @@ sealed class FileSystemItem {
     override val path: String,
     override val lastModified: Long,
     val video: Video,
+    val hasSubtitle: Boolean = false,
   ) : FileSystemItem()
 }
 

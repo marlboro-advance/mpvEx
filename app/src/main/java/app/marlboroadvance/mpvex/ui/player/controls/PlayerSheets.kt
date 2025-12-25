@@ -18,6 +18,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.FrameNavig
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitleSearchSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -35,6 +36,8 @@ fun PlayerSheets(
   onToggleSubtitle: (Int) -> Unit,
   isSubtitleSelected: (Int) -> Boolean,
   onRemoveSubtitle: (Int) -> Unit,
+  onOpenSubtitleSearch: () -> Unit,
+  onDownloadSubtitle: (String, String) -> Unit,
   // audio sheet
   audioTracks: ImmutableList<TrackNode>,
   onAddAudio: (Uri) -> Unit,
@@ -91,8 +94,21 @@ fun PlayerSheets(
         },
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
+        onOpenSubtitleSearch = onOpenSubtitleSearch,
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
         onDismissRequest = onDismissRequest,
+      )
+    }
+
+    Sheets.SubtitleSearch -> {
+      val videoTitle = viewModel.mediaTitle.composeCollectAsState().value
+      val preferredLanguage = viewModel.subtitlesPreferences.preferredLanguages.get().split(",").firstOrNull()?.trim()
+      SubtitleSearchSheet(
+          initialQuery = videoTitle ?: "",
+          onDownloadSubtitle = onDownloadSubtitle,
+          onDismissRequest = onDismissRequest,
+          preferredLanguage = preferredLanguage,
+          onSearch = viewModel::searchSubtitles
       )
     }
 

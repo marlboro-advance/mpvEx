@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import android.os.Environment
 import java.io.File
 
 /**
@@ -231,6 +232,21 @@ class FileSystemBrowserViewModel(
    */
   override suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
     Log.d(TAG, "Deleting ${videos.size} videos")
+    
+    // Also try to delete associated subtitles
+    videos.forEach { video ->
+        try {
+             val cleanName = video.displayName.substringBeforeLast(".").replace("/", "_").trim()
+             val subtitleFolder = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Subtitles/$cleanName")
+             if (subtitleFolder.exists()) {
+                 subtitleFolder.deleteRecursively()
+                 Log.d(TAG, "Deleted associated subtitle folder: ${subtitleFolder.path}")
+             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete subtitle for ${video.displayName}", e)
+        }
+    }
+
     val result = super.deleteVideos(videos)
 
     // Set flag if any deletions were successful

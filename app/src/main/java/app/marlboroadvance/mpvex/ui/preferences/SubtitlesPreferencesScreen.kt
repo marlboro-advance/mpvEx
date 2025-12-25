@@ -323,6 +323,7 @@ object SubtitlesPreferencesScreen : Screen {
               }
             }
 
+
             // Font picker dialog
             if (showFontPicker) {
               androidx.compose.material3.AlertDialog(
