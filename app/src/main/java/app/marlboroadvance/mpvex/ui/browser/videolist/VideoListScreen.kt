@@ -454,21 +454,21 @@ private fun VideoListContent(
     }
 
     else -> {
-      val listState = rememberLazyListState()
-      val coroutineScope = rememberCoroutineScope()
-
-      // Auto-scroll to last played video when entering the screen
-      LaunchedEffect(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
+      // Calculate initial scroll position to avoid jank (like MX Player)
+      val initialScrollIndex = remember(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
         if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          val lastPlayedIndex = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
-          if (lastPlayedIndex >= 0) {
-            // Scroll to the last played item with some offset to center it
-            coroutineScope.launch {
-              listState.animateScrollToItem(lastPlayedIndex, scrollOffset = -200)
-            }
-          }
+          val index = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
+          if (index >= 0) index else 0
+        } else {
+          0
         }
       }
+      
+      val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialScrollIndex,
+        initialFirstVisibleItemScrollOffset = -200
+      )
+      val coroutineScope = rememberCoroutineScope()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
