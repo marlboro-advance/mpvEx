@@ -1668,6 +1668,7 @@ class PlayerActivity :
                 (MPVLib.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS
               ).toInt(),
             timeRemaining = timeRemaining,
+            externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
           ),
         )
       }.onFailure { e ->
@@ -1729,6 +1730,24 @@ class PlayerActivity :
 
     val subDelay = state.subDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
+
+    // Restore external subtitles first
+    if (state.externalSubtitles.isNotBlank()) {
+      val externalSubUris = state.externalSubtitles.split("|").filter { it.isNotBlank() }
+      Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
+      
+      for (subUri in externalSubUris) {
+        runCatching {
+          MPVLib.command("sub-add", subUri, "cached")
+          Log.d(TAG, "Restored external subtitle: $subUri")
+        }.onFailure { e ->
+          Log.e(TAG, "Failed to restore external subtitle: $subUri", e)
+        }
+      }
+      
+      // Update ViewModel's tracked list
+      viewModel.setExternalSubtitles(externalSubUris)
+    }
 
     // Check if user has preferred languages configured
     val hasAudioPreference = audioPreferences.preferredLanguages.get().isNotBlank()

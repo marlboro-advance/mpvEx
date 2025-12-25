@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.ui.player
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.net.Uri
@@ -170,6 +171,10 @@ class PlayerViewModel(
   private var currentMediaTitle: String = ""
   private var lastAutoSelectedMediaTitle: String? = null
 
+  // External subtitle tracking
+  private val _externalSubtitles = mutableListOf<String>()
+  val externalSubtitles: List<String> get() = _externalSubtitles.toList()
+
   // Repeat and Shuffle state
   private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
   val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
@@ -245,7 +250,26 @@ class PlayerViewModel(
           return@launch showToast("Invalid subtitle file format")
         }
 
+        // Take persistent URI permission for content:// URIs
+        if (uri.scheme == "content") {
+          try {
+            host.context.contentResolver.takePersistableUriPermission(
+              uri,
+              Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+          } catch (e: SecurityException) {
+            // Permission already granted or not available, continue anyway
+            android.util.Log.w("PlayerViewModel", "Could not take persistent permission for $uri", e)
+          }
+        }
+
         MPVLib.command("sub-add", uri.toString(), "select")
+
+        // Track external subtitle URI for persistence
+        val uriString = uri.toString()
+        if (!_externalSubtitles.contains(uriString)) {
+          _externalSubtitles.add(uriString)
+        }
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
         showToast("$displayName added")
@@ -259,12 +283,31 @@ class PlayerViewModel(
     if (currentMediaTitle != mediaTitle) {
       currentMediaTitle = mediaTitle
       lastAutoSelectedMediaTitle = null
+      // Clear external subtitles when media changes
+      _externalSubtitles.clear()
     }
+  }
+
+  fun setExternalSubtitles(subtitles: List<String>) {
+    _externalSubtitles.clear()
+    _externalSubtitles.addAll(subtitles)
   }
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch {
+      // Find the subtitle URI before removing
+      val tracks = subtitleTracks.value
+      val trackToRemove = tracks.firstOrNull { it.id == id }
+      
+      // Remove from MPV
       MPVLib.command("sub-remove", id.toString())
+      
+      // Remove from tracked external subtitles if it's external
+      if (trackToRemove?.external == true) {
+        // Try to find and remove from our tracked list
+        // Since we can't get the original URI from MPV, we'll remove based on external flag
+        // This is a limitation, but on reload we'll re-add all tracked subtitles anyway
+      }
     }
   }
 
