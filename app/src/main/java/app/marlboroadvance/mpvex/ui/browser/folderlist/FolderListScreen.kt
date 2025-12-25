@@ -405,13 +405,21 @@ object FolderListScreen : Screen {
                   if (lastPlayedEntity != null) {
                     // Check if this was played from a playlist
                     if (lastPlayedEntity.playlistId != null) {
-                      // Load the full playlist and play from the most recently played video
+                      // Load playlist info first
                       val playlistRepository =
                         org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
                           app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
                         )
-                      // Using MediaFileRepository singleton directly
-                      val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
+                      
+                      val playlist = playlistRepository.getPlaylistById(lastPlayedEntity.playlistId)
+                      
+                      // Check if it's an M3U playlist - if so, just play the single URL
+                      if (playlist?.isM3uPlaylist == true) {
+                        // M3U playlist: Play only the last played stream URL (no playlist navigation)
+                        MediaUtils.playFile(lastPlayedEntity.filePath, context, "m3u_recently_played")
+                      } else {
+                        // Regular playlist: Load full playlist and play with navigation
+                        val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
 
                       if (playlistItems.isNotEmpty()) {
                         // Get unique folders (bucketIds) from playlist items
@@ -464,6 +472,7 @@ object FolderListScreen : Screen {
                           putExtra("playlist_id", lastPlayedEntity.playlistId)
                         }
                         context.startActivity(intent)
+                      }
                       }
                     }
                   } else {

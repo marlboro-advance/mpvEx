@@ -190,6 +190,18 @@ class PlayerActivity :
   private var playlistId: Int? = null
 
   /**
+   * Tracks the starting offset of the loaded playlist window in the full playlist.
+   * Used for windowed loading to prevent ANR with large playlists.
+   */
+  private var playlistWindowOffset: Int = 0
+
+  /**
+   * Total count of items in the full playlist (when using windowed loading).
+   * -1 means unknown or not using windowed loading.
+   */
+  private var playlistTotalCount: Int = -1
+
+  /**
    * Helper for managing Picture-in-Picture mode.
    */
   private lateinit var pipHelper: MPVPipHelper
@@ -311,17 +323,61 @@ class PlayerActivity :
     setupPipHelper()
     setupMediaSession()
 
+    playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
+    playlistIndex = intent.getIntExtra("playlist_index", 0)
+    
+    // Load playlist from intent extras first (fast path - backward compatibility)
     playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
       intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
     } else {
       @Suppress("DEPRECATION")
       intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     }
-    playlistIndex = intent.getIntExtra("playlist_index", 0)
-    playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
-
-    // Only auto-generate playlist from folder if playlist mode is enabled
-    if (playlist.isEmpty() && playerPreferences.playlistMode.get()) {
+    
+    // If playlist is empty but playlist_id is provided, load asynchronously from database
+    // Use windowed loading to prevent ANR with large playlists
+    if (playlist.isEmpty() && playlistId != null) {
+      lifecycleScope.launch(Dispatchers.IO) {
+        try {
+          // Get total count first to decide if we need windowed loading
+          val totalCount = playlistRepository.getPlaylistItemCount(playlistId!!)
+          
+          if (totalCount > 100) {
+            // Large playlist: use windowed loading to prevent ANR
+            val windowSize = 100
+            val halfWindow = windowSize / 2
+            val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
+            
+            val items = playlistRepository.getPlaylistItemsWindowAsUris(
+              playlistId = playlistId!!,
+              centerIndex = playlistIndex,
+              windowSize = windowSize
+            )
+            
+            withContext(Dispatchers.Main) {
+              playlist = items
+              playlistWindowOffset = startOffset
+              playlistTotalCount = totalCount
+              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $playlistId (total: $totalCount)")
+            }
+          } else {
+            // Small playlist: load everything at once
+            val items = playlistRepository.getPlaylistItemsAsUris(playlistId!!)
+            withContext(Dispatchers.Main) {
+              playlist = items
+              playlistWindowOffset = 0
+              playlistTotalCount = totalCount
+              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $playlistId")
+            }
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "Failed to load playlist from database", e)
+        }
+      }
+    }
+    
+    // Only auto-generate playlist from folder if playlist mode is enabled and no playlist_id
+    if (playlist.isEmpty() && playlistId == null && playerPreferences.playlistMode.get()) {
       val path = parsePathFromIntent(intent)
       if (path != null) {
         generatePlaylistFromFolder(path)
@@ -932,12 +988,15 @@ class PlayerActivity :
     val subList = Utils.getParcelableArray<Uri>(extras, "subs")
     val subsToEnable = Utils.getParcelableArray<Uri>(extras, "subs.enable")
 
-    for (suburi in subList) {
-      val subfile = suburi.resolveUri(this) ?: continue
-      val flag = if (subsToEnable.any { it == suburi }) "select" else "auto"
+    // Avoid doing any potentially-blocking subtitle resolution / network IO on the UI thread.
+    lifecycleScope.launch(Dispatchers.Default) {
+      for (suburi in subList) {
+        val subfile = suburi.resolveUri(this@PlayerActivity) ?: continue
+        val flag = if (subsToEnable.any { it == suburi }) "select" else "auto"
 
-      Log.v(TAG, "Adding subtitles from intent extras: $subfile")
-      MPVLib.command("sub-add", subfile, flag)
+        Log.v(TAG, "Adding subtitles from intent extras: $subfile")
+        MPVLib.command("sub-add", subfile, flag)
+      }
     }
   }
 
@@ -1948,7 +2007,10 @@ class PlayerActivity :
     
     // Load the new file
     getPlayableUri(intent)?.let { uri ->
-      MPVLib.command("loadfile", uri)
+      // Avoid blocking UI thread while mpv opens network streams (e.g., HLS).
+      lifecycleScope.launch(Dispatchers.Default) {
+        MPVLib.command("loadfile", uri)
+      }
     }
   }
 
@@ -2381,10 +2443,13 @@ class PlayerActivity :
     // With repeat ALL, there's always a "next" (loops back to beginning)
     if (viewModel.shouldRepeatPlaylist()) return true
 
+    // Use total count if we're doing windowed loading, otherwise use playlist size
+    val effectiveSize = if (playlistTotalCount > 0) playlistTotalCount else playlist.size
+
     return if (viewModel.shuffleEnabled.value) {
       shuffledPosition < shuffledIndices.size - 1
     } else {
-      playlistIndex < playlist.size - 1
+      playlistIndex < effectiveSize - 1
     }
   }
 
@@ -2437,6 +2502,9 @@ class PlayerActivity :
   fun playNext() {
     if (playlist.isEmpty()) return
 
+    // Use total count if we're doing windowed loading, otherwise use playlist size
+    val effectiveSize = if (playlistTotalCount > 0) playlistTotalCount else playlist.size
+
     if (viewModel.shuffleEnabled.value) {
       // Initialize shuffle if not done yet
       if (shuffledIndices.isEmpty()) {
@@ -2457,7 +2525,7 @@ class PlayerActivity :
       }
     } else {
       // Normal sequential playback
-      if (playlistIndex < playlist.size - 1) {
+      if (playlistIndex < effectiveSize - 1) {
         playlistIndex++
         loadPlaylistItem(playlistIndex)
       } else if (viewModel.shouldRepeatPlaylist()) {
@@ -2473,6 +2541,9 @@ class PlayerActivity :
    */
   fun playPrevious() {
     if (playlist.isEmpty()) return
+
+    // Use total count if we're doing windowed loading, otherwise use playlist size
+    val effectiveSize = if (playlistTotalCount > 0) playlistTotalCount else playlist.size
 
     if (viewModel.shuffleEnabled.value) {
       // Initialize shuffle if not done yet
@@ -2498,7 +2569,7 @@ class PlayerActivity :
         loadPlaylistItem(playlistIndex)
       } else if (viewModel.shouldRepeatPlaylist()) {
         // At beginning of playlist with repeat ALL: go to last item
-        playlistIndex = playlist.size - 1
+        playlistIndex = effectiveSize - 1
         loadPlaylistItem(playlistIndex)
       }
     }
@@ -2508,14 +2579,72 @@ class PlayerActivity :
    * Load a playlist item by index
    */
   private fun loadPlaylistItem(index: Int) {
-    if (index < 0 || index >= playlist.size) return
+    // Check if we're using windowed loading
+    if (playlistTotalCount > 0 && playlistId != null) {
+      // Calculate the actual index within the loaded window
+      val windowIndex = index - playlistWindowOffset
+      
+      // Check if we need to expand the window
+      if (windowIndex < 0 || windowIndex >= playlist.size) {
+        // Index is outside the current window - expand asynchronously
+        lifecycleScope.launch(Dispatchers.IO) {
+          try {
+            val windowSize = 100
+            val halfWindow = windowSize / 2
+            val newOffset = (index - halfWindow).coerceAtLeast(0)
+            
+            val items = playlistRepository.getPlaylistItemsWindowAsUris(
+              playlistId = playlistId!!,
+              centerIndex = index,
+              windowSize = windowSize
+            )
+            
+            withContext(Dispatchers.Main) {
+              playlist = items
+              playlistWindowOffset = newOffset
+              Log.d(TAG, "Expanded playlist window: offset=$newOffset, size=${items.size}")
+              
+              // Now load the item with the updated window
+              loadPlaylistItemInternal(index)
+            }
+          } catch (e: Exception) {
+            Log.e(TAG, "Failed to expand playlist window", e)
+          }
+        }
+        return
+      }
+      
+      // Item is within current window - use local index
+      loadPlaylistItemInternal(index)
+    } else {
+      // Not using windowed loading or small playlist
+      if (index < 0 || index >= playlist.size) return
+      loadPlaylistItemInternal(index)
+    }
+  }
+
+  /**
+   * Internal method to load a playlist item - assumes the item is in the loaded window
+   */
+  private fun loadPlaylistItemInternal(index: Int) {
+    // Calculate the actual index within the loaded window
+    val windowIndex = if (playlistTotalCount > 0) {
+      index - playlistWindowOffset
+    } else {
+      index
+    }
+    
+    if (windowIndex < 0 || windowIndex >= playlist.size) {
+      Log.e(TAG, "Invalid playlist index: $index (window index: $windowIndex)")
+      return
+    }
 
     // Save current video's playback state before switching
     if (fileName.isNotBlank()) {
       saveVideoPlaybackState(fileName)
     }
 
-    val uri = playlist[index]
+    val uri = playlist[windowIndex]
     val playableUri = uri.openContentFd(this) ?: uri.toString()
 
     // Update playlist index
@@ -2562,7 +2691,10 @@ class PlayerActivity :
     }
 
     // Load the new video
-    MPVLib.command("loadfile", playableUri)
+    // Avoid blocking UI thread while mpv opens network streams (e.g., HLS).
+    lifecycleScope.launch(Dispatchers.Default) {
+      MPVLib.command("loadfile", playableUri)
+    }
 
     // Update media title (this will trigger UI update)
     MPVLib.setPropertyString("force-media-title", fileName)

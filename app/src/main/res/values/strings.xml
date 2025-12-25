@@ -334,4 +334,19 @@
     <string name="pref_folders_clear_all_confirm_message">This will remove all folders from the blacklist. You can add them back later.</string>
     <string name="pref_folders_blacklist">Blacklist</string>
     <string name="pref_folders_blacklisted">Folder(s) blacklisted</string>
+
+    <!-- M3U Playlist Strings -->
+    <string name="playlist_add_m3u_title">Add M3U/M3U8 Playlist</string>
+    <string name="playlist_add_m3u_description">Enter the URL of an M3U or M3U8 playlist file</string>
+    <string name="playlist_url_label">Playlist URL</string>
+    <string name="playlist_url_placeholder">https://example.com/playlist.m3u8</string>
+    <string name="playlist_url_hint">Supports .m3u and .m3u8 formats</string>
+    <string name="playlist_add_success">M3U playlist added successfully</string>
+    <string name="playlist_add_error">Failed to add M3U playlist: %s</string>
+    <string name="playlist_create_empty">Create Empty Playlist</string>
+    <string name="playlist_add_from_url">Add from M3U/M3U8 URL</string>
+    <string name="playlist_refresh_m3u">Refresh M3U Playlist</string>
+    <string name="playlist_refresh_success">Playlist refreshed successfully</string>
+    <string name="playlist_refresh_error">Failed to refresh playlist: %s</string>
+    <string name="playlist_m3u_badge">M3U</string>
 </resources>
