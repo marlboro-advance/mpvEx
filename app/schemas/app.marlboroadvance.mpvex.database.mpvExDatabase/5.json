@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 4,
-    "identityHash": "abb7ea65d28ddc7b4937d260b4cd5505",
+    "version": 5,
+    "identityHash": "eb7598e6909b17a7bdd6dd96294926a4",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `videoZoom` REAL NOT NULL, `sid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, `externalSubtitles` TEXT NOT NULL, PRIMARY KEY(`mediaTitle`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaTitle` TEXT NOT NULL, `lastPosition` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL, `videoZoom` REAL NOT NULL, `sid` INTEGER NOT NULL, `secondarySid` INTEGER NOT NULL, `subDelay` INTEGER NOT NULL, `subSpeed` REAL NOT NULL, `aid` INTEGER NOT NULL, `audioDelay` INTEGER NOT NULL, `timeRemaining` INTEGER NOT NULL, `externalSubtitles` TEXT NOT NULL, PRIMARY KEY(`mediaTitle`))",
         "fields": [
           {
             "fieldPath": "mediaTitle",
@@ -35,6 +35,12 @@
           {
             "fieldPath": "sid",
             "columnName": "sid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "secondarySid",
+            "columnName": "secondarySid",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -435,7 +441,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'abb7ea65d28ddc7b4937d260b4cd5505')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eb7598e6909b17a7bdd6dd96294926a4')"
     ]
   }
 }

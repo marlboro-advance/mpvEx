@@ -9,12 +9,23 @@ import kotlinx.coroutines.delay
 /**
  * Handles automatic track selection based on user preferences.
  *
- * This class ensures:
+ * Priority hierarchy for SUBTITLES (highest to lowest):
+ * 1. User manual selection (saved state) - ALWAYS respected, never overridden
+ * 2. Preferred language (from settings) - Applied only when no saved selection exists
+ * 3. Default track (from container metadata) - Used when no preference and no saved state
+ * 4. No selection (disabled) - Subtitles are optional
+ *
+ * Priority hierarchy for AUDIO (highest to lowest):
+ * 1. User manual selection (saved state) - ALWAYS respected, never overridden
+ * 2. Preferred language (from settings) - Applied only when no saved selection exists
+ * 3. Default track (from container metadata) - Used as fallback
+ * 4. First available track - Final fallback (audio is mandatory)
+ *
+ * This ensures:
+ * - User choices are ALWAYS preserved across app restarts
  * - Audio tracks are ALWAYS selected (never silent playback)
- * - Preferred languages override user selections when configured
- * - User manual selections and saved states are respected when no preferred language is set
- * - User manual selections and saved states are preserved when preferred language doesn't match
- * - Subtitle tracks are optional and only enabled when explicitly selected or matching preferences
+ * - Subtitle default tracks are respected on first-time playback
+ * - Preferred languages serve as defaults for first-time playback only
  */
 class TrackSelector(
   private val audioPreferences: AudioPreferences,
@@ -28,39 +39,44 @@ class TrackSelector(
    * Called after a file loads in MPV.
    * Ensures proper track selection based on preferences.
    * This is a suspend function to avoid blocking threads.
+   *
+   * @param hasState Whether saved playback state exists for this video
    */
-  suspend fun onFileLoaded() {
-    Log.d(TAG, "File loaded, checking track selection...")
+  suspend fun onFileLoaded(hasState: Boolean = false) {
+    // Wait for MPV to finish demuxing and detecting tracks
+    var attempts = 0
+    val maxAttempts = 20 // 20 attempts * 50ms = 1 second max wait
+    
+    while (attempts < maxAttempts) {
+      val trackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
+      if (trackCount > 0) break
+      delay(50)
+      attempts++
+    }
 
-    // Give MPV a moment to process the alang/slang options
-    // This is necessary because MPV processes options asynchronously
-    // Using delay instead of Thread.sleep to avoid blocking
-    delay(100)
-
-    ensureAudioTrackSelected()
-    ensureSubtitleTrackSelected()
+    ensureAudioTrackSelected(hasState)
+    ensureSubtitleTrackSelected(hasState)
   }
 
   /**
    * Ensures an audio track is selected.
    *
-   * Strategy:
-   * 1. If preferred languages configured, ALWAYS select based on preference
-   * 2. Override any existing selection to respect user preference
-   * 3. If no preferred languages configured, respect any existing selection (user choice or saved state)
-   * 4. If no selection exists and no preference, select first track
-   * 5. Audio must ALWAYS be selected
+   * NEW Strategy (User selection has highest priority):
+   * 1. If a track is already selected (from saved state or previous selection), keep it
+   * 2. If no track selected AND preferred languages configured, select based on preference
+   * 3. If no track selected AND no preferred languages, select default track or first track
+   * 4. User manual selections always have highest priority and are never overridden
+   * 5. Audio is mandatory - always ensure something is selected
+   *
+   * @param hasState Whether saved playback state exists for this video
    */
-  private fun ensureAudioTrackSelected() {
+  private fun ensureAudioTrackSelected(hasState: Boolean) {
     try {
-      // Get audio track count
-      val trackCount = MPVLib.getPropertyInt("audio-track-count") ?: 0
-      if (trackCount == 0) {
-        Log.w(TAG, "No audio tracks available")
-        return
-      }
-
-      Log.d(TAG, "Found $trackCount audio tracks")
+      val totalTrackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
+      
+      // Check if track already selected (from saved state or user choice)
+      val currentAid = MPVLib.getPropertyInt("aid")
+      if (currentAid != null && currentAid > 0) return
 
       // Get preferred languages
       val preferredLangs = audioPreferences.preferredLanguages.get()
@@ -68,69 +84,73 @@ class TrackSelector(
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
-      // If preferred languages are configured, respect them at any cost
+      // Try to match preferred language
       if (preferredLangs.isNotEmpty()) {
-        Log.d(TAG, "Preferred audio languages: $preferredLangs")
-
-        // Try to match preferred languages in order
-        for (preferredLang in preferredLangs) {
-          for (i in 1..trackCount) {
-            val lang = MPVLib.getPropertyString("audio/$i/lang") ?: continue
-
+        for (i in 0 until totalTrackCount) {
+          if (MPVLib.getPropertyString("track-list/$i/type") != "audio") continue
+          
+          val trackId = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
+          val lang = MPVLib.getPropertyString("track-list/$i/lang") ?: ""
+          
+          for (preferredLang in preferredLangs) {
             if (lang.equals(preferredLang, ignoreCase = true)) {
-              val currentAid = MPVLib.getPropertyInt("aid")
-              if (currentAid != i) {
-                MPVLib.setPropertyInt("aid", i)
-                Log.d(TAG, "Selected audio track $i (language: $lang) - preferred language override")
-              } else {
-                Log.d(TAG, "Audio track $i already selected (language: $lang)")
-              }
+              MPVLib.setPropertyInt("aid", trackId)
               return
             }
           }
         }
-
-        Log.d(TAG, "No preferred language found in available tracks - keeping existing selection")
-        // When preferred language is set but not found, keep existing selection
-        // This respects user's manual selection or saved state
       }
 
-      // Check if a track is already selected (user choice, saved state, or MPV's alang)
-      val currentAid = MPVLib.getPropertyInt("aid")
-      if (currentAid != null && currentAid > 0) {
-        Log.d(TAG, "Audio track already selected: $currentAid (respecting existing selection)")
-        return
+      // Try to find default track
+      for (i in 0 until totalTrackCount) {
+        if (MPVLib.getPropertyString("track-list/$i/type") != "audio") continue
+        
+        val trackId = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
+        val isDefault = MPVLib.getPropertyBoolean("track-list/$i/default") ?: false
+        
+        if (isDefault) {
+          MPVLib.setPropertyInt("aid", trackId)
+          return
+        }
       }
 
-      // No track selected and no preferred language match, select first track
-      MPVLib.setPropertyInt("aid", 1)
-      Log.d(TAG, "Selected first audio track (fallback)")
+      // Select first audio track (audio is mandatory)
+      for (i in 0 until totalTrackCount) {
+        if (MPVLib.getPropertyString("track-list/$i/type") == "audio") {
+          val trackId = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
+          MPVLib.setPropertyInt("aid", trackId)
+          return
+        }
+      }
 
     } catch (e: Exception) {
-      Log.e(TAG, "Error in ensureAudioTrackSelected", e)
+      Log.e(TAG, "Error selecting audio track", e)
     }
   }
 
   /**
    * Ensures subtitle track selection respects user preference.
    *
-   * Strategy:
-   * 1. If preferred languages configured, ALWAYS select based on preference
-   * 2. Override any existing selection to respect user preference
-   * 3. If no preferred languages configured, respect any existing selection (user choice or saved state)
-   * 4. If preferred language set but not found, keep existing selection
-   * 5. Subtitles are optional - only enabled if preference matches or user/saved state selects them
+   * NEW Strategy (User selection has highest priority):
+   * 1. If a track is already selected (from saved state or previous selection), keep it
+   * 2. If saved state exists but subtitles were disabled, respect that choice (don't enable defaults)
+   * 3. If NO saved state AND preferred languages configured, select based on preference
+   * 4. If NO saved state AND no preferred languages, select default track (if marked)
+   * 5. If no default track, keep subtitles disabled (subtitles are optional)
+   * 6. User manual selections always have highest priority and are never overridden
+   *
+   * @param hasState Whether saved playback state exists for this video
    */
-  private fun ensureSubtitleTrackSelected() {
+  private fun ensureSubtitleTrackSelected(hasState: Boolean) {
     try {
-      // Get subtitle track count
-      val trackCount = MPVLib.getPropertyInt("sub-track-count") ?: 0
-      if (trackCount == 0) {
-        Log.d(TAG, "No subtitle tracks available")
-        return
-      }
+      val totalTrackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
+      
+      // Check if track already selected (from saved state or user choice)
+      val currentSid = MPVLib.getPropertyInt("sid")
+      if (currentSid != null && currentSid > 0) return
 
-      Log.d(TAG, "Found $trackCount subtitle tracks")
+      // If saved state exists with subtitles disabled, respect that choice
+      if (hasState && (currentSid == null || currentSid <= 0)) return
 
       // Get preferred languages
       val preferredLangs = subtitlesPreferences.preferredLanguages.get()
@@ -138,56 +158,39 @@ class TrackSelector(
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
-      // If no preferred languages configured, respect any existing selection
-      if (preferredLangs.isEmpty()) {
-        Log.d(TAG, "No preferred subtitle languages configured - respecting existing selection")
-        val currentSid = MPVLib.getPropertyInt("sid")
-        if (currentSid != null && currentSid > 0) {
-          Log.d(TAG, "Subtitle track $currentSid is selected (user choice or saved state)")
-        } else {
-          Log.d(TAG, "No subtitle track selected (respecting user preference for no subtitles)")
-        }
-        return
-      }
-
-      Log.d(TAG, "Preferred subtitle languages: $preferredLangs")
-
-      // Try each preferred language in order
-      for (preferredLang in preferredLangs) {
-        Log.d(TAG, "Trying language: $preferredLang")
-
-        // Find first track with this language
-        for (i in 1..trackCount) {
-          val lang = MPVLib.getPropertyString("sub/$i/lang") ?: continue
-          val title = MPVLib.getPropertyString("sub/$i/title") ?: ""
-
-          if (lang.equals(preferredLang, ignoreCase = true)) {
-            val currentSid = MPVLib.getPropertyInt("sid")
-            if (currentSid != i) {
-              MPVLib.setPropertyInt("sid", i)
-              Log.d(TAG, "Selected subtitle track $i (lang: $lang, title: '$title') - preferred language override")
-            } else {
-              Log.d(TAG, "Subtitle track $i already selected (lang: $lang, title: '$title')")
+      // Try to match preferred language
+      if (preferredLangs.isNotEmpty()) {
+        for (i in 0 until totalTrackCount) {
+          if (MPVLib.getPropertyString("track-list/$i/type") != "sub") continue
+          
+          val trackId = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
+          val lang = MPVLib.getPropertyString("track-list/$i/lang") ?: ""
+          
+          for (preferredLang in preferredLangs) {
+            if (lang.equals(preferredLang, ignoreCase = true)) {
+              MPVLib.setPropertyInt("sid", trackId)
+              return
             }
-            return
           }
         }
-
-        Log.d(TAG, "No tracks found for language: $preferredLang")
+        return // No match found, keep disabled
       }
 
-      // No matching subtitle found for any preferred language
-      // Keep existing selection (user choice or saved state) instead of disabling
-      Log.d(TAG, "No matching subtitle tracks found for any preferred language - keeping existing selection")
-      val currentSid = MPVLib.getPropertyInt("sid")
-      if (currentSid != null && currentSid > 0) {
-        Log.d(TAG, "Keeping subtitle track $currentSid (user choice or saved state)")
-      } else {
-        Log.d(TAG, "No subtitle track selected")
+      // No preferred language - try to find default track
+      for (i in 0 until totalTrackCount) {
+        if (MPVLib.getPropertyString("track-list/$i/type") != "sub") continue
+        
+        val trackId = MPVLib.getPropertyInt("track-list/$i/id") ?: continue
+        val isDefault = MPVLib.getPropertyBoolean("track-list/$i/default") ?: false
+        
+        if (isDefault) {
+          MPVLib.setPropertyInt("sid", trackId)
+          return
+        }
       }
 
     } catch (e: Exception) {
-      Log.e(TAG, "Error in ensureSubtitleTrackSelected", e)
+      Log.e(TAG, "Error selecting subtitle track", e)
     }
   }
 }

@@ -988,7 +988,6 @@ class PlayerActivity :
     val subList = Utils.getParcelableArray<Uri>(extras, "subs")
     val subsToEnable = Utils.getParcelableArray<Uri>(extras, "subs.enable")
 
-    // Avoid doing any potentially-blocking subtitle resolution / network IO on the UI thread.
     lifecycleScope.launch(Dispatchers.Default) {
       for (suburi in subList) {
         val subfile = suburi.resolveUri(this@PlayerActivity) ?: continue
@@ -1495,12 +1494,12 @@ class PlayerActivity :
 
     setIntentExtras(intent.extras)
 
-    lifecycleScope.launch(Dispatchers.IO) {
-      // Load playback state (will skip track restoration if preferred language configured)
-      val hasState = loadVideoPlaybackState(fileName)
+          lifecycleScope.launch(Dispatchers.IO) {
+        // Load playback state (will skip track restoration if preferred language configured)
+        val hasState = loadVideoPlaybackState(fileName)
 
-      // Apply preferred language settings (will override if configured)
-      trackSelector.onFileLoaded()
+        // Apply track selection logic (defaults only apply when no saved state)
+        trackSelector.onFileLoaded(hasState)
 
       // Apply default zoom only if there's no saved state
       if (!hasState) {
@@ -1727,6 +1726,7 @@ class PlayerActivity :
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
             videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
             sid = player.sid,
+            secondarySid = player.secondarySid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
             aid = player.aid,
@@ -1816,28 +1816,21 @@ class PlayerActivity :
       viewModel.setExternalSubtitles(externalSubUris)
     }
 
-    // Check if user has preferred languages configured
-    val hasAudioPreference = audioPreferences.preferredLanguages.get().isNotBlank()
-    val hasSubtitlePreference = subtitlesPreferences.preferredLanguages.get().isNotBlank()
-
-    // Only restore subtitle tracks if no preferred language is configured
-    // Preferred language takes precedence over saved state
-    if (!hasSubtitlePreference) {
-      if (state.sid >= 0) {
-        player.sid = state.sid
-      }
-    } else {
-      Log.d(TAG, "Skipping subtitle restoration - preferred language configured")
+    // Always restore subtitle and audio tracks from saved state
+    // User's manual selection has highest priority
+    if (state.sid > 0) {
+      player.sid = state.sid
+      Log.d(TAG, "Restored primary subtitle track: ${state.sid} (user selection)")
     }
 
-    // Only restore audio track if no preferred language is configured
-    // Preferred language takes precedence over saved state
-    if (!hasAudioPreference) {
-      if (state.aid >= 0) {
-        player.aid = state.aid
-      }
-    } else {
-      Log.d(TAG, "Skipping audio restoration - preferred language configured")
+    if (state.secondarySid > 0) {
+      player.secondarySid = state.secondarySid
+      Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+    }
+
+    if (state.aid > 0) {
+      player.aid = state.aid
+      Log.d(TAG, "Restored audio track: ${state.aid} (user selection)")
     }
 
     MPVLib.setPropertyDouble("sub-delay", subDelay)

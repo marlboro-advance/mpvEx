@@ -227,6 +227,31 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
   }
 }
 
+/**
+ * Migration from version 4 to version 5
+ *
+ * Changes:
+ * - Adds secondarySid column to PlaybackStateEntity to persist secondary subtitle track
+ *   This allows saving and restoring both primary and secondary subtitle selections
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_4_5", "Starting migration from version 4 to version 5")
+
+      // Add secondarySid column to PlaybackStateEntity (-1 means disabled)
+      db.execSQL(
+        "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `secondarySid` INTEGER NOT NULL DEFAULT -1"
+      )
+
+      android.util.Log.d("Migration_4_5", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_4_5", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -241,7 +266,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
         .build()
     }

@@ -62,6 +62,7 @@ class MPVView(
   }
 
   var sid: Int by TrackDelegate("sid")
+  var secondarySid: Int by TrackDelegate("secondary-sid")
   var aid: Int by TrackDelegate("aid")
 
   override fun initOptions() {
@@ -185,7 +186,9 @@ class MPVView(
     )
 
   private fun setupAudioOptions() {
-    MPVLib.setOptionString("alang", audioPreferences.preferredLanguages.get())
+    // Disable MPV's automatic audio selection
+    // App will handle track selection manually via TrackSelector to respect user choices
+    MPVLib.setOptionString("alang", "")
     MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
@@ -198,9 +201,12 @@ class MPVView(
 
   // Setup
   private fun setupSubtitlesOptions() {
-    MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
+    // Disable MPV's automatic subtitle selection
+    // App will handle track selection manually via TrackSelector to respect user choices
+    MPVLib.setOptionString("slang", "")
     MPVLib.setOptionString("sub-auto", "no")
     MPVLib.setOptionString("sub-file-paths", "")
+    MPVLib.setOptionString("subs-fallback", "no")
 
     val fontsDirPath = "${context.filesDir.path}/fonts/"
     MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)

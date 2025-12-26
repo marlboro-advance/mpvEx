@@ -10,6 +10,7 @@ data class PlaybackStateEntity(
   val playbackSpeed: Double,
   val videoZoom: Float = 0f,
   val sid: Int,
+  val secondarySid: Int = -1, // Secondary subtitle track ID (-1 means disabled)
   val subDelay: Int,
   val subSpeed: Double,
   val aid: Int,

@@ -142,11 +142,11 @@ object SubtitleOps : KoinComponent {
 
           // Create a URL-safe filename for the streamId
           val urlSafeFilename = displayName
-            .replace(" ", "_")
+            .replace(" ", ".")
             .replace(Regex("[^a-zA-Z0-9._-]"), "")
 
           // Register subtitle stream with proxy using the filename in streamId
-          val streamId = "${urlSafeFilename}_${networkConnectionId}_${System.currentTimeMillis()}"
+          val streamId = urlSafeFilename
           val proxyUrl = proxy.registerStream(
             streamId = streamId,
             connection = connection,
