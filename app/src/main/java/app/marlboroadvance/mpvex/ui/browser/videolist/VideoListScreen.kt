@@ -434,20 +434,28 @@ private fun VideoListContent(
     }
 
     else -> {
-      // Calculate initial scroll position to avoid jank (like MX Player)
-      val initialScrollIndex = remember(videosWithInfo, recentlyPlayedFilePath, autoScrollToLastPlayed) {
-        if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          val index = videosWithInfo.indexOfFirst { it.video.path == recentlyPlayedFilePath }
-          if (index >= 0) index else 0
-        } else {
-          0
-        }
-      }
+      // Fast calculation of the initial position - optimize for performance
+      val initialIndex = if (recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
+          // Fast indexOfFirst calculation for initial position
+          var foundIndex = 0
+          for (i in videosWithInfo.indices) {
+              if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
+                  foundIndex = i
+                  break
+              }
+          }
+          foundIndex
+      } else 0
       
+      // Create the list with position already set for immediate positioning
       val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialScrollIndex,
-        initialFirstVisibleItemScrollOffset = -200
+          initialFirstVisibleItemIndex = initialIndex
       )
+      
+      // Log the initial position
+      LaunchedEffect(Unit) {
+          android.util.Log.d("VideoListScreen", "Opening with initial position at index: $initialIndex")
+      }
       val coroutineScope = rememberCoroutineScope()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
