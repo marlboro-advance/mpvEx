@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ fun SubtitlesSheet(
   isSubtitleSelected: (Int) -> Boolean,
   onAddSubtitle: () -> Unit,
   onOpenSubtitleSettings: () -> Unit,
+  onOpenSubtitleSearch: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
   onRemoveSubtitle: (Int) -> Unit,
   onDismissRequest: () -> Unit,
@@ -40,18 +42,31 @@ fun SubtitlesSheet(
     tracks,
     onDismissRequest = onDismissRequest,
     header = {
-      AddTrackRow(
-        stringResource(R.string.player_sheets_add_ext_sub),
-        onAddSubtitle,
-        actions = {
-          IconButton(onClick = onOpenSubtitleSettings) {
-            Icon(Icons.Default.Palette, null)
+      androidx.compose.foundation.layout.Column {
+          AddTrackRow(
+            stringResource(R.string.player_sheets_add_ext_sub),
+            onAddSubtitle,
+            actions = {
+              IconButton(onClick = onOpenSubtitleSettings) {
+                Icon(Icons.Default.Palette, null)
+              }
+              IconButton(onClick = onOpenSubtitleDelay) {
+                Icon(Icons.Default.MoreTime, null)
+              }
+            },
+          )
+          
+          androidx.compose.material3.Button(
+              onClick = onOpenSubtitleSearch,
+              modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+          ) {
+              Icon(Icons.Default.Search, null)
+              androidx.compose.foundation.layout.Spacer(Modifier.padding(MaterialTheme.spacing.small))
+              Text("Search Online Subtitles")
           }
-          IconButton(onClick = onOpenSubtitleDelay) {
-            Icon(Icons.Default.MoreTime, null)
-          }
-        },
-      )
+      }
     },
     track = { track ->
       SubtitleTrackRow(

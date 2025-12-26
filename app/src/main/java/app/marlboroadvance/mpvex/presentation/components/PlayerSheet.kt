@@ -20,12 +20,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.ZeroCornerSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -104,25 +108,34 @@ fun PlayerSheet(
       }
     }
   }
+  
+  // Calculate status bar height for safe area
+  val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+  
   Box(
-    modifier =
-      Modifier
-        .clickable(
-          interactionSource = remember { MutableInteractionSource() },
-          indication = null,
-          onClick = internalOnDismissRequest,
-        ).fillMaxSize()
-        .background(Color.Black.copy(alpha))
-        .onSizeChanged {
-          val anchors =
-            DraggableAnchors {
-              0 at 0f
-              1 at it.height.toFloat()
-            }
-          anchoredDraggableState.updateAnchors(anchors)
-        },
-    contentAlignment = Alignment.BottomCenter,
+    modifier = Modifier.fillMaxSize(),
   ) {
+    // Main content area with dismiss on click (excludes top safe area)
+    Box(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = internalOnDismissRequest,
+          )
+          .background(Color.Black.copy(alpha))
+          .onSizeChanged {
+            val anchors =
+              DraggableAnchors {
+                0 at 0f
+                1 at it.height.toFloat()
+              }
+            anchoredDraggableState.updateAnchors(anchors)
+          },
+      contentAlignment = Alignment.BottomCenter,
+    ) {
     Surface(
       modifier =
         Modifier
@@ -173,6 +186,21 @@ fun PlayerSheet(
         .filter { it == 1 }
         .collectLatest { latestOnDismissRequest() }
     }
+    }
+    
+    // Top safe zone - blocks click-to-dismiss, allowing system gestures to work
+    // This zone sits on top and intercepts touches at the top of the screen
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(statusBarHeight + 48.dp) // Status bar + extra safe zone
+        .align(Alignment.TopCenter)
+        .clickable(
+          interactionSource = remember { MutableInteractionSource() },
+          indication = null,
+          onClick = {} // Do nothing - just block the dismiss click
+        )
+    )
   }
 }
 

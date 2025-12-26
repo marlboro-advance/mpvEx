@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -107,6 +108,14 @@ class PlayerViewModel(
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Lazily, persistentListOf())
 
+  val mediaTitle: StateFlow<String> =
+    combine(
+      MPVLib.propString["media-title"],
+      MPVLib.propString["filename"],
+    ) { title, filename ->
+      title?.takeIf { it.isNotBlank() } ?: filename ?: ""
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
   // UI state
   private val _controlsShown = MutableStateFlow(false)
   val controlsShown: StateFlow<Boolean> = _controlsShown.asStateFlow()
@@ -133,6 +142,18 @@ class PlayerViewModel(
 
   val sheetShown = MutableStateFlow(Sheets.None)
   val panelShown = MutableStateFlow(Panels.None)
+
+  // Subtitle download state
+  private val _isFetchingLink = MutableStateFlow(false)
+  val isFetchingLink: StateFlow<Boolean> = _isFetchingLink.asStateFlow()
+  
+  private val _activeDownloads = MutableStateFlow(0)
+  val activeDownloads: StateFlow<Int> = _activeDownloads.asStateFlow()
+  
+  val isSubtitleLoading: StateFlow<Boolean> = 
+      combine(_isFetchingLink, _activeDownloads) { fetching, active -> 
+          fetching || active > 0 
+      }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
   // Seek state
   val gestureSeekAmount = MutableStateFlow<Pair<Int, Int>?>(null)
@@ -307,18 +328,41 @@ class PlayerViewModel(
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch(Dispatchers.IO) {
-      // Find the subtitle URI before removing
+      // First, find the track to get its file path before removing from MPV
       val tracks = subtitleTracks.value
-      val trackToRemove = tracks.firstOrNull { it.id == id }
+      val trackToRemove = tracks.find { it.id == id }
+      val externalFilePath = trackToRemove?.externalFilename
       
-      // Remove from MPV
+      // Remove from MPV player
       MPVLib.command("sub-remove", id.toString())
       
-      // Remove from tracked external subtitles if it's external
-      if (trackToRemove?.external == true) {
-        // Try to find and remove from our tracked list
-        // Since we can't get the original URI from MPV, we'll remove based on external flag
-        // This is a limitation, but on reload we'll re-add all tracked subtitles anyway
+      // If it's an external subtitle, optionally delete the file
+      if (externalFilePath != null) {
+        try {
+          // Remove from tracked external subtitles
+          _externalSubtitles.remove(externalFilePath)
+          
+          val file = File(externalFilePath)
+          if (file.exists()) {
+            val deleted = file.delete()
+            withContext(Dispatchers.Main) {
+              if (deleted) {
+                showToast("Subtitle deleted")
+              } else {
+                showToast("Subtitle removed (file kept)")
+              }
+            }
+          } else {
+            withContext(Dispatchers.Main) {
+              showToast("Subtitle removed")
+            }
+          }
+        } catch (e: Exception) {
+          android.util.Log.e("PlayerViewModel", "Error deleting subtitle file", e)
+          withContext(Dispatchers.Main) {
+            showToast("Subtitle removed")
+          }
+        }
       }
     }
   }
@@ -367,6 +411,121 @@ class PlayerViewModel(
 
   private fun isValidSubtitleFile(fileName: String): Boolean =
     fileName.substringAfterLast('.', "").lowercase() in VALID_SUBTITLE_EXTENSIONS
+
+  // ==================== Subtitle Search & Download ====================
+
+  private val subtitleRepository = app.marlboroadvance.mpvex.utils.subtitles.SubtitleRepository()
+
+  suspend fun searchSubtitles(query: String): List<app.marlboroadvance.mpvex.utils.subtitles.SubtitleSearchResult> {
+    return subtitleRepository.search(query)
+  }
+
+  fun downloadSubtitle(url: String, searchResultTitle: String) {
+    viewModelScope.launch {
+      try {
+        _isFetchingLink.value = true
+        showToast("Fetching subtitle...")
+        
+        val context = host.context
+        val videoTitle = mediaTitle.value.takeIf { it.isNotBlank() } ?: searchResultTitle
+        val cleanMovieName = videoTitle.substringBeforeLast(".")
+        val cleanSubtitleName = searchResultTitle.take(100) // Limit filename length
+        val preferredLanguage = subtitlesPreferences.preferredLanguages.get().split(",").firstOrNull { it.isNotBlank() }?.trim() ?: "English"
+
+        val downloadId = withContext(Dispatchers.IO) {
+          subtitleRepository.download(context, url, cleanMovieName, cleanSubtitleName, preferredLanguage)
+        }
+        
+        _isFetchingLink.value = false
+
+        if (downloadId != -1L) {
+          _activeDownloads.update { it + 1 }
+          
+          // Start polling for download completion
+          launch { 
+            pollDownloadCompletion(context, downloadId, cleanMovieName.replace("/", "_").replace("\\", "_").trim(), 
+              if (cleanSubtitleName.endsWith(".srt")) cleanSubtitleName else "$cleanSubtitleName.srt")
+          }
+        } else {
+          showToast("Failed to find subtitle download link")
+        }
+      } catch (e: Exception) {
+        _isFetchingLink.value = false
+        _activeDownloads.update { maxOf(0, it - 1) }
+        android.util.Log.e("PlayerViewModel", "Error downloading subtitle", e)
+        showToast("Download error: ${e.message?.take(50)}")
+      }
+    }
+  }
+
+  private suspend fun pollDownloadCompletion(context: Context, downloadId: Long, folderName: String, fileName: String) {
+    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+    val maxAttempts = 400 // 2 minutes max (400 * 300ms)
+    var attempts = 0
+
+    try {
+      while (attempts < maxAttempts) {
+        delay(300) // Check every 300ms for faster response
+        attempts++
+
+        val query = android.app.DownloadManager.Query().setFilterById(downloadId)
+        val cursor = downloadManager.query(query)
+
+        if (cursor != null && cursor.moveToFirst()) {
+          val statusIndex = cursor.getColumnIndex(android.app.DownloadManager.COLUMN_STATUS)
+          if (statusIndex >= 0) {
+            when (cursor.getInt(statusIndex)) {
+              android.app.DownloadManager.STATUS_SUCCESSFUL -> {
+                cursor.close()
+                
+                // Load the subtitle - minimal delay since file should be ready
+                delay(200)
+                val file = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Subtitles/$folderName/$fileName")
+                if (file.exists()) {
+                  try {
+                    MPVLib.command("sub-add", file.absolutePath, "select")
+                    showToast("Subtitle loaded: $fileName")
+                    
+                    // Track external subtitle
+                    val filePath = file.absolutePath
+                    if (!_externalSubtitles.contains(filePath)) {
+                      _externalSubtitles.add(filePath)
+                    }
+                  } catch (e: Exception) {
+                    showToast("Failed to load subtitle: ${e.message}")
+                  }
+                } else {
+                  showToast("Subtitle file not found after download")
+                }
+                _activeDownloads.update { maxOf(0, it - 1) }
+                return
+              }
+              android.app.DownloadManager.STATUS_FAILED -> {
+                cursor.close()
+                showToast("Subtitle download failed")
+                _activeDownloads.update { maxOf(0, it - 1) }
+                return
+              }
+              // STATUS_PENDING, STATUS_RUNNING, STATUS_PAUSED - continue polling
+            }
+          }
+          cursor.close()
+        } else {
+          cursor?.close()
+          // Download not found, might have been cancelled
+          _activeDownloads.update { maxOf(0, it - 1) }
+          return
+        }
+      }
+
+      // Timeout
+      showToast("Subtitle download timed out")
+      _activeDownloads.update { maxOf(0, it - 1) }
+    } catch (e: Exception) {
+      _activeDownloads.update { maxOf(0, it - 1) }
+      showToast("Download error: ${e.message}")
+    }
+  }
 
   // ==================== Playback Control ====================
 

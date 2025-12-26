@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
@@ -269,7 +270,9 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
+        val subtitleLoadingRef = createRef()
 
+        val isSubtitleLoading by viewModel.isSubtitleLoading.collectAsState()
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
         val brightness by viewModel.currentBrightness.collectAsState()
@@ -1037,6 +1040,40 @@ fun PlayerControls(
             activity = activity,
           )
         }
+
+        // Subtitle downloading overlay
+        AnimatedVisibility(
+            visible = isSubtitleLoading && (controlsShown || !areSlidersShown),
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(subtitleLoadingRef) {
+                bottom.linkTo(bottomRightControls.top, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
+            }
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                modifier = Modifier.padding(8.dp)
+            ) {
+                 Row(
+                     verticalAlignment = Alignment.CenterVertically,
+                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                 ) {
+                     CircularProgressIndicator(
+                         modifier = Modifier.size(16.dp),
+                         strokeWidth = 2.dp,
+                         color = MaterialTheme.colorScheme.primary
+                     )
+                     Text(
+                         text = "Downloading...",
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         style = MaterialTheme.typography.labelMedium,
+                         modifier = Modifier.padding(start = 8.dp)
+                     )
+                 }
+            }
+        }
       }
     }
 
@@ -1054,6 +1091,8 @@ fun PlayerControls(
       onToggleSubtitle = viewModel::toggleSubtitle,
       isSubtitleSelected = viewModel::isSubtitleSelected,
       onRemoveSubtitle = viewModel::removeSubtitle,
+      onOpenSubtitleSearch = { onOpenSheet(Sheets.SubtitleSearch) },
+      onDownloadSubtitle = viewModel::downloadSubtitle,
       audioTracks = audioTracks.toImmutableList(),
       onAddAudio = viewModel::addAudio,
       onSelectAudio = {

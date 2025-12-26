@@ -191,6 +191,7 @@ dependencies {
   implementation(libs.nanohttpd) // Local proxy server for streaming
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+  implementation(libs.jsoup) // HTML parsing for subtitle search
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
