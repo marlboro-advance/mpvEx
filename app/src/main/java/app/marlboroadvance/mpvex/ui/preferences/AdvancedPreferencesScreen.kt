@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +26,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
@@ -181,12 +184,21 @@ object AdvancedPreferencesScreen : Screen {
     Scaffold(
       topBar = {
         TopAppBar(
-          title = {
-            Text(stringResource(R.string.pref_advanced))
+          title = { 
+            Text(
+              text = stringResource(R.string.pref_advanced),
+              style = MaterialTheme.typography.headlineSmall,
+              fontWeight = FontWeight.ExtraBold,
+              color = MaterialTheme.colorScheme.primary,
+            )
           },
           navigationIcon = {
             IconButton(onClick = backStack::removeLastOrNull) {
-              Icon(Icons.AutoMirrored.Default.ArrowBack, null)
+              Icon(
+                Icons.AutoMirrored.Default.ArrowBack, 
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+              )
             }
           },
         )
@@ -204,372 +216,533 @@ object AdvancedPreferencesScreen : Screen {
             preferences.mpvConfStorageUri.set(uri.toString())
           }
         val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
-        Column(
-          Modifier
+        LazyColumn(
+          modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(padding),
         ) {
-
-          Preference(
-            title = { Text(text = "Export Settings") },
-            summary = { Text(text = "Export settings to an XML file") },
-            icon = { Icon(Icons.Outlined.FileUpload, null) },
-            onClick = {
-              exportLauncher.launch(settingsManager.getDefaultExportFilename())
-            },
-          )
-
-
-          Preference(
-            title = { Text(text = "Import Settings") },
-            summary = { Text(text = "Import settings from an XML file") },
-            icon = { Icon(Icons.Outlined.FileDownload, null) },
-            onClick = {
-              importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
-            },
-          )
-
-          TwoTargetIconButtonPreference(
-            title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
-            summary = {
-              if (mpvConfStorageLocation.isNotBlank()) {
-                Text(getSimplifiedPathFromUri(mpvConfStorageLocation))
-              }
-            },
-            onClick = { locationPicker.launch(null) },
-            iconButtonIcon = { Icon(Icons.Default.Clear, null) },
-            onIconButtonClick = { preferences.mpvConfStorageUri.delete() },
-            iconButtonEnabled = mpvConfStorageLocation.isNotBlank(),
-          )
-          var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
-          LaunchedEffect(mpvConfStorageLocation) {
-            if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
-            withContext(Dispatchers.IO) {
-              val tempFile = kotlin.io.path.createTempFile()
-              runCatching {
-                val tree =
-                  DocumentFile.fromTreeUri(
-                    context,
-                    mpvConfStorageLocation.toUri(),
-                  )
-                val mpvConfFile = tree?.findFile("mpv.conf")
-                if (mpvConfFile != null && mpvConfFile.exists()) {
-                  context.contentResolver
-                    .openInputStream(
-                      mpvConfFile.uri,
-                    )?.copyTo(tempFile.outputStream())
-                  val content = tempFile.readLines().fastJoinToString("\n")
-                  preferences.mpvConf.set(content)
-                  File(context.filesDir, "mpv.conf").writeText(content)
-                  withContext(Dispatchers.Main) {
-                    mpvConf = content
-                  }
-                }
-              }
-              tempFile.deleteIfExists()
+          // Backup & Restore Section
+          item {
+            PreferenceSectionHeader(title = "Backup & Restore")
+          }
+          
+          item {
+            PreferenceCard {
+              Preference(
+                title = { Text(text = "Export Settings") },
+                summary = { 
+                  Text(
+                    text = "Export settings to an XML file",
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+                icon = { 
+                  Icon(
+                    Icons.Outlined.FileUpload, 
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                  ) 
+                },
+                onClick = {
+                  exportLauncher.launch(settingsManager.getDefaultExportFilename())
+                },
+              )
+              
+              PreferenceDivider()
+              
+              Preference(
+                title = { Text(text = "Import Settings") },
+                summary = { 
+                  Text(
+                    text = "Import settings from an XML file",
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+                icon = { 
+                  Icon(
+                    Icons.Outlined.FileDownload, 
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                  ) 
+                },
+                onClick = {
+                  importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+                },
+              )
             }
           }
-          TextFieldPreference(
-            value = mpvConf,
-            onValueChange = { mpvConf = it },
-            title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
-            textField = { value, onValueChange, onOk ->
-              OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                maxLines = Int.MAX_VALUE,
-                keyboardActions = KeyboardActions(onDone = { onOk() }),
-              )
-            },
-            textToValue = {
-              preferences.mpvConf.set(it)
-              File(context.filesDir, "mpv.conf").writeText(it)
-              if (mpvConfStorageLocation.isNotBlank()) {
-                val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val uri =
-                  if (tree.findFile("mpv.conf") == null) {
-                    val conf = tree.createFile("text/plain", "mpv.conf")!!
-                    conf.renameTo("mpv.conf")
-                    conf.uri
-                  } else {
-                    tree.findFile("mpv.conf")!!.uri
-                  }
-                val out = context.contentResolver.openOutputStream(uri, "wt")
-                out!!.write(it.toByteArray())
-                out.flush()
-                out.close()
-              }
-              it
-            },
-            summary = {
-              val firstLine = mpvConf.lines().firstOrNull()
-              if (firstLine != null && firstLine.isNotBlank()) {
-                Text(firstLine)
-              }
-            },
-          )
-          var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
-          LaunchedEffect(mpvConfStorageLocation) {
-            if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
-            withContext(Dispatchers.IO) {
-              val tempFile = kotlin.io.path.createTempFile()
-              runCatching {
-                val tree =
-                  DocumentFile.fromTreeUri(
-                    context,
-                    mpvConfStorageLocation.toUri(),
-                  )
-                val inputConfFile = tree?.findFile("input.conf")
-                if (inputConfFile != null && inputConfFile.exists()) {
-                  context.contentResolver
-                    .openInputStream(
-                      inputConfFile.uri,
-                    )?.copyTo(tempFile.outputStream())
-                  val content = tempFile.readLines().fastJoinToString("\n")
-                  preferences.inputConf.set(content)
-                  File(context.filesDir, "input.conf").writeText(content)
-                  withContext(Dispatchers.Main) {
-                    inputConf = content
-                  }
-                }
-              }
-              tempFile.deleteIfExists()
-            }
+          
+          // MPV Configuration Section
+          item {
+            PreferenceSectionHeader(title = "MPV Configuration")
           }
-          TextFieldPreference(
-            value = inputConf,
-            onValueChange = { inputConf = it },
-            title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
-            textField = { value, onValueChange, onOk ->
-              OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                maxLines = Int.MAX_VALUE,
-                keyboardActions = KeyboardActions(onDone = { onOk() }),
-              )
-            },
-            textToValue = {
-              preferences.inputConf.set(it)
-              File(context.filesDir, "input.conf").writeText(it)
-              if (mpvConfStorageLocation.isNotBlank()) {
-                val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                val uri =
-                  if (tree.findFile("input.conf") == null) {
-                    val conf = tree.createFile("text/plain", "input.conf")!!
-                    conf.renameTo("input.conf")
-                    conf.uri
-                  } else {
-                    tree.findFile("input.conf")!!.uri
-                  }
-                val out = context.contentResolver.openOutputStream(uri, "wt")
-                out!!.write(it.toByteArray())
-                out.flush()
-                out.close()
-              }
-              it
-            },
-            summary = {
-              val firstLine = inputConf.lines().firstOrNull()
-              if (firstLine != null && firstLine.isNotBlank()) {
-                Text(firstLine)
-              }
-            },
-          )
           
-          // Lua Scripts Section
-          val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
-          SwitchPreference(
-            value = enableLuaScripts,
-            onValueChange = preferences.enableLuaScripts::set,
-            title = { Text("Enable Lua Scripts") },
-            summary = { Text("Load Lua scripts from configuration directory") },
-          )
-          
-          var showScriptDialog by remember { mutableStateOf(false) }
-          var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
-          val selectedScripts by preferences.selectedLuaScripts.collectAsState()
-          
-          Preference(
-            title = { Text("Select Lua Scripts") },
-            summary = {
-              when {
-                !enableLuaScripts -> Text("Enable Lua scripts first")
-                mpvConfStorageLocation.isBlank() -> Text("Set MPV config storage location first")
-                selectedScripts.isEmpty() -> Text("No scripts selected")
-                else -> Text("${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}")
-              }
-            },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val scripts = mutableListOf<String>()
-                if (mpvConfStorageLocation.isNotBlank()) {
+          item {
+            PreferenceCard {
+              var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
+              var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
+              
+              // Load config files when storage location changes
+              LaunchedEffect(mpvConfStorageLocation) {
+                if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
+                withContext(Dispatchers.IO) {
+                  val tempFile = kotlin.io.path.createTempFile()
                   runCatching {
-                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                    if (tree != null && tree.exists()) {
-                      tree.listFiles().forEach { file ->
-                        if (file.isFile && file.name?.endsWith(".lua") == true) {
-                          file.name?.let { scripts.add(it) }
+                    val tree =
+                      DocumentFile.fromTreeUri(
+                        context,
+                        mpvConfStorageLocation.toUri(),
+                      )
+                    val mpvConfFile = tree?.findFile("mpv.conf")
+                    if (mpvConfFile != null && mpvConfFile.exists()) {
+                      context.contentResolver
+                        .openInputStream(
+                          mpvConfFile.uri,
+                        )?.copyTo(tempFile.outputStream())
+                      val content = tempFile.readLines().fastJoinToString("\n")
+                      preferences.mpvConf.set(content)
+                      File(context.filesDir, "mpv.conf").writeText(content)
+                      withContext(Dispatchers.Main) {
+                        mpvConf = content
+                      }
+                    }
+                  }
+                  tempFile.deleteIfExists()
+                }
+              }
+              
+              // Load input.conf when storage location changes
+              LaunchedEffect(mpvConfStorageLocation) {
+                if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
+                withContext(Dispatchers.IO) {
+                  val tempFile = kotlin.io.path.createTempFile()
+                  runCatching {
+                    val tree =
+                      DocumentFile.fromTreeUri(
+                        context,
+                        mpvConfStorageLocation.toUri(),
+                      )
+                    val inputConfFile = tree?.findFile("input.conf")
+                    if (inputConfFile != null && inputConfFile.exists()) {
+                      context.contentResolver
+                        .openInputStream(
+                          inputConfFile.uri,
+                        )?.copyTo(tempFile.outputStream())
+                      val content = tempFile.readLines().fastJoinToString("\n")
+                      preferences.inputConf.set(content)
+                      File(context.filesDir, "input.conf").writeText(content)
+                      withContext(Dispatchers.Main) {
+                        inputConf = content
+                      }
+                    }
+                  }
+                  tempFile.deleteIfExists()
+                }
+              }
+              
+              TwoTargetIconButtonPreference(
+                title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
+                summary = {
+                  if (mpvConfStorageLocation.isNotBlank()) {
+                    Text(
+                      getSimplifiedPathFromUri(mpvConfStorageLocation),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
+                onClick = { locationPicker.launch(null) },
+                iconButtonIcon = { 
+                  Icon(
+                    Icons.Default.Clear, 
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                  ) 
+                },
+                onIconButtonClick = { preferences.mpvConfStorageUri.delete() },
+                iconButtonEnabled = mpvConfStorageLocation.isNotBlank(),
+              )
+              
+              PreferenceDivider()
+              
+              TextFieldPreference(
+                value = mpvConf,
+                onValueChange = { mpvConf = it },
+                title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
+                textField = { value, onValueChange, onOk ->
+                  OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    maxLines = Int.MAX_VALUE,
+                    keyboardActions = KeyboardActions(onDone = { onOk() }),
+                  )
+                },
+                textToValue = {
+                  preferences.mpvConf.set(it)
+                  File(context.filesDir, "mpv.conf").writeText(it)
+                  if (mpvConfStorageLocation.isNotBlank()) {
+                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
+                    val uri =
+                      if (tree.findFile("mpv.conf") == null) {
+                        val conf = tree.createFile("text/plain", "mpv.conf")!!
+                        conf.renameTo("mpv.conf")
+                        conf.uri
+                      } else {
+                        tree.findFile("mpv.conf")!!.uri
+                      }
+                    val out = context.contentResolver.openOutputStream(uri, "wt")
+                    out!!.write(it.toByteArray())
+                    out.flush()
+                    out.close()
+                  }
+                  it
+                },
+                summary = {
+                  val firstLine = mpvConf.lines().firstOrNull()
+                  if (firstLine != null && firstLine.isNotBlank()) {
+                    Text(
+                      firstLine,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
+              )
+              
+              PreferenceDivider()
+              
+              TextFieldPreference(
+                value = inputConf,
+                onValueChange = { inputConf = it },
+                title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
+                textField = { value, onValueChange, onOk ->
+                  OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    maxLines = Int.MAX_VALUE,
+                    keyboardActions = KeyboardActions(onDone = { onOk() }),
+                  )
+                },
+                textToValue = {
+                  preferences.inputConf.set(it)
+                  File(context.filesDir, "input.conf").writeText(it)
+                  if (mpvConfStorageLocation.isNotBlank()) {
+                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
+                    val uri =
+                      if (tree.findFile("input.conf") == null) {
+                        val conf = tree.createFile("text/plain", "input.conf")!!
+                        conf.renameTo("input.conf")
+                        conf.uri
+                      } else {
+                        tree.findFile("input.conf")!!.uri
+                      }
+                    val out = context.contentResolver.openOutputStream(uri, "wt")
+                    out!!.write(it.toByteArray())
+                    out.flush()
+                    out.close()
+                  }
+                  it
+                },
+                summary = {
+                  val firstLine = inputConf.lines().firstOrNull()
+                  if (firstLine != null && firstLine.isNotBlank()) {
+                    Text(
+                      firstLine,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
+              )
+            }
+          }
+          
+          // Scripts Section
+          item {
+            PreferenceSectionHeader(title = "Scripts")
+          }
+          
+          item {
+            PreferenceCard {
+              var showScriptDialog by remember { mutableStateOf(false) }
+              var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
+              val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+              val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+              
+              SwitchPreference(
+                value = enableLuaScripts,
+                onValueChange = preferences.enableLuaScripts::set,
+                title = { Text("Enable Lua Scripts") },
+                summary = { 
+                  Text(
+                    "Load Lua scripts from configuration directory",
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+              )
+              
+              PreferenceDivider()
+              
+              Preference(
+                title = { Text("Select Lua Scripts") },
+                summary = {
+                  when {
+                    !enableLuaScripts -> Text(
+                      "Enable Lua scripts first", 
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                    mpvConfStorageLocation.isBlank() -> Text(
+                      "Set MPV config storage location first", 
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                    selectedScripts.isEmpty() -> Text(
+                      "No scripts selected", 
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                    else -> Text(
+                      "${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}",
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                  }
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val scripts = mutableListOf<String>()
+                    if (mpvConfStorageLocation.isNotBlank()) {
+                      runCatching {
+                        val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                        if (tree != null && tree.exists()) {
+                          tree.listFiles().forEach { file ->
+                            if (file.isFile && file.name?.endsWith(".lua") == true) {
+                              file.name?.let { scripts.add(it) }
+                            }
+                          }
+                        }
+                      }.onFailure { e ->
+                        withContext(Dispatchers.Main) {
+                          Toast.makeText(
+                            context,
+                            "Error reading scripts directory: ${e.message}",
+                            Toast.LENGTH_LONG
+                          ).show()
                         }
                       }
                     }
-                  }.onFailure { e ->
                     withContext(Dispatchers.Main) {
-                      Toast.makeText(
-                        context,
-                        "Error reading scripts directory: ${e.message}",
-                        Toast.LENGTH_LONG
-                      ).show()
+                      availableScripts = scripts.sorted()
+                      if (scripts.isEmpty()) {
+                        Toast.makeText(
+                          context,
+                          "No .lua files found in the config directory",
+                          Toast.LENGTH_SHORT
+                        ).show()
+                      }
+                      showScriptDialog = true
                     }
                   }
-                }
-                withContext(Dispatchers.Main) {
-                  availableScripts = scripts.sorted()
-                  if (scripts.isEmpty()) {
-                    Toast.makeText(
-                      context,
-                      "No .lua files found in the config directory",
-                      Toast.LENGTH_SHORT
-                    ).show()
-                  }
-                  showScriptDialog = true
-                }
+                },
+                enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
+              )
+              
+              if (showScriptDialog) {
+                LuaScriptSelectionDialog(
+                  availableScripts = availableScripts,
+                  selectedScripts = selectedScripts,
+                  onScriptsSelected = { newSelection ->
+                    preferences.selectedLuaScripts.set(newSelection)
+                    showScriptDialog = false
+                  },
+                  onDismiss = { showScriptDialog = false },
+                )
               }
-            },
-            enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
-          )
-          
-          if (showScriptDialog) {
-            LuaScriptSelectionDialog(
-              availableScripts = availableScripts,
-              selectedScripts = selectedScripts,
-              onScriptsSelected = { newSelection ->
-                preferences.selectedLuaScripts.set(newSelection)
-                showScriptDialog = false
-              },
-              onDismiss = { showScriptDialog = false },
-            )
+            }
           }
           
-          val activity = LocalActivity.current!!
-          val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-          Preference(
-            title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
-            summary = { Text(stringResource(R.string.pref_advanced_dump_logs_summary)) },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val deviceInfo = CrashActivity.collectDeviceInfo()
-                val logcat = CrashActivity.collectLogcat()
-
-                clipboard.setText(AnnotatedString(CrashActivity.concatLogs(deviceInfo, null, logcat)))
-                CrashActivity.shareLogs(deviceInfo, null, logcat, activity)
+          // History Section
+          item {
+            PreferenceSectionHeader(title = "History")
+          }
+          
+          item {
+            PreferenceCard {
+              var isConfirmDialogShown by remember { mutableStateOf(false) }
+              val mpvexDatabase = koinInject<MpvExDatabase>()
+              val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
+              
+              SwitchPreference(
+                value = enableRecentlyPlayed,
+                onValueChange = preferences.enableRecentlyPlayed::set,
+                title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
+                summary = { 
+                  Text(
+                    stringResource(R.string.pref_advanced_enable_recently_played_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+              )
+              
+              PreferenceDivider()
+              
+              Preference(
+                title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
+                onClick = { isConfirmDialogShown = true },
+              )
+              
+              if (isConfirmDialogShown) {
+                ConfirmDialog(
+                  stringResource(R.string.pref_advanced_clear_playback_history_confirm_title),
+                  stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
+                  onConfirm = {
+                    scope.launch(Dispatchers.IO) {
+                      runCatching {
+                        mpvexDatabase.videoDataDao().clearAllPlaybackStates()
+                        RecentlyPlayedOps.clearAll()
+                      }.onSuccess {
+                        withContext(Dispatchers.Main) {
+                          isConfirmDialogShown = false
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(R.string.pref_advanced_cleared_playback_history),
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                      }.onFailure { error ->
+                        withContext(Dispatchers.Main) {
+                          isConfirmDialogShown = false
+                          Toast
+                            .makeText(
+                              context,
+                              "Failed to clear: ${error.message}",
+                              Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                      }
+                    }
+                  },
+                  onCancel = { isConfirmDialogShown = false },
+                )
               }
-            },
-          )
-          val verboseLogging by preferences.verboseLogging.collectAsState()
-          SwitchPreference(
-            value = verboseLogging,
-            onValueChange = preferences.verboseLogging::set,
-            title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
-            summary = { Text(stringResource(R.string.pref_advanced_verbose_logging_summary)) },
-          )
-          val enableRecentlyPlayed by preferences.enableRecentlyPlayed.collectAsState()
-          SwitchPreference(
-            value = enableRecentlyPlayed,
-            onValueChange = preferences.enableRecentlyPlayed::set,
-            title = { Text(stringResource(R.string.pref_advanced_enable_recently_played_title)) },
-            summary = { Text(stringResource(R.string.pref_advanced_enable_recently_played_summary)) },
-          )
-          // Removed: folder scan recursion depth (no longer used)
-          var isConfirmDialogShown by remember { mutableStateOf(false) }
-          val mpvexDatabase = koinInject<MpvExDatabase>()
-          Preference(
-            title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
-            onClick = { isConfirmDialogShown = true },
-          )
-          if (isConfirmDialogShown) {
-            ConfirmDialog(
-              stringResource(R.string.pref_advanced_clear_playback_history_confirm_title),
-              stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
-              onConfirm = {
-                scope.launch(Dispatchers.IO) {
-                  runCatching {
-                    mpvexDatabase.videoDataDao().clearAllPlaybackStates()
-                    RecentlyPlayedOps.clearAll()
-                  }.onSuccess {
+            }
+          }
+          
+          // Cache Section
+          item {
+            PreferenceSectionHeader(title = "Cache")
+          }
+          
+          item {
+            PreferenceCard {
+              var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
+              
+              Preference(
+                title = { Text(text = "Clear config cache") },
+                summary = { 
+                  Text(
+                    text = "Clear the cached mpv.conf settings",
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val mpvConfFile = File(context.filesDir, "mpv.conf")
+                    mpvConfFile.delete()
+                    // Clear preferences too
+                    preferences.mpvConf.delete()
                     withContext(Dispatchers.Main) {
-                      isConfirmDialogShown = false
+                      mpvConf = ""
                       Toast
                         .makeText(
                           context,
-                          context.getString(R.string.pref_advanced_cleared_playback_history),
+                          "Config cache cleared",
                           Toast.LENGTH_SHORT,
                         ).show()
                     }
-                  }.onFailure { error ->
+                  }
+                },
+              )
+              
+              PreferenceDivider()
+              
+              Preference(
+                title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
+                summary = { 
+                  Text(
+                    text = "Remove all cached subtitle fonts",
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val fontsDir = File(context.filesDir.path + "/fonts")
+                    if (fontsDir.exists()) {
+                      fontsDir.listFiles()?.forEach { file ->
+                        // Delete all font files
+                        if (file.isFile &&
+                          file.name
+                            .lowercase()
+                            .matches(".*\\.[ot]tf$".toRegex())
+                        ) {
+                          file.delete()
+                        }
+                      }
+                    }
                     withContext(Dispatchers.Main) {
-                      isConfirmDialogShown = false
                       Toast
                         .makeText(
                           context,
-                          "Failed to clear: ${error.message}",
-                          Toast.LENGTH_LONG,
+                          context.getString(R.string.pref_advanced_cleared_fonts_cache),
+                          Toast.LENGTH_SHORT,
                         ).show()
                     }
                   }
-                }
-              },
-              onCancel = { isConfirmDialogShown = false },
-            )
+                },
+              )
+            }
           }
-          Preference(
-            title = { Text(text = "Clear config cache") },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val mpvConfFile = File(context.filesDir, "mpv.conf")
-                mpvConfFile.delete()
-                // Clear preferences too
-                preferences.mpvConf.delete()
-                withContext(Dispatchers.Main) {
-                  mpvConf = ""
-                  Toast
-                    .makeText(
-                      context,
-                      "Config cache cleared",
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              }
-            },
-          )
-          Preference(
-            title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
-            onClick = {
-              scope.launch(Dispatchers.IO) {
-                val fontsDir = File(context.filesDir.path + "/fonts")
-                if (fontsDir.exists()) {
-                  fontsDir.listFiles()?.forEach { file ->
-                    // Delete all font files
-                    if (file.isFile &&
-                      file.name
-                        .lowercase()
-                        .matches(".*\\.[ot]tf$".toRegex())
-                    ) {
-                      file.delete()
-                    }
+          
+          // Logging Section
+          item {
+            PreferenceSectionHeader(title = "Logging")
+          }
+          
+          item {
+            PreferenceCard {
+              val activity = LocalActivity.current!!
+              val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+              val verboseLogging by preferences.verboseLogging.collectAsState()
+              
+              SwitchPreference(
+                value = verboseLogging,
+                onValueChange = preferences.verboseLogging::set,
+                title = { Text(stringResource(R.string.pref_advanced_verbose_logging_title)) },
+                summary = { 
+                  Text(
+                    stringResource(R.string.pref_advanced_verbose_logging_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+              )
+              
+              PreferenceDivider()
+              
+              Preference(
+                title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
+                summary = { 
+                  Text(
+                    stringResource(R.string.pref_advanced_dump_logs_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val deviceInfo = CrashActivity.collectDeviceInfo()
+                    val logcat = CrashActivity.collectLogcat()
+    
+                    clipboard.setText(AnnotatedString(CrashActivity.concatLogs(deviceInfo, null, logcat)))
+                    CrashActivity.shareLogs(deviceInfo, null, logcat, activity)
                   }
-                }
-                withContext(Dispatchers.Main) {
-                  Toast
-                    .makeText(
-                      context,
-                      context.getString(R.string.pref_advanced_cleared_fonts_cache),
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              }
-            },
-          )
+                },
+              )
+            }
+          }
         }
       }
     }

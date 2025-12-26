@@ -36,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -47,7 +46,6 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -80,10 +78,21 @@ object AboutScreen : Screen {
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { Text(text = stringResource(id = R.string.pref_about_title)) },
+          title = { 
+            Text(
+              text = stringResource(id = R.string.pref_about_title),
+              style = MaterialTheme.typography.headlineSmall,
+              fontWeight = FontWeight.ExtraBold,
+              color = MaterialTheme.colorScheme.primary,
+            ) 
+          },
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
-              Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
+              Icon(
+                imageVector = Icons.AutoMirrored.Default.ArrowBack, 
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+              )
             }
           },
         )
@@ -108,16 +117,9 @@ object AboutScreen : Screen {
         modifier =
           Modifier
             .padding(paddingValues)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .verticalScroll(rememberScrollState()),
       ) {
-        Surface(
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(28.dp),
-          color = Color.Transparent,
-          shadowElevation = 0.dp,
-          tonalElevation = 0.dp,
-        ) {
+        PreferenceCard {
           Box(
             modifier =
               Modifier
@@ -143,7 +145,7 @@ object AboutScreen : Screen {
                     )
                   }
                 }
-                .padding(20.dp),
+                .padding(16.dp),
           ) {
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -270,21 +272,17 @@ object AboutScreen : Screen {
           }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
         // Donate Section
-        Text(
-          text = stringResource(id = R.string.pref_about_donate_title),
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.SemiBold,
-          color = cs.onSurface,
-          modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        PreferenceSectionHeader(
+          title = stringResource(id = R.string.pref_about_donate_title)
         )
 
-        // Ko-fi
-        Surface(
-          modifier =
-            Modifier
+        PreferenceCard {
+          // Ko-fi
+          Row(
+            modifier = Modifier
               .fillMaxWidth()
               .clickable {
                 context.startActivity(
@@ -293,19 +291,15 @@ object AboutScreen : Screen {
                     context.getString(R.string.pref_about_donate_kofi_url).toUri(),
                   ),
                 )
-              },
-          shape = RoundedCornerShape(16.dp),
-          color = cs.surfaceContainerHigh,
-        ) {
-          Row(
-            modifier = Modifier.padding(16.dp),
+              }
+              .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Icon(
               imageVector = Icons.Filled.MonetizationOn,
               contentDescription = null,
               modifier = Modifier.size(24.dp),
-              tint = cs.onSurface,
+              tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -313,23 +307,20 @@ object AboutScreen : Screen {
                 text = stringResource(id = R.string.pref_about_donate_kofi),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = cs.onSurface,
               )
               Text(
                 text = stringResource(id = R.string.pref_about_donate_kofi_summary),
                 style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.outline,
               )
             }
           }
-        }
 
-        Spacer(Modifier.height(8.dp))
+          PreferenceDivider()
 
-        // PayPal
-        Surface(
-          modifier =
-            Modifier
+          // PayPal
+          Row(
+            modifier = Modifier
               .fillMaxWidth()
               .clickable {
                 context.startActivity(
@@ -338,19 +329,15 @@ object AboutScreen : Screen {
                     context.getString(R.string.pref_about_donate_paypal_url).toUri(),
                   ),
                 )
-              },
-          shape = RoundedCornerShape(16.dp),
-          color = cs.surfaceContainerHigh,
-        ) {
-          Row(
-            modifier = Modifier.padding(16.dp),
+              }
+              .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Icon(
               imageVector = Icons.Filled.AccountBalance,
               contentDescription = null,
               modifier = Modifier.size(24.dp),
-              tint = cs.onSurface,
+              tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -358,41 +345,34 @@ object AboutScreen : Screen {
                 text = stringResource(id = R.string.pref_about_donate_paypal),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = cs.onSurface,
               )
               Text(
                 text = stringResource(id = R.string.pref_about_donate_paypal_summary),
                 style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.outline,
               )
             }
           }
-        }
 
-        Spacer(Modifier.height(8.dp))
+          PreferenceDivider()
 
-        // UPI
-        Surface(
-          modifier =
-            Modifier
+          // UPI
+          Row(
+            modifier = Modifier
               .fillMaxWidth()
               .clickable {
                 clipboardManager.setText(
                   AnnotatedString(context.getString(R.string.pref_about_donate_upi_id)),
                 )
-              },
-          shape = RoundedCornerShape(16.dp),
-          color = cs.surfaceContainerHigh,
-        ) {
-          Row(
-            modifier = Modifier.padding(16.dp),
+              }
+              .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Icon(
               imageVector = Icons.Filled.CurrencyRupee,
               contentDescription = null,
               modifier = Modifier.size(24.dp),
-              tint = cs.onSurface,
+              tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -400,12 +380,11 @@ object AboutScreen : Screen {
                 text = stringResource(id = R.string.pref_about_donate_upi),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = cs.onSurface,
               )
               Text(
                 text = stringResource(id = R.string.pref_about_donate_upi_id),
                 style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.outline,
               )
             }
           }
@@ -427,10 +406,21 @@ object LibrariesScreen : Screen {
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { Text(text = stringResource(id = R.string.pref_about_oss_libraries)) },
+          title = { 
+            Text(
+              text = stringResource(id = R.string.pref_about_oss_libraries),
+              style = MaterialTheme.typography.headlineSmall,
+              fontWeight = FontWeight.ExtraBold,
+              color = MaterialTheme.colorScheme.primary,
+            ) 
+          },
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
-              Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
+              Icon(
+                imageVector = Icons.AutoMirrored.Default.ArrowBack, 
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+              )
             }
           },
         )

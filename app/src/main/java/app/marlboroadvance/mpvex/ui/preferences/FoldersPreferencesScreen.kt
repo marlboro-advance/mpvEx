@@ -494,4 +494,3 @@ private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder>
     )
 }
 
-

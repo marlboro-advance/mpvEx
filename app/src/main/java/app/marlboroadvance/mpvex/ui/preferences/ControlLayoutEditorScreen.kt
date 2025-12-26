@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +48,7 @@ import app.marlboroadvance.mpvex.preferences.allPlayerButtons
 import app.marlboroadvance.mpvex.preferences.getPlayerButtonLabel
 import app.marlboroadvance.mpvex.preferences.preference.Preference
 import app.marlboroadvance.mpvex.presentation.Screen
+import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.PreferenceCategory
@@ -157,6 +159,35 @@ data class ControlLayoutEditorScreen(
         }
       }
 
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    if (showResetDialog) {
+      ConfirmDialog(
+        title = "Reset to default?",
+        subtitle = "This will reset the controls in this region to their default configuration.",
+        onConfirm = {
+          // Reset only this specific region
+          prefToEdit.delete()
+          // Reload the default values
+          selectedButtons = prefToEdit
+            .get()
+            .split(',')
+            .filter(String::isNotBlank)
+            .mapNotNull {
+              try {
+                PlayerButton.valueOf(it)
+              } catch (_: Exception) {
+                null
+              }
+            }
+          showResetDialog = false
+        },
+        onCancel = {
+          showResetDialog = false
+        },
+      )
+    }
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -164,6 +195,11 @@ data class ControlLayoutEditorScreen(
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+            }
+          },
+          actions = {
+            IconButton(onClick = { showResetDialog = true }) {
+              Icon(Icons.Outlined.Restore, contentDescription = "Reset to default")
             }
           },
         )
