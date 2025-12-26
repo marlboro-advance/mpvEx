@@ -37,6 +37,7 @@ import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
+import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
@@ -230,6 +231,7 @@ private fun RecentItemsContent(
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val listState = rememberLazyListState()
   val coroutineScope = rememberCoroutineScope()
+  val isRefreshing = remember { mutableStateOf(false) }
 
   // Check if at top of list to hide scrollbar
   val isAtTop by remember {
@@ -246,18 +248,24 @@ private fun RecentItemsContent(
     label = "scrollbarAlpha",
   )
 
-  LazyColumnScrollbar(
-    state = listState,
-    settings = ScrollbarSettings(
-      thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-      thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-    ),
+  PullRefreshBox(
+    isRefreshing = isRefreshing,
+    onRefresh = { /* No refresh needed for recently played */ },
+    listState = listState,
+    modifier = modifier.fillMaxSize(),
   ) {
-    LazyColumn(
+    LazyColumnScrollbar(
       state = listState,
-      modifier = modifier.fillMaxSize(),
-      contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+      settings = ScrollbarSettings(
+        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+        thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+      ),
     ) {
+      LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+      ) {
       items(
         count = recentItems.size,
         key = { index ->
@@ -339,6 +347,7 @@ private fun RecentItemsContent(
         }
       }
     }
+  }
   }
 }
 
