@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -36,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Slider
+import androidx.compose.material3.VerticalDivider
 
 @Composable
 fun SortDialog(
@@ -52,6 +55,9 @@ fun SortDialog(
   modifier: Modifier = Modifier,
   visibilityToggles: List<VisibilityToggle> = emptyList(),
   viewModeSelector: ViewModeSelector? = null,
+  layoutModeSelector:  ViewModeSelector? = null,
+  folderGridColumnSelector: GridColumnSelector? = null,
+  videoGridColumnSelector: GridColumnSelector? = null,
   showSortOptions: Boolean = true,
 ) {
   if (!isOpen) return
@@ -101,6 +107,18 @@ fun SortDialog(
           )
         }
 
+        if (layoutModeSelector != null) {
+          ViewModeSelectorComponent(
+            viewModeSelector = layoutModeSelector,
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
+
+        GridColumnsSection(
+          folderGridColumnSelector = folderGridColumnSelector,
+          videoGridColumnSelector = videoGridColumnSelector,
+        )
+
         if (visibilityToggles.isNotEmpty()) {
           VisibilityTogglesSection(
             toggles = visibilityToggles,
@@ -131,6 +149,14 @@ data class ViewModeSelector(
   val secondOptionIcon: ImageVector,
   val isFirstOptionSelected: Boolean,
   val onViewModeChange: (Boolean) -> Unit,
+)
+
+data class GridColumnSelector(
+  val label: String,
+  val currentValue: Int,
+  val onValueChange: (Int) -> Unit,
+  val valueRange: ClosedFloatingPointRange<Float> = 1f..4f,
+  val steps: Int = 2,
 )
 
 // -----------------------------------------------------------------------------
@@ -360,6 +386,126 @@ private fun VisibilityTogglesSection(
               null
             },
         )
+      }
+    }
+  }
+}
+
+@Composable
+private fun GridColumnSelectorComponent(
+  gridColumnSelector: GridColumnSelector,
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier,
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Text(
+      text = gridColumnSelector.label,
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Medium,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+
+    Slider(
+      value = gridColumnSelector.currentValue.toFloat(),
+      onValueChange = { gridColumnSelector.onValueChange(it.toInt()) },
+      valueRange = gridColumnSelector.valueRange,
+      steps = gridColumnSelector.steps,
+      modifier = Modifier.fillMaxWidth(),
+    )
+
+    Text(
+      text = "${gridColumnSelector.currentValue} columns",
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+  }
+}
+
+@Composable
+private fun GridColumnsSection(
+  folderGridColumnSelector: GridColumnSelector?,
+  videoGridColumnSelector: GridColumnSelector?,
+  modifier: Modifier = Modifier,
+) {
+  if (folderGridColumnSelector == null && videoGridColumnSelector == null) return
+
+  Column(
+    modifier = modifier,
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Text(
+      text = "Grid Columns",
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Medium,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+      verticalAlignment = Alignment.Top,
+    ) {
+      if (folderGridColumnSelector != null) {
+        Column(
+          modifier = Modifier.weight(1f),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Text(
+            text = "Folder Grid",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Slider(
+            value = folderGridColumnSelector.currentValue.toFloat(),
+            onValueChange = { folderGridColumnSelector.onValueChange(it.toInt()) },
+            valueRange = folderGridColumnSelector.valueRange,
+            steps = folderGridColumnSelector.steps,
+            modifier = Modifier.fillMaxWidth(),
+          )
+          Text(
+            text = "${folderGridColumnSelector.currentValue} columns",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+          )
+        }
+      }
+
+      if (folderGridColumnSelector != null && videoGridColumnSelector != null) {
+        VerticalDivider(
+          modifier = Modifier.padding(vertical = 8.dp),
+          thickness = 1.dp,
+          color = MaterialTheme.colorScheme.outline,
+        )
+      }
+
+      if (videoGridColumnSelector != null) {
+        Column(
+          modifier = Modifier.weight(1f),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Text(
+            text = "Video Grid",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Slider(
+            value = videoGridColumnSelector.currentValue.toFloat(),
+            onValueChange = { videoGridColumnSelector.onValueChange(it.toInt()) },
+            valueRange = videoGridColumnSelector.valueRange,
+            steps = videoGridColumnSelector.steps,
+            modifier = Modifier.fillMaxWidth(),
+          )
+          Text(
+            text = "${videoGridColumnSelector.currentValue} columns",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+          )
+        }
       }
     }
   }

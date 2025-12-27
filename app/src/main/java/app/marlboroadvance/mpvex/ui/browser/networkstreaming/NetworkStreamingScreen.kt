@@ -197,7 +197,8 @@ object NetworkStreamingScreen : Screen {
                     text = "No network connections",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface, // a
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
                   )
                   Spacer(modifier = Modifier.height(8.dp))
                   Text(
