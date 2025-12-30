@@ -34,6 +34,23 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
 import kotlin.math.pow
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
+import app.marlboroadvance.mpvex.repository.MediaFileRepository
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.fillMaxSize
 
 @Composable
 fun FolderCard(
@@ -82,33 +99,84 @@ fun FolderCard(
           .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
+        val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+        val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
+        val horizontalPadding = 32.dp
+        val spacing = 8.dp
+
+        val thumbWidthDp = if (folderGridColumns > 1) {
+          // (screen - padding - total spacing) / columns
+          val totalSpacing = spacing * (folderGridColumns - 1)
+          ((screenWidthDp - horizontalPadding - totalSpacing) / folderGridColumns).coerceAtLeast(120.dp)
+        } else {
+          // single column fallback
+          160.dp
+        }
+        val aspect = 16f / 9f
+        val thumbHeightDp = thumbWidthDp / aspect
+
         Box(
           modifier = Modifier
-            . size(72.dp)
+            .width(thumbWidthDp)
+            .height(thumbHeightDp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            . debouncedCombinedClickable(
+            .debouncedCombinedClickable(
               onClick = onThumbClick,
               onLongClick = onLongClick,
             ),
           contentAlignment = Alignment.Center,
         ) {
-          Icon(
-            customIcon ?: Icons.Filled.Folder,
-            contentDescription = "Folder",
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.secondary,
-          )
+          val context = LocalContext.current
+          val thumbnailRepository = koinInject<ThumbnailRepository>()
 
-          // Show new video count badge if folder contains new videos
+          // compute pixel size on main thread
+          val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
+          val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+
+          // mutable state to hold the loaded bitmap
+          var folderThumbnail by remember(folder.bucketId) { mutableStateOf<Bitmap?>(null) }
+
+          // Re-run when bucket or requested size changes
+          LaunchedEffect(folder.bucketId, thumbWidthPx, thumbHeightPx) {
+            val thumb = withContext(Dispatchers.IO) {
+              try {
+                val videos = MediaFileRepository.getVideosInFolder(context, folder.bucketId)
+                val first = videos.firstOrNull()
+                if (first != null) {
+                  thumbnailRepository.getThumbnail(first, thumbWidthPx, thumbHeightPx)
+                } else null
+              } catch (e: Exception) {
+                null
+              }
+            }
+            folderThumbnail = thumb
+          }
+
+          folderThumbnail?.let { bmp ->
+            Image(
+              bitmap = bmp.asImageBitmap(),
+              contentDescription = "${folder.name} thumbnail",
+              modifier = Modifier.fillMaxSize(),
+              contentScale = ContentScale.Crop,
+            )
+          } ?: run {
+            Icon(
+              customIcon ?: Icons.Filled.Folder,
+              contentDescription = "Folder",
+              modifier = Modifier.size(56.dp),
+              tint = MaterialTheme.colorScheme.secondary,
+            )
+          }
+
           if (newVideoCount > 0) {
             Box(
               modifier =
                 Modifier
                   .align(Alignment.TopEnd)
-                  .padding(4.dp)
+                  .padding(6.dp)
                   .clip(RoundedCornerShape(4.dp))
-                  .background(Color(0xFFD32F2F)) // Warning red color
+                  .background(Color(0xFFD32F2F))
                   .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
               Text(

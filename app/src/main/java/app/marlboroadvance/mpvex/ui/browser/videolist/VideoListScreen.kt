@@ -630,8 +630,8 @@ private fun VideoSortDialog(
       label = "Folder Grid Columns",
       currentValue = folderGridColumns,
       onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 3f..4f,
-      steps = 0,
+      valueRange = 2f..4f,
+      steps = 1,
     )
   } else null
 
