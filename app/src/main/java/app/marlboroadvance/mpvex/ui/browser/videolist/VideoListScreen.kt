@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.ui.browser.videolist
 import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
+import androidx. compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,13 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx. compose.material.icons.filled.ViewList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,6 +53,7 @@ import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
+import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SortOrder
 import app.marlboroadvance.mpvex.preferences.VideoSortType
@@ -62,6 +70,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.LoadingDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
@@ -77,6 +86,7 @@ import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
+import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
 import kotlin.math.roundToInt
 
 @Serializable
@@ -400,6 +410,9 @@ private fun VideoListContent(
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val density = LocalDensity.current
   val thumbWidthDp = 128.dp
@@ -481,17 +494,22 @@ private fun VideoListContent(
         listState = listState,
         modifier = modifier.fillMaxSize(),
       ) {
-        LazyColumnScrollbar(
-          state = listState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
-        ) {
-          LazyColumn(
-            state = listState,
+
+        val columns = when (mediaLayoutMode) {
+          MediaLayoutMode.LIST -> 1
+          MediaLayoutMode.GRID -> videoGridColumns
+        }
+
+        val gridState = rememberLazyGridState()
+
+        if (mediaLayoutMode == MediaLayoutMode.GRID) {
+          LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            state = gridState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             items(
               count = videosWithInfo.size,
@@ -525,7 +543,60 @@ private fun VideoListContent(
                 } else {
                   { onVideoClick(videoWithInfo.video) }
                 },
+                isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
+                gridColumns = videoGridColumns,
               )
+            }
+          }
+        } else {
+          // Original list mode code unchanged
+          LazyColumnScrollbar(
+            state = listState,
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
+          ) {
+            LazyColumn(
+              state = listState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(8.dp),
+            ) {
+              items(
+                count = videosWithInfo.size,
+                key = { index -> videosWithInfo[index].video.id },
+              ) { index ->
+                val videoWithInfo = videosWithInfo[index]
+                val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+
+                // Prefetch upcoming thumbnails
+                androidx.compose.runtime.LaunchedEffect(index) {
+                  if (index < videosWithInfo.size - 1) {
+                    val upcomingVideos =
+                      videosWithInfo.subList(
+                        (index + 1).coerceAtMost(videosWithInfo.size),
+                        (index + 11).coerceAtMost(videosWithInfo.size),
+                      )
+                    thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
+                  }
+                }
+
+                VideoCard(
+                  video = videoWithInfo.video,
+                  progressPercentage = videoWithInfo.progressPercentage,
+                  isRecentlyPlayed = isRecentlyPlayed,
+                  isSelected = selectionManager.isSelected(videoWithInfo.video),
+                  isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                  onClick = { onVideoClick(videoWithInfo.video) },
+                  onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                  onThumbClick = if (tapThumbnailToSelect) {
+                    { onVideoLongClick(videoWithInfo.video) }
+                  } else {
+                    { onVideoClick(videoWithInfo.video) }
+                  },
+                  isGridMode = false,
+                )
+              }
             }
           }
         }
@@ -544,12 +615,33 @@ private fun VideoSortDialog(
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
+  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+
+  val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
+    GridColumnSelector(
+      label = "Folder Grid Columns",
+      currentValue = folderGridColumns,
+      onValueChange = { browserPreferences.folderGridColumns.set(it) },
+      valueRange = 2f..4f,
+      steps = 1,
+    )
+  } else null
+
+  val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
+    GridColumnSelector(
+      label = "Grid Columns",
+      currentValue = videoGridColumns,
+      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+    )
+  } else null
 
   SortDialog(
     isOpen = isOpen,
@@ -586,6 +678,19 @@ private fun VideoSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
+    viewModeSelector = ViewModeSelector(
+      label = "Layout",
+      firstOptionLabel = "List",
+      secondOptionLabel = "Grid",
+      firstOptionIcon = Icons.Filled.ViewList,
+      secondOptionIcon = Icons. Filled.GridView,
+      isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
+      onViewModeChange = { isFirstOption ->
+        browserPreferences.mediaLayoutMode.set(
+          if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+        )
+      },
+    ),
     visibilityToggles =
       listOf(
         VisibilityToggle(
@@ -614,5 +719,7 @@ private fun VideoSortDialog(
           onCheckedChange = { browserPreferences.showProgressBar.set(it) },
         ),
       ),
+    folderGridColumnSelector = folderGridColumnSelector,
+    videoGridColumnSelector = videoGridColumnSelector,
   )
 }
