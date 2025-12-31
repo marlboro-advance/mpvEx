@@ -461,10 +461,14 @@ object AdvancedPreferencesScreen : Screen {
           
           item {
             PreferenceCard {
-              var showScriptDialog by remember { mutableStateOf(false) }
-              var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
-              val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+              var showLuaScriptDialog by remember { mutableStateOf(false) }
+              var showCPluginDialog by remember { mutableStateOf(false) }
+              var availableLuaScripts by remember { mutableStateOf<List<String>>(emptyList()) }
+              var availableCPlugins by remember { mutableStateOf<List<String>>(emptyList()) }
+              val selectedLuaScripts by preferences.selectedLuaScripts.collectAsState()
+              val selectedCPlugins by preferences.selectedCPlugins.collectAsState()
               val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+              val enableCPlugins by preferences.enableCPlugins.collectAsState()
               
               SwitchPreference(
                 value = enableLuaScripts,
@@ -492,12 +496,12 @@ object AdvancedPreferencesScreen : Screen {
                       "Set MPV config storage location first", 
                       color = MaterialTheme.colorScheme.outline
                     )
-                    selectedScripts.isEmpty() -> Text(
+                    selectedLuaScripts.isEmpty() -> Text(
                       "No scripts selected", 
                       color = MaterialTheme.colorScheme.outline
                     )
                     else -> Text(
-                      "${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}",
+                      "${selectedLuaScripts.size} script(s) selected: ${selectedLuaScripts.joinToString(", ")}",
                       color = MaterialTheme.colorScheme.outline
                     )
                   }
@@ -526,7 +530,7 @@ object AdvancedPreferencesScreen : Screen {
                       }
                     }
                     withContext(Dispatchers.Main) {
-                      availableScripts = scripts.sorted()
+                      availableLuaScripts = scripts.sorted()
                       if (scripts.isEmpty()) {
                         Toast.makeText(
                           context,
@@ -534,22 +538,111 @@ object AdvancedPreferencesScreen : Screen {
                           Toast.LENGTH_SHORT
                         ).show()
                       }
-                      showScriptDialog = true
+                      showLuaScriptDialog = true
                     }
                   }
                 },
                 enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
               )
               
-              if (showScriptDialog) {
+              if (showLuaScriptDialog) {
                 LuaScriptSelectionDialog(
-                  availableScripts = availableScripts,
-                  selectedScripts = selectedScripts,
+                  availableScripts = availableLuaScripts,
+                  selectedScripts = selectedLuaScripts,
                   onScriptsSelected = { newSelection ->
                     preferences.selectedLuaScripts.set(newSelection)
-                    showScriptDialog = false
+                    showLuaScriptDialog = false
                   },
-                  onDismiss = { showScriptDialog = false },
+                  onDismiss = { showLuaScriptDialog = false },
+                )
+              }
+
+              PreferenceDivider()
+
+              SwitchPreference(
+                value = enableCPlugins,
+                onValueChange = preferences.enableCPlugins::set,
+                title = { Text("Enable C Plugins") },
+                summary = {
+                  Text(
+                    "Load C plugins (.so) from configuration directory",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              Preference(
+                title = { Text("Select C Plugins") },
+                summary = {
+                  when {
+                    !enableCPlugins -> Text(
+                      "Enable C plugins first",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    mpvConfStorageLocation.isBlank() -> Text(
+                      "Set MPV config storage location first",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    selectedCPlugins.isEmpty() -> Text(
+                      "No plugins selected",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    else -> Text(
+                      "${selectedCPlugins.size} plugin(s) selected: ${selectedCPlugins.joinToString(", ")}",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
+                onClick = {
+                  scope.launch(Dispatchers.IO) {
+                    val plugins = mutableListOf<String>()
+                    if (mpvConfStorageLocation.isNotBlank()) {
+                      runCatching {
+                        val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                        if (tree != null && tree.exists()) {
+                          tree.listFiles().forEach { file ->
+                            if (file.isFile && file.name?.endsWith(".so", ignoreCase = true) == true) {
+                              file.name?.let { plugins.add(it) }
+                            }
+                          }
+                        }
+                      }.onFailure { e ->
+                        withContext(Dispatchers.Main) {
+                          Toast.makeText(
+                            context,
+                            "Error reading plugins directory: ${e.message}",
+                            Toast.LENGTH_LONG
+                          ).show()
+                        }
+                      }
+                    }
+                    withContext(Dispatchers.Main) {
+                      availableCPlugins = plugins.sorted()
+                      if (plugins.isEmpty()) {
+                        Toast.makeText(
+                          context,
+                          "No .so files found in the config directory",
+                          Toast.LENGTH_SHORT
+                        ).show()
+                      }
+                      showCPluginDialog = true
+                    }
+                  }
+                },
+                enabled = enableCPlugins && mpvConfStorageLocation.isNotBlank(),
+              )
+
+              if (showCPluginDialog) {
+                CPluginSelectionDialog(
+                  availablePlugins = availableCPlugins,
+                  selectedPlugins = selectedCPlugins,
+                  onPluginsSelected = { newSelection ->
+                    preferences.selectedCPlugins.set(newSelection)
+                    showCPluginDialog = false
+                  },
+                  onDismiss = { showCPluginDialog = false },
                 )
               }
             }
@@ -807,6 +900,76 @@ fun LuaScriptSelectionDialog(
         onClick = { 
           onScriptsSelected(tempSelectedScripts.toSet())
         }
+      ) {
+        Text("OK")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("Cancel")
+      }
+    },
+  )
+}
+
+@Composable
+fun CPluginSelectionDialog(
+  availablePlugins: List<String>,
+  selectedPlugins: Set<String>,
+  onPluginsSelected: (Set<String>) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var tempSelectedPlugins by remember(selectedPlugins) {
+    mutableStateOf(selectedPlugins.toMutableSet())
+  }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Select C Plugins") },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+      ) {
+        if (availablePlugins.isEmpty()) {
+          Text("No C plugins found in the configuration directory.")
+        } else {
+          Text(
+            text = "Select the C plugins to load with MPV:",
+            modifier = Modifier.padding(bottom = 8.dp),
+          )
+          availablePlugins.forEach { plugin ->
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              Checkbox(
+                checked = tempSelectedPlugins.contains(plugin),
+                onCheckedChange = { checked ->
+                  tempSelectedPlugins = if (checked) {
+                    (tempSelectedPlugins + plugin).toMutableSet()
+                  } else {
+                    (tempSelectedPlugins - plugin).toMutableSet()
+                  }
+                },
+              )
+              Text(
+                text = plugin,
+                modifier = Modifier.padding(start = 8.dp),
+              )
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          onPluginsSelected(tempSelectedPlugins.toSet())
+        },
       ) {
         Text("OK")
       }
