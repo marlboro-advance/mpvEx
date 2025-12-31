@@ -18,4 +18,6 @@ class AdvancedPreferences(
 
   val enableLuaScripts = preferenceStore.getBoolean("enable_lua_scripts", false)
   val selectedLuaScripts = preferenceStore.getStringSet("selected_lua_scripts", emptySet())
+  val enableCPlugins = preferenceStore.getBoolean("enable_c_plugins", false)
+  val selectedCPlugins = preferenceStore.getStringSet("selected_c_plugins", emptySet())
 }
