@@ -1032,7 +1032,7 @@ private fun FileSystemBrowserContent(
             // Videos second
             items(
               count = videos.size,
-              key = { videos[it].video.id },
+              key = { "${videos[it].video.id}_${videos[it].video.path}" },
             ) { index ->
               val videoFile = videos[index]
               VideoCard(
@@ -1109,7 +1109,7 @@ private fun FileSystemBrowserContent(
               // Videos second
               items(
                 items = items.filterIsInstance<FileSystemItem.VideoFile>(),
-                key = { it.video.id },
+                key = { "${it.video.id}_${it.video.path}" },
               ) { videoFile ->
                 VideoCard(
                   video = videoFile.video,
