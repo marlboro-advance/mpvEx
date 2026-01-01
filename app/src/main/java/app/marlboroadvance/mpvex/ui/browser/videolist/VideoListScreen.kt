@@ -84,6 +84,7 @@ import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.ScrollbarSettings
@@ -450,9 +451,16 @@ private fun VideoListContent(
     }
 
     else -> {
-      // Fast calculation of the initial position - optimize for performance
-      val initialIndex = if (recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          // Fast indexOfFirst calculation for initial position
+      // Remember scroll position across recompositions and navigation
+      val rememberedListIndex = rememberSaveable { mutableIntStateOf(0) }
+      val rememberedListOffset = rememberSaveable { mutableIntStateOf(0) }
+      val rememberedGridIndex = rememberSaveable { mutableIntStateOf(0) }
+      val rememberedGridOffset = rememberSaveable { mutableIntStateOf(0) }
+      
+      // Determine initial position: use remembered position, or find recently played if enabled
+      val initialListIndex = if (rememberedListIndex.intValue > 0) {
+          rememberedListIndex.intValue
+      } else if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
           var foundIndex = 0
           for (i in videosWithInfo.indices) {
               if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
@@ -463,15 +471,41 @@ private fun VideoListContent(
           foundIndex
       } else 0
       
-      // Create the list with position already set for immediate positioning
+      val initialGridIndex = if (rememberedGridIndex.intValue > 0) {
+          rememberedGridIndex.intValue
+      } else if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
+          var foundIndex = 0
+          for (i in videosWithInfo.indices) {
+              if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
+                  foundIndex = i
+                  break
+              }
+          }
+          foundIndex
+      } else 0
+      
+      // Create the list/grid states with remembered positions
       val listState = rememberLazyListState(
-          initialFirstVisibleItemIndex = initialIndex
+          initialFirstVisibleItemIndex = initialListIndex,
+          initialFirstVisibleItemScrollOffset = rememberedListOffset.intValue
       )
       
-      // Log the initial position
-      LaunchedEffect(Unit) {
-          android.util.Log.d("VideoListScreen", "Opening with initial position at index: $initialIndex")
+      val gridState = rememberLazyGridState(
+          initialFirstVisibleItemIndex = initialGridIndex,
+          initialFirstVisibleItemScrollOffset = rememberedGridOffset.intValue
+      )
+      
+      // Save scroll position whenever it changes
+      LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+          rememberedListIndex.intValue = listState.firstVisibleItemIndex
+          rememberedListOffset.intValue = listState.firstVisibleItemScrollOffset
       }
+      
+      LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
+          rememberedGridIndex.intValue = gridState.firstVisibleItemIndex
+          rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
+      }
+      
       val coroutineScope = rememberCoroutineScope()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
@@ -503,17 +537,22 @@ private fun VideoListContent(
           MediaLayoutMode.GRID -> videoGridColumns
         }
 
-        val gridState = rememberLazyGridState()
-
         if (mediaLayoutMode == MediaLayoutMode.GRID) {
-          LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
+          LazyVerticalGridScrollbar(
             state = gridState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
           ) {
+            LazyVerticalGrid(
+              columns = GridCells.Fixed(columns),
+              state = gridState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(8.dp),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
             items(
               count = videosWithInfo.size,
               key = { index -> "${videosWithInfo[index].video.id}_${videosWithInfo[index].video.path}" },
@@ -549,6 +588,7 @@ private fun VideoListContent(
                 isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
                 gridColumns = videoGridColumns,
               )
+            }
             }
           }
         } else {
