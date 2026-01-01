@@ -2097,6 +2097,10 @@ class PlayerActivity :
 
   /**
    * Sets the screen orientation based on user preferences.
+   *
+   * IMPORTANT: Preferences are the single source of truth for orientation.
+   * This method applies the preference value when videos load.
+   * The rotation button temporarily overrides this without changing preferences.
    */
   private fun setOrientation() {
     requestedOrientation =

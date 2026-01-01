@@ -618,17 +618,17 @@ class PlayerViewModel(
   // ==================== Screen Rotation ====================
 
   fun cycleScreenRotations() {
+    // Temporarily cycle orientation WITHOUT modifying preferences
+    // Preferences remain the single source of truth and will be reapplied on next video
     host.hostRequestedOrientation =
       when (host.hostRequestedOrientation) {
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
         -> {
-          playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
         else -> {
-          playerPreferences.orientation.set(PlayerOrientation.SensorLandscape)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
       }
