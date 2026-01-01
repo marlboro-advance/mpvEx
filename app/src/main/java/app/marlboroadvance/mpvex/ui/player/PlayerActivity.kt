@@ -717,21 +717,29 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+
+    // Set status bar color for when it will be shown (with controls)
+    if (playerPreferences.showSystemStatusBar.get()) {
+      window.statusBarColor = android.graphics.Color.parseColor("#80000000") // Semi-transparent black
+    }
+
+    // Always start with status bar hidden - it will show when controls are shown
+    windowInsetsController.apply {
+      hide(WindowInsetsCompat.Type.statusBars())
+      hide(WindowInsetsCompat.Type.navigationBars())
+      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    // Don't use LOW_PROFILE if we plan to show status bar with controls
+    // LOW_PROFILE causes only icons to show without background
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
       View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
       View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-      View.SYSTEM_UI_FLAG_LOW_PROFILE
-
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-
-    windowInsetsController.apply {
-      hide(WindowInsetsCompat.Type.systemBars())
-      hide(WindowInsetsCompat.Type.navigationBars())
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
+      if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
   }
 
   @RequiresApi(Build.VERSION_CODES.P)

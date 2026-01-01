@@ -187,7 +187,6 @@ class PlayerViewModel(
   }
 
   // Cached values
-  private val showStatusBar = playerPreferences.showSystemStatusBar.get()
   private val doubleTapToSeekDuration by lazy { gesturePreferences.doubleTapToSeekDuration.get() }
   private val inputMethodManager by lazy {
     host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -392,7 +391,7 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (showStatusBar) {
+    if (playerPreferences.showSystemStatusBar.get()) {
       host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
       host.windowInsetsController.isAppearanceLightStatusBars = false
     }
@@ -400,7 +399,9 @@ class PlayerViewModel(
   }
 
   fun hideControls() {
-    host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    if (playerPreferences.showSystemStatusBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    }
     _controlsShown.value = false
   }
 
