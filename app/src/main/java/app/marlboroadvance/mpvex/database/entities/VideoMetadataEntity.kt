@@ -17,5 +17,6 @@ data class VideoMetadataEntity(
   val width: Int, // Video width in pixels
   val height: Int, // Video height in pixels
   val fps: Float, // Framerate in frames per second
+  val hasEmbeddedSubtitles: Boolean,
   val lastScanned: Long, // When this metadata was extracted (timestamp)
 )

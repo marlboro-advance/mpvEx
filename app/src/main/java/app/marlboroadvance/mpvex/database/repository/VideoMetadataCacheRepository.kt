@@ -54,6 +54,7 @@ class VideoMetadataCacheRepository(
           width = cached.width,
           height = cached.height,
           fps = cached.fps,
+          hasEmbeddedSubtitles = cached.hasEmbeddedSubtitles,
         )
       }
 
@@ -72,6 +73,7 @@ class VideoMetadataCacheRepository(
             width = metadata.width,
             height = metadata.height,
             fps = metadata.fps,
+            hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
             lastScanned = System.currentTimeMillis(),
           ),
         )
@@ -129,6 +131,7 @@ class VideoMetadataCacheRepository(
           width = cached.width,
           height = cached.height,
           fps = cached.fps,
+          hasEmbeddedSubtitles = cached.hasEmbeddedSubtitles,
         )
       }
 
@@ -157,6 +160,7 @@ class VideoMetadataCacheRepository(
                           width = metadata.width,
                           height = metadata.height,
                           fps = metadata.fps,
+                          hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
                           lastScanned = System.currentTimeMillis(),
                         ),
                       )

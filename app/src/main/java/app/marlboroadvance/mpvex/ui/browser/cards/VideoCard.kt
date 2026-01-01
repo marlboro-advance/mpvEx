@@ -212,6 +212,20 @@ fun VideoCard(
         if (gridColumns == 1) {
           Spacer(modifier = Modifier.height(4.dp))
           Row {
+            if (video.hasEmbeddedSubtitles) {
+              Text(
+                text = "SUB",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+            }
             if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
               Text(
                 video.sizeFormatted,
@@ -417,6 +431,20 @@ fun VideoCard(
           )
           Spacer(modifier = Modifier.height(4.dp))
           Row {
+            if (video.hasEmbeddedSubtitles) {
+              Text(
+                text = "SUB",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+            }
             if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
               Text(
                 video.sizeFormatted,

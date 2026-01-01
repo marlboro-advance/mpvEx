@@ -252,6 +252,19 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
   }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
+      db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0")
+      android.util.Log.d("Migration_5_6", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_5_6", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
 val DatabaseModule =
   module {
     single<Json> {
