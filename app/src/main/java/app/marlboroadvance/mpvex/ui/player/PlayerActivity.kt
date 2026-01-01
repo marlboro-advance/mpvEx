@@ -654,10 +654,11 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
+      // Don't start background playback if activity is finishing or user is leaving
+      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing && !isFinishing) {
         startBackgroundPlayback()
       } else {
-        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
+        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing || isFinishing) {
           viewModel.pause()
         }
         if (serviceBound) {
