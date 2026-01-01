@@ -68,6 +68,7 @@ fun VideoCard(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
@@ -117,9 +118,9 @@ fun VideoCard(
         }
 
         LaunchedEffect(thumbnailKey) {
-          if (thumbnail == null) {
+          if (thumbnail == null && showThumbnails) {
             thumbnail = withContext(Dispatchers.IO) {
-              thumbnailRepository. getThumbnail(video, thumbWidthPx, thumbHeightPx)
+              thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
             }
           }
         }
@@ -137,16 +138,25 @@ fun VideoCard(
             ),
           contentAlignment = Alignment.Center,
         ) {
-          thumbnail?. let {
-            Image(
-              bitmap = it.asImageBitmap(),
-              contentDescription = "Thumbnail",
-              modifier = Modifier. matchParentSize(),
-              contentScale = ContentScale. Crop,
-            )
-          } ?: run {
+          if (showThumbnails) {
+            thumbnail?.let {
+              Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "Thumbnail",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } ?: run {
+              Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = "Play",
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+          } else {
             Icon(
-              Icons. Filled.PlayArrow,
+              Icons.Filled.PlayArrow,
               contentDescription = "Play",
               modifier = Modifier.size(48.dp),
               tint = MaterialTheme.colorScheme.secondary,
@@ -275,7 +285,7 @@ fun VideoCard(
 
         // Only load if not already in memory - prevents reload on recomposition
         LaunchedEffect(thumbnailKey) {
-          if (thumbnail == null) {
+          if (thumbnail == null && showThumbnails) {
             thumbnail =
               withContext(Dispatchers.IO) {
                 thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
@@ -296,14 +306,23 @@ fun VideoCard(
               ),
           contentAlignment = Alignment.Center,
         ) {
-          thumbnail?.let {
-            Image(
-              bitmap = it.asImageBitmap(),
-              contentDescription = "Thumbnail",
-              modifier = Modifier.matchParentSize(),
-              contentScale = ContentScale.Crop,
-            )
-          } ?: run {
+          if (showThumbnails) {
+            thumbnail?.let {
+              Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "Thumbnail",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } ?: run {
+              Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = "Play",
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+          } else {
             Icon(
               Icons.Filled.PlayArrow,
               contentDescription = "Play",

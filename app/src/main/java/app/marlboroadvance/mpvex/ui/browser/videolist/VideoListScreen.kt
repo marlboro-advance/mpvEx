@@ -19,12 +19,14 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx. compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -52,6 +54,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.FolderViewMode
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -618,12 +621,14 @@ private fun VideoSortDialog(
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val appearancePreferences = koinInject<AppearancePreferences>()
+  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val folderViewMode by browserPreferences.folderViewMode.collectAsState()
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
@@ -646,7 +651,7 @@ private fun VideoSortDialog(
   SortDialog(
     isOpen = isOpen,
     onDismiss = onDismiss,
-    title = "Sort Videos",
+    title = "Sort & View Options",
     sortType = sortType.displayName,
     onSortTypeChange = { typeName ->
       VideoSortType.entries.find { it.displayName == typeName }?.let(onSortTypeChange)
@@ -679,11 +684,24 @@ private fun VideoSortDialog(
       }
     },
     viewModeSelector = ViewModeSelector(
+      label = "View Mode",
+      firstOptionLabel = "Folder",
+      secondOptionLabel = "Tree",
+      firstOptionIcon = Icons.Filled.ViewModule,
+      secondOptionIcon = Icons.Filled.AccountTree,
+      isFirstOptionSelected = folderViewMode == FolderViewMode.AlbumView,
+      onViewModeChange = { isFirstOption ->
+        browserPreferences.folderViewMode.set(
+          if (isFirstOption) FolderViewMode.AlbumView else FolderViewMode.FileManager,
+        )
+      },
+    ),
+    layoutModeSelector = ViewModeSelector(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
       firstOptionIcon = Icons.Filled.ViewList,
-      secondOptionIcon = Icons. Filled.GridView,
+      secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
         browserPreferences.mediaLayoutMode.set(
@@ -693,6 +711,11 @@ private fun VideoSortDialog(
     ),
     visibilityToggles =
       listOf(
+        VisibilityToggle(
+          label = "Thumbnails",
+          checked = showThumbnails,
+          onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+        ),
         VisibilityToggle(
           label = "Full Name",
           checked = unlimitedNameLines,

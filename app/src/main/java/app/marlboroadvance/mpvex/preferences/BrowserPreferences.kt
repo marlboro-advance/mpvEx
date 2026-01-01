@@ -24,6 +24,7 @@ class BrowserPreferences(
   val videoGridColumns = preferenceStore.getInt("video_grid_columns", 2)
 
   // Visibility preferences for video card chips
+  val showThumbnails = preferenceStore.getBoolean("show_thumbnails", true)
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
   val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
   val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)

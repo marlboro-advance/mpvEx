@@ -811,6 +811,7 @@ private fun FolderSortDialog(
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
+  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
@@ -878,8 +879,8 @@ private fun FolderSortDialog(
     viewModeSelector =
       ViewModeSelector(
         label = "View Mode",
-        firstOptionLabel = "Folder View",
-        secondOptionLabel = "Tree View",
+        firstOptionLabel = "Folder",
+        secondOptionLabel = "Tree",
         firstOptionIcon = Icons.Filled.ViewModule,
         secondOptionIcon = Icons.Filled.AccountTree,
         isFirstOptionSelected = folderViewMode == FolderViewMode.AlbumView,
@@ -904,6 +905,11 @@ private fun FolderSortDialog(
     ),
     visibilityToggles =
       listOf(
+        VisibilityToggle(
+          label = "Thumbnails",
+          checked = showThumbnails,
+          onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+        ),
         VisibilityToggle(
           label = "Full Name",
           checked = unlimitedNameLines,

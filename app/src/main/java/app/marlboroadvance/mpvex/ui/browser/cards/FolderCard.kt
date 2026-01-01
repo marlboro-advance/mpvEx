@@ -70,6 +70,7 @@ fun FolderCard(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
@@ -115,6 +116,9 @@ fun FolderCard(
         val aspect = 16f / 9f
         val thumbHeightDp = thumbWidthDp / aspect
 
+        val context = LocalContext.current
+        val thumbnailRepository = koinInject<ThumbnailRepository>()
+        
         Box(
           modifier = Modifier
             .width(thumbWidthDp)
@@ -127,8 +131,6 @@ fun FolderCard(
             ),
           contentAlignment = Alignment.Center,
         ) {
-          val context = LocalContext.current
-          val thumbnailRepository = koinInject<ThumbnailRepository>()
 
           // compute pixel size on main thread
           val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
@@ -139,28 +141,39 @@ fun FolderCard(
 
           // Re-run when bucket or requested size changes
           LaunchedEffect(folder.bucketId, thumbWidthPx, thumbHeightPx) {
-            val thumb = withContext(Dispatchers.IO) {
-              try {
-                val videos = MediaFileRepository.getVideosInFolder(context, folder.bucketId)
-                val first = videos.firstOrNull()
-                if (first != null) {
-                  thumbnailRepository.getThumbnail(first, thumbWidthPx, thumbHeightPx)
-                } else null
-              } catch (e: Exception) {
-                null
+            if (showThumbnails) {
+              val thumb = withContext(Dispatchers.IO) {
+                try {
+                  val videos = MediaFileRepository.getVideosInFolder(context, folder.bucketId)
+                  val first = videos.firstOrNull()
+                  if (first != null) {
+                    thumbnailRepository.getThumbnail(first, thumbWidthPx, thumbHeightPx)
+                  } else null
+                } catch (e: Exception) {
+                  null
+                }
               }
+              folderThumbnail = thumb
             }
-            folderThumbnail = thumb
           }
 
-          folderThumbnail?.let { bmp ->
-            Image(
-              bitmap = bmp.asImageBitmap(),
-              contentDescription = "${folder.name} thumbnail",
-              modifier = Modifier.fillMaxSize(),
-              contentScale = ContentScale.Crop,
-            )
-          } ?: run {
+          if (showThumbnails) {
+            folderThumbnail?.let { bmp ->
+              Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "${folder.name} thumbnail",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } ?: run {
+              Icon(
+                customIcon ?: Icons.Filled.Folder,
+                contentDescription = "Folder",
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+          } else {
             Icon(
               customIcon ?: Icons.Filled.Folder,
               contentDescription = "Folder",
@@ -239,7 +252,7 @@ fun FolderCard(
             tint = MaterialTheme.colorScheme.secondary,
           )
 
-        // Show new video count badge if folder contains new videos
+          // Show new video count badge if folder contains new videos
           if (newVideoCount > 0) {
             Box(
               modifier =
