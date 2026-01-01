@@ -1532,6 +1532,7 @@ class PlayerActivity :
     }
 
     setOrientation()
+    applySubtitlePreferences()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
 
@@ -1707,6 +1708,49 @@ class PlayerActivity :
       }
     }
   }
+
+  /**
+   * Applies all saved subtitle preferences when a file is loaded.
+   * This ensures subtitle customizations (font, colors, position, etc.) persist across videos.
+   */
+  private fun applySubtitlePreferences() {
+    // Typography settings
+    MPVLib.setPropertyString("sub-font", subtitlesPreferences.font.get())
+    MPVLib.setPropertyString("secondary-sub-font", subtitlesPreferences.font.get())
+    MPVLib.setPropertyInt("sub-font-size", subtitlesPreferences.fontSize.get())
+    MPVLib.setPropertyBoolean("sub-bold", subtitlesPreferences.bold.get())
+    MPVLib.setPropertyBoolean("sub-italic", subtitlesPreferences.italic.get())
+    MPVLib.setPropertyString("sub-justify", subtitlesPreferences.justification.get().value)
+    MPVLib.setPropertyString("sub-border-style", subtitlesPreferences.borderStyle.get().value)
+    MPVLib.setPropertyInt("sub-outline-size", subtitlesPreferences.borderSize.get())
+    MPVLib.setPropertyInt("sub-shadow-offset", subtitlesPreferences.shadowOffset.get())
+
+    // Color settings
+    MPVLib.setPropertyString("sub-color", subtitlesPreferences.textColor.get().toColorHexString())
+    MPVLib.setPropertyString("sub-border-color", subtitlesPreferences.borderColor.get().toColorHexString())
+    MPVLib.setPropertyString("sub-back-color", subtitlesPreferences.backgroundColor.get().toColorHexString())
+
+    // Miscellaneous settings
+    val overrideAssSubs = subtitlesPreferences.overrideAssSubs.get()
+    MPVLib.setPropertyString("sub-ass-override", if (overrideAssSubs) "force" else "no")
+    MPVLib.setPropertyString("secondary-sub-ass-override", if (overrideAssSubs) "force" else "no")
+    
+    val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
+    val scaleValue = if (scaleByWindow) "yes" else "no"
+    MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
+    MPVLib.setPropertyString("sub-use-margins", scaleValue)
+    
+    MPVLib.setPropertyFloat("sub-scale", subtitlesPreferences.subScale.get())
+    MPVLib.setPropertyInt("sub-pos", subtitlesPreferences.subPos.get())
+
+    Log.d(TAG, "Applied subtitle preferences")
+  }
+
+  /**
+   * Helper extension function to convert Int color to hex string for MPV
+   */
+  @OptIn(ExperimentalStdlibApi::class)
+  private fun Int.toColorHexString() = "#" + this.toHexString().uppercase()
 
   /**
    * Saves the current playback state to the database.
