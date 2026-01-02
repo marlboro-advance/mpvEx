@@ -69,10 +69,10 @@ class MPVView(
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
     MPVLib.setOptionString("profile", "fast")
 
-    // Set hwdec with fallback order: HW+ (mediacodec) -> SW (no) -> HW (mediacodec-copy)
+    // Set hwdec with fallback order: SW (no) -> HW+ (mediacodec) -> HW (mediacodec-copy)
     MPVLib.setOptionString(
       "hwdec",
-      if (decoderPreferences.tryHWDecoding.get()) "mediacodec,no,mediacodec-copy" else "no",
+      if (decoderPreferences.tryHWDecoding.get()) "no,mediacodec,mediacodec-copy" else "no",
     )
     MPVLib.setOptionString("hwdec-codecs", "all")
 
