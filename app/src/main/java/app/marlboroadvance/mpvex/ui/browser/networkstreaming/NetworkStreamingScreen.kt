@@ -183,7 +183,9 @@ object NetworkStreamingScreen : Screen {
                 ),
               ) {
                 Column(
-                  modifier = Modifier.padding(24.dp),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
                   horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                   Icon(
