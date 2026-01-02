@@ -216,7 +216,7 @@ fun VideoCard(
             if (showSubtitleIndicator) {
               if (video.hasEmbeddedSubtitles) {
                 Text(
-                  text = "SUB",
+                  text = video.subtitleCodec,
                   style = MaterialTheme.typography.labelSmall,
                   modifier = Modifier
                     .background(
@@ -437,7 +437,7 @@ fun VideoCard(
             if (showSubtitleIndicator) {
               if (video.hasEmbeddedSubtitles) {
                 Text(
-                  text = "SUB",
+                  text = video.subtitleCodec,
                   style = MaterialTheme.typography.labelSmall,
                   modifier = Modifier
                     .background(

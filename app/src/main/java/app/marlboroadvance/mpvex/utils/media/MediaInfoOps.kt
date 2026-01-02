@@ -339,7 +339,11 @@ object MediaInfoOps {
           val textCount = mi.Count_Get(MediaInfo.Stream.Text)
           val hasEmbeddedSubtitles = textCount > 0
 
-          VideoMetadata(fileSize, duration, width, height, fps, hasEmbeddedSubtitles)
+          val subtitleCodec = if (hasEmbeddedSubtitles) {
+            mi.getInfo(MediaInfo.Stream.Text, 0, "Format").uppercase()
+          } else ""
+
+          VideoMetadata(fileSize, duration, width, height, fps, hasEmbeddedSubtitles, subtitleCodec)
         } finally {
           mi.Close()
           pfd.close()
@@ -357,5 +361,6 @@ object MediaInfoOps {
     val height: Int,
     val fps: Float,
     val hasEmbeddedSubtitles: Boolean,
+    val subtitleCodec: String = "",
   )
 }
