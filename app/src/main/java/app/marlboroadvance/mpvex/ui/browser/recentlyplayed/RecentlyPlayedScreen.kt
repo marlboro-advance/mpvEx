@@ -228,7 +228,9 @@ private fun RecentItemsContent(
   modifier: Modifier = Modifier,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val listState = rememberLazyListState()
   val coroutineScope = rememberCoroutineScope()
   val isRefreshing = remember { mutableStateOf(false) }
@@ -300,6 +302,7 @@ private fun RecentItemsContent(
                   }
                 }
               },
+              showSubtitleIndicator = showSubtitleIndicator,
             )
           }
 

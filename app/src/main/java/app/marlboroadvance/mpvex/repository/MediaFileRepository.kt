@@ -319,6 +319,8 @@ object MediaFileRepository : KoinComponent {
     var width = 0
     var height = 0
     var fps = 0f
+    var hasEmbeddedSubtitles = false
+    var subtitleCodec = ""
 
     metadataCache.getOrExtractMetadata(file, uri, displayName)?.let { metadata ->
       if (metadata.sizeBytes > 0) size = metadata.sizeBytes
@@ -326,6 +328,8 @@ object MediaFileRepository : KoinComponent {
       width = metadata.width
       height = metadata.height
       fps = metadata.fps
+      hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles
+      subtitleCodec = metadata.subtitleCodec
     }
 
     return Video(
@@ -347,6 +351,8 @@ object MediaFileRepository : KoinComponent {
       height = height,
       fps = fps,
       resolution = formatResolutionWithFps(width, height, fps),
+      hasEmbeddedSubtitles = hasEmbeddedSubtitles,
+      subtitleCodec = subtitleCodec,
     )
   }
 

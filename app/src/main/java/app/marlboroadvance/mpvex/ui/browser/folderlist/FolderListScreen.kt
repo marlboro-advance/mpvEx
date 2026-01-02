@@ -133,6 +133,7 @@ object FolderListScreen : Screen {
     val browserPreferences = koinInject<BrowserPreferences>()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+    val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val foldersPreferences = koinInject<app.marlboroadvance.mpvex.preferences.FoldersPreferences>()
     val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
@@ -563,6 +564,7 @@ object FolderListScreen : Screen {
                         onClick = { MediaUtils.playFile(video, context, "search") },
                         onLongClick = {},
                         onThumbClick = {},
+                        showSubtitleIndicator = showSubtitleIndicator,
                       )
                     }
                   }

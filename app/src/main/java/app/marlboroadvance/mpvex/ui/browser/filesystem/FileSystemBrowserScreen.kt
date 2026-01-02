@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
@@ -171,6 +172,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
 
   // UI State
   val listState = rememberLazyListState()
@@ -622,6 +624,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             searchResults = searchResults,
             isLoading = isSearchLoading,
             videoFilesWithPlayback = videoFilesWithPlayback,
+            showSubtitleIndicator = showSubtitleIndicator,
             onVideoClick = { video ->
               MediaUtils.playFile(video, context, "search")
             },
@@ -648,6 +651,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             mediaLayoutMode = mediaLayoutMode,
             folderGridColumns = folderGridColumns,
             videoGridColumns = videoGridColumns,
+            showSubtitleIndicator = showSubtitleIndicator,
             onRefresh = { viewModel.refresh() },
           onFolderClick = { folder ->
             if (isInSelectionMode) {
@@ -897,6 +901,7 @@ private fun FileSystemBrowserContent(
   mediaLayoutMode: MediaLayoutMode,
   folderGridColumns: Int,
   videoGridColumns: Int,
+  showSubtitleIndicator: Boolean,
   onRefresh: suspend () -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onFolderLongClick: (FileSystemItem.Folder) -> Unit,
@@ -1049,6 +1054,7 @@ private fun FileSystemBrowserContent(
                 },
                 isGridMode = true,
                 gridColumns = videoGridColumns,
+                showSubtitleIndicator = showSubtitleIndicator,
               )
             }
           }
@@ -1124,6 +1130,7 @@ private fun FileSystemBrowserContent(
                     { onVideoClick(videoFile.video) }
                   },
                   isGridMode = false,
+                  showSubtitleIndicator = showSubtitleIndicator,
                 )
               }
             }
@@ -1152,6 +1159,7 @@ private fun FileSystemSortDialog(
     val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
     val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
     val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+    val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
@@ -1233,7 +1241,7 @@ private fun FileSystemSortDialog(
         label = "Layout",
         firstOptionLabel = "List",
         secondOptionLabel = "Grid",
-        firstOptionIcon = Icons.Filled.ViewList,
+        firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
         secondOptionIcon = Icons.Filled.GridView,
         isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
         onViewModeChange = { isFirstOption ->
@@ -1285,6 +1293,11 @@ private fun FileSystemSortDialog(
             label = "Framerate",
             checked = showFramerateInResolution,
             onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Subtitle",
+            checked = showSubtitleIndicator,
+            onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
           ),
           VisibilityToggle(
             label = "Progress Bar",
@@ -1351,6 +1364,7 @@ private fun FileSystemSearchContent(
   searchResults: List<FileSystemItem>,
   isLoading: Boolean,
   videoFilesWithPlayback: Map<Long, Float>,
+  showSubtitleIndicator: Boolean,
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
@@ -1460,6 +1474,7 @@ private fun FileSystemSearchContent(
                   onClick = { onVideoClick(item.video) },
                   onLongClick = {},
                   onThumbClick = {},
+                  showSubtitleIndicator = showSubtitleIndicator,
                 )
               }
             }

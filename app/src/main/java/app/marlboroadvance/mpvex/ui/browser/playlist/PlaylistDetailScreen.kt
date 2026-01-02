@@ -564,7 +564,9 @@ private fun PlaylistVideoListContent(
   isM3uPlaylist: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
 
   // Find the most recently played video (highest lastPlayedAt timestamp)
   val mostRecentlyPlayedItem = remember(videoItems) {
@@ -682,6 +684,7 @@ private fun PlaylistVideoListContent(
                     } else {
                       { onVideoItemClick(item) }
                     },
+                    showSubtitleIndicator = showSubtitleIndicator,
                     modifier = Modifier.weight(1f),
                   )
                 }
