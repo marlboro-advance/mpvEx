@@ -397,6 +397,9 @@ class PlayerActivity :
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
+    // Apply persisted shuffle state after playlist is loaded
+    viewModel.applyPersistedShuffleState()
+
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }

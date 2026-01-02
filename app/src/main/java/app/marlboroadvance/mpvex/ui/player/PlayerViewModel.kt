@@ -184,6 +184,10 @@ class PlayerViewModel(
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
+    
+    // Restore repeat mode and shuffle state from preferences
+    _repeatMode.value = playerPreferences.repeatMode.get()
+    _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
   }
 
   // Cached values
@@ -1014,6 +1018,13 @@ class PlayerViewModel(
 
   // ==================== Repeat and Shuffle ====================
 
+  fun applyPersistedShuffleState() {
+    if (_shuffleEnabled.value) {
+      val activity = host as? PlayerActivity
+      activity?.onShuffleToggled(true)
+    }
+  }
+
   fun cycleRepeatMode() {
     val hasPlaylist = (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
 
@@ -1023,6 +1034,9 @@ class PlayerViewModel(
       RepeatMode.ALL -> RepeatMode.OFF
     }
 
+    // Persist the repeat mode
+    playerPreferences.repeatMode.set(_repeatMode.value)
+
     // Show overlay update instead of toast
     playerUpdate.value = PlayerUpdates.RepeatMode(_repeatMode.value)
   }
@@ -1030,6 +1044,9 @@ class PlayerViewModel(
   fun toggleShuffle() {
     _shuffleEnabled.value = !_shuffleEnabled.value
     val activity = host as? PlayerActivity
+
+    // Persist the shuffle state
+    playerPreferences.shuffleEnabled.set(_shuffleEnabled.value)
 
     // Notify activity to handle shuffle state change
     activity?.onShuffleToggled(_shuffleEnabled.value)

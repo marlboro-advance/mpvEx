@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.preferences
 import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.PlayerOrientation
+import app.marlboroadvance.mpvex.ui.player.RepeatMode
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 
 class PlayerPreferences(
@@ -54,4 +55,7 @@ class PlayerPreferences(
   val playlistMode = preferenceStore.getBoolean("playlist_mode", true)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
+
+  val repeatMode = preferenceStore.getEnum("repeat_mode", RepeatMode.OFF)
+  val shuffleEnabled = preferenceStore.getBoolean("shuffle_enabled", false)
 }
