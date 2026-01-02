@@ -418,6 +418,7 @@ private fun VideoListContent(
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val density = LocalDensity.current
   val thumbWidthDp = 128.dp
   val aspect = 16f / 9f
@@ -587,6 +588,7 @@ private fun VideoListContent(
                 },
                 isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
                 gridColumns = videoGridColumns,
+                showSubtitleIndicator = showSubtitleIndicator,
               )
             }
             }
@@ -638,6 +640,7 @@ private fun VideoListContent(
                     { onVideoClick(videoWithInfo.video) }
                   },
                   isGridMode = false,
+                  showSubtitleIndicator = showSubtitleIndicator,
                 )
               }
             }
@@ -666,6 +669,7 @@ private fun VideoSortDialog(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
@@ -755,6 +759,11 @@ private fun VideoSortDialog(
           label = "Thumbnails",
           checked = showThumbnails,
           onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Subtitle Indicator",
+          checked = showSubtitleIndicator,
+          onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
         ),
         VisibilityToggle(
           label = "Full Name",

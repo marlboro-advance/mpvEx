@@ -188,9 +188,11 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
       android.util.Log.d("Migration_2_3", "Starting migration from version 2 to version 3")
 
       // Add externalSubtitles column to PlaybackStateEntity
-      db.execSQL(
-        "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''"
-      )
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''")
+
+      // Add subtitleCodec column to video_metadata_cache
+      db.execSQL("ALTER TABLE video_metadata_cache ADD COLUMN subtitleCodec TEXT NOT NULL DEFAULT ''")
+
 
       android.util.Log.d("Migration_2_3", "Migration completed successfully")
     } catch (e: Exception) {
@@ -247,6 +249,19 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
       android.util.Log.d("Migration_4_5", "Migration completed successfully")
     } catch (e: Exception) {
       android.util.Log.e("Migration_4_5", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
+      db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0")
+      android.util.Log.d("Migration_5_6", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_5_6", "Migration failed", e)
       throw e
     }
   }

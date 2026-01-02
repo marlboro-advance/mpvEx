@@ -383,6 +383,8 @@ object MediaFileRepository : KoinComponent {
       height = it.height
       fps = it.fps
     }
+    val hasEmbeddedSubtitles = metadata?.hasEmbeddedSubtitles ?: false
+    val subtitleCodec = metadata?.subtitleCodec ?: ""
 
     return Video(
       id = path.hashCode().toLong(),
@@ -403,6 +405,8 @@ object MediaFileRepository : KoinComponent {
       height = height,
       fps = fps,
       resolution = formatResolutionWithFps(width, height, fps),
+      hasEmbeddedSubtitles = hasEmbeddedSubtitles,
+      subtitleCodec = subtitleCodec,
     )
   }
 

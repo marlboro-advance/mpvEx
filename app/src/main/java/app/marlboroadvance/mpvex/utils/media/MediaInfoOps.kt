@@ -309,7 +309,7 @@ object MediaInfoOps {
         val contentResolver = context.contentResolver
         val pfd =
           contentResolver.openFileDescriptor(uri, "r")
-            ?: return@runCatching VideoMetadata(0L, 0L, 0, 0, 0f)
+            ?: return@runCatching VideoMetadata(0L, 0L, 0, 0, 0f, false)
 
         val fd = pfd.detachFd()
         val mi = MediaInfo()
@@ -336,7 +336,32 @@ object MediaInfoOps {
           val fpsStr = mi.getInfo(MediaInfo.Stream.Video, 0, "FrameRate")
           val fps = fpsStr.toFloatOrNull() ?: 0f
 
-          VideoMetadata(fileSize, duration, width, height, fps)
+          val textCount = mi.Count_Get(MediaInfo.Stream.Text)
+          val hasEmbeddedSubtitles = textCount > 0
+
+          val subtitleCodec = if (hasEmbeddedSubtitles) {
+            val codecId = mi.getInfo(MediaInfo. Stream.Text, 0, "CodecID")
+
+            when {
+              codecId. contains("PGS", ignoreCase = true) -> "PGS"
+              codecId.contains("ASS", ignoreCase = true) -> "ASS"
+              codecId.contains("SSA", ignoreCase = true) -> "SSA"
+              codecId.contains("SRT", ignoreCase = true) -> "SRT"
+              codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
+              codecId.contains("VOBSUB", ignoreCase = true) -> "VOBSUB"
+              codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
+              codecId.contains("UTF8", ignoreCase = true) -> "SRT"
+              codecId.contains("HDMV", ignoreCase = true) -> "PGS"
+              codecId.contains("DVB", ignoreCase = true) -> "DVB"
+              codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
+              codecId.isNotEmpty() -> {
+                codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+              }
+              else -> ""
+            }
+          } else ""
+
+          VideoMetadata(fileSize, duration, width, height, fps, hasEmbeddedSubtitles, subtitleCodec)
         } finally {
           mi.Close()
           pfd.close()
@@ -353,5 +378,7 @@ object MediaInfoOps {
     val width: Int,
     val height: Int,
     val fps: Float,
+    val hasEmbeddedSubtitles: Boolean,
+    val subtitleCodec: String = "",
   )
 }

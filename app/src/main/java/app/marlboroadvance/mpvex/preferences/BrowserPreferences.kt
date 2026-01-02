@@ -29,7 +29,7 @@ class BrowserPreferences(
   val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
   val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)
   val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
-
+  val showSubtitleIndicator = preferenceStore.getBoolean("show_subtitle_indicator", true)
   val mediaLayoutMode = preferenceStore.getEnum("media_layout_mode", MediaLayoutMode. LIST)
 
   // Visibility preferences for folder card chips

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "eb7598e6909b17a7bdd6dd96294926a4",
+    "identityHash": "c6b58e2dc89a02f939a35ede817f5278",
     "entities": [
       {
         "tableName": "PlaybackStateEntity",
@@ -165,7 +165,7 @@
       },
       {
         "tableName": "video_metadata_cache",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`path` TEXT NOT NULL, `size` INTEGER NOT NULL, `dateModified` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `fps` REAL NOT NULL, `lastScanned` INTEGER NOT NULL, PRIMARY KEY(`path`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`path` TEXT NOT NULL, `size` INTEGER NOT NULL, `dateModified` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `fps` REAL NOT NULL, `hasEmbeddedSubtitles` INTEGER NOT NULL, `lastScanned` INTEGER NOT NULL, `subtitleCodec` TEXT NOT NULL, PRIMARY KEY(`path`))",
         "fields": [
           {
             "fieldPath": "path",
@@ -210,9 +210,21 @@
             "notNull": true
           },
           {
+            "fieldPath": "hasEmbeddedSubtitles",
+            "columnName": "hasEmbeddedSubtitles",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "lastScanned",
             "columnName": "lastScanned",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subtitleCodec",
+            "columnName": "subtitleCodec",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -441,7 +453,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eb7598e6909b17a7bdd6dd96294926a4')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c6b58e2dc89a02f939a35ede817f5278')"
     ]
   }
 }
