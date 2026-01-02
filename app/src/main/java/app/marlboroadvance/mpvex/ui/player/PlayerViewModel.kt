@@ -399,12 +399,18 @@ class PlayerViewModel(
       host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
       host.windowInsetsController.isAppearanceLightStatusBars = false
     }
+    if (playerPreferences. showSystemNavigationBar.get()) {
+      host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+    }
     _controlsShown.value = true
   }
 
   fun hideControls() {
     if (playerPreferences.showSystemStatusBar.get()) {
       host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    }
+    if (playerPreferences. showSystemNavigationBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
     }
     _controlsShown.value = false
   }
