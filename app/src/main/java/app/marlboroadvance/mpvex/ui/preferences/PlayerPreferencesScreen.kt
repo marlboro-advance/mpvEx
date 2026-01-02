@@ -328,6 +328,15 @@ object PlayerPreferencesScreen : Screen {
                 onValueChange = preferences.showSystemStatusBar::set,
                 title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
               )
+
+              PreferenceDivider()
+
+              val showSystemNavigationBar by preferences.showSystemNavigationBar.collectAsState()
+              SwitchPreference(
+                value = showSystemNavigationBar,
+                onValueChange = preferences.showSystemNavigationBar::set,
+                title = { Text("Show navigation bar with controls") },
+              )
               
               PreferenceDivider()
               

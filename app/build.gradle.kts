@@ -191,6 +191,7 @@ dependencies {
   implementation(libs.nanohttpd) // Local proxy server for streaming
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+  implementation(libs.androidx.exifinterface)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
