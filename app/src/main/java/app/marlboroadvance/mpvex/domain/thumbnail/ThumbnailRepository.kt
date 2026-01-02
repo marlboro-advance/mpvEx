@@ -3,16 +3,20 @@ package app.marlboroadvance.mpvex.domain.thumbnail
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.MediaMetadataRetriever
 import android.media.ThumbnailUtils
 import android.os.Build
 import android.provider.MediaStore
 import android.util.LruCache
 import android.util.Size
 import androidx.core.graphics.scale
+import androidx.exifinterface.media.ExifInterface
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -158,7 +162,87 @@ class ThumbnailRepository(
       return null
     }
 
-    // For local videos, use MediaStore thumbnails exclusively
+    // Try embedded thumbnail first
+    val embeddedThumbnail = extractEmbeddedThumbnail(video, width, height)
+    if (embeddedThumbnail != null) {
+      android.util. Log.d("ThumbnailRepository", "Using embedded thumbnail for:  ${video.path}")
+      return embeddedThumbnail
+    }
+
+    // Fallback to MediaStore
+    android.util.Log. d("ThumbnailRepository", "No embedded thumbnail, using MediaStore for: ${video.path}")
+    return generateMediaStoreThumbnail(video, width, height)
+  }
+
+  private fun extractEmbeddedThumbnail(
+    video: Video,
+    width:  Int,
+    height: Int,
+  ): Bitmap? {
+    return runCatching {
+      val retriever = MediaMetadataRetriever()
+      try {
+        if (video.uri.scheme == "content") {
+          retriever.setDataSource(context, video.uri)
+        } else {
+          retriever. setDataSource(video.path)
+        }
+
+        val embeddedPicture = retriever.embeddedPicture
+        if (embeddedPicture != null) {
+          val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.RGB_565
+          }
+          val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size, options)
+          bitmap?.let { bmp ->
+            // Check EXIF orientation and rotate if needed
+            val exif = ExifInterface(ByteArrayInputStream(embeddedPicture))
+            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            val rotatedBmp = rotateBitmap(bmp, orientation)
+            if (rotatedBmp.width != width || rotatedBmp.height != height) {
+              rotatedBmp.scale(width, height)
+            } else {
+              rotatedBmp
+            }
+          }
+        } else {
+          null
+        }
+      } finally {
+        retriever.release()
+      }
+    }.getOrNull()
+  }
+
+  private fun rotateBitmap(
+    bitmap: Bitmap,
+    orientation: Int,
+  ): Bitmap {
+    val matrix = Matrix()
+    when (orientation) {
+      ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+      ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+      ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+      ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+      ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+      ExifInterface.ORIENTATION_TRANSPOSE -> {
+        matrix.postRotate(90f)
+        matrix.postScale(-1f, 1f)
+      }
+      ExifInterface.ORIENTATION_TRANSVERSE -> {
+        matrix.postRotate(270f)
+        matrix.postScale(-1f, 1f)
+      }
+      else -> return bitmap
+    }
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+  }
+
+  private fun generateMediaStoreThumbnail(
+    video: Video,
+    width:  Int,
+    height: Int,
+  ): Bitmap? {
     return runCatching {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         // Android 10+ - use ContentResolver.loadThumbnail
@@ -195,7 +279,7 @@ class ThumbnailRepository(
       val projection = arrayOf(MediaStore.Video.Media._ID)
       val selection = "${MediaStore.Video.Media.DATA} = ?"
       val selectionArgs = arrayOf(filePath)
-      
+
       context.contentResolver.query(
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
         projection,
