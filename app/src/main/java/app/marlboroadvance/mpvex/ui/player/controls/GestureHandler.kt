@@ -95,6 +95,7 @@ fun GestureHandler(
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val seekGesture by playerPreferences.horizontalSeekGesture.collectAsState()
   val showSeekbarWhenSeeking by playerPreferences.showSeekBarWhenSeeking.collectAsState()
+  val seekSensitivity by playerPreferences.seekSensitivity.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
   var isDynamicSpeedControlActive by remember { mutableStateOf(false) }
@@ -410,7 +411,7 @@ fun GestureHandler(
                           startingPosition,
                           startingX,
                           currentPosition.x,
-                          0.15f,
+                          seekSensitivity,
                         ).let {
                           viewModel.gestureSeekAmount.update { _ ->
                             Pair(
