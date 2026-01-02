@@ -220,11 +220,11 @@ fun VideoCard(
                   style = MaterialTheme.typography.labelSmall,
                   modifier = Modifier
                     .background(
-                      MaterialTheme.colorScheme.surfaceContainerHigh,
+                      MaterialTheme.colorScheme.tertiaryContainer,
                       RoundedCornerShape(8.dp),
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp),
-                  color = MaterialTheme.colorScheme.onSurface,
+                  color = MaterialTheme.colorScheme.tertiary,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
               }
@@ -441,11 +441,11 @@ fun VideoCard(
                   style = MaterialTheme.typography.labelSmall,
                   modifier = Modifier
                     .background(
-                      MaterialTheme.colorScheme.surfaceContainerHigh,
+                      MaterialTheme.colorScheme.tertiaryContainer,
                       RoundedCornerShape(8.dp),
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp),
-                  color = MaterialTheme.colorScheme.onSurface,
+                  color = MaterialTheme.colorScheme.tertiary,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
               }
