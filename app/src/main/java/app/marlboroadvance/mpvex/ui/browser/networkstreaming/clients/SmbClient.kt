@@ -32,8 +32,9 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
-        // Configure SMBJ for SMB 2/3
+        // Configure SMBJ for SMB 2/3 with Android-compatible settings
         // Note: SMBJ uses Unicode (UTF-16LE) by default for SMB 2.0+ which properly handles international characters
+        // Disable signing and encryption to avoid cryptographic issues on Android
         val config = SmbConfig.builder()
           .withTimeout(30000, TimeUnit.MILLISECONDS)
           .withSoTimeout(35000, TimeUnit.MILLISECONDS)
@@ -46,6 +47,8 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
           )
           .withDfsEnabled(false)
           .withMultiProtocolNegotiate(true)
+          .withSigningRequired(false) // Fix for Android: Disable signing to avoid Key.getEncoded() error
+          .withEncryptData(false) // Fix for Android: Disable encryption
           .build()
 
         smbClient = SMBClient(config)
