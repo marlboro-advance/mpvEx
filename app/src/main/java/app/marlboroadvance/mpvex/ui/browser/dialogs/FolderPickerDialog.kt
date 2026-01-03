@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.dialogs
 
+import android.content.Context
 import android.os.Environment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.SdCard
+import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,9 +38,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import java.io.File
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -51,29 +56,48 @@ fun FolderPickerDialog(
 ) {
   if (!isOpen) return
 
+  val context = LocalContext.current
+  
+  // Start at a special root view that shows all storage volumes
   var selectedPath by remember(isOpen) {
-    mutableStateOf(Environment.getExternalStorageDirectory().absolutePath)
+    mutableStateOf<String?>(null)
   }
   var showCreateFolderDialog by remember { mutableStateOf(false) }
 
-  val currentDir = remember(selectedPath) { File(selectedPath) }
+  // Get all available storage volumes
+  val storageVolumes = remember(isOpen) {
+    StorageScanUtils.getAllStorageVolumes(context)
+  }
+
+  // Determine what to show based on selectedPath
+  val showStorageRoot = selectedPath == null
+  
+  val currentDir = remember(selectedPath) { 
+    selectedPath?.let { File(it) }
+  }
+  
   val folders =
     remember(selectedPath) {
-      currentDir
-        .listFiles { file -> file.isDirectory && !file.name.startsWith(".") }
-        ?.sortedBy { it.name.lowercase() }
-        ?: emptyList()
+      if (showStorageRoot) {
+        // Show storage volumes as "folders"
+        emptyList<File>()
+      } else {
+        currentDir
+          ?.listFiles { file -> file.isDirectory && !file.name.startsWith(".") }
+          ?.sortedBy { it.name.lowercase() }
+          ?: emptyList()
+      }
     }
 
   // Check if selected path is the same as current path
   val isSameAsSource =
     remember(selectedPath, currentPath) {
-      selectedPath == currentPath
+      selectedPath != null && selectedPath == currentPath
     }
 
-  if (showCreateFolderDialog) {
+  if (showCreateFolderDialog && selectedPath != null) {
     CreateFolderDialog(
-      parentPath = selectedPath,
+      parentPath = selectedPath!!,
       onDismiss = { showCreateFolderDialog = false },
       onFolderCreated = { newFolderPath ->
         selectedPath = newFolderPath
@@ -93,7 +117,7 @@ fun FolderPickerDialog(
           fontWeight = FontWeight.Bold,
         )
         Text(
-          text = selectedPath,
+          text = selectedPath ?: "Select a storage location",
           style = MaterialTheme.typography.bodyMedium,
           fontWeight = FontWeight.Medium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -122,9 +146,13 @@ fun FolderPickerDialog(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          if (currentDir.parent != null) {
+          // Back button - go to parent or storage root
+          if (selectedPath != null) {
             FilledTonalIconButton(
-              onClick = { currentDir.parent?.let { selectedPath = it } },
+              onClick = {
+                val parent = currentDir?.parent
+                selectedPath = parent // null will show storage root
+              },
               colors =
                 IconButtonDefaults.filledTonalIconButtonColors(
                   containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -139,6 +167,7 @@ fun FolderPickerDialog(
             }
           }
 
+          // Home button - go to internal storage
           FilledTonalIconButton(
             onClick = {
               selectedPath = Environment.getExternalStorageDirectory().absolutePath
@@ -152,12 +181,14 @@ fun FolderPickerDialog(
           ) {
             Icon(
               imageVector = Icons.Default.Home,
-              contentDescription = "Go to home",
+              contentDescription = "Go to internal storage",
             )
           }
 
+          // Create folder button - only enabled when not at storage root
           FilledTonalIconButton(
             onClick = { showCreateFolderDialog = true },
+            enabled = selectedPath != null,
             colors =
               IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -172,7 +203,7 @@ fun FolderPickerDialog(
           }
         }
 
-        // Folder list
+        // Folder/Volume list
         LazyColumn(
           modifier =
             Modifier
@@ -180,22 +211,50 @@ fun FolderPickerDialog(
               .height(300.dp),
           verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          items(folders) { folder ->
-            FolderItem(
-              folder = folder,
-              onClick = { selectedPath = folder.absolutePath },
-            )
-          }
-
-          if (folders.isEmpty()) {
-            item {
-              Text(
-                text = "No subfolders",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
+          if (showStorageRoot) {
+            // Show storage volumes
+            items(storageVolumes) { volume ->
+              val volumePath = StorageScanUtils.getVolumePath(volume)
+              if (volumePath != null) {
+                StorageVolumeItem(
+                  context = context,
+                  volume = volume,
+                  volumePath = volumePath,
+                  onClick = { selectedPath = volumePath },
+                )
+              }
+            }
+            
+            if (storageVolumes.isEmpty()) {
+              item {
+                Text(
+                  text = "No storage devices found",
+                  style = MaterialTheme.typography.bodyLarge,
+                  fontWeight = FontWeight.Medium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.padding(16.dp),
+                )
+              }
+            }
+          } else {
+            // Show folders
+            items(folders) { folder ->
+              FolderItem(
+                folder = folder,
+                onClick = { selectedPath = folder.absolutePath },
               )
+            }
+
+            if (folders.isEmpty()) {
+              item {
+                Text(
+                  text = "No subfolders",
+                  style = MaterialTheme.typography.bodyLarge,
+                  fontWeight = FontWeight.Medium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.padding(16.dp),
+                )
+              }
             }
           }
         }
@@ -203,8 +262,8 @@ fun FolderPickerDialog(
     },
     confirmButton = {
       Button(
-        onClick = { onFolderSelected(selectedPath) },
-        enabled = !isSameAsSource,
+        onClick = { selectedPath?.let { onFolderSelected(it) } },
+        enabled = selectedPath != null && !isSameAsSource,
         colors =
           ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
@@ -227,6 +286,62 @@ fun FolderPickerDialog(
     shape = MaterialTheme.shapes.extraLarge,
     modifier = modifier,
   )
+}
+
+@Composable
+private fun StorageVolumeItem(
+  context: Context,
+  volume: android.os.storage.StorageVolume,
+  volumePath: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val description = volume.getDescription(context)
+  val isPrimary = volume.isPrimary
+  val isRemovable = volume.isRemovable
+  
+  val icon = when {
+    isPrimary -> Icons.Default.Home
+    isRemovable && volumePath.contains("usb", ignoreCase = true) -> Icons.Default.Usb
+    isRemovable -> Icons.Default.SdCard
+    else -> Icons.Default.Folder
+  }
+  
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .clickable(onClick = onClick)
+        .padding(horizontal = 12.dp, vertical = 12.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(
+      imageVector = icon,
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.primary,
+      modifier = Modifier.size(32.dp),
+    )
+    Column(
+      verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      Text(
+        text = description,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = volumePath,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+  }
 }
 
 @Composable
