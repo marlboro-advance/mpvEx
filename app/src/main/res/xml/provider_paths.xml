@@ -10,4 +10,8 @@
     <external-path
         name="external_storage"
         path="." />
+    <!-- Allow sharing files from secondary external storage (e.g., /storage/xxxx-xxxx/..., external SD cards) -->
+    <external-files-path
+        name="external_files_storage"
+        path="." />
 </paths>
