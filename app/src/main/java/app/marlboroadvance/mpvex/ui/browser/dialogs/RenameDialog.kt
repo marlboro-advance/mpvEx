@@ -93,7 +93,8 @@ fun RenameDialog(
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
             label = { Text("New name", fontWeight = FontWeight.Medium) },
-            singleLine = true,
+            singleLine = false,
+            maxLines = 5,
             isError = isError.value,
             supportingText =
               if (isError.value) {
