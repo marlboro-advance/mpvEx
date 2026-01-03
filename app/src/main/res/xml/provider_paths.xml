@@ -10,8 +10,13 @@
     <external-path
         name="external_storage"
         path="." />
-    <!-- Allow sharing files from secondary external storage (e.g., /storage/xxxx-xxxx/..., external SD cards) -->
+    <!-- Allow sharing files from app-specific external storage (/storage/emulated/0/Android/data/app/...) -->
     <external-files-path
         name="external_files_storage"
         path="." />
+    <!-- Allow sharing from all storage locations including secondary storage devices (/storage/xxxx-xxxx/...) -->
+    <!-- Required to support secondary external storage and SD cards -->
+    <root-path
+        name="root"
+        path="/" />
 </paths>

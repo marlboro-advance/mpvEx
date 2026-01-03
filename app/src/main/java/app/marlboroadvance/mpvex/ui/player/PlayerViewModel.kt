@@ -628,18 +628,28 @@ class PlayerViewModel(
   // ==================== Screen Rotation ====================
 
   fun cycleScreenRotations() {
-    // Temporarily cycle orientation WITHOUT modifying preferences
+    // Cycle through portrait -> landscape -> free -> back to portrait
+    // This temporarily overrides the preference-based orientation
     // Preferences remain the single source of truth and will be reapplied on next video
     host.hostRequestedOrientation =
       when (host.hostRequestedOrientation) {
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT,
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT,
+        -> {
+          // Locked portrait -> Locked landscape
+          ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
         -> {
-          ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+          // Locked landscape -> Free rotation (sensor-based, allows all orientations)
+          ActivityInfo.SCREEN_ORIENTATION_SENSOR
         }
         else -> {
-          ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+          // Free rotation -> Back to locked portrait
+          ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
       }
   }

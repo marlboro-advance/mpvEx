@@ -146,15 +146,11 @@ object MediaUtils {
         try {
           FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", File(v.path))
         } catch (e: IllegalArgumentException) {
-          // FileProvider can't access files on secondary external storage (SD cards).
-          // Fall back to using file:// URI if it's still accessible.
-          android.util.Log.w("MediaUtils", "FileProvider failed for ${v.path}: ${e.message}. Using file:// URI as fallback.")
-          try {
-            File(v.path).toUri()
-          } catch (e: Exception) {
-            android.util.Log.e("MediaUtils", "Failed to generate URI for ${v.path}", e)
-            null
-          }
+          // FileProvider can't access this file path. Cannot use file:// URIs as they violate
+          // StrictMode on Android 6+ (API 24+) when exposed beyond the app through ClipData.
+          // Returning null will skip this file from sharing.
+          android.util.Log.w("MediaUtils", "FileProvider cannot access: ${v.path}. This file will be skipped from sharing. (${e.message})")
+          null
         }
       }
 
