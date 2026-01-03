@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.domain.thumbnail
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.media.ThumbnailUtils
 import android.os.Build
 import android.provider.MediaStore
@@ -10,10 +11,14 @@ import android.util.LruCache
 import android.util.Size
 import androidx.core.graphics.scale
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import kotlinx.coroutines.Dispatchers
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.toBitmap
+import kotlinx.coroutines. Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.withContext
-import java.io.File
+import kotlinx. coroutines.withContext
+import java. io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
@@ -128,7 +133,7 @@ class ThumbnailRepository(
     return "$hex.jpg"
   }
 
-  private fun generateThumbnail(
+  private suspend fun generateThumbnail(
     video: Video,
     width: Int,
     height: Int,
@@ -158,11 +163,106 @@ class ThumbnailRepository(
       return null
     }
 
-    // Use MediaStore for thumbnail generation
-    android.util.Log.d("ThumbnailRepository", "Generating thumbnail using MediaStore for: ${video.path}")
+    // Try embedded thumbnail first
+    val embeddedThumbnail = extractEmbeddedThumbnail(video, width, height)
+    if (embeddedThumbnail != null) {
+      android.util. Log.d("ThumbnailRepository", "Using embedded thumbnail for:  ${video.path}")
+      return embeddedThumbnail
+    }
+
+    // 2. Try sidecar image (same name, different extension)
+    val sidecarThumbnail = findSidecarThumbnail(video, width, height)
+    if (sidecarThumbnail != null) {
+      android.util.Log.d("ThumbnailRepository", "Using sidecar thumbnail for: ${video. path}")
+      return sidecarThumbnail
+    }
+
+    // 3. Fallback to MediaStore
+    android.util.Log. d("ThumbnailRepository", "No embedded/sidecar thumbnail, using MediaStore for: ${video.path}")
     return generateMediaStoreThumbnail(video, width, height)
   }
-  
+
+  private fun extractEmbeddedThumbnail(
+    video: Video,
+    width:  Int,
+    height: Int,
+  ): Bitmap? {
+    return runCatching {
+      val retriever = MediaMetadataRetriever()
+      try {
+        if (video.uri.scheme == "content") {
+          retriever.setDataSource(context, video.uri)
+        } else {
+          retriever. setDataSource(video.path)
+        }
+
+        val embeddedPicture = retriever.embeddedPicture
+        if (embeddedPicture != null) {
+          val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.RGB_565
+          }
+          val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size, options)
+          bitmap?. let { bmp ->
+            if (bmp.width != width || bmp.height != height) {
+              bmp.scale(width, height)
+            } else {
+              bmp
+            }
+          }
+        } else {
+          null
+        }
+      } finally {
+        retriever.release()
+      }
+    }.getOrNull()
+  }
+
+  private suspend fun findSidecarThumbnail(
+    video: Video,
+    width:  Int,
+    height: Int,
+  ): Bitmap? {
+    if (video.uri. scheme == "content") return null
+
+    val videoFile = File(video. path)
+    val parentDir = videoFile.parentFile ?:  return null
+    val videoNameWithoutExtension = videoFile. nameWithoutExtension
+
+    val imageExtensions = listOf("jpg", "jpeg", "png", "webp", "bmp", "gif")
+
+    for (ext in imageExtensions) {
+      val sidecarFile = File(parentDir, "$videoNameWithoutExtension.$ext")
+      if (sidecarFile.exists()) {
+        android.util. Log.d("ThumbnailRepository", "Found sidecar thumbnail: ${sidecarFile. absolutePath}")
+        return loadImageWithCoil(sidecarFile, width, height)
+      }
+    }
+    return null
+  }
+
+  private suspend fun loadImageWithCoil(
+    file: File,
+    width: Int,
+    height: Int,
+  ): Bitmap? {
+    return runCatching {
+      val imageLoader = ImageLoader. Builder(context).build()
+
+      val request = ImageRequest.Builder(context)
+        .data(file)
+        .size(width, height)
+        .build()
+
+      val result = imageLoader.execute(request)
+      if (result is SuccessResult) {
+        result.image.toBitmap()
+      } else {
+        null
+      }
+    }.getOrNull()
+  }
+
   private fun generateMediaStoreThumbnail(
     video: Video,
     width:  Int,

@@ -191,6 +191,9 @@ dependencies {
   implementation(libs.nanohttpd)
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
+
+  implementation(libs.coil.core)
+  implementation(libs.coil.compose)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
