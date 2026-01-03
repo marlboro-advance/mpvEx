@@ -65,18 +65,25 @@ fun VideoCard(
   isGridMode: Boolean = false,
   gridColumns: Int = 1,
   showSubtitleIndicator: Boolean = true,
+  overrideShowSizeChip: Boolean? = null,
+  overrideShowResolutionChip: Boolean? = null,
+  useFolderNameStyle: Boolean = false,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
-  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
-  val showSizeChip by browserPreferences.showSizeChip.collectAsState()
-  val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
+  val showThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
+  val showSizeChipPref by browserPreferences.showSizeChip.collectAsState()
+  val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
+  
+  // Use override parameters if provided, otherwise use preferences
+  val showSizeChip = overrideShowSizeChip ?: showSizeChipPref
+  val showResolutionChip = overrideShowResolutionChip ?: showResolutionChipPref
 
   Card(
     modifier = modifier
@@ -204,11 +211,19 @@ fun VideoCard(
         // Title below thumbnail
         Text(
           text = video.displayName,
-          style = if (gridColumns == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+          style = if (useFolderNameStyle) {
+            MaterialTheme.typography.titleSmall
+          } else {
+            if (gridColumns == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall
+          },
           color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
           maxLines = 2,
           overflow = TextOverflow. Ellipsis,
-          textAlign = if (gridColumns == 1) TextAlign.Start else TextAlign.Center,
+          textAlign = if (useFolderNameStyle) {
+            TextAlign.Center
+          } else {
+            if (gridColumns == 1) TextAlign.Start else TextAlign.Center
+          },
         )
         if (gridColumns == 1) {
           Spacer(modifier = Modifier.height(4.dp))
@@ -427,7 +442,11 @@ fun VideoCard(
         ) {
           Text(
             video.displayName,
-            style = MaterialTheme.typography.titleSmall,
+            style = if (useFolderNameStyle) {
+              MaterialTheme.typography.titleMedium
+            } else {
+              MaterialTheme.typography.titleSmall
+            },
             color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,

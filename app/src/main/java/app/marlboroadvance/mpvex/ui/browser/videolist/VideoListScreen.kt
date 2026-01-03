@@ -509,10 +509,14 @@ private fun VideoListContent(
       
       val coroutineScope = rememberCoroutineScope()
 
-      // Check if at top of list to hide scrollbar during pull-to-refresh
+      // Check if at top of list/grid to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
         derivedStateOf {
-          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          if (mediaLayoutMode == MediaLayoutMode.GRID) {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+          } else {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          }
         }
       }
 
@@ -664,7 +668,7 @@ private fun VideoSortDialog(
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
+  val showThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
@@ -758,7 +762,7 @@ private fun VideoSortDialog(
         VisibilityToggle(
           label = "Thumbnails",
           checked = showThumbnails,
-          onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+          onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
         ),
         VisibilityToggle(
           label = "Subtitle Indicator",

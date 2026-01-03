@@ -282,7 +282,7 @@ val DatabaseModule =
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
-        .fallbackToDestructiveMigration() // Fallback if migration fails (last resort)
+        .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }
 

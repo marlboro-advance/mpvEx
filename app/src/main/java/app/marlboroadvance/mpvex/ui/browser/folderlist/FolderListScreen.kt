@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
@@ -722,14 +723,21 @@ private fun FolderListContent(
       // Show folder list
       if (isGridMode) {
         // Grid layout
-        LazyVerticalGrid(
-          columns = GridCells.Fixed(folderGridColumns),
+        LazyVerticalGridScrollbar(
           state = gridState,
-          modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
-          horizontalArrangement = Arrangement.spacedBy(4.dp),
-          verticalArrangement = Arrangement.spacedBy(4.dp),
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+          ),
         ) {
+          LazyVerticalGrid(
+            columns = GridCells.Fixed(folderGridColumns),
+            state = gridState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
           items(folders.size) { index ->
             val folder = folders[index]
             val isRecentlyPlayed =
@@ -755,6 +763,7 @@ private fun FolderListContent(
               isGridMode = true,
             )
           }
+        }
         }
       } else {
         // List layout
@@ -813,7 +822,7 @@ private fun FolderSortDialog(
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val showThumbnails by browserPreferences.showThumbnails.collectAsState()
+  val showThumbnails by browserPreferences.showFolderThumbnails.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
@@ -910,7 +919,7 @@ private fun FolderSortDialog(
         VisibilityToggle(
           label = "Thumbnails",
           checked = showThumbnails,
-          onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+          onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
         ),
         VisibilityToggle(
           label = "Full Name",

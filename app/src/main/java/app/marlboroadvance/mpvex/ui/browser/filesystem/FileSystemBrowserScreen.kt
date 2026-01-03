@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
@@ -173,6 +174,11 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
+  
+  // Check if there are folders mixed with videos AND we're in grid mode
+  val hasMixedContentInGrid = items.any { it is FileSystemItem.Folder } && 
+                               items.any { it is FileSystemItem.VideoFile } &&
+                               mediaLayoutMode == MediaLayoutMode.GRID
 
   // UI State
   val listState = rememberLazyListState()
@@ -651,7 +657,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             mediaLayoutMode = mediaLayoutMode,
             folderGridColumns = folderGridColumns,
             videoGridColumns = videoGridColumns,
-            showSubtitleIndicator = showSubtitleIndicator,
+            showSubtitleIndicator = if (hasMixedContentInGrid) false else showSubtitleIndicator,
             onRefresh = { viewModel.refresh() },
           onFolderClick = { folder ->
             if (isInSelectionMode) {
@@ -915,6 +921,11 @@ private fun FileSystemBrowserContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
+  
+  // Check if there are folders mixed with videos AND we're in grid mode - if so, hide video chips and use folder style
+  val folders = items.filterIsInstance<FileSystemItem.Folder>()
+  val videos = items.filterIsInstance<FileSystemItem.VideoFile>()
+  val hasMixedContentInGrid = folders.isNotEmpty() && videos.isNotEmpty() && isGridMode
 
   when {
     isLoading -> {
@@ -956,10 +967,16 @@ private fun FileSystemBrowserContent(
     }
 
     else -> {
-      // Check if at top of list to hide scrollbar during pull-to-refresh
+      val gridState = rememberLazyGridState()
+      
+      // Check if at top of list/grid to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
         derivedStateOf {
-          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          if (isGridMode) {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+          } else {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          }
         }
       }
 
@@ -980,11 +997,14 @@ private fun FileSystemBrowserContent(
         modifier = modifier.fillMaxSize(),
       ) {
         if (isGridMode) {
-          val gridState = rememberLazyGridState()
-          val folders = items.filterIsInstance<FileSystemItem.Folder>()
-          val videos = items.filterIsInstance<FileSystemItem.VideoFile>()
-          
-          LazyVerticalGrid(
+          LazyVerticalGridScrollbar(
+            state = gridState,
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
+          ) {
+            LazyVerticalGrid(
             columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
@@ -1055,8 +1075,12 @@ private fun FileSystemBrowserContent(
                 isGridMode = true,
                 gridColumns = videoGridColumns,
                 showSubtitleIndicator = showSubtitleIndicator,
+                overrideShowSizeChip = if (hasMixedContentInGrid) false else null,
+                overrideShowResolutionChip = if (hasMixedContentInGrid) false else null,
+                useFolderNameStyle = hasMixedContentInGrid,
               )
             }
+          }
           }
         } else {
           LazyColumnScrollbar(
@@ -1131,6 +1155,9 @@ private fun FileSystemBrowserContent(
                   },
                   isGridMode = false,
                   showSubtitleIndicator = showSubtitleIndicator,
+                  overrideShowSizeChip = null,
+                  overrideShowResolutionChip = null,
+                  useFolderNameStyle = false,
                 )
               }
             }
@@ -1151,7 +1178,8 @@ private fun FileSystemSortDialog(
     val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
-    val showThumbnails by browserPreferences.showThumbnails.collectAsState()
+    val showFolderThumbnails by browserPreferences.showFolderThumbnails.collectAsState()
+    val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
     val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
     val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
     val showFolderPath by browserPreferences.showFolderPath.collectAsState()
@@ -1255,9 +1283,14 @@ private fun FileSystemSortDialog(
       visibilityToggles =
         listOf(
           VisibilityToggle(
-            label = "Thumbnails",
-            checked = showThumbnails,
-            onCheckedChange = { browserPreferences.showThumbnails.set(it) },
+            label = "Folder Thumbnails",
+            checked = showFolderThumbnails,
+            onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Video Thumbnails",
+            checked = showVideoThumbnails,
+            onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
           ),
           VisibilityToggle(
             label = "Full Name",
@@ -1369,6 +1402,7 @@ private fun FileSystemSearchContent(
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  // Search results are always in list mode, so no need to apply folder style
   when {
     isLoading -> {
       Box(
@@ -1475,6 +1509,9 @@ private fun FileSystemSearchContent(
                   onLongClick = {},
                   onThumbClick = {},
                   showSubtitleIndicator = showSubtitleIndicator,
+                  overrideShowSizeChip = null,
+                  overrideShowResolutionChip = null,
+                  useFolderNameStyle = false,
                 )
               }
             }
