@@ -58,16 +58,22 @@ fun FolderPickerDialog(
 
   val context = LocalContext.current
   
-  // Start at a special root view that shows all storage volumes
-  var selectedPath by remember(isOpen) {
-    mutableStateOf<String?>(null)
-  }
-  var showCreateFolderDialog by remember { mutableStateOf(false) }
-
   // Get all available storage volumes
   val storageVolumes = remember(isOpen) {
     StorageScanUtils.getAllStorageVolumes(context)
   }
+  
+  // If there's only one storage volume, start there directly
+  // Otherwise, start at storage root view to show all volumes
+  var selectedPath by remember(isOpen, storageVolumes) {
+    val initialPath = if (storageVolumes.size == 1) {
+      StorageScanUtils.getVolumePath(storageVolumes.first())
+    } else {
+      null // Show storage root with all volumes
+    }
+    mutableStateOf(initialPath)
+  }
+  var showCreateFolderDialog by remember { mutableStateOf(false) }
 
   // Determine what to show based on selectedPath
   val showStorageRoot = selectedPath == null

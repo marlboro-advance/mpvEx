@@ -295,12 +295,29 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  LaunchedEffect(searchQuery, isSearching) {
-    if (isSearching && searchQuery.isNotBlank() && currentPath != null) {
+  LaunchedEffect(searchQuery, isSearching, isAtRoot, items) {
+    if (isSearching && searchQuery.isNotBlank()) {
       isSearchLoading = true
       coroutineScope.launch {
         try {
-          val results = searchRecursively(context, currentPath, searchQuery)
+          val results = if (isAtRoot) {
+            // At storage roots - search across all storage volumes
+            val allResults = mutableListOf<FileSystemItem>()
+            items.filterIsInstance<FileSystemItem.Folder>().forEach { storageVolume ->
+              try {
+                val volumeResults = searchRecursively(context, storageVolume.path, searchQuery)
+                allResults.addAll(volumeResults)
+              } catch (e: Exception) {
+                Log.e("FileSystemBrowserScreen", "Error searching volume ${storageVolume.path}", e)
+              }
+            }
+            allResults
+          } else if (currentPath != null) {
+            // In a specific directory - search from there
+            searchRecursively(context, currentPath, searchQuery)
+          } else {
+            emptyList()
+          }
           searchResults = results
         } catch (e: Exception) {
           Log.e("FileSystemBrowserScreen", "Error during search", e)
@@ -340,7 +357,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
               onSearch = { },
               expanded = false,
               onExpandedChange = { },
-              placeholder = { Text("Search in ${breadcrumbs.lastOrNull()?.name ?: "folder"}...") },
+              placeholder = { 
+                Text(
+                  if (isAtRoot) {
+                    "Search in all storage volumes..."
+                  } else {
+                    "Search in ${breadcrumbs.lastOrNull()?.name ?: "folder"}..."
+                  }
+                ) 
+              },
               leadingIcon = {
                 Icon(
                   imageVector = Icons.Filled.Search,
@@ -396,10 +421,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
           },
           onSortClick = { sortDialogOpen.value = true },
           onSettingsClick = { backstack.add(PreferencesScreen) },
-          onSearchClick = if (!isAtRoot && currentPath != null) {
-            { isSearching = !isSearching }
-          } else {
-            null
+          onSearchClick = {
+            isSearching = !isSearching
           },
         // Hide delete from top bar when bottom bar is shown (videos only, no mixed selection)
         onDeleteClick =
