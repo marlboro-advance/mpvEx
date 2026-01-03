@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.util.Log
+import android.provider.MediaStore
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +13,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
@@ -81,31 +83,78 @@ object FolderScanUtils {
     showHiddenFiles: Boolean,
     metadataCache: VideoMetadataCacheRepository,
     maxDepth: Int = 20,
-  ): Map<String, FolderData> = coroutineScope {
+  ): Map<String, FolderData> = withContext(Dispatchers.IO) {
     val startTime = System.currentTimeMillis()
+    Log.d(TAG, "Scanning video folders via MediaStore")
 
-    Log.d(TAG, "Scanning storage volumes for video folders (with metadata)")
+    val folders = mutableMapOf<String, FolderData>()
 
-    // Phase 1: Fast parallel scan to find all folders with videos
-    val basicFolders = scanAllStorageForVideoFoldersOptimized(
-      context = context,
-      showHiddenFiles = showHiddenFiles,
-      maxDepth = maxDepth,
-      onProgress = null,
+    // MediaStore projection for folder (bucket) info
+    val projection = arrayOf(
+      MediaStore.Video.Media.BUCKET_ID,
+      MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+      MediaStore.Video.Media.RELATIVE_PATH,
+      MediaStore.Video.Media.DATA,
+      "COUNT(${MediaStore.Video.Media._ID}) as video_count",
+      "SUM(${MediaStore.Video.Media.SIZE}) as total_size",
+      "MAX(${MediaStore.Video.Media.DATE_MODIFIED}) as last_modified"
     )
 
-    Log.d(TAG, "Fast scan found ${basicFolders.size} folders, now extracting duration metadata...")
+    // Selection: Only video files, and skip hidden if not showing
+    val selection = buildString {
+      append("${MediaStore.Video.Media.MIME_TYPE} LIKE 'video/%'")
+      if (!showHiddenFiles) {
+        append(" AND ${MediaStore.Video.Media.DATA} NOT LIKE '%/.%'")
+      }
+    }
 
-    // Phase 2: Enrich with duration in parallel batches
-    val enrichedFolders = enrichFolderMetadata(
-      context = context,
-      folders = basicFolders,
-      metadataCache = metadataCache,
-      onProgress = null,
-    )
+    val groupBy = MediaStore.Video.Media.BUCKET_ID
+
+    try {
+      val cursor = context.contentResolver.query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        projection, selection, null, groupBy
+      )
+
+      cursor?.use {
+        while (it.moveToNext()) {
+          val bucketId = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID))
+          val bucketName = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME))
+          val relativePath = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.RELATIVE_PATH))
+          val fullPath = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA))?.let { path ->
+            path.substringBeforeLast('/')  // Extract folder path
+          } ?: relativePath  // Fallback
+
+          val videoCount = it.getInt(it.getColumnIndexOrThrow("video_count"))
+          val totalSize = it.getLong(it.getColumnIndexOrThrow("total_size"))
+          val lastModified = it.getLong(it.getColumnIndexOrThrow("last_modified"))
+
+          if (fullPath != null && videoCount > 0) {
+            folders[fullPath] = FolderData(
+              path = fullPath,
+              name = bucketName ?: bucketId ?: "Unknown",
+              videoCount = videoCount,
+              totalSize = totalSize,
+              totalDuration = 0L,  // Will be enriched later
+              lastModified = lastModified,
+              hasSubfolders = false  // MediaStore doesn't provide this easily
+            )
+          }
+        }
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Error querying MediaStore for folders", e)
+      // Fallback to old filesystem scan if needed
+      return@withContext scanAllStorageForVideoFoldersOptimized(context, showHiddenFiles, maxDepth, null)
+    }
+
+    Log.d(TAG, "MediaStore query found ${folders.size} folders, enriching metadata...")
+
+    // Enrich with duration using existing logic
+    val enrichedFolders = enrichFolderMetadata(context, folders, metadataCache, null)
 
     val elapsed = System.currentTimeMillis() - startTime
-    Log.d(TAG, "Scan completed with metadata: found ${enrichedFolders.size} folders in ${elapsed}ms")
+    Log.d(TAG, "Scan completed: found ${enrichedFolders.size} folders in ${elapsed}ms")
 
     enrichedFolders
   }
