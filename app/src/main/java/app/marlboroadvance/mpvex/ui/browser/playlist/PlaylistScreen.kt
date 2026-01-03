@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Link
@@ -255,7 +256,7 @@ object PlaylistScreen : Screen {
             verticalArrangement = Arrangement.spacedBy(16.dp)
           ) {
             EmptyState(
-              icon = Icons.Outlined.PlaylistAdd,
+              icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
               title = "No playlists yet",
               message = "Create a playlist or add one from an m3u URL",
             )

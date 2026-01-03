@@ -134,169 +134,71 @@ object LuaScriptsScreen : Screen {
         )
       },
       floatingActionButton = {
-        if (mpvConfStorageLocation.isNotBlank()) {
-          FloatingActionButton(
-            onClick = {
-              backStack.add(LuaScriptEditorScreen(scriptName = null))
-            },
-            containerColor = MaterialTheme.colorScheme.primary,
-          ) {
-            Icon(
-              Icons.Default.Add,
-              contentDescription = "Create new script",
-              tint = MaterialTheme.colorScheme.onPrimary,
-            )
-          }
+        FloatingActionButton(
+          onClick = {
+            backStack.add(LuaScriptEditorScreen(scriptName = null))
+          },
+          containerColor = MaterialTheme.colorScheme.primary,
+        ) {
+          Icon(
+            Icons.Default.Add,
+            contentDescription = "Create new script",
+            tint = MaterialTheme.colorScheme.onPrimary,
+          )
         }
       },
     ) { padding ->
-      Box(
+      LazyColumn(
         modifier = Modifier
           .fillMaxSize()
           .padding(padding)
       ) {
-        when {
-          mpvConfStorageLocation.isBlank() -> {
-            Column(
+        items(availableScripts) { scriptName ->
+          Column(
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(
               modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-              verticalArrangement = Arrangement.Center,
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              Text(
-                text = "No storage location set",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-              Text(
-                text = "Please set MPV config storage location in Advanced Preferences",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-              )
-            }
-          }
-          
-          isLoading -> {
-            Box(
-              modifier = Modifier.fillMaxSize(),
-              contentAlignment = Alignment.Center
-            ) {
-              Text(
-                text = "Loading scripts...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-            }
-          }
-          
-          availableScripts.isEmpty() -> {
-            Column(
-              modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-              verticalArrangement = Arrangement.Center,
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              Text(
-                text = "No Lua scripts found",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-              Text(
-                text = "Tap the + button to create a new script",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-              )
-            }
-          }
-          
-          else -> {
-            LazyColumn(
-              modifier = Modifier.fillMaxSize(),
-            ) {
-              if (!enableLuaScripts) {
-                item {
-                  Column(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .padding(horizontal = 16.dp, vertical = 12.dp)
-                  ) {
-                    Text(
-                      text = "⚠️ Scripts disabled",
-                      style = MaterialTheme.typography.labelLarge,
-                      color = MaterialTheme.colorScheme.error,
-                    )
-                    Text(
-                      text = "Enable Lua scripts in Advanced Preferences",
-                      style = MaterialTheme.typography.bodyMedium,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      modifier = Modifier.padding(top = 4.dp),
-                    )
-                  }
-                  HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                  )
+                .fillMaxWidth()
+                .clickable { 
+                  toggleScriptSelection(scriptName) 
                 }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Checkbox(
+                  checked = selectedScripts.contains(scriptName),
+                  onCheckedChange = { toggleScriptSelection(scriptName) },
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                  text = scriptName,
+                  style = MaterialTheme.typography.bodyLarge,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                )
               }
               
-              items(availableScripts) { scriptName ->
-                Column(
-                  modifier = Modifier.fillMaxWidth()
-                ) {
-                  Row(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .clickable(enabled = enableLuaScripts) { 
-                        toggleScriptSelection(scriptName) 
-                      }
-                      .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                  ) {
-                    Row(
-                      modifier = Modifier.weight(1f),
-                      verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                      Checkbox(
-                        checked = selectedScripts.contains(scriptName),
-                        onCheckedChange = { toggleScriptSelection(scriptName) },
-                        enabled = enableLuaScripts,
-                      )
-                      Spacer(modifier = Modifier.width(12.dp))
-                      Text(
-                        text = scriptName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (enableLuaScripts) {
-                          MaterialTheme.colorScheme.onSurface
-                        } else {
-                          MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                      )
-                    }
-                    
-                    IconButton(
-                      onClick = {
-                        backStack.add(LuaScriptEditorScreen(scriptName = scriptName))
-                      }
-                    ) {
-                      Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                      )
-                    }
-                  }
-                  HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                  )
+              IconButton(
+                onClick = {
+                  backStack.add(LuaScriptEditorScreen(scriptName = scriptName))
                 }
+              ) {
+                Icon(
+                  Icons.Default.Edit,
+                  contentDescription = "Edit",
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
               }
             }
+            HorizontalDivider(
+              modifier = Modifier.padding(horizontal = 16.dp)
+            )
           }
         }
       }

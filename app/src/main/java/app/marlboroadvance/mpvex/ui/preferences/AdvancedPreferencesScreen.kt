@@ -432,16 +432,12 @@ object AdvancedPreferencesScreen : Screen {
                 title = { Text("Manage Lua Scripts") },
                 summary = {
                   when {
-                    mpvConfStorageLocation.isBlank() -> Text(
-                      "Set MPV config storage location first", 
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                    !enableLuaScripts && selectedScripts.isEmpty() -> Text(
-                      "Enable scripts and tap to create, edit, or select", 
+                    mpvConfStorageLocation.isBlank() || !enableLuaScripts -> Text(
+                      "Set storage location and enable Lua scripts first", 
                       color = MaterialTheme.colorScheme.outline
                     )
                     selectedScripts.isEmpty() -> Text(
-                      "No scripts selected • Tap to create or select", 
+                      "No scripts enabled", 
                       color = MaterialTheme.colorScheme.outline
                     )
                     selectedScripts.size == 1 -> Text(
@@ -457,6 +453,7 @@ object AdvancedPreferencesScreen : Screen {
                 onClick = {
                   backStack.add(LuaScriptsScreen)
                 },
+                enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
               )
             }
           }

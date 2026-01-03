@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
@@ -74,7 +75,7 @@ fun BrowserBottomBar(
         if (showAddToPlaylist) {
           IconButton(onClick = onAddToPlaylistClick) {
             Icon(
-              imageVector = Icons.Default.PlaylistAdd,
+              imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
               contentDescription = "Add to Playlist",
               tint = MaterialTheme.colorScheme.secondary,
             )
