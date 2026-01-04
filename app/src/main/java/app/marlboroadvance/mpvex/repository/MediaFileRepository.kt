@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.util.Log
+import android.provider.MediaStore
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.browser.PathComponent
@@ -193,7 +194,6 @@ object MediaFileRepository : KoinComponent {
     bucketId: String,
   ): List<Video> =
     withContext(Dispatchers.IO) {
-      // Check cache first
       videosCache[bucketId]?.let { (cached, timestamp) ->
         if (System.currentTimeMillis() - timestamp < CACHE_VALIDITY_MS) {
           Log.d(TAG, "Returning cached videos for bucket $bucketId (${cached.size} videos)")
@@ -202,56 +202,81 @@ object MediaFileRepository : KoinComponent {
       }
 
       try {
-        // Determine if bucketId is a path or hash
-        val folderPath = if (bucketId.contains("/")) {
-          bucketId // It's already a path
-        } else {
-          bucketId // Treat as path for now
-        }
+        val folderPath = bucketId
 
-        // Scan the directory for video files
-        val directory = File(folderPath)
-        if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
-          Log.w(TAG, "Cannot access directory: $folderPath")
-          // Return cached data even if expired on error
-          return@withContext videosCache[bucketId]?.first ?: emptyList()
-        }
+        val selection = "${MediaStore.Video.Media.DATA} LIKE ? AND ${MediaStore.Video.Media.DATA} NOT LIKE ?"
+        val selectionArgs = arrayOf("$folderPath/%", "$folderPath/%/%")
+        val projection = arrayOf(
+          MediaStore.Video.Media._ID,
+          MediaStore.Video.Media.TITLE,
+          MediaStore.Video.Media.DISPLAY_NAME,
+          MediaStore.Video.Media.DATA,
+          MediaStore.Video.Media.DURATION,
+          MediaStore.Video.Media.SIZE,
+          MediaStore.Video.Media.DATE_MODIFIED,
+          MediaStore.Video.Media.DATE_ADDED,
+          MediaStore.Video.Media.MIME_TYPE,
+          MediaStore.Video.Media.WIDTH,
+          MediaStore.Video.Media.HEIGHT,
+          MediaStore.Video.Media.BUCKET_ID,
+          MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+        )
 
-        val videoFiles = directory.listFiles()?.filter {
-          it.isFile && StorageScanUtils.isVideoFile(it)
-        } ?: emptyList()
+        val cursor = context.contentResolver.query(
+          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          selection,
+          selectionArgs,
+          "${MediaStore.Video.Media.DISPLAY_NAME} ASC"
+        )
 
-        Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath")
+        val videos = mutableListOf<Video>()
+        cursor?.use {
+          while (it.moveToNext()) {
+            val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
+            val title = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)) ?: ""
+            val displayName = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)) ?: ""
+            val data = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)) ?: ""
+            val duration = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION))
+            val size = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE))
+            val dateModified = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED))
+            val dateAdded = it.getLong(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED))
+            val mimeType = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)) ?: "video/*"
+            val width = it.getInt(it.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH))
+            val height = it.getInt(it.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT))
+            val bucketIdFromStore = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID)) ?: bucketId
+            val bucketDisplayName = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)) ?: File(folderPath).name
 
-        // Batch extract metadata for all videos
-        val fileTriples = videoFiles.map { file ->
-          Triple(file, Uri.fromFile(file), file.name)
-        }
+            val uri = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
 
-        val metadataMap = metadataCache.getOrExtractMetadataBatch(fileTriples)
-
-        // Create video objects with metadata
-        val videos = videoFiles.mapNotNull { videoFile ->
-          try {
-            if (videoFile.exists()) {
-              createVideoFromFileWithMetadata(
-                videoFile,
-                folderPath,
-                directory.name,
-                metadataMap[videoFile.absolutePath],
-              )
-            } else {
-              null
-            }
-          } catch (e: Exception) {
-            Log.w(TAG, "Error processing video file: ${videoFile.absolutePath}", e)
-            null
+            val video = Video(
+              id = id,
+              title = title,
+              displayName = displayName,
+              path = data,
+              uri = uri,
+              duration = duration,
+              durationFormatted = formatDuration(duration),
+              size = size,
+              sizeFormatted = formatFileSize(size),
+              dateModified = dateModified,
+              dateAdded = dateAdded,
+              mimeType = mimeType,
+              bucketId = bucketId,
+              bucketDisplayName = bucketDisplayName,
+              width = width,
+              height = height,
+              fps = 0f,
+              resolution = formatResolutionWithFps(width, height, 0f),
+              hasEmbeddedSubtitles = false,
+              subtitleCodec = "",
+            )
+            videos.add(video)
           }
         }
 
         val result = videos.sortedBy { it.displayName.lowercase() }
 
-        // Update cache
         videosCache[bucketId] = Pair(result, System.currentTimeMillis())
 
         result
