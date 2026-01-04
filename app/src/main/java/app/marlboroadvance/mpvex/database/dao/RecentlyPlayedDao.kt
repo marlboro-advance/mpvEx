@@ -14,6 +14,9 @@ interface RecentlyPlayedDao {
 
   @Query("DELETE FROM RecentlyPlayedEntity WHERE filePath = :filePath")
   suspend fun deleteExistingEntriesForFile(filePath: String)
+  
+  @Query("SELECT * FROM RecentlyPlayedEntity WHERE filePath = :filePath LIMIT 1")
+  suspend fun getByFilePath(filePath: String): RecentlyPlayedEntity?
 
   @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT 1")
   suspend fun getLastPlayed(): RecentlyPlayedEntity?
@@ -24,7 +27,8 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT * FROM RecentlyPlayedEntity 
-    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list'
+    WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
+    AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
     ORDER BY timestamp DESC 
     LIMIT 1
   """,
@@ -34,20 +38,37 @@ interface RecentlyPlayedDao {
   @Query(
     """
     SELECT * FROM RecentlyPlayedEntity 
-    WHERE launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list'
+    WHERE (launchSource IS NULL OR launchSource = '' OR launchSource = 'normal' OR launchSource = 'playlist' OR launchSource = 'video_list')
+    AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
     ORDER BY timestamp DESC 
     LIMIT 1
   """,
   )
   fun observeLastPlayedForHighlight(): Flow<RecentlyPlayedEntity?>
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
+  @Query("""
+    SELECT * FROM RecentlyPlayedEntity 
+    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
+    ORDER BY timestamp DESC 
+    LIMIT :limit
+  """)
   suspend fun getRecentlyPlayed(limit: Int = 10): List<RecentlyPlayedEntity>
 
-  @Query("SELECT * FROM RecentlyPlayedEntity ORDER BY timestamp DESC LIMIT :limit")
+  @Query("""
+    SELECT * FROM RecentlyPlayedEntity 
+    WHERE (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%')) 
+    ORDER BY timestamp DESC 
+    LIMIT :limit
+  """)
   fun observeRecentlyPlayed(limit: Int = 50): Flow<List<RecentlyPlayedEntity>>
 
-  @Query("SELECT * FROM RecentlyPlayedEntity WHERE launchSource = :launchSource ORDER BY timestamp DESC LIMIT :limit")
+  @Query("""
+    SELECT * FROM RecentlyPlayedEntity 
+    WHERE launchSource = :launchSource
+    AND (NOT (filePath LIKE '%.m3u%' OR filePath LIKE '%.m3u8%'))
+    ORDER BY timestamp DESC 
+    LIMIT :limit
+  """)
   suspend fun getRecentlyPlayedBySource(
     launchSource: String,
     limit: Int = 10,

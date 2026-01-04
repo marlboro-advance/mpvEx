@@ -200,7 +200,15 @@ class ThumbnailRepository(
 
   private fun videoBaseKey(video: Video): String {
     val base = video.path.ifBlank { video.uri.toString() }
-    // Include mutable file attributes so cache invalidates when file changes.
+    
+    // For network URLs, we need a stable key that doesn't include
+    // size or dateModified since those values might change between sessions
+    // or not be available reliably for network streams
+    if (isNetworkUrl(video.path)) {
+      return "$base|network"
+    }
+    
+    // For local files, include mutable file attributes so cache invalidates when file changes
     return "$base|${video.size}|${video.dateModified}"
   }
 
@@ -211,7 +219,16 @@ class ThumbnailRepository(
     return "$hex.jpg"
   }
 
-  private fun diskKey(video: Video): String = "${videoBaseKey(video)}|disk|d$diskCacheDimension"
+  private fun diskKey(video: Video): String {
+    val baseKey = videoBaseKey(video)
+    // For network URLs, add a special suffix to indicate the 3-second position
+    // This ensures we don't mix thumbnails from different positions
+    return if (isNetworkUrl(video.path)) {
+      "$baseKey|disk|d$diskCacheDimension|pos3"
+    } else {
+      "$baseKey|disk|d$diskCacheDimension"
+    }
+  }
 
   private fun loadFromDisk(video: Video): Bitmap? {
     val diskFile = File(diskDir, keyToFileName(diskKey(video)))
@@ -264,6 +281,24 @@ class ThumbnailRepository(
   }
 
   private fun preferredPositionSeconds(video: Video): Double {
+    // Check if this is a network URL
+    val isNetworkUrl = isNetworkUrl(video.path)
+    
+    // For network URLs, use 3 seconds position
+    if (isNetworkUrl) {
+      val durationSec = video.duration / 1000.0
+      
+      // If duration is known and valid, ensure we don't go beyond it
+      if (durationSec > 0.0) {
+        // Use 3 seconds, but don't go beyond 0.1s before the end
+        return 2.0.coerceIn(0.0, max(0.0, durationSec - 0.1))
+      }
+      
+      // If duration is unknown or zero, just use 3 seconds
+      return 2.0
+    }
+    
+    // For local files, use standard positioning
     val durationSec = video.duration / 1000.0
     
     // Handle invalid duration or very short videos (under 20 seconds)
@@ -274,6 +309,18 @@ class ThumbnailRepository(
     
     // Ensure position is within valid range (not beyond end of video)
     return candidate.coerceIn(0.0, max(0.0, durationSec - 0.1))
+  }
+  
+  /**
+   * Returns true if the path is a network URL
+   */
+  private fun isNetworkUrl(path: String): Boolean {
+    return path.startsWith("http://", ignoreCase = true) ||
+      path.startsWith("https://", ignoreCase = true) ||
+      path.startsWith("rtmp://", ignoreCase = true) ||
+      path.startsWith("rtsp://", ignoreCase = true) ||
+      path.startsWith("ftp://", ignoreCase = true) ||
+      path.startsWith("sftp://", ignoreCase = true)
   }
 
   private fun folderSignature(

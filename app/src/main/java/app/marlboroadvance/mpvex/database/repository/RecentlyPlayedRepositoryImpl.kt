@@ -19,10 +19,29 @@ class RecentlyPlayedRepositoryImpl(
     launchSource: String?,
     playlistId: Int?,
   ) {
-    recentlyPlayedDao.deleteExistingEntriesForFile(filePath)
-
-    val entity =
-      RecentlyPlayedEntity(
+    // Check if there's an existing entry for this file
+    val existingEntry = recentlyPlayedDao.getByFilePath(filePath)
+    
+    if (existingEntry != null) {
+      // Update existing entry, but preserve the original launchSource
+      val entity = RecentlyPlayedEntity(
+        id = existingEntry.id,
+        filePath = filePath,
+        fileName = fileName,
+        videoTitle = videoTitle ?: existingEntry.videoTitle,
+        duration = if (duration > 0) duration else existingEntry.duration,
+        fileSize = if (fileSize > 0) fileSize else existingEntry.fileSize,
+        width = if (width > 0) width else existingEntry.width,
+        height = if (height > 0) height else existingEntry.height,
+        timestamp = System.currentTimeMillis(),
+        // Preserve the original launch source when reopening the same file
+        launchSource = existingEntry.launchSource,
+        playlistId = playlistId ?: existingEntry.playlistId,
+      )
+      recentlyPlayedDao.insert(entity)
+    } else {
+      // Create a new entry
+      val entity = RecentlyPlayedEntity(
         filePath = filePath,
         fileName = fileName,
         videoTitle = videoTitle,
@@ -34,7 +53,8 @@ class RecentlyPlayedRepositoryImpl(
         launchSource = launchSource,
         playlistId = playlistId,
       )
-    recentlyPlayedDao.insert(entity)
+      recentlyPlayedDao.insert(entity)
+    }
   }
 
   override suspend fun getLastPlayed(): RecentlyPlayedEntity? = recentlyPlayedDao.getLastPlayed()
