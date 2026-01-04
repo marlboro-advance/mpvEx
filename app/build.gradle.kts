@@ -158,7 +158,6 @@ dependencies {
   implementation(libs.androidx.documentfile)
   implementation(libs.saveable)
 
-  implementation(libs.mpv.lib)
 
   implementation(platform(libs.koin.bom))
   implementation(libs.bundles.koin)
@@ -181,6 +180,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
+  implementation(files("libs/mpv-android-lib-v0.0.1.aar"))
 
   // Network protocol libraries
   implementation(libs.smbj) // SMB/CIFS

@@ -54,51 +54,6 @@ val GoogleSansFlex = FontFamily(
     weight = FontWeight.Black,
     style = FontStyle.Normal,
   ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Thin,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.ExtraLight,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Light,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Normal,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Medium,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.SemiBold,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Bold,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.ExtraBold,
-    style = FontStyle.Italic,
-  ),
-  Font(
-    resId = R.font.google_sans_flex_italic,
-    weight = FontWeight.Black,
-    style = FontStyle.Italic,
-  ),
 )
 
 // Use Google Sans Flex typography app-wide

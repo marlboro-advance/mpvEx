@@ -31,7 +31,7 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-material3-android = { group = "androidx.compose.material3", name = "material3-android", version = "1.5.0-alpha08" }
+androidx-material3-android = { group = "androidx.compose.material3", name = "material3-android", version = "1.5.0-alpha11" }
 androidx-compose-material = { group = "androidx.compose.material", name = "material" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version = "1.7.1" }
 androidx-material3-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.7.8" }
@@ -43,10 +43,11 @@ androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runt
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
 
-mpv-lib = "io.github.abdallahmehiz:mpv-android-lib:0.1.10"
+# Using local AAR file instead
+# mpv-lib = "com.github.marlboro-advance:mpvlibAndroid:v0.0.1"
 seeker = "com.github.abdallahmehiz:seeker:2.0.1"
 
-material = "com.google.android.material:material:1.14.0-alpha06"
+material = "com.google.android.material:material:1.14.0-alpha08"
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }

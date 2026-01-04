@@ -1201,7 +1201,7 @@ private fun FileSystemSortDialog(
     val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
-    val showFolderThumbnails by browserPreferences.showFolderThumbnails.collectAsState()
+    // Folder thumbnails removed
     val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
     val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
     val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
@@ -1305,11 +1305,7 @@ private fun FileSystemSortDialog(
       videoGridColumnSelector = videoGridColumnSelector,
       visibilityToggles =
         listOf(
-          VisibilityToggle(
-            label = "Folder Thumbnails",
-            checked = showFolderThumbnails,
-            onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
-          ),
+          // Folder thumbnails toggle removed
           VisibilityToggle(
             label = "Video Thumbnails",
             checked = showVideoThumbnails,

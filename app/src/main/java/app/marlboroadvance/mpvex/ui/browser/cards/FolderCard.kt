@@ -34,23 +34,8 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
 import kotlin.math.pow
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
-import app.marlboroadvance.mpvex.repository.MediaFileRepository
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalConfiguration
-import kotlin.math.roundToInt
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.fillMaxSize
 
 @Composable
 fun FolderCard(
@@ -70,7 +55,6 @@ fun FolderCard(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
-  val showThumbnails by browserPreferences.showFolderThumbnails.collectAsState()
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
@@ -117,7 +101,6 @@ fun FolderCard(
         val thumbHeightDp = thumbWidthDp / aspect
 
         val context = LocalContext.current
-        val thumbnailRepository = koinInject<ThumbnailRepository>()
         
         Box(
           modifier = Modifier
@@ -131,56 +114,12 @@ fun FolderCard(
             ),
           contentAlignment = Alignment.Center,
         ) {
-
-          // compute pixel size on main thread
-          val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
-          val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
-
-          // mutable state to hold the loaded bitmap
-          var folderThumbnail by remember(folder.bucketId) { mutableStateOf<Bitmap?>(null) }
-
-          // Re-run when bucket or requested size changes
-          LaunchedEffect(folder.bucketId, thumbWidthPx, thumbHeightPx) {
-            if (showThumbnails) {
-              val thumb = withContext(Dispatchers.IO) {
-                try {
-                  val videos = MediaFileRepository.getVideosInFolder(context, folder.bucketId)
-                  val first = videos.firstOrNull()
-                  if (first != null) {
-                    thumbnailRepository.getThumbnail(first, thumbWidthPx, thumbHeightPx)
-                  } else null
-                } catch (e: Exception) {
-                  null
-                }
-              }
-              folderThumbnail = thumb
-            }
-          }
-
-          if (showThumbnails) {
-            folderThumbnail?.let { bmp ->
-              Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = "${folder.name} thumbnail",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-              )
-            } ?: run {
-              Icon(
-                customIcon ?: Icons.Filled.Folder,
-                contentDescription = "Folder",
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.secondary,
-              )
-            }
-          } else {
-            Icon(
-              customIcon ?: Icons.Filled.Folder,
-              contentDescription = "Folder",
-              modifier = Modifier.size(56.dp),
-              tint = MaterialTheme.colorScheme.secondary,
-            )
-          }
+          Icon(
+            customIcon ?: Icons.Filled.Folder,
+            contentDescription = "Folder",
+            modifier = Modifier.size(56.dp),
+            tint = MaterialTheme.colorScheme.secondary,
+          )
 
           if (newVideoCount > 0) {
             Box(
