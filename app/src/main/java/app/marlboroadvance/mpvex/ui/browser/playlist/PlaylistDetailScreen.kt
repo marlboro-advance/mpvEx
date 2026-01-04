@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -564,7 +565,9 @@ private fun PlaylistVideoListContent(
   isM3uPlaylist: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
 
   // Find the most recently played video (highest lastPlayedAt timestamp)
   val mostRecentlyPlayedItem = remember(videoItems) {
@@ -595,7 +598,7 @@ private fun PlaylistVideoListContent(
           verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
           Icon(
-            imageVector = Icons.Outlined.PlaylistAdd,
+            imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -682,6 +685,7 @@ private fun PlaylistVideoListContent(
                     } else {
                       { onVideoItemClick(item) }
                     },
+                    showSubtitleIndicator = showSubtitleIndicator,
                     modifier = Modifier.weight(1f),
                   )
                 }

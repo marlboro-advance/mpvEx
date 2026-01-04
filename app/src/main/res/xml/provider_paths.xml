@@ -10,4 +10,12 @@
     <external-path
         name="external_storage"
         path="." />
+    <!-- Allow sharing files from secondary external storage (e.g., /storage/xxxx-xxxx/..., external SD cards) -->
+    <external-files-path
+        name="external_files_storage"
+        path="." />
+    <!-- Allow sharing files from removable media (SD cards, USB OTG mounted at /mnt/media_rw/) -->
+    <root-path
+        name="root_path"
+        path="." />
 </paths>

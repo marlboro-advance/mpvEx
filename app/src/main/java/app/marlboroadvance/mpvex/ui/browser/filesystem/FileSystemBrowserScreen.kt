@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,19 +16,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
+import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 
@@ -74,6 +84,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FileOperationProgressDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.FolderPickerDialog
+import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
@@ -159,6 +170,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val playlistMode by playerPreferences.playlistMode.collectAsState()
   val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
   val itemsWereDeletedOrMoved by viewModel.itemsWereDeletedOrMoved.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
+  
+  // Check if there are folders mixed with videos AND we're in grid mode
+  val hasMixedContentInGrid = items.any { it is FileSystemItem.Folder } && 
+                               items.any { it is FileSystemItem.VideoFile } &&
+                               mediaLayoutMode == MediaLayoutMode.GRID
 
   // UI State
   val listState = rememberLazyListState()
@@ -275,12 +295,29 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  LaunchedEffect(searchQuery, isSearching) {
-    if (isSearching && searchQuery.isNotBlank() && currentPath != null) {
+  LaunchedEffect(searchQuery, isSearching, isAtRoot, items) {
+    if (isSearching && searchQuery.isNotBlank()) {
       isSearchLoading = true
       coroutineScope.launch {
         try {
-          val results = searchRecursively(context, currentPath, searchQuery)
+          val results = if (isAtRoot) {
+            // At storage roots - search across all storage volumes
+            val allResults = mutableListOf<FileSystemItem>()
+            items.filterIsInstance<FileSystemItem.Folder>().forEach { storageVolume ->
+              try {
+                val volumeResults = searchRecursively(context, storageVolume.path, searchQuery)
+                allResults.addAll(volumeResults)
+              } catch (e: Exception) {
+                Log.e("FileSystemBrowserScreen", "Error searching volume ${storageVolume.path}", e)
+              }
+            }
+            allResults
+          } else if (currentPath != null) {
+            // In a specific directory - search from there
+            searchRecursively(context, currentPath, searchQuery)
+          } else {
+            emptyList()
+          }
           searchResults = results
         } catch (e: Exception) {
           Log.e("FileSystemBrowserScreen", "Error during search", e)
@@ -320,7 +357,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
               onSearch = { },
               expanded = false,
               onExpandedChange = { },
-              placeholder = { Text("Search in ${breadcrumbs.lastOrNull()?.name ?: "folder"}...") },
+              placeholder = { 
+                Text(
+                  if (isAtRoot) {
+                    "Search in all storage volumes..."
+                  } else {
+                    "Search in ${breadcrumbs.lastOrNull()?.name ?: "folder"}..."
+                  }
+                ) 
+              },
               leadingIcon = {
                 Icon(
                   imageVector = Icons.Filled.Search,
@@ -376,10 +421,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
           },
           onSortClick = { sortDialogOpen.value = true },
           onSettingsClick = { backstack.add(PreferencesScreen) },
-          onSearchClick = if (!isAtRoot && currentPath != null) {
-            { isSearching = !isSearching }
-          } else {
-            null
+          onSearchClick = {
+            isSearching = !isSearching
           },
         // Hide delete from top bar when bottom bar is shown (videos only, no mixed selection)
         onDeleteClick =
@@ -610,6 +653,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             searchResults = searchResults,
             isLoading = isSearchLoading,
             videoFilesWithPlayback = videoFilesWithPlayback,
+            showSubtitleIndicator = showSubtitleIndicator,
             onVideoClick = { video ->
               MediaUtils.playFile(video, context, "search")
             },
@@ -633,6 +677,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
             breadcrumbs = breadcrumbs,
             playlistMode = playlistMode,
             itemsWereDeletedOrMoved = itemsWereDeletedOrMoved,
+            mediaLayoutMode = mediaLayoutMode,
+            folderGridColumns = folderGridColumns,
+            videoGridColumns = videoGridColumns,
+            showSubtitleIndicator = if (hasMixedContentInGrid) false else showSubtitleIndicator,
             onRefresh = { viewModel.refresh() },
           onFolderClick = { folder ->
             if (isInSelectionMode) {
@@ -879,6 +927,10 @@ private fun FileSystemBrowserContent(
   breadcrumbs: List<app.marlboroadvance.mpvex.domain.browser.PathComponent>,
   playlistMode: Boolean,
   itemsWereDeletedOrMoved: Boolean,
+  mediaLayoutMode: MediaLayoutMode,
+  folderGridColumns: Int,
+  videoGridColumns: Int,
+  showSubtitleIndicator: Boolean,
   onRefresh: suspend () -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onFolderLongClick: (FileSystemItem.Folder) -> Unit,
@@ -891,6 +943,12 @@ private fun FileSystemBrowserContent(
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
+  
+  // Check if there are folders mixed with videos AND we're in grid mode - if so, hide video chips and use folder style
+  val folders = items.filterIsInstance<FileSystemItem.Folder>()
+  val videos = items.filterIsInstance<FileSystemItem.VideoFile>()
+  val hasMixedContentInGrid = folders.isNotEmpty() && videos.isNotEmpty() && isGridMode
 
   when {
     isLoading -> {
@@ -932,10 +990,16 @@ private fun FileSystemBrowserContent(
     }
 
     else -> {
-      // Check if at top of list to hide scrollbar during pull-to-refresh
+      val gridState = rememberLazyGridState()
+      
+      // Check if at top of list/grid to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
         derivedStateOf {
-          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          if (isGridMode) {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+          } else {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+          }
         }
       }
 
@@ -955,21 +1019,25 @@ private fun FileSystemBrowserContent(
         listState = listState,
         modifier = modifier.fillMaxSize(),
       ) {
-        LazyColumnScrollbar(
-          state = listState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
-        ) {
-          LazyColumn(
-            state = listState,
+        if (isGridMode) {
+          LazyVerticalGridScrollbar(
+            state = gridState,
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
+          ) {
+            LazyVerticalGrid(
+            columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
+            state = gridState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             // Breadcrumb navigation (if not at root)
             if (!isAtRoot && breadcrumbs.isNotEmpty()) {
-              item {
+              item(span = { GridItemSpan(maxLineSpan) }) {
                 BreadcrumbNavigation(
                   breadcrumbs = breadcrumbs,
                   onBreadcrumbClick = onBreadcrumbClick,
@@ -979,9 +1047,10 @@ private fun FileSystemBrowserContent(
 
             // Folders first
             items(
-              items = items.filterIsInstance<FileSystemItem.Folder>(),
-              key = { it.path },
-            ) { folder ->
+              count = folders.size,
+              key = { folders[it].path },
+            ) { index ->
+              val folder = folders[index]
               val folderModel =
                 app.marlboroadvance.mpvex.domain.media.model.VideoFolder(
                   bucketId = folder.path,
@@ -1004,14 +1073,16 @@ private fun FileSystemBrowserContent(
                 } else {
                   { onFolderClick(folder) }
                 },
+                isGridMode = true,
               )
             }
 
             // Videos second
             items(
-              items = items.filterIsInstance<FileSystemItem.VideoFile>(),
-              key = { it.video.id },
-            ) { videoFile ->
+              count = videos.size,
+              key = { "${videos[it].video.id}_${videos[it].video.path}" },
+            ) { index ->
+              val videoFile = videos[index]
               VideoCard(
                 video = videoFile.video,
                 progressPercentage = videoFilesWithPlayback[videoFile.video.id],
@@ -1024,7 +1095,94 @@ private fun FileSystemBrowserContent(
                 } else {
                   { onVideoClick(videoFile.video) }
                 },
+                isGridMode = true,
+                gridColumns = videoGridColumns,
+                showSubtitleIndicator = showSubtitleIndicator,
+                overrideShowSizeChip = if (hasMixedContentInGrid) false else null,
+                overrideShowResolutionChip = if (hasMixedContentInGrid) false else null,
+                useFolderNameStyle = hasMixedContentInGrid,
               )
+            }
+          }
+          }
+        } else {
+          LazyColumnScrollbar(
+            state = listState,
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
+          ) {
+            LazyColumn(
+              state = listState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(8.dp),
+            ) {
+              // Breadcrumb navigation (if not at root)
+              if (!isAtRoot && breadcrumbs.isNotEmpty()) {
+                item {
+                  BreadcrumbNavigation(
+                    breadcrumbs = breadcrumbs,
+                    onBreadcrumbClick = onBreadcrumbClick,
+                  )
+                }
+              }
+
+              // Folders first
+              items(
+                items = items.filterIsInstance<FileSystemItem.Folder>(),
+                key = { it.path },
+              ) { folder ->
+                val folderModel =
+                  app.marlboroadvance.mpvex.domain.media.model.VideoFolder(
+                    bucketId = folder.path,
+                    name = folder.name,
+                    path = folder.path,
+                    videoCount = folder.videoCount,
+                    totalSize = folder.totalSize,
+                    totalDuration = folder.totalDuration,
+                    lastModified = folder.lastModified / 1000,
+                  )
+
+                FolderCard(
+                  folder = folderModel,
+                  isSelected = folderSelectionManager.isSelected(folder),
+                  isRecentlyPlayed = false,
+                  onClick = { onFolderClick(folder) },
+                  onLongClick = { onFolderLongClick(folder) },
+                  onThumbClick = if (tapThumbnailToSelect) {
+                    { onFolderLongClick(folder) }
+                  } else {
+                    { onFolderClick(folder) }
+                  },
+                  isGridMode = false,
+                )
+              }
+
+              // Videos second
+              items(
+                items = items.filterIsInstance<FileSystemItem.VideoFile>(),
+                key = { "${it.video.id}_${it.video.path}" },
+              ) { videoFile ->
+                VideoCard(
+                  video = videoFile.video,
+                  progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                  isRecentlyPlayed = false,
+                  isSelected = videoSelectionManager.isSelected(videoFile.video),
+                  onClick = { onVideoClick(videoFile.video) },
+                  onLongClick = { onVideoLongClick(videoFile.video) },
+                  onThumbClick = if (tapThumbnailToSelect) {
+                    { onVideoLongClick(videoFile.video) }
+                  } else {
+                    { onVideoClick(videoFile.video) }
+                  },
+                  isGridMode = false,
+                  showSubtitleIndicator = showSubtitleIndicator,
+                  overrideShowSizeChip = null,
+                  overrideShowResolutionChip = null,
+                  useFolderNameStyle = false,
+                )
+              }
             }
           }
         }
@@ -1043,6 +1201,8 @@ private fun FileSystemSortDialog(
     val folderViewMode by browserPreferences.folderViewMode.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
+    val showFolderThumbnails by browserPreferences.showFolderThumbnails.collectAsState()
+    val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
     val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
     val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
     val showFolderPath by browserPreferences.showFolderPath.collectAsState()
@@ -1050,7 +1210,29 @@ private fun FileSystemSortDialog(
     val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
     val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
     val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+    val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
+    val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+    val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+    val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+
+    val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
+      GridColumnSelector(
+        label = "Grid Columns",
+        currentValue = folderGridColumns,
+        onValueChange = { browserPreferences.folderGridColumns.set(it) },
+        valueRange = 2f..4f,
+        steps = 1,
+      )
+    } else null
+
+    val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
+      GridColumnSelector(
+        label = "Video Grid Columns",
+        currentValue = videoGridColumns,
+        onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      )
+    } else null
 
     SortDialog(
       isOpen = isOpen,
@@ -1091,8 +1273,8 @@ private fun FileSystemSortDialog(
       viewModeSelector =
         ViewModeSelector(
           label = "View Mode",
-          firstOptionLabel = "Folder View",
-          secondOptionLabel = "Tree View",
+          firstOptionLabel = "Folder",
+          secondOptionLabel = "Tree",
           firstOptionIcon = Icons.Filled.ViewModule,
           secondOptionIcon = Icons.Filled.AccountTree,
           isFirstOptionSelected = folderViewMode == app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView,
@@ -1106,8 +1288,33 @@ private fun FileSystemSortDialog(
             )
           },
         ),
+      layoutModeSelector = ViewModeSelector(
+        label = "Layout",
+        firstOptionLabel = "List",
+        secondOptionLabel = "Grid",
+        firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
+        secondOptionIcon = Icons.Filled.GridView,
+        isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { isFirstOption ->
+          browserPreferences.mediaLayoutMode.set(
+            if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+          )
+        },
+      ),
+      folderGridColumnSelector = folderGridColumnSelector,
+      videoGridColumnSelector = videoGridColumnSelector,
       visibilityToggles =
         listOf(
+          VisibilityToggle(
+            label = "Folder Thumbnails",
+            checked = showFolderThumbnails,
+            onCheckedChange = { browserPreferences.showFolderThumbnails.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Video Thumbnails",
+            checked = showVideoThumbnails,
+            onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
+          ),
           VisibilityToggle(
             label = "Full Name",
             checked = unlimitedNameLines,
@@ -1142,6 +1349,11 @@ private fun FileSystemSortDialog(
             label = "Framerate",
             checked = showFramerateInResolution,
             onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+          ),
+          VisibilityToggle(
+            label = "Subtitle",
+            checked = showSubtitleIndicator,
+            onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
           ),
           VisibilityToggle(
             label = "Progress Bar",
@@ -1208,10 +1420,12 @@ private fun FileSystemSearchContent(
   searchResults: List<FileSystemItem>,
   isLoading: Boolean,
   videoFilesWithPlayback: Map<Long, Float>,
+  showSubtitleIndicator: Boolean,
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  // Search results are always in list mode, so no need to apply folder style
   when {
     isLoading -> {
       Box(
@@ -1317,6 +1531,10 @@ private fun FileSystemSearchContent(
                   onClick = { onVideoClick(item.video) },
                   onLongClick = {},
                   onThumbClick = {},
+                  showSubtitleIndicator = showSubtitleIndicator,
+                  overrideShowSizeChip = null,
+                  overrideShowResolutionChip = null,
+                  useFolderNameStyle = false,
                 )
               }
             }

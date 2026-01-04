@@ -188,6 +188,24 @@ object PlayerPreferencesScreen : Screen {
                 onValueChange = preferences.usePreciseSeeking::set,
                 title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
               )
+
+              PreferenceDivider()
+
+              val seekSensitivity by preferences.seekSensitivity.collectAsState()
+              SliderPreference(
+                value = seekSensitivity,
+                onValueChange = { preferences.seekSensitivity.set(it.toFixed(2)) },
+                title = { Text(stringResource(R.string.pref_player_seek_sensitivity)) },
+                valueRange = 0.01f..0.3f,
+                summary = {
+                  Text(
+                    "%.2f".format(seekSensitivity),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                onSliderValueChange = { preferences.seekSensitivity.set(it.toFixed(2)) },
+                sliderValue = seekSensitivity,
+              )
             }
           }
           // Gestures Section
@@ -309,6 +327,15 @@ object PlayerPreferencesScreen : Screen {
                 value = showSystemStatusBar,
                 onValueChange = preferences.showSystemStatusBar::set,
                 title = { Text(stringResource(R.string.pref_player_display_show_status_bar)) },
+              )
+
+              PreferenceDivider()
+
+              val showSystemNavigationBar by preferences.showSystemNavigationBar.collectAsState()
+              SwitchPreference(
+                value = showSystemNavigationBar,
+                onValueChange = preferences.showSystemNavigationBar::set,
+                title = { Text("Show navigation bar with controls") },
               )
               
               PreferenceDivider()

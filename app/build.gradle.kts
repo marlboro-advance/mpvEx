@@ -20,8 +20,8 @@ android {
     applicationId = "app.marlboroadvance.mpvex"
     minSdk = 26
     targetSdk = 36
-    versionCode = 12
-    versionName = "1.2.0"
+    versionCode = 122
+    versionName = "1.2.2"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -93,6 +93,7 @@ android {
       excludes += "META-INF/notice.txt"
       excludes += "META-INF/ASL2.0"
       excludes += "META-INF/*.kotlin_module"
+      excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
     }
     jniLibs {
       useLegacyPackaging = true
@@ -184,14 +185,15 @@ dependencies {
   // Network protocol libraries
   implementation(libs.smbj) // SMB/CIFS
   implementation(libs.commons.net) // FTP
-  implementation(libs.sardine.android) { // WebDAV (Android-compatible version using OkHttp)
-    // Exclude xpp3 as Android already provides XmlPullParser
+  implementation(libs.sardine.android) { 
     exclude(group = "xpp3", module = "xpp3")
   }
-  implementation(libs.nanohttpd) // Local proxy server for streaming
+  implementation(libs.nanohttpd)
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
   implementation(libs.jsoup) // HTML parsing for subtitle search
+  implementation(libs.coil.core)
+  implementation(libs.coil.compose)
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"

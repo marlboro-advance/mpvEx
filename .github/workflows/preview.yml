@@ -120,7 +120,7 @@ jobs:
               <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86 (${{ needs.build.outputs.x86_size }})</a></li>
               <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
             </ul>
-            <p class='note'>Built automatically from the <code>dev</code> branch.</p>
+            <p class='note'>Built automatically by <code>github-actions</code>.</p>
           </body>
           </html>" > ./public/index.html
 

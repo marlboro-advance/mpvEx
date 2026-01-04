@@ -8,13 +8,11 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,12 +20,10 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,7 +40,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
@@ -65,7 +60,6 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.Preference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
-import me.zhanghai.compose.preference.TextFieldPreference
 import me.zhanghai.compose.preference.TwoTargetIconButtonPreference
 import org.koin.compose.koinInject
 import java.io.File
@@ -364,38 +358,8 @@ object AdvancedPreferencesScreen : Screen {
               
               PreferenceDivider()
               
-              TextFieldPreference(
-                value = mpvConf,
-                onValueChange = { mpvConf = it },
+              Preference(
                 title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
-                textField = { value, onValueChange, onOk ->
-                  OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    maxLines = Int.MAX_VALUE,
-                    keyboardActions = KeyboardActions(onDone = { onOk() }),
-                  )
-                },
-                textToValue = {
-                  preferences.mpvConf.set(it)
-                  File(context.filesDir, "mpv.conf").writeText(it)
-                  if (mpvConfStorageLocation.isNotBlank()) {
-                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                    val uri =
-                      if (tree.findFile("mpv.conf") == null) {
-                        val conf = tree.createFile("text/plain", "mpv.conf")!!
-                        conf.renameTo("mpv.conf")
-                        conf.uri
-                      } else {
-                        tree.findFile("mpv.conf")!!.uri
-                      }
-                    val out = context.contentResolver.openOutputStream(uri, "wt")
-                    out!!.write(it.toByteArray())
-                    out.flush()
-                    out.close()
-                  }
-                  it
-                },
                 summary = {
                   val firstLine = mpvConf.lines().firstOrNull()
                   if (firstLine != null && firstLine.isNotBlank()) {
@@ -403,44 +367,22 @@ object AdvancedPreferencesScreen : Screen {
                       firstLine,
                       color = MaterialTheme.colorScheme.outline,
                     )
+                  } else {
+                    Text(
+                      "Tap to edit configuration",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
                   }
+                },
+                onClick = {
+                  backStack.add(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
                 },
               )
               
               PreferenceDivider()
               
-              TextFieldPreference(
-                value = inputConf,
-                onValueChange = { inputConf = it },
+              Preference(
                 title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
-                textField = { value, onValueChange, onOk ->
-                  OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    maxLines = Int.MAX_VALUE,
-                    keyboardActions = KeyboardActions(onDone = { onOk() }),
-                  )
-                },
-                textToValue = {
-                  preferences.inputConf.set(it)
-                  File(context.filesDir, "input.conf").writeText(it)
-                  if (mpvConfStorageLocation.isNotBlank()) {
-                    val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-                    val uri =
-                      if (tree.findFile("input.conf") == null) {
-                        val conf = tree.createFile("text/plain", "input.conf")!!
-                        conf.renameTo("input.conf")
-                        conf.uri
-                      } else {
-                        tree.findFile("input.conf")!!.uri
-                      }
-                    val out = context.contentResolver.openOutputStream(uri, "wt")
-                    out!!.write(it.toByteArray())
-                    out.flush()
-                    out.close()
-                  }
-                  it
-                },
                 summary = {
                   val firstLine = inputConf.lines().firstOrNull()
                   if (firstLine != null && firstLine.isNotBlank()) {
@@ -448,7 +390,15 @@ object AdvancedPreferencesScreen : Screen {
                       firstLine,
                       color = MaterialTheme.colorScheme.outline,
                     )
+                  } else {
+                    Text(
+                      "Tap to edit configuration",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
                   }
+                },
+                onClick = {
+                  backStack.add(ConfigEditorScreen(ConfigEditorScreen.ConfigType.INPUT_CONF))
                 },
               )
             }
@@ -461,8 +411,6 @@ object AdvancedPreferencesScreen : Screen {
           
           item {
             PreferenceCard {
-              var showScriptDialog by remember { mutableStateOf(false) }
-              var availableScripts by remember { mutableStateOf<List<String>>(emptyList()) }
               val selectedScripts by preferences.selectedLuaScripts.collectAsState()
               val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
               
@@ -481,77 +429,32 @@ object AdvancedPreferencesScreen : Screen {
               PreferenceDivider()
               
               Preference(
-                title = { Text("Select Lua Scripts") },
+                title = { Text("Manage Lua Scripts") },
                 summary = {
                   when {
-                    !enableLuaScripts -> Text(
-                      "Enable Lua scripts first", 
-                      color = MaterialTheme.colorScheme.outline
-                    )
-                    mpvConfStorageLocation.isBlank() -> Text(
-                      "Set MPV config storage location first", 
+                    mpvConfStorageLocation.isBlank() || !enableLuaScripts -> Text(
+                      "Set storage location and enable Lua scripts first", 
                       color = MaterialTheme.colorScheme.outline
                     )
                     selectedScripts.isEmpty() -> Text(
-                      "No scripts selected", 
+                      "No scripts enabled", 
+                      color = MaterialTheme.colorScheme.outline
+                    )
+                    selectedScripts.size == 1 -> Text(
+                      "1 script enabled",
                       color = MaterialTheme.colorScheme.outline
                     )
                     else -> Text(
-                      "${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString(", ")}",
+                      "${selectedScripts.size} scripts enabled",
                       color = MaterialTheme.colorScheme.outline
                     )
                   }
                 },
                 onClick = {
-                  scope.launch(Dispatchers.IO) {
-                    val scripts = mutableListOf<String>()
-                    if (mpvConfStorageLocation.isNotBlank()) {
-                      runCatching {
-                        val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                        if (tree != null && tree.exists()) {
-                          tree.listFiles().forEach { file ->
-                            if (file.isFile && file.name?.endsWith(".lua") == true) {
-                              file.name?.let { scripts.add(it) }
-                            }
-                          }
-                        }
-                      }.onFailure { e ->
-                        withContext(Dispatchers.Main) {
-                          Toast.makeText(
-                            context,
-                            "Error reading scripts directory: ${e.message}",
-                            Toast.LENGTH_LONG
-                          ).show()
-                        }
-                      }
-                    }
-                    withContext(Dispatchers.Main) {
-                      availableScripts = scripts.sorted()
-                      if (scripts.isEmpty()) {
-                        Toast.makeText(
-                          context,
-                          "No .lua files found in the config directory",
-                          Toast.LENGTH_SHORT
-                        ).show()
-                      }
-                      showScriptDialog = true
-                    }
-                  }
+                  backStack.add(LuaScriptsScreen)
                 },
-                enabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank(),
+                enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
               )
-              
-              if (showScriptDialog) {
-                LuaScriptSelectionDialog(
-                  availableScripts = availableScripts,
-                  selectedScripts = selectedScripts,
-                  onScriptsSelected = { newSelection ->
-                    preferences.selectedLuaScripts.set(newSelection)
-                    showScriptDialog = false
-                  },
-                  onDismiss = { showScriptDialog = false },
-                )
-              }
             }
           }
           
@@ -747,76 +650,6 @@ object AdvancedPreferencesScreen : Screen {
       }
     }
   }
-}
-
-@Composable
-fun LuaScriptSelectionDialog(
-  availableScripts: List<String>,
-  selectedScripts: Set<String>,
-  onScriptsSelected: (Set<String>) -> Unit,
-  onDismiss: () -> Unit,
-) {
-  var tempSelectedScripts by remember(selectedScripts) { 
-    mutableStateOf(selectedScripts.toMutableSet()) 
-  }
-  
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Select Lua Scripts") },
-    text = {
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .verticalScroll(rememberScrollState()),
-      ) {
-        if (availableScripts.isEmpty()) {
-          Text("No Lua scripts found in the configuration directory.")
-        } else {
-          Text(
-            text = "Select the Lua scripts to load with MPV:",
-            modifier = Modifier.padding(bottom = 8.dp),
-          )
-          availableScripts.forEach { script ->
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-              Checkbox(
-                checked = tempSelectedScripts.contains(script),
-                onCheckedChange = { checked ->
-                  tempSelectedScripts = if (checked) {
-                    (tempSelectedScripts + script).toMutableSet()
-                  } else {
-                    (tempSelectedScripts - script).toMutableSet()
-                  }
-                },
-              )
-              Text(
-                text = script,
-                modifier = Modifier.padding(start = 8.dp),
-              )
-            }
-          }
-        }
-      }
-    },
-    confirmButton = {
-      TextButton(
-        onClick = { 
-          onScriptsSelected(tempSelectedScripts.toSet())
-        }
-      ) {
-        Text("OK")
-      }
-    },
-    dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text("Cancel")
-      }
-    },
-  )
 }
 
 fun getSimplifiedPathFromUri(uri: String): String =

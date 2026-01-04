@@ -397,6 +397,9 @@ class PlayerActivity :
     getPlayableUri(intent)?.let(player::playFile)
     setOrientation()
 
+    // Apply persisted shuffle state after playlist is loaded
+    viewModel.applyPersistedShuffleState()
+
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
@@ -654,10 +657,11 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing) {
+      // Don't start background playback if activity is finishing or user is leaving
+      if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing && !isFinishing) {
         startBackgroundPlayback()
       } else {
-        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing) {
+        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing || isFinishing) {
           viewModel.pause()
         }
         if (serviceBound) {
@@ -716,21 +720,29 @@ class PlayerActivity :
 
   @RequiresApi(Build.VERSION_CODES.P)
   private fun setupSystemUI() {
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+
+    // Set status bar color for when it will be shown (with controls)
+    if (playerPreferences.showSystemStatusBar.get()) {
+      window.statusBarColor = android.graphics.Color.parseColor("#80000000") // Semi-transparent black
+    }
+
+    // Always start with status bar hidden - it will show when controls are shown
+    windowInsetsController.apply {
+      hide(WindowInsetsCompat.Type.statusBars())
+      hide(WindowInsetsCompat.Type.navigationBars())
+      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    // Don't use LOW_PROFILE if we plan to show status bar with controls
+    // LOW_PROFILE causes only icons to show without background
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
       View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
       View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-      View.SYSTEM_UI_FLAG_LOW_PROFILE
-
-    window.attributes.layoutInDisplayCutoutMode =
-      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-
-    windowInsetsController.apply {
-      hide(WindowInsetsCompat.Type.systemBars())
-      hide(WindowInsetsCompat.Type.navigationBars())
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
+      if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
   }
 
   @RequiresApi(Build.VERSION_CODES.P)
@@ -1523,6 +1535,7 @@ class PlayerActivity :
     }
 
     setOrientation()
+    applySubtitlePreferences()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
 
@@ -1698,6 +1711,49 @@ class PlayerActivity :
       }
     }
   }
+
+  /**
+   * Applies all saved subtitle preferences when a file is loaded.
+   * This ensures subtitle customizations (font, colors, position, etc.) persist across videos.
+   */
+  private fun applySubtitlePreferences() {
+    // Typography settings
+    MPVLib.setPropertyString("sub-font", subtitlesPreferences.font.get())
+    MPVLib.setPropertyString("secondary-sub-font", subtitlesPreferences.font.get())
+    MPVLib.setPropertyInt("sub-font-size", subtitlesPreferences.fontSize.get())
+    MPVLib.setPropertyBoolean("sub-bold", subtitlesPreferences.bold.get())
+    MPVLib.setPropertyBoolean("sub-italic", subtitlesPreferences.italic.get())
+    MPVLib.setPropertyString("sub-justify", subtitlesPreferences.justification.get().value)
+    MPVLib.setPropertyString("sub-border-style", subtitlesPreferences.borderStyle.get().value)
+    MPVLib.setPropertyInt("sub-outline-size", subtitlesPreferences.borderSize.get())
+    MPVLib.setPropertyInt("sub-shadow-offset", subtitlesPreferences.shadowOffset.get())
+
+    // Color settings
+    MPVLib.setPropertyString("sub-color", subtitlesPreferences.textColor.get().toColorHexString())
+    MPVLib.setPropertyString("sub-border-color", subtitlesPreferences.borderColor.get().toColorHexString())
+    MPVLib.setPropertyString("sub-back-color", subtitlesPreferences.backgroundColor.get().toColorHexString())
+
+    // Miscellaneous settings
+    val overrideAssSubs = subtitlesPreferences.overrideAssSubs.get()
+    MPVLib.setPropertyString("sub-ass-override", if (overrideAssSubs) "force" else "no")
+    MPVLib.setPropertyString("secondary-sub-ass-override", if (overrideAssSubs) "force" else "no")
+    
+    val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
+    val scaleValue = if (scaleByWindow) "yes" else "no"
+    MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
+    MPVLib.setPropertyString("sub-use-margins", scaleValue)
+    
+    MPVLib.setPropertyFloat("sub-scale", subtitlesPreferences.subScale.get())
+    MPVLib.setPropertyInt("sub-pos", subtitlesPreferences.subPos.get())
+
+    Log.d(TAG, "Applied subtitle preferences")
+  }
+
+  /**
+   * Helper extension function to convert Int color to hex string for MPV
+   */
+  @OptIn(ExperimentalStdlibApi::class)
+  private fun Int.toColorHexString() = "#" + this.toHexString().uppercase()
 
   /**
    * Saves the current playback state to the database.
@@ -2088,6 +2144,10 @@ class PlayerActivity :
 
   /**
    * Sets the screen orientation based on user preferences.
+   *
+   * IMPORTANT: Preferences are the single source of truth for orientation.
+   * This method applies the preference value when videos load.
+   * The rotation button temporarily overrides this without changing preferences.
    */
   private fun setOrientation() {
     requestedOrientation =

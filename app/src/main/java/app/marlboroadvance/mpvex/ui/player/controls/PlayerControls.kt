@@ -27,9 +27,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -141,6 +144,7 @@ fun PlayerControls(
   val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
+  val showSystemStatusBar by playerPreferences.showSystemStatusBar.collectAsState()
   val interactionSource = remember { MutableInteractionSource() }
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
@@ -861,17 +865,25 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(topLeftControls) {
-              top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
-              start.linkTo(parent.start, spacing.medium)
-              if (isPortrait) {
-                width = Dimension.fillToConstraints
-                end.linkTo(parent.end, spacing.medium)
-              } else {
-                width = Dimension.fillToConstraints
-                end.linkTo(topRightControls.start, spacing.extraSmall)
-              }
-            },
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(topLeftControls) {
+                top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
+                start.linkTo(parent.start, spacing.medium)
+                if (isPortrait) {
+                  width = Dimension.fillToConstraints
+                  end.linkTo(parent.end, spacing.medium)
+                } else {
+                  width = Dimension.fillToConstraints
+                  end.linkTo(topRightControls.start, spacing.extraSmall)
+                }
+              },
         ) {
           if (isPortrait) {
             TopPlayerControlsPortrait(
@@ -907,10 +919,18 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(topRightControls) {
-              top.linkTo(parent.top, spacing.small)
-              end.linkTo(parent.end, spacing.medium)
-            },
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(topRightControls) {
+                top.linkTo(parent.top, spacing.small)
+                end.linkTo(parent.end, spacing.medium)
+              },
         ) {
           TopRightPlayerControlsLandscape(
             buttons = topRightButtons,

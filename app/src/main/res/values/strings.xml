@@ -319,6 +319,7 @@
     <!-- Media Info Activity -->
 
     <string name="pref_player_use_precise_seeking">Use precise seeking</string>
+    <string name="pref_player_seek_sensitivity">Seek sensitivity</string>
 
     <!-- Folders Preferences -->
     <string name="pref_folders_title">Folders</string>

@@ -19,11 +19,19 @@ class BrowserPreferences(
 
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
 
+
+  val folderGridColumns = preferenceStore.getInt("folder_grid_columns", 3)
+  val videoGridColumns = preferenceStore.getInt("video_grid_columns", 2)
+
   // Visibility preferences for video card chips
+  val showFolderThumbnails = preferenceStore.getBoolean("show_folder_thumbnails", true)
+  val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", true)
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
   val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
   val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)
   val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
+  val showSubtitleIndicator = preferenceStore.getBoolean("show_subtitle_indicator", true)
+  val mediaLayoutMode = preferenceStore.getEnum("media_layout_mode", MediaLayoutMode. LIST)
 
   // Visibility preferences for folder card chips
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
@@ -101,4 +109,16 @@ enum class FolderViewMode {
         AlbumView -> "Folder View"
         FileManager -> "Tree View"
       }
+}
+
+enum class MediaLayoutMode {
+  LIST,
+  GRID,
+  ;
+
+  val displayName:  String
+    get() = when (this) {
+      LIST -> "List"
+      GRID -> "Grid"
+    }
 }

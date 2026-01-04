@@ -40,17 +40,15 @@ fun PlaylistCard(
       // Use Material Design theme colors
       val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
       val (chipColor, chipBgColor) = if (playlist.isM3uPlaylist) {
-        // Network: use tertiary color (usually blue/purple in Material themes)
         Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
       } else {
-        // Local: use primary color (usually brand color in Material themes)
         Pair(materialTheme.primary, materialTheme.primaryContainer)
       }
         
       androidx.compose.material3.Text(
         text = chipText,
         style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-        modifier = androidx.compose.ui.Modifier
+        modifier = Modifier
           .background(
             chipBgColor,
             androidx.compose.foundation.shape.RoundedCornerShape(8.dp)

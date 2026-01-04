@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.preferences
 import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.PlayerOrientation
+import app.marlboroadvance.mpvex.ui.player.RepeatMode
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
 
 class PlayerPreferences(
@@ -17,6 +18,7 @@ class PlayerPreferences(
   val showDoubleTapOvals = preferenceStore.getBoolean("show_double_tap_ovals", true)
   val showSeekTimeWhileSeeking = preferenceStore.getBoolean("show_seek_time_while_seeking", true)
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
+  val seekSensitivity = preferenceStore.getFloat("seek_sensitivity", 0.15f)
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)
   val volumeGesture = preferenceStore.getBoolean("volume_brightness", true)
@@ -44,6 +46,7 @@ class PlayerPreferences(
 
   val allowGesturesInPanels = preferenceStore.getBoolean("allow_gestures_in_panels")
   val showSystemStatusBar = preferenceStore.getBoolean("show_system_status_bar")
+  val showSystemNavigationBar = preferenceStore.getBoolean("show_system_navigation_bar")
   val reduceMotion = preferenceStore.getBoolean("reduce_motion", true)
   val playerTimeToDisappear = preferenceStore.getInt("player_time_to_disappear", 4000)
 
@@ -54,4 +57,7 @@ class PlayerPreferences(
   val playlistMode = preferenceStore.getBoolean("playlist_mode", true)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
+
+  val repeatMode = preferenceStore.getEnum("repeat_mode", RepeatMode.OFF)
+  val shuffleEnabled = preferenceStore.getBoolean("shuffle_enabled", false)
 }

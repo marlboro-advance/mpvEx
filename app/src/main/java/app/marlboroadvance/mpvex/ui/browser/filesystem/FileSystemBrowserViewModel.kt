@@ -42,7 +42,12 @@ class FileSystemBrowserViewModel(
   // Similar to Fossify's root/home folder detection
   private val STORAGE_ROOTS_MARKER = "__STORAGE_ROOTS__"
 
+  // Home directory - the top-most directory we can navigate to (set once on init)
+  // This prevents navigation errors when the app opens to a specific storage volume
+  private var homeDirectory: String? = null
+
   // Current directory path - corresponds to Fossify's currentPath
+  // If initialPath is null, we'll determine it after checking storage volumes
   private val _currentPath = MutableStateFlow(initialPath ?: STORAGE_ROOTS_MARKER)
   val currentPath: StateFlow<String> = _currentPath.asStateFlow()
 
@@ -71,13 +76,13 @@ class FileSystemBrowserViewModel(
   private val _breadcrumbs = MutableStateFlow<List<PathComponent>>(emptyList())
   val breadcrumbs: StateFlow<List<PathComponent>> = _breadcrumbs.asStateFlow()
 
-  // Whether we're at the storage root level
+  // Whether we're at the home directory (top-most allowed directory)
   // Similar to Fossify's check for home folder or root
   val isAtRoot: StateFlow<Boolean> =
     MutableStateFlow(initialPath == null).apply {
       viewModelScope.launch {
         _currentPath.collect { path ->
-          value = path == STORAGE_ROOTS_MARKER
+          value = path == STORAGE_ROOTS_MARKER || path == homeDirectory
         }
       }
     }
@@ -103,8 +108,30 @@ class FileSystemBrowserViewModel(
   }
 
   init {
-    // Load initial directory - similar to Fossify's openPath() in onCreate
-    loadCurrentDirectory()
+    // If no initial path was specified, check storage volumes and navigate accordingly
+    if (initialPath == null) {
+      viewModelScope.launch(Dispatchers.IO) {
+        val roots = MediaFileRepository.getStorageRoots(getApplication())
+        if (roots.size == 1) {
+          // Only one storage volume, navigate directly to it and set as home
+          val singleRoot = roots.first()
+          homeDirectory = singleRoot.path
+          Log.d(TAG, "Single storage volume found, setting as home: ${singleRoot.path}")
+          _currentPath.value = singleRoot.path
+        } else {
+          // Multiple roots - home is the storage roots view
+          homeDirectory = null
+        }
+        // If multiple roots or none, stay at STORAGE_ROOTS_MARKER
+        loadCurrentDirectory()
+      }
+    } else {
+      // Specific path provided - set it as home directory
+      homeDirectory = initialPath
+      Log.d(TAG, "Initial path provided, setting as home: $initialPath")
+      // Load initial directory - similar to Fossify's openPath() in onCreate
+      loadCurrentDirectory()
+    }
 
     // Refresh on global media library changes
     // Similar to Fossify's media scan completion listener
@@ -164,13 +191,14 @@ class FileSystemBrowserViewModel(
   /**
    * Navigate up one level in the directory hierarchy
    * Based on Fossify's breadcrumbClicked() and back navigation logic
+   * Respects home directory - won't navigate above it
    */
   fun navigateUp() {
     val current = _currentPath.value
 
-    if (current == STORAGE_ROOTS_MARKER) {
-      // Already at root, nowhere to go
-      Log.d(TAG, "Already at storage roots, cannot navigate up")
+    // Already at home directory or storage roots, nowhere to go
+    if (current == STORAGE_ROOTS_MARKER || current == homeDirectory) {
+      Log.d(TAG, "Already at home directory, cannot navigate up")
       return
     }
 
@@ -179,14 +207,27 @@ class FileSystemBrowserViewModel(
     // Don't reset the flag when navigating back - let the refresh check if folder is empty
 
     if (parent != null && parent != current) {
-      Log.d(TAG, "Navigating up from $current to $parent")
-      _currentPath.value = parent
-      loadCurrentDirectory()
+      // Check if parent is above home directory
+      if (homeDirectory != null && !parent.startsWith(homeDirectory!!)) {
+        // Parent is above home, stop at home directory
+        Log.d(TAG, "Parent $parent is above home directory $homeDirectory, stopping at home")
+        _currentPath.value = homeDirectory!!
+        loadCurrentDirectory()
+      } else {
+        Log.d(TAG, "Navigating up from $current to $parent")
+        _currentPath.value = parent
+        loadCurrentDirectory()
+      }
     } else {
-      // Go back to storage roots view
-      Log.d(TAG, "Navigating to storage roots from $current")
-      _currentPath.value = STORAGE_ROOTS_MARKER
-      loadCurrentDirectory()
+      // No parent - go back to storage roots view if no home directory set
+      if (homeDirectory == null) {
+        Log.d(TAG, "Navigating to storage roots from $current")
+        _currentPath.value = STORAGE_ROOTS_MARKER
+        loadCurrentDirectory()
+      } else {
+        // Home directory set, stay at current location
+        Log.d(TAG, "At home directory boundary, cannot navigate up")
+      }
     }
   }
 

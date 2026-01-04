@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.dialogs
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,9 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,7 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
@@ -234,7 +233,7 @@ private fun PlaylistItemCard(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-        imageVector = Icons.Filled.PlaylistPlay,
+        imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
         contentDescription = null,
         modifier = Modifier.size(40.dp),
         tint = MaterialTheme.colorScheme.primary,
@@ -278,7 +277,7 @@ private fun EmptyPlaylistsMessage() {
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Icon(
-        imageVector = Icons.Outlined.PlaylistAdd,
+        imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
         contentDescription = null,
         modifier = Modifier.size(48.dp),
         tint = MaterialTheme.colorScheme.onSurfaceVariant,

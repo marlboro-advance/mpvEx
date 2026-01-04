@@ -205,10 +205,13 @@ class PlayerViewModel(
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
+    
+    // Restore repeat mode and shuffle state from preferences
+    _repeatMode.value = playerPreferences.repeatMode.get()
+    _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
   }
 
   // Cached values
-  private val showStatusBar = playerPreferences.showSystemStatusBar.get()
   private val doubleTapToSeekDuration by lazy { gesturePreferences.doubleTapToSeekDuration.get() }
   private val inputMethodManager by lazy {
     host.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -551,15 +554,23 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (showStatusBar) {
+    if (playerPreferences.showSystemStatusBar.get()) {
       host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
       host.windowInsetsController.isAppearanceLightStatusBars = false
+    }
+    if (playerPreferences. showSystemNavigationBar.get()) {
+      host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
     }
     _controlsShown.value = true
   }
 
   fun hideControls() {
-    host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    if (playerPreferences.showSystemStatusBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    }
+    if (playerPreferences. showSystemNavigationBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    }
     _controlsShown.value = false
   }
 
@@ -776,17 +787,17 @@ class PlayerViewModel(
   // ==================== Screen Rotation ====================
 
   fun cycleScreenRotations() {
+    // Temporarily cycle orientation WITHOUT modifying preferences
+    // Preferences remain the single source of truth and will be reapplied on next video
     host.hostRequestedOrientation =
       when (host.hostRequestedOrientation) {
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
         -> {
-          playerPreferences.orientation.set(PlayerOrientation.SensorPortrait)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         }
         else -> {
-          playerPreferences.orientation.set(PlayerOrientation.SensorLandscape)
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
       }
@@ -1172,6 +1183,13 @@ class PlayerViewModel(
 
   // ==================== Repeat and Shuffle ====================
 
+  fun applyPersistedShuffleState() {
+    if (_shuffleEnabled.value) {
+      val activity = host as? PlayerActivity
+      activity?.onShuffleToggled(true)
+    }
+  }
+
   fun cycleRepeatMode() {
     val hasPlaylist = (host as? PlayerActivity)?.playlist?.isNotEmpty() == true
 
@@ -1181,6 +1199,9 @@ class PlayerViewModel(
       RepeatMode.ALL -> RepeatMode.OFF
     }
 
+    // Persist the repeat mode
+    playerPreferences.repeatMode.set(_repeatMode.value)
+
     // Show overlay update instead of toast
     playerUpdate.value = PlayerUpdates.RepeatMode(_repeatMode.value)
   }
@@ -1188,6 +1209,9 @@ class PlayerViewModel(
   fun toggleShuffle() {
     _shuffleEnabled.value = !_shuffleEnabled.value
     val activity = host as? PlayerActivity
+
+    // Persist the shuffle state
+    playerPreferences.shuffleEnabled.set(_shuffleEnabled.value)
 
     // Notify activity to handle shuffle state change
     activity?.onShuffleToggled(_shuffleEnabled.value)
