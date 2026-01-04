@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui.browser.fab
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddLink
 import androidx.compose.material.icons.filled.Close
@@ -18,13 +19,10 @@ import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -47,6 +45,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 
+/**
+ * Represents an item in the media action FAB menu
+ */
 data class MediaActionItem(
   val icon: ImageVector,
   val label: String,
@@ -54,6 +55,9 @@ data class MediaActionItem(
   val onClick: () -> Unit,
 )
 
+/**
+ * FAB for media-related actions like opening files, playing recently played media, and playing from URL
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MediaActionFab(
@@ -66,44 +70,19 @@ fun MediaActionFab(
   expanded: Boolean,
   onExpandedChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
+  gridState: LazyGridState? = null,
 ) {
   val focusRequester = remember { FocusRequester() }
-
-  // Track scroll position to determine direction
-  var previousIndex by remember { mutableIntStateOf(0) }
-  var previousScrollOffset by remember { mutableIntStateOf(0) }
-  var isFabVisible by remember { mutableStateOf(true) }
-
-  // Update FAB visibility based on scroll direction
-  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-    val currentIndex = listState.firstVisibleItemIndex
-    val currentScrollOffset = listState.firstVisibleItemScrollOffset
-
-    // Always show at top
-    if (currentIndex == 0 && currentScrollOffset == 0) {
-      isFabVisible = true
-    } else {
-      // Calculate if scrolling down or up
-      val isScrollingDown = if (currentIndex != previousIndex) {
-        currentIndex > previousIndex
-      } else {
-        currentScrollOffset > previousScrollOffset
-      }
-
-      // Hide when scrolling down, show when scrolling up
-      isFabVisible = !isScrollingDown
-    }
-
-    previousIndex = currentIndex
-    previousScrollOffset = currentScrollOffset
-  }
-
-  // Auto-collapse menu when scrolling
-  LaunchedEffect(listState.isScrollInProgress) {
-    if (expanded && listState.isScrollInProgress) {
-      onExpandedChange(false)
-    }
-  }
+  val isFabVisible = remember { mutableStateOf(true) }
+  
+  // Use common scroll tracking for FAB visibility
+  FabScrollHelper.trackScrollForFabVisibility(
+    listState = listState,
+    gridState = gridState,
+    isFabVisible = isFabVisible,
+    expanded = expanded,
+    onExpandedChange = onExpandedChange
+  )
 
   // Handle back button to close menu
   BackHandler(enabled = expanded) {
@@ -119,7 +98,8 @@ fun MediaActionFab(
           MediaActionItem(
             Icons.Filled.History,
             "Recently Played",
-            hasRecentlyPlayed && enableRecentlyPlayed, onPlayRecentlyPlayed,
+            hasRecentlyPlayed && enableRecentlyPlayed, 
+            onClick = onPlayRecentlyPlayed,
           ),
         )
         add(MediaActionItem(Icons.Filled.AddLink, "Play Link", onClick = onPlayLink))
@@ -134,44 +114,42 @@ fun MediaActionFab(
         expanded = expanded,
         onToggle = { onExpandedChange(!expanded) },
         focusRequester = focusRequester,
-        visible = isFabVisible,
+        visible = isFabVisible.value,
       )
     },
   ) {
     menuItems.forEachIndexed { index, item ->
       FloatingActionButtonMenuItem(
-        modifier =
-          Modifier
-            .semantics {
-              isTraversalGroup = true
-              // Add close action for the last item
-              if (index == menuItems.lastIndex) {
-                customActions =
-                  listOf(
-                    CustomAccessibilityAction("Close menu") {
-                      onExpandedChange(false)
-                      true
-                    },
-                  )
-              }
+        modifier = Modifier
+          .semantics {
+            isTraversalGroup = true
+            // Add close action for the last item
+            if (index == menuItems.lastIndex) {
+              customActions = listOf(
+                CustomAccessibilityAction("Close menu") {
+                  onExpandedChange(false)
+                  true
+                },
+              )
             }
-            .then(
-              if (index == 0) {
-                // First item can navigate back to FAB button
-                Modifier.onKeyEvent { event ->
-                  if (event.type == KeyEventType.KeyDown &&
-                    (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
-                  ) {
-                    focusRequester.requestFocus()
-                    true
-                  } else {
-                    false
-                  }
+          }
+          .then(
+            if (index == 0) {
+              // First item can navigate back to FAB button
+              Modifier.onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown &&
+                  (event.key == Key.DirectionUp || (event.isShiftPressed && event.key == Key.Tab))
+                ) {
+                  focusRequester.requestFocus()
+                  true
+                } else {
+                  false
                 }
-              } else {
-                Modifier
-              },
-            ),
+              }
+            } else {
+              Modifier
+            },
+          ),
         onClick = {
           if (item.enabled) {
             onExpandedChange(false)
@@ -196,6 +174,9 @@ fun MediaActionFab(
   }
 }
 
+/**
+ * Toggle button for the FAB that animates between play and close icons
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ToggleFabButton(
@@ -205,18 +186,17 @@ private fun ToggleFabButton(
   visible: Boolean,
 ) {
   ToggleFloatingActionButton(
-    modifier =
-      Modifier
-        .semantics {
-          traversalIndex = -1f
-          stateDescription = if (expanded) "Expanded" else "Collapsed"
-          contentDescription = "Toggle menu"
-        }
-        .animateFloatingActionButton(
-          visible = visible,
-          alignment = Alignment.BottomEnd,
-        )
-        .focusRequester(focusRequester),
+    modifier = Modifier
+      .semantics {
+        traversalIndex = -1f
+        stateDescription = if (expanded) "Expanded" else "Collapsed"
+        contentDescription = "Toggle menu"
+      }
+      .animateFloatingActionButton(
+        visible = visible,
+        alignment = Alignment.BottomEnd,
+      )
+      .focusRequester(focusRequester),
     checked = expanded,
     onCheckedChange = { onToggle() },
     containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
@@ -229,15 +209,13 @@ private fun ToggleFabButton(
     Icon(
       painter = rememberVectorPainter(icon),
       contentDescription = null,
-      modifier =
-        Modifier.animateIcon(
-          checkedProgress = { checkedProgress },
-          size =
-            ToggleFloatingActionButtonDefaults.iconSize(
-              initialSize = 40.dp,
-              finalSize = 24.dp,
-            ),
+      modifier = Modifier.animateIcon(
+        checkedProgress = { checkedProgress },
+        size = ToggleFloatingActionButtonDefaults.iconSize(
+          initialSize = 40.dp,
+          finalSize = 24.dp,
         ),
+      ),
     )
   }
 }

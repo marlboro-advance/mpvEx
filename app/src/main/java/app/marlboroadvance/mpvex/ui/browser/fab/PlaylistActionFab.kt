@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui.browser.fab
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -16,17 +17,14 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.animateFloatingActionButton
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -36,15 +34,15 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.dp
 
+/**
+ * FAB for playlist-related actions like creating a playlist or adding an M3U playlist
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlaylistActionFab(
@@ -54,37 +52,19 @@ fun PlaylistActionFab(
   expanded: Boolean,
   onExpandedChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
+  gridState: LazyGridState? = null,
 ) {
   val focusRequester = remember { FocusRequester() }
+  val isFabVisible = remember { mutableStateOf(true) }
 
-  // Track scroll position to determine direction
-  var previousIndex by remember { mutableIntStateOf(0) }
-  var previousScrollOffset by remember { mutableIntStateOf(0) }
-  var isFabVisible by remember { mutableStateOf(true) }
-
-  // Update FAB visibility based on scroll direction
-  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-    val currentIndex = listState.firstVisibleItemIndex
-    val currentScrollOffset = listState.firstVisibleItemScrollOffset
-
-    // Always show at top
-    if (currentIndex == 0 && currentScrollOffset == 0) {
-      isFabVisible = true
-    } else {
-      // Calculate if scrolling down or up
-      val isScrollingDown = if (currentIndex != previousIndex) {
-        currentIndex > previousIndex
-      } else {
-        currentScrollOffset > previousScrollOffset
-      }
-
-      // Hide when scrolling down, show when scrolling up
-      isFabVisible = !isScrollingDown
-    }
-
-    previousIndex = currentIndex
-    previousScrollOffset = currentScrollOffset
-  }
+  // Use common scroll tracking for FAB visibility
+  FabScrollHelper.trackScrollForFabVisibility(
+    listState = listState,
+    gridState = gridState,
+    isFabVisible = isFabVisible,
+    expanded = expanded,
+    onExpandedChange = onExpandedChange
+  )
 
   // Close menu on back press
   BackHandler(enabled = expanded) {
@@ -113,7 +93,7 @@ fun PlaylistActionFab(
             contentDescription = "Playlist actions menu"
           }
           .animateFloatingActionButton(
-            visible = isFabVisible,
+            visible = isFabVisible.value,
             alignment = Alignment.BottomEnd
           )
           .focusRequester(focusRequester)
@@ -156,6 +136,7 @@ fun PlaylistActionFab(
       }
     },
   ) {
+    // Create playlist menu item
     FloatingActionButtonMenuItem(
       onClick = {
         onExpandedChange(false)
@@ -168,6 +149,7 @@ fun PlaylistActionFab(
       },
     )
     
+    // Add M3U playlist menu item
     FloatingActionButtonMenuItem(
       onClick = {
         onExpandedChange(false)

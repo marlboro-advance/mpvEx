@@ -8,40 +8,27 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
-import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import app.marlboroadvance.mpvex.ui.browser.fab.PlaylistActionFab
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
-import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
-import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -57,16 +44,24 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
+import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.ui.browser.cards.PlaylistCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
+import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 
@@ -126,19 +121,17 @@ object PlaylistScreen : Screen {
       onOperationComplete = { viewModel.refresh() },
     )
 
-    // UI State
-    val listState = rememberLazyListState()
+    // Use the shared LazyListState from CompositionLocal instead of creating a new one
+    val listState = LocalLazyListState.current
+    val gridState = LocalLazyGridState.current
     val isRefreshing = remember { mutableStateOf(false) }
-    var showCreateDialog by rememberSaveable { mutableStateOf(false) }
-    var showM3UDialog by rememberSaveable { mutableStateOf(false) }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    // Removed FAB and playlist creation dialog state variables
 
-    // Predictive back: Intercept when in selection mode, FAB menu expanded, or searching
-    BackHandler(enabled = selectionManager.isInSelectionMode || fabMenuExpanded || isSearching) {
+    // Predictive back: Intercept when in selection mode or searching
+    BackHandler(enabled = selectionManager.isInSelectionMode || isSearching) {
       when {
-        fabMenuExpanded -> fabMenuExpanded = false
         isSearching -> {
           isSearching = false
           searchQuery = ""
@@ -212,21 +205,7 @@ object PlaylistScreen : Screen {
           )
         }
       },
-      floatingActionButton = {
-        if (!selectionManager.isInSelectionMode) {
-          Box(
-            modifier = Modifier.padding(bottom = 75.dp)
-          ) {
-            PlaylistActionFab(
-              listState = listState,
-              onCreatePlaylist = { showCreateDialog = true },
-              onAddM3UPlaylist = { showM3UDialog = true },
-              expanded = fabMenuExpanded,
-              onExpandedChange = { fabMenuExpanded = it },
-            )
-          }
-        }
-      },
+      // FAB moved to MainScreen
     ) { paddingValues ->
       if (isSearching && filteredPlaylists.isEmpty() && searchQuery.isNotBlank()) {
         // Show "no results" for search
@@ -266,6 +245,7 @@ object PlaylistScreen : Screen {
         PlaylistListContent(
           playlistsWithCount = filteredPlaylists,
           listState = listState,
+          gridState = gridState,
           isRefreshing = isRefreshing,
           onRefresh = { viewModel.refresh() },
           selectionManager = selectionManager,
@@ -284,62 +264,7 @@ object PlaylistScreen : Screen {
       }
     }
 
-    // Dialogs
-    if (showCreateDialog) {
-      CreatePlaylistDialog(
-        onDismiss = { showCreateDialog = false },
-        onConfirm = { name ->
-          scope.launch {
-            viewModel.createPlaylist(name)
-            showCreateDialog = false
-          }
-        },
-      )
-    }
-
-    if (showM3UDialog) {
-      AddM3UPlaylistDialog(
-        onDismiss = { showM3UDialog = false },
-        onConfirm = { url ->
-          scope.launch {
-            val result = viewModel.createM3UPlaylist(url)
-            result.onSuccess {
-              android.widget.Toast.makeText(
-                context,
-                "Playlist added successfully",
-                android.widget.Toast.LENGTH_SHORT
-              ).show()
-            }.onFailure { error ->
-              android.widget.Toast.makeText(
-                context,
-                "Failed to add m3u playlist: ${error.message}",
-                android.widget.Toast.LENGTH_LONG
-              ).show()
-            }
-            showM3UDialog = false
-          }
-        },
-        onPickLocalFile = { uri ->
-          scope.launch {
-            val result = viewModel.createM3UPlaylistFromFile(uri)
-            result.onSuccess {
-              android.widget.Toast.makeText(
-                context,
-                "m3u playlist added successfully",
-                android.widget.Toast.LENGTH_SHORT
-              ).show()
-            }.onFailure { error ->
-              android.widget.Toast.makeText(
-                context,
-                "Failed to add m3u playlist: ${error.message}",
-                android.widget.Toast.LENGTH_LONG
-              ).show()
-            }
-            showM3UDialog = false
-          }
-        },
-      )
-    }
+    // Create playlist and M3U playlist dialogs moved to MainScreen
 
     if (showRenameDialog && selectionManager.isSingleSelection) {
       val selectedPlaylist = selectionManager.getSelectedItems().firstOrNull()
@@ -402,7 +327,8 @@ object PlaylistScreen : Screen {
 @Composable
 private fun PlaylistListContent(
   playlistsWithCount: List<PlaylistWithCount>,
-  listState: androidx.compose.foundation.lazy.LazyListState,
+  listState: LazyListState,
+  gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
   onRefresh: suspend () -> Unit,
   selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<PlaylistWithCount, Int>,
@@ -410,10 +336,20 @@ private fun PlaylistListContent(
   onPlaylistLongClick: (PlaylistWithCount) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+  
+  val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
+  
   // Check if at top of list to hide scrollbar during pull-to-refresh
   val isAtTop by remember {
     derivedStateOf {
-      listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+      if (isGridMode) {
+        gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+      } else {
+        listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+      }
     }
   }
 
@@ -433,182 +369,68 @@ private fun PlaylistListContent(
     listState = listState,
     modifier = modifier.fillMaxSize(),
   ) {
-    LazyColumnScrollbar(
-      state = listState,
-      settings = ScrollbarSettings(
-        thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-        thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-      ),
-    ) {
-      LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
+    if (isGridMode) {
+      // Grid layout
+      LazyVerticalGridScrollbar(
+        state = gridState,
+        settings = ScrollbarSettings(
+          thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+          thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+        ),
       ) {
-        items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
-          PlaylistCard(
-            playlist = playlistWithCount.playlist,
-            itemCount = playlistWithCount.itemCount,
-            isSelected = selectionManager.isSelected(playlistWithCount),
-            onClick = { onPlaylistClick(playlistWithCount) },
-            onLongClick = { onPlaylistLongClick(playlistWithCount) },
-            onThumbClick = { onPlaylistClick(playlistWithCount) },
-          )
+        LazyVerticalGrid(
+          columns = GridCells.Fixed(folderGridColumns),
+          state = gridState,
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          items(
+            count = playlistsWithCount.size,
+            key = { playlistsWithCount[it].playlist.id },
+          ) { index ->
+            val playlistWithCount = playlistsWithCount[index]
+            PlaylistCard(
+              playlist = playlistWithCount.playlist,
+              itemCount = playlistWithCount.itemCount,
+              isSelected = selectionManager.isSelected(playlistWithCount),
+              onClick = { onPlaylistClick(playlistWithCount) },
+              onLongClick = { onPlaylistLongClick(playlistWithCount) },
+              onThumbClick = { onPlaylistClick(playlistWithCount) },
+              isGridMode = true,
+            )
+          }
         }
       }
-    }
-  }
-}
-
-@Composable
-private fun CreatePlaylistDialog(
-  onDismiss: () -> Unit,
-  onConfirm: (String) -> Unit,
-) {
-  var playlistName by remember { mutableStateOf("") }
-
-  androidx.compose.material3.AlertDialog(
-    onDismissRequest = onDismiss,
-    title = { Text("Create Playlist") },
-    text = {
-      androidx.compose.material3.OutlinedTextField(
-        value = playlistName,
-        onValueChange = { playlistName = it },
-        label = { Text("Playlist Name") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-      )
-    },
-    confirmButton = {
-      androidx.compose.material3.TextButton(
-        onClick = {
-          if (playlistName.isNotBlank()) {
-            onConfirm(playlistName)
-          }
-        },
-        enabled = playlistName.isNotBlank(),
-      ) {
-        Text("Create")
-      }
-    },
-    dismissButton = {
-      androidx.compose.material3.TextButton(onClick = onDismiss) {
-        Text("Cancel")
-      }
-    },
-  )
-}
-
-@Composable
-private fun AddM3UPlaylistDialog(
-  onDismiss: () -> Unit,
-  onConfirm: (String) -> Unit,
-  onPickLocalFile: (android.net.Uri) -> Unit,
-) {
-  var playlistUrl by remember { mutableStateOf("") }
-  var isLoading by remember { mutableStateOf(false) }
-  
-  // File picker launcher
-  val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-    contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-  ) { uri: android.net.Uri? ->
-    uri?.let {
-      isLoading = true
-      onPickLocalFile(it)
-    }
-  }
-
-  androidx.compose.material3.AlertDialog(
-    onDismissRequest = if (isLoading) {
-      {}
     } else {
-      onDismiss
-    },
-    title = { Text("Add m3u Playlist") },
-    text = {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+      // List layout
+      LazyColumnScrollbar(
+        state = listState,
+        settings = ScrollbarSettings(
+          thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+          thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+        ),
       ) {
-        Text(
-          text = "Enter the URL of an m3u playlist file, or choose a local file",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        androidx.compose.material3.OutlinedTextField(
-          value = playlistUrl,
-          onValueChange = { playlistUrl = it },
-          label = { Text("Playlist URL") },
-          singleLine = false,
-          maxLines = 3,
-          modifier = Modifier.fillMaxWidth(),
-          enabled = !isLoading
-        )
-        
-        // Divider with "OR" text
-        androidx.compose.foundation.layout.Row(
-          modifier = Modifier.fillMaxWidth(),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        LazyColumn(
+          state = listState,
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-          androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-          Text(
-            text = "OR",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-        }
-        
-        // Local file picker button
-        androidx.compose.material3.OutlinedButton(
-          onClick = {
-            filePickerLauncher.launch("*/*")
-          },
-          enabled = !isLoading,
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          Icon(
-            imageVector = Icons.Filled.FolderOpen,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-          )
-          androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
-          Text("Choose Local m3u File")
-        }
-        
-        if (isLoading) {
-          Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-          ) {
-            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+          items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
+            PlaylistCard(
+              playlist = playlistWithCount.playlist,
+              itemCount = playlistWithCount.itemCount,
+              isSelected = selectionManager.isSelected(playlistWithCount),
+              onClick = { onPlaylistClick(playlistWithCount) },
+              onLongClick = { onPlaylistLongClick(playlistWithCount) },
+              onThumbClick = { onPlaylistClick(playlistWithCount) },
+              isGridMode = false,
+            )
           }
         }
       }
-    },
-    confirmButton = {
-      androidx.compose.material3.TextButton(
-        onClick = {
-          if (playlistUrl.isNotBlank()) {
-            isLoading = true
-            onConfirm(playlistUrl.trim())
-          }
-        },
-        enabled = playlistUrl.isNotBlank() && !isLoading,
-      ) {
-        Text("Add from URL")
-      }
-    },
-    dismissButton = {
-      androidx.compose.material3.TextButton(
-        onClick = onDismiss,
-        enabled = !isLoading
-      ) {
-        Text("Cancel")
-      }
-    },
-  )
+    }
+  }
 }

@@ -1,8 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.folderlist
 
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,14 +77,14 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
-import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
-import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.LoadingState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
 import app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -142,20 +139,17 @@ object FolderListScreen : Screen {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
-    // UI State
-    val listState = rememberLazyListState()
+    // Use the LazyListState from CompositionLocal instead of creating a new one
+    val listState = LocalLazyListState.current
+    // Use the LazyGridState from CompositionLocal instead of creating a new one
+    val gridState = LocalLazyGridState.current
     val isRefreshing = remember { mutableStateOf(false) }
-    val showLinkDialog = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
-    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
-    var hasRecentlyPlayed by remember { mutableStateOf(false) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var allVideos by remember { mutableStateOf<List<Video>>(emptyList()) }
     var videosLoaded by remember { mutableStateOf(false) }
-
-
 
     // Sorting
     val folderSortType by browserPreferences.folderSortType.collectAsState()
@@ -196,29 +190,6 @@ object FolderListScreen : Screen {
         onPermissionGranted = { viewModel.refresh() },
       )
 
-    // File picker
-    val filePicker =
-      rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-      ) { uri ->
-        uri?.let {
-          runCatching {
-            context.contentResolver.takePersistableUriPermission(
-              it,
-              Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-          }
-          MediaUtils.playFile(it.toString(), context, "open_file")
-        }
-      }
-
-    // Effects
-    LaunchedEffect(Unit) {
-      hasRecentlyPlayed =
-        app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-          .hasRecentlyPlayed()
-    }
-
     // Listen for lifecycle resume events to refresh new video counts when coming back
     DisposableEffect(lifecycleOwner) {
       val observer =
@@ -231,14 +202,6 @@ object FolderListScreen : Screen {
       lifecycleOwner.lifecycle.addObserver(observer)
       onDispose {
         lifecycleOwner.lifecycle.removeObserver(observer)
-      }
-    }
-
-    LaunchedEffect(fabMenuExpanded) {
-      if (fabMenuExpanded) {
-        hasRecentlyPlayed =
-          app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-            .hasRecentlyPlayed()
       }
     }
 
@@ -400,106 +363,7 @@ object FolderListScreen : Screen {
         }
       },
       floatingActionButton = {
-        if (videoFolders.isNotEmpty()) {
-          Box(
-            modifier = Modifier.padding(bottom = 75.dp),
-          ) {
-            MediaActionFab(
-              listState = listState,
-              hasRecentlyPlayed = hasRecentlyPlayed,
-              enableRecentlyPlayed = enableRecentlyPlayed,
-              onOpenFile = { filePicker.launch(arrayOf("video/*")) },
-              onPlayRecentlyPlayed = {
-                coroutineScope.launch {
-                  val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-                    .getLastPlayedEntity()
-
-                  if (lastPlayedEntity != null) {
-                    // Check if this was played from a playlist
-                    if (lastPlayedEntity.playlistId != null) {
-                      // Load playlist info first
-                      val playlistRepository =
-                        org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
-                          app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
-                        )
-                      
-                      val playlist = playlistRepository.getPlaylistById(lastPlayedEntity.playlistId)
-                      
-                      // Check if it's an M3U playlist - if so, just play the single URL
-                      if (playlist?.isM3uPlaylist == true) {
-                        // M3U playlist: Play only the last played stream URL (no playlist navigation)
-                        MediaUtils.playFile(lastPlayedEntity.filePath, context, "m3u_recently_played")
-                      } else {
-                        // Regular playlist: Load full playlist and play with navigation
-                        val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
-
-                      if (playlistItems.isNotEmpty()) {
-                        // Get unique folders (bucketIds) from playlist items
-                        // For each video, extract its parent folder and query that bucket
-                        val pathToBucketMap = mutableMapOf<String, String>()
-                        val bucketIds = mutableSetOf<String>()
-
-                        playlistItems.forEach { item ->
-                          val file = java.io.File(item.filePath)
-                          val parentPath = file.parent
-                          if (parentPath != null) {
-                            val normalizedPath = parentPath.replace("\\", "/")
-                            pathToBucketMap[item.filePath] = normalizedPath
-                            bucketIds.add(normalizedPath)
-                          }
-                        }
-
-                        // Get all videos from those buckets
-                        val allVideos = MediaFileRepository.getVideosForBuckets(context, bucketIds)
-
-                      // Match videos by path, maintaining playlist order
-                      val videos = playlistItems.mapNotNull { item ->
-                        allVideos.find { video -> video.path == item.filePath }
-                      }
-
-                      if (videos.isNotEmpty()) {
-                        // Find the most recently played video in this playlist
-                        val mostRecentItem = playlistItems
-                          .filter { it.lastPlayedAt > 0 }
-                          .maxByOrNull { it.lastPlayedAt }
-
-                        val startIndex = if (mostRecentItem != null) {
-                          videos.indexOfFirst { it.path == mostRecentItem.filePath }
-                        } else {
-                          0
-                        }
-
-                        val validStartIndex = if (startIndex >= 0) startIndex else 0
-                        val uris = videos.map { it.uri }
-
-                        val intent = Intent(
-                          context,
-                          app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java,
-                        ).apply {
-                          action = Intent.ACTION_VIEW
-                          data = uris[validStartIndex]
-                          putParcelableArrayListExtra("playlist", ArrayList(uris))
-                          putExtra("playlist_index", validStartIndex)
-                          putExtra("launch_source", "playlist")
-                          putExtra("playlist_id", lastPlayedEntity.playlistId)
-                        }
-                        context.startActivity(intent)
-                      }
-                      }
-                    }
-                  } else {
-                    // Just play the single video
-                    MediaUtils.playFile(lastPlayedEntity.filePath, context, "recently_played_button")
-                  }
-                }
-                }
-              },
-              onPlayLink = { showLinkDialog.value = true },
-              expanded = fabMenuExpanded,
-              onExpandedChange = { fabMenuExpanded = it },
-            )
-          }
-        }
+        // FAB has been moved to MainScreen
       },
     ) { padding ->
       when (permissionState.status) {
@@ -522,6 +386,7 @@ object FolderListScreen : Screen {
                   )
                 }
               } else {
+                // Use a separate list state for search results since they're a different context
                 val searchListState = rememberLazyListState()
 
                 // Check if at top of list to hide scrollbar
@@ -577,6 +442,7 @@ object FolderListScreen : Screen {
               folders = filteredFolders,
               foldersWithNewCount = foldersWithNewCount,
               listState = listState,
+              gridState = gridState,
               isRefreshing = isRefreshing,
               isLoading = isLoading,
               hasCompletedInitialLoad = hasCompletedInitialLoad,
@@ -588,7 +454,6 @@ object FolderListScreen : Screen {
                 if (selectionManager.isInSelectionMode) {
                   selectionManager.toggle(folder)
                 } else {
-                  fabMenuExpanded = false
                   backstack.add(VideoListScreen(folder.bucketId, folder.name))
                 }
               },
@@ -606,13 +471,6 @@ object FolderListScreen : Screen {
           )
         }
       }
-
-      // Dialogs
-      PlayLinkSheet(
-        isOpen = showLinkDialog.value,
-        onDismiss = { showLinkDialog.value = false },
-        onPlayLink = { url -> MediaUtils.playFile(url, context, "play_link") },
-      )
 
       FolderSortDialog(
         isOpen = sortDialogOpen.value,
@@ -639,6 +497,7 @@ private fun FolderListContent(
   folders: List<VideoFolder>,
   foldersWithNewCount: List<FolderWithNewCount>,
   listState: LazyListState,
+  gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
   isRefreshing: MutableState<Boolean>,
   isLoading: Boolean,
   hasCompletedInitialLoad: Boolean,
@@ -661,8 +520,6 @@ private fun FolderListContent(
   // Only show empty state after initial scan completes with no results
   val showEmpty = folders.isEmpty() && !isLoading && hasCompletedInitialLoad
   val showLoading = isLoading && folders.isEmpty()
-
-  val gridState = rememberLazyGridState()
 
   // Check if at top of list
   val isAtTop by remember(gridState, listState) {

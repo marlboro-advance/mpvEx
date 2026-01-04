@@ -1,8 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.filesystem
 
+
 import android.content.Context
 import android.content.Intent
-import android.os.Environment
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,12 +19,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import my.nanihadesuka.compose.LazyColumnScrollbar
-import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
@@ -36,10 +32,8 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +69,6 @@ import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
-
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
@@ -89,24 +82,25 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.RenameDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.SortDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
-import app.marlboroadvance.mpvex.ui.browser.fab.MediaActionFab
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
-import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import my.nanihadesuka.compose.LazyColumnScrollbar
+import my.nanihadesuka.compose.LazyVerticalGridScrollbar
 import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
-import java.io.File
 
 /**
  * Root File System Browser screen - shows storage volumes
@@ -146,7 +140,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val coroutineScope = rememberCoroutineScope()
   val browserPreferences = koinInject<BrowserPreferences>()
   val playerPreferences = koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
-  val advancedPreferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
+  // Removed unused advancedPreferences
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
   // ViewModel - use path parameter if provided, otherwise show roots
@@ -168,7 +162,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val isAtRoot by viewModel.isAtRoot.collectAsState()
   val breadcrumbs by viewModel.breadcrumbs.collectAsState()
   val playlistMode by playerPreferences.playlistMode.collectAsState()
-  val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
   val itemsWereDeletedOrMoved by viewModel.itemsWereDeletedOrMoved.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
@@ -180,13 +173,14 @@ fun FileSystemBrowserScreen(path: String? = null) {
                                items.any { it is FileSystemItem.VideoFile } &&
                                mediaLayoutMode == MediaLayoutMode.GRID
 
-  // UI State
-  val listState = rememberLazyListState()
+  // Use the shared LazyListState from CompositionLocal instead of creating a new one
+  val listState = LocalLazyListState.current
+  // Use the shared LazyGridState from CompositionLocal instead of creating a new one
+  val gridState = LocalLazyGridState.current
   val isRefreshing = remember { mutableStateOf(false) }
   val showLinkDialog = remember { mutableStateOf(false) }
   val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
-  var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
-  var hasRecentlyPlayed by remember { mutableStateOf(false) }
+  // Removed unused FAB state variables
   val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
   val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
@@ -235,6 +229,48 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val selectedCount = folderSelectionManager.selectedCount + videoSelectionManager.selectedCount
   val totalCount = folders.size + videos.size
   val isMixedSelection = folderSelectionManager.isInSelectionMode && videoSelectionManager.isInSelectionMode
+  
+  // Update MainScreen when selection status changes
+  // This enables showing the correct bottom bar in MainScreen when selecting files
+  LaunchedEffect(isInSelectionMode, isMixedSelection, videoSelectionManager.isInSelectionMode) {
+    if (isAtRoot) {
+      try {
+        // Try to update MainScreen state if available
+        val mainScreenObj = app.marlboroadvance.mpvex.ui.browser.MainScreen
+        if (mainScreenObj != null) {
+          // Only show bottom bar when videos are selected (not folders or mixed selection)
+          val shouldShowBottomBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
+          
+          // We need to update two different state values:
+          // 1. Bottom app bar visibility (only for video selections)
+          // 2. FAB visibility (for any selection)
+          
+          // Update FAB visibility state (hide FAB for ANY selection)
+          val fabVisibilityField = mainScreenObj::class.java.getDeclaredField("isInSelectionModeShared")
+          fabVisibilityField.isAccessible = true
+          fabVisibilityField.set(mainScreenObj, isInSelectionMode)
+          
+          // Update bottom bar visibility (only for video selections)
+          val bottomBarField = mainScreenObj::class.java.getDeclaredField("shouldHideNavigationBar")
+          bottomBarField.isAccessible = true
+          bottomBarField.set(mainScreenObj, shouldShowBottomBar)
+          
+          // Update the shared selection manager
+          val managerField = mainScreenObj::class.java.getDeclaredField("sharedVideoSelectionManager")
+          managerField.isAccessible = true
+          if (shouldShowBottomBar) {
+            managerField.set(mainScreenObj, videoSelectionManager)
+            android.util.Log.d("FileSystemBrowserScreen", "Set shared selection manager")
+          } else {
+            managerField.set(mainScreenObj, null)
+            android.util.Log.d("FileSystemBrowserScreen", "Cleared shared selection manager")
+          }
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
+      }
+    }
+  }
 
   // Permissions
   val permissionState =
@@ -258,20 +294,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
       }
     }
 
-  // Effects
-  LaunchedEffect(Unit) {
-    hasRecentlyPlayed =
-      app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-        .hasRecentlyPlayed()
-  }
-
-  LaunchedEffect(fabMenuExpanded) {
-    if (fabMenuExpanded) {
-      hasRecentlyPlayed =
-        app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-          .hasRecentlyPlayed()
-    }
-  }
+  // Effects - removed unused FAB-related effects
 
   // Listen for lifecycle resume events
   DisposableEffect(lifecycleOwner) {
@@ -552,95 +575,28 @@ fun FileSystemBrowserScreen(path: String? = null) {
       }
     },
     bottomBar = {
-      // Only show bottom bar for videos (not for mixed selection of folders + videos)
-      if (videoSelectionManager.isInSelectionMode && !isMixedSelection) {
-        BrowserBottomBar(
-          isSelectionMode = true,
-          onCopyClick = {
-            operationType.value = CopyPasteOps.OperationType.Copy
-            folderPickerOpen.value = true
-          },
-          onMoveClick = {
-            operationType.value = CopyPasteOps.OperationType.Move
-            folderPickerOpen.value = true
-          },
-          onRenameClick = { renameDialogOpen.value = true },
-          onDeleteClick = { deleteDialogOpen.value = true },
-          onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-          showRename = videoSelectionManager.isSingleSelection,
-        )
-      }
+      // Use a consistent condition for showing the bottom bar to avoid flicker
+      // This should match the condition in the LaunchedEffect that updates MainScreen
+      val shouldShowBottomBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
+      
+      BrowserBottomBar(
+        isSelectionMode = shouldShowBottomBar,
+        onCopyClick = {
+          operationType.value = CopyPasteOps.OperationType.Copy
+          folderPickerOpen.value = true
+        },
+        onMoveClick = {
+          operationType.value = CopyPasteOps.OperationType.Move
+          folderPickerOpen.value = true
+        },
+        onRenameClick = { renameDialogOpen.value = true },
+        onDeleteClick = { deleteDialogOpen.value = true },
+        onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+        showRename = videoSelectionManager.isSingleSelection,
+      )
     },
     floatingActionButton = {
-      if (isAtRoot && items.isNotEmpty()) {
-        MediaActionFab(
-          listState = listState,
-          hasRecentlyPlayed = true,
-          enableRecentlyPlayed = enableRecentlyPlayed,
-          onOpenFile = { filePicker.launch(arrayOf("*/*")) },
-          onPlayRecentlyPlayed = {
-            val ctx = context
-            coroutineScope.launch {
-              val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
-              if (lastPlayedEntity != null) {
-                if (lastPlayedEntity.playlistId != null) {
-                  // Play full playlist from most recent video
-                  val playlistRepository =
-                    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.database.repository.PlaylistRepository>(
-                      app.marlboroadvance.mpvex.database.repository.PlaylistRepository::class.java,
-                    )
-                  // Using MediaFileRepository singleton directly
-                  val playlistItems = playlistRepository.getPlaylistItems(lastPlayedEntity.playlistId)
-                  if (playlistItems.isNotEmpty()) {
-                    val pathToBucketMap = mutableMapOf<String, String>()
-                    val bucketIds = mutableSetOf<String>()
-                    playlistItems.forEach { item ->
-                      val file = java.io.File(item.filePath)
-                      val parentPath = file.parent
-                      if (parentPath != null) {
-                        val normalizedPath = parentPath.replace("\\", "/")
-                        pathToBucketMap[item.filePath] = normalizedPath
-                        bucketIds.add(normalizedPath)
-                      }
-                    }
-                    val allVideos = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(ctx, bucketIds)
-                    val videos =
-                      playlistItems.mapNotNull { item -> allVideos.find { video -> video.path == item.filePath } }
-                    if (videos.isNotEmpty()) {
-                      val mostRecentItem = playlistItems.filter { it.lastPlayedAt > 0 }.maxByOrNull { it.lastPlayedAt }
-                      val startIndex = mostRecentItem?.let { videos.indexOfFirst { v -> v.path == it.filePath } } ?: 0
-                      val validStartIndex = if (startIndex >= 0) startIndex else 0
-                      val uris = videos.map { it.uri }
-                      val intent =
-                        android.content.Intent(ctx, app.marlboroadvance.mpvex.ui.player.PlayerActivity::class.java)
-                          .apply {
-                            action = android.content.Intent.ACTION_VIEW
-                            data = uris[validStartIndex]
-                            putParcelableArrayListExtra("playlist", java.util.ArrayList(uris))
-                            putExtra("playlist_index", validStartIndex)
-                            putExtra("launch_source", "playlist")
-                            putExtra("playlist_id", lastPlayedEntity.playlistId)
-                          }
-                      ctx.startActivity(intent)
-                    }
-                  }
-                } else {
-                  // Just play the single video
-                  app.marlboroadvance.mpvex.utils.media.MediaUtils.playFile(
-                    lastPlayedEntity.filePath,
-                    ctx,
-                    "recently_played_button",
-                  )
-                }
-              }
-            }
-          },
-          onPlayLink = { showLinkDialog.value = true },
-          expanded = fabMenuExpanded,
-          onExpandedChange = { fabMenuExpanded = it },
-          modifier = Modifier.padding(bottom = 75.dp),
-        )
-      }
+      // FAB moved to MainScreen
     },
   ) { padding ->
     when (permissionState.status) {
@@ -658,7 +614,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
               MediaUtils.playFile(video, context, "search")
             },
             onFolderClick = { folder ->
-              fabMenuExpanded = false
               backstack.add(FileSystemDirectoryScreen(folder.path))
               isSearching = false
               searchQuery = ""
@@ -668,6 +623,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
         } else {
           FileSystemBrowserContent(
             listState = listState,
+            gridState = gridState, // Pass the shared grid state
             items = items,
             videoFilesWithPlayback = videoFilesWithPlayback,
             isLoading = isLoading && items.isEmpty(),
@@ -686,7 +642,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
             if (isInSelectionMode) {
               folderSelectionManager.toggle(folder)
             } else {
-              fabMenuExpanded = false
               backstack.add(FileSystemDirectoryScreen(folder.path))
             }
           },
@@ -918,6 +873,7 @@ private fun playVideosAsPlaylist(
 @Composable
 private fun FileSystemBrowserContent(
   listState: LazyListState,
+  gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
   items: List<FileSystemItem>,
   videoFilesWithPlayback: Map<Long, Float>,
   isLoading: Boolean,
@@ -990,8 +946,6 @@ private fun FileSystemBrowserContent(
     }
 
     else -> {
-      val gridState = rememberLazyGridState()
-      
       // Check if at top of list/grid to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
         derivedStateOf {
@@ -1031,7 +985,7 @@ private fun FileSystemBrowserContent(
             columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -1116,7 +1070,7 @@ private fun FileSystemBrowserContent(
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(8.dp),
+              contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
             ) {
               // Breadcrumb navigation (if not at root)
               if (!isAtRoot && breadcrumbs.isNotEmpty()) {
@@ -1540,4 +1494,3 @@ private fun FileSystemSearchContent(
     }
   }
 }
-
