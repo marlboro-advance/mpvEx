@@ -28,6 +28,12 @@ import kotlin.math.min
 class ThumbnailRepository(
   private val context: Context,
 ) {
+  // Get appearance preferences 
+  private val appearancePreferences by lazy { 
+    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.preferences.AppearancePreferences>(
+      app.marlboroadvance.mpvex.preferences.AppearancePreferences::class.java
+    ) 
+  }
   private val diskCacheDimension = 512
   private val diskJpegQuality = 50
   private val memoryCache: LruCache<String, Bitmap>
@@ -70,6 +76,12 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val key = thumbnailKey(video, widthPx, heightPx)
 
+      // Check if this is a network video and if network thumbnails are disabled
+      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+        // Return null immediately for network videos when thumbnails are disabled
+        return@withContext null
+      }
+
       synchronized(memoryCache) {
         memoryCache.get(key)
       }?.let { return@withContext it }
@@ -88,13 +100,18 @@ class ThumbnailRepository(
               return@async thumbnail
             }
 
-            // 2) Generate with disk cache dimension
+            // 2) Skip generation for network videos if the preference is disabled
+            if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+              return@async null
+            }
+
+            // 3) Generate with disk cache dimension
             // FastThumbnails API returns bitmaps at correct aspect ratio
             val thumbnail =
               generateWithFastThumbnails(video, diskCacheDimension)
                 ?: return@async null
 
-            // 3) Cache in memory and disk
+            // 4) Cache in memory and disk
             synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
             _thumbnailReadyKeys.tryEmit(key)
             writeToDisk(video, thumbnail)
@@ -119,6 +136,12 @@ class ThumbnailRepository(
     heightPx: Int,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
+      // Check if this is a network video and if network thumbnails are disabled
+      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+        // Return null immediately for network videos when thumbnails are disabled
+        return@withContext null
+      }
+      
       val key = thumbnailKey(video, widthPx, heightPx)
       synchronized(memoryCache) { memoryCache.get(key) }?.let { return@withContext it }
       loadFromDisk(video)?.let { thumbnail ->
@@ -133,6 +156,12 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
+    // Check if this is a network video and if network thumbnails are disabled
+    if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+      // Return null immediately for network videos when thumbnails are disabled
+      return null
+    }
+    
     val key = thumbnailKey(video, widthPx, heightPx)
     return synchronized(memoryCache) { memoryCache.get(key) }
   }
@@ -162,7 +191,16 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ) {
-    val signature = folderSignature(videos, widthPx, heightPx)
+    // Filter out network videos if the preference is disabled
+    val filteredVideos = if (appearancePreferences.showNetworkThumbnails.get()) {
+      videos
+    } else {
+      videos.filterNot { isNetworkUrl(it.path) }
+    }
+    
+    if (filteredVideos.isEmpty()) return
+    
+    val signature = folderSignature(filteredVideos, widthPx, heightPx)
     val state =
       folderStates.compute(folderId) { _, existing ->
         if (existing == null || existing.signature != signature) {
@@ -176,8 +214,8 @@ class ThumbnailRepository(
     folderJobs[folderId] =
       repositoryScope.launch {
         var i = state.nextIndex
-        while (i < videos.size) {
-          val video = videos[i]
+        while (i < filteredVideos.size) {
+          val video = filteredVideos[i]
           getThumbnail(video, widthPx, heightPx)
           i++
           state.nextIndex = i
