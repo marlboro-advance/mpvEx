@@ -237,35 +237,21 @@ fun FileSystemBrowserScreen(path: String? = null) {
       try {
         // Try to update MainScreen state if available
         val mainScreenObj = app.marlboroadvance.mpvex.ui.browser.MainScreen
-        if (mainScreenObj != null) {
-          // Only show bottom bar when videos are selected (not folders or mixed selection)
-          val shouldShowBottomBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
-          
-          // We need to update two different state values:
-          // 1. Bottom app bar visibility (only for video selections)
-          // 2. FAB visibility (for any selection)
-          
-          // Update FAB visibility state (hide FAB for ANY selection)
-          val fabVisibilityField = mainScreenObj::class.java.getDeclaredField("isInSelectionModeShared")
-          fabVisibilityField.isAccessible = true
-          fabVisibilityField.set(mainScreenObj, isInSelectionMode)
-          
-          // Update bottom bar visibility (only for video selections)
-          val bottomBarField = mainScreenObj::class.java.getDeclaredField("shouldHideNavigationBar")
-          bottomBarField.isAccessible = true
-          bottomBarField.set(mainScreenObj, shouldShowBottomBar)
-          
-          // Update the shared selection manager
-          val managerField = mainScreenObj::class.java.getDeclaredField("sharedVideoSelectionManager")
-          managerField.isAccessible = true
-          if (shouldShowBottomBar) {
-            managerField.set(mainScreenObj, videoSelectionManager)
-            android.util.Log.d("FileSystemBrowserScreen", "Set shared selection manager")
-          } else {
-            managerField.set(mainScreenObj, null)
-            android.util.Log.d("FileSystemBrowserScreen", "Cleared shared selection manager")
-          }
-        }
+        
+        // Check if only videos are selected (not folders or mixed selection)
+        val onlyVideosSelected = videoSelectionManager.isInSelectionMode && !folderSelectionManager.isInSelectionMode
+        
+        // Use the new updateSelectionState method to handle all state updates
+        mainScreenObj.updateSelectionState(
+          isInSelectionMode = isInSelectionMode,
+          isOnlyVideosSelected = onlyVideosSelected,
+          selectionManager = if (onlyVideosSelected) videoSelectionManager else null
+        )
+        
+        android.util.Log.d(
+          "FileSystemBrowserScreen", 
+          "Updated MainScreen state: selection=$isInSelectionMode, onlyVideos=$onlyVideosSelected"
+        )
       } catch (e: Exception) {
         android.util.Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
       }

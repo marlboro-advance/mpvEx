@@ -85,6 +85,28 @@ object MainScreen : Screen {
   
   @Volatile
   private var sharedVideoSelectionManager: Any? = null
+  
+  // Check if the selection contains only videos and update navigation bar visibility accordingly
+  @Volatile
+  private var onlyVideosSelected: Boolean = false
+  
+  /**
+   * Update selection state and navigation bar visibility
+   * This method should be called whenever selection changes
+   */
+  fun updateSelectionState(
+    isInSelectionMode: Boolean,
+    isOnlyVideosSelected: Boolean,
+    selectionManager: Any?
+  ) {
+    this.isInSelectionModeShared = isInSelectionMode
+    this.onlyVideosSelected = isOnlyVideosSelected
+    this.sharedVideoSelectionManager = selectionManager
+    
+    // Only hide navigation bar when videos are selected AND in selection mode
+    // This fixes the issue where bottom bar disappears when only videos are selected
+    this.shouldHideNavigationBar = isInSelectionMode && isOnlyVideosSelected
+  }
 
   @Composable
   @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -163,10 +185,10 @@ object MainScreen : Screen {
           android.util.Log.d("MainScreen", "Selection mode changed to: $isInSelectionModeShared")
         }
         
-        // Update navigation bar visibility state
+        // Update navigation bar visibility state - now considers if only videos are selected
         if (hideNavigationBar.value != shouldHideNavigationBar) {
           hideNavigationBar.value = shouldHideNavigationBar
-          android.util.Log.d("MainScreen", "Navigation bar visibility changed to: ${!shouldHideNavigationBar}")
+          android.util.Log.d("MainScreen", "Navigation bar visibility changed to: ${!shouldHideNavigationBar}, onlyVideosSelected: $onlyVideosSelected")
         }
         
         // Update selection manager
