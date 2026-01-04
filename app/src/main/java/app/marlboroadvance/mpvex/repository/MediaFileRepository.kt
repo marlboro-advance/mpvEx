@@ -659,12 +659,8 @@ object MediaFileRepository : KoinComponent {
     val baseResolution = formatResolution(width, height)
     if (baseResolution == "--" || fps <= 0f) return baseResolution
 
-    val fpsFormatted =
-      if (fps % 1.0f == 0f) {
-        fps.toInt().toString()
-      } else {
-        String.format(Locale.getDefault(), "%.2f", fps).trimEnd('0').trimEnd('.')
-      }
+    // Show only the integer part for frame rates, without rounding
+    val fpsFormatted = fps.toInt().toString()
 
     return "$baseResolution@$fpsFormatted"
   }
