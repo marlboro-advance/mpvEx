@@ -28,7 +28,7 @@ import kotlin.math.min
 class ThumbnailRepository(
   private val context: Context,
 ) {
-  private val diskCacheDimension = 1024
+  private val diskCacheDimension = 512
   private val diskJpegQuality = 50
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
@@ -265,8 +265,14 @@ class ThumbnailRepository(
 
   private fun preferredPositionSeconds(video: Video): Double {
     val durationSec = video.duration / 1000.0
-    if (durationSec <= 0.0) return 0.0
-    val candidate = min(2.5, durationSec * 0.1)
+    
+    // Handle invalid duration or very short videos (under 20 seconds)
+    if (durationSec <= 0.0 || durationSec < 20.0) return 0.0
+    
+    // For longer videos, use the lesser of 3 seconds
+    val candidate = 3.0
+    
+    // Ensure position is within valid range (not beyond end of video)
     return candidate.coerceIn(0.0, max(0.0, durationSec - 0.1))
   }
 
