@@ -41,7 +41,6 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
-import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
@@ -132,11 +131,6 @@ class PlayerActivity :
    * Preferences for advanced settings.
    */
   private val advancedPreferences: AdvancedPreferences by inject()
-
-  /**
-   * Preferences for browser settings.
-   */
-  private val browserPreferences: BrowserPreferences by inject()
 
   /**
    * Manager for file operations.
@@ -2940,17 +2934,7 @@ class PlayerActivity :
           file.isFile && file.extension.lowercase() in videoExtensions
         } ?: return@runCatching
 
-        val launchSource = intent.getStringExtra("launch_source") ?: ""
-        val siblingFiles = if (launchSource == "video_list") {
-          val videoSortType = browserPreferences.videoSortType.get()
-          val videoSortOrder = browserPreferences.videoSortOrder.get()
-          val bucketId = parentFolder.absolutePath.replace("\\", "/")
-          val videosInFolder = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(context, setOf(bucketId))
-          val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
-          sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }
-        } else {
-          files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-        }
+        val siblingFiles = files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
 
         if (siblingFiles.size <= 1) return@runCatching
 
@@ -2970,6 +2954,7 @@ class PlayerActivity :
       }
     }
   }
+
 
 
   companion object {
