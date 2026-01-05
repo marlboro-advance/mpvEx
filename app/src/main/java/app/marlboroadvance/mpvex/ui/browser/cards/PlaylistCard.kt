@@ -10,6 +10,18 @@ import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.database.entities.PlaylistEntity
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 
+/**
+ * Card for displaying a playlist item
+ * 
+ * @param playlist The playlist entity to display
+ * @param itemCount Number of items in the playlist
+ * @param onClick Action to perform when the card is clicked
+ * @param onLongClick Action to perform when the card is long-pressed
+ * @param onThumbClick Action to perform when the thumbnail is clicked
+ * @param modifier Optional modifier for the card
+ * @param isSelected Whether the card is in a selected state
+ * @param isGridMode Whether the card should display in grid mode
+ */
 @Composable
 fun PlaylistCard(
   playlist: PlaylistEntity,
@@ -19,6 +31,7 @@ fun PlaylistCard(
   onThumbClick: () -> Unit,
   modifier: Modifier = Modifier,
   isSelected: Boolean = false,
+  isGridMode: Boolean = false,
 ) {
   // Convert playlist to VideoFolder format for FolderCard
   val folderModel = VideoFolder(
@@ -59,6 +72,7 @@ fun PlaylistCard(
     }
   }
 
+  // Use the FolderCard component with playlist-specific customizations
   FolderCard(
     folder = folderModel,
     isSelected = isSelected,
@@ -69,6 +83,7 @@ fun PlaylistCard(
     showDateModified = true,
     customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
     modifier = modifier,
-    customChipContent = customChipRenderer
+    customChipContent = customChipRenderer,
+    isGridMode = isGridMode
   )
 }

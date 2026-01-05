@@ -239,6 +239,7 @@ data class VideoListScreen(
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
       
       VideoListContent(
+        folderId = bucketId,
         videosWithInfo = sortedVideosWithInfo,
         isLoading = isLoading && videos.isEmpty(),
         isRefreshing = isRefreshing,
@@ -401,6 +402,7 @@ data class VideoListScreen(
 
 @Composable
 private fun VideoListContent(
+  folderId: String,
   videosWithInfo: List<VideoWithPlaybackInfo>,
   isLoading: Boolean,
   isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
@@ -420,11 +422,32 @@ private fun VideoListContent(
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val density = LocalDensity.current
-  val thumbWidthDp = 128.dp
+  // Must match the thumbnail size logic inside `VideoCard` for this screen,
+  // otherwise the cache keys won't line up and the UI won't receive updates.
+  val thumbWidthDp = if (mediaLayoutMode == MediaLayoutMode.GRID) 160.dp else 128.dp
   val aspect = 16f / 9f
   val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
+
+  // Start sequential thumbnail generation for the entire folder (even off-viewport).
+  // When this screen is disposed (folder closed), generation pauses for this folder.
+  LaunchedEffect(folderId, showVideoThumbnails, videosWithInfo.size, thumbWidthPx, thumbHeightPx) {
+    if (showVideoThumbnails && videosWithInfo.isNotEmpty()) {
+      thumbnailRepository.startFolderThumbnailGeneration(
+        folderId = folderId,
+        videos = videosWithInfo.map { it.video },
+        widthPx = thumbWidthPx,
+        heightPx = thumbHeightPx,
+      )
+    }
+  }
+  DisposableEffect(folderId) {
+    onDispose {
+      thumbnailRepository.pauseFolderThumbnailGeneration(folderId)
+    }
+  }
 
   when {
     isLoading && videosWithInfo.isEmpty() -> {
@@ -566,18 +589,6 @@ private fun VideoListContent(
               val videoWithInfo = videosWithInfo[index]
               val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-              // Prefetch upcoming thumbnails
-              androidx.compose.runtime.LaunchedEffect(index) {
-                if (index < videosWithInfo.size - 1) {
-                  val upcomingVideos =
-                    videosWithInfo.subList(
-                      (index + 1).coerceAtMost(videosWithInfo.size),
-                      (index + 11).coerceAtMost(videosWithInfo.size),
-                    )
-                  thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
-                }
-              }
-
               VideoCard(
                 video = videoWithInfo.video,
                 progressPercentage = videoWithInfo.progressPercentage,
@@ -594,6 +605,7 @@ private fun VideoListContent(
                 isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
                 gridColumns = videoGridColumns,
                 showSubtitleIndicator = showSubtitleIndicator,
+                allowThumbnailGeneration = false,
               )
             }
             }
@@ -619,18 +631,6 @@ private fun VideoListContent(
                 val videoWithInfo = videosWithInfo[index]
                 val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-                // Prefetch upcoming thumbnails
-                androidx.compose.runtime.LaunchedEffect(index) {
-                  if (index < videosWithInfo.size - 1) {
-                    val upcomingVideos =
-                      videosWithInfo.subList(
-                        (index + 1).coerceAtMost(videosWithInfo.size),
-                        (index + 11).coerceAtMost(videosWithInfo.size),
-                      )
-                    thumbnailRepository.prefetchThumbnails(upcomingVideos.map { it.video }, thumbWidthPx, thumbHeightPx)
-                  }
-                }
-
                 VideoCard(
                   video = videoWithInfo.video,
                   progressPercentage = videoWithInfo.progressPercentage,
@@ -646,6 +646,7 @@ private fun VideoListContent(
                   },
                   isGridMode = false,
                   showSubtitleIndicator = showSubtitleIndicator,
+                  allowThumbnailGeneration = false,
                 )
               }
             }

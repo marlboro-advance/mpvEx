@@ -47,6 +47,7 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -68,6 +69,7 @@ fun VideoCard(
   overrideShowSizeChip: Boolean? = null,
   overrideShowResolutionChip: Boolean? = null,
   useFolderNameStyle: Boolean = false,
+  allowThumbnailGeneration: Boolean = true,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -117,19 +119,35 @@ fun VideoCard(
         val thumbWidthPx = with(LocalDensity.current) { thumbWidthDp.roundToPx() }
         val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
-        val thumbnailKey = remember(video. id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
-          "${video.id}_${video.dateModified}_${video.size}_${thumbWidthPx}_$thumbHeightPx"
-        }
+        val thumbnailKey =
+          remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
+            thumbnailRepository.thumbnailKey(video, thumbWidthPx, thumbHeightPx)
+          }
 
         var thumbnail by remember(thumbnailKey) {
           mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx))
         }
 
+        // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
         LaunchedEffect(thumbnailKey) {
-          if (thumbnail == null && showThumbnails) {
-            thumbnail = withContext(Dispatchers.IO) {
-              thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+          thumbnailRepository.thumbnailReadyKeys
+            .filter { it == thumbnailKey }
+            .collect {
+              thumbnail = thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
             }
+        }
+
+        // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
+        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
+          if (thumbnail == null && showThumbnails) {
+            thumbnail =
+              withContext(Dispatchers.IO) {
+                if (allowThumbnailGeneration) {
+                  thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+                } else {
+                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                }
+              }
           }
         }
 
@@ -307,7 +325,7 @@ fun VideoCard(
         // Key includes video identity to prevent reloading same thumbnail
         val thumbnailKey =
           remember(video.id, video.dateModified, video.size, thumbWidthPx, thumbHeightPx) {
-            "${video.id}_${video.dateModified}_${video.size}_${thumbWidthPx}_$thumbHeightPx"
+            thumbnailRepository.thumbnailKey(video, thumbWidthPx, thumbHeightPx)
           }
 
         // Try to get from memory cache immediately (synchronous, no flicker)
@@ -315,12 +333,25 @@ fun VideoCard(
           mutableStateOf(thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx))
         }
 
-        // Only load if not already in memory - prevents reload on recomposition
+        // Update thumbnail when the repository emits that this key became ready (folder prefetch or any other source).
         LaunchedEffect(thumbnailKey) {
+          thumbnailRepository.thumbnailReadyKeys
+            .filter { it == thumbnailKey }
+            .collect {
+              thumbnail = thumbnailRepository.getThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
+            }
+        }
+
+        // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
+        LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
           if (thumbnail == null && showThumbnails) {
             thumbnail =
               withContext(Dispatchers.IO) {
-                thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+                if (allowThumbnailGeneration) {
+                  thumbnailRepository.getThumbnail(video, thumbWidthPx, thumbHeightPx)
+                } else {
+                  thumbnailRepository.getCachedThumbnail(video, thumbWidthPx, thumbHeightPx)
+                }
               }
           }
         }

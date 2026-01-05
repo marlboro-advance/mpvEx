@@ -15,6 +15,8 @@ import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -33,23 +35,35 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.repository.NetworkRepository
 import app.marlboroadvance.mpvex.ui.browser.MainScreen
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
+import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
+/**
+ * Main entry point for the application
+ */
 class MainActivity : ComponentActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val networkRepository by inject<NetworkRepository>()
+  
+  // Create a coroutine scope tied to the activity lifecycle
+  private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
-    // Register proxy lifecycle observer
+    // Register proxy lifecycle observer for network streaming
     lifecycle.addObserver(app.marlboroadvance.mpvex.ui.browser.networkstreaming.proxy.ProxyLifecycleObserver())
 
     setContent {
+      // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
       val isSystemInDarkTheme = isSystemInDarkTheme()
       val isDarkMode = dark == DarkMode.Dark || (dark == DarkMode.System && isSystemInDarkTheme)
@@ -60,34 +74,9 @@ class MainActivity : ComponentActivity() {
         ) { isDarkMode },
       )
 
+      // Auto-connect to saved network connections
       LaunchedEffect(Unit) {
-        // Delay auto-connect to let UI settle first
-        kotlinx.coroutines.delay(500)
-        launch(kotlinx.coroutines.Dispatchers.IO) {
-          try {
-            val autoConnectConnections = networkRepository.getAutoConnectConnections()
-            autoConnectConnections.forEach { connection ->
-              kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
-              }
-              networkRepository.connect(connection)
-                .onSuccess {
-                  kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
-                  }
-                }
-                .onFailure { e ->
-                  kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
-                  }
-                }
-            }
-          } catch (e: Exception) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-              Log.e("MainActivity", "Error during auto-connect", e)
-            }
-          }
-        }
+        autoConnectToNetworks()
       }
 
       MpvexTheme {
@@ -106,13 +95,61 @@ class MainActivity : ComponentActivity() {
     }
   }
 
+  /**
+   * Auto-connect to network connections that are marked for auto-connection
+   */
+  private suspend fun autoConnectToNetworks() {
+    // Delay auto-connect to let UI settle first
+    kotlinx.coroutines.delay(500)
+    
+    // Use coroutineScope for properly structured concurrency
+    withContext(Dispatchers.IO) {
+      try {
+        val autoConnectConnections = networkRepository.getAutoConnectConnections()
+        autoConnectConnections.forEach { connection ->
+          withContext(Dispatchers.Main) {
+            Log.d("MainActivity", "Auto-connecting to: ${connection.name}")
+          }
+          networkRepository.connect(connection)
+            .onSuccess {
+              withContext(Dispatchers.Main) {
+                Log.d("MainActivity", "Auto-connected successfully: ${connection.name}")
+              }
+            }
+            .onFailure { e ->
+              withContext(Dispatchers.Main) {
+                Log.e("MainActivity", "Auto-connect failed for ${connection.name}: ${e.message}")
+              }
+            }
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          Log.e("MainActivity", "Error during auto-connect", e)
+        }
+      }
+    }
+  }
+
+  /**
+   * Navigator that handles screen transitions and provides shared states
+   */
   @Composable
   fun Navigator() {
     val backstack = rememberNavBackStack(MainScreen)
+    
+    // Create shared LazyListState and LazyGridState that will be used by all screens
+    val lazyListState = rememberLazyListState()
+    val lazyGridState = rememberLazyGridState()
 
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
-    CompositionLocalProvider(LocalBackStack provides typedBackstack) {
+    
+    // Provide both LocalBackStack and the LazyList/Grid states to all screens
+    CompositionLocalProvider(
+      LocalBackStack provides typedBackstack,
+      LocalLazyListState provides lazyListState,
+      LocalLazyGridState provides lazyGridState
+    ) {
       NavDisplay(
         backStack = typedBackstack,
         onBack = { typedBackstack.removeLastOrNull() },
@@ -121,21 +158,19 @@ class MainActivity : ComponentActivity() {
           (
             fadeIn(animationSpec = tween(220)) +
               slideIn(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }
-          ) togetherWith
-            (
+          ) togetherWith (
               fadeOut(animationSpec = tween(220)) +
                 slideOut(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }
-            )
+          )
         },
         transitionSpec = {
           (
             fadeIn(animationSpec = tween(220)) +
               slideIn(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }
-          ) togetherWith
-            (
+          ) togetherWith (
               fadeOut(animationSpec = tween(220)) +
                 slideOut(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }
-            )
+          )
         },
         predictivePopTransitionSpec = {
           (
@@ -145,15 +180,14 @@ class MainActivity : ComponentActivity() {
                 initialScale = .9f,
                 TransformOrigin(-1f, .5f),
               )
-          ) togetherWith
-            (
+          ) togetherWith (
               fadeOut(animationSpec = tween(220)) +
                 scaleOut(
                   animationSpec = tween(220, delayMillis = 30),
                   targetScale = .9f,
                   TransformOrigin(-1f, .5f),
                 )
-            )
+          )
         },
       )
     }

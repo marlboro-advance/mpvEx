@@ -351,7 +351,7 @@ class MediaPlaybackService :
     value: MPVNode,
   ) {}
 
-  override fun event(eventId: Int) {
+  override fun event(eventId: Int, data: MPVNode) {
     if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) stopSelf()
   }
 

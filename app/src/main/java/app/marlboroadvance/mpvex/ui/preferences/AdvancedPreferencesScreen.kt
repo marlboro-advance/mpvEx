@@ -45,6 +45,7 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.database.MpvExDatabase
+import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.SettingsManager
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -534,6 +535,8 @@ object AdvancedPreferencesScreen : Screen {
           item {
             PreferenceCard {
               var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
+              var isClearThumbsConfirmShown by remember { mutableStateOf(false) }
+              val thumbnailRepository = koinInject<ThumbnailRepository>()
               
               Preference(
                 title = { Text(text = "Clear config cache") },
@@ -561,6 +564,44 @@ object AdvancedPreferencesScreen : Screen {
                   }
                 },
               )
+              
+              PreferenceDivider()
+
+              Preference(
+                title = { Text(text = "Clear thumbnail cache") },
+                summary = {
+                  Text(
+                    text = "Delete all cached video thumbnails (will regenerate as you browse folders)",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                onClick = { isClearThumbsConfirmShown = true },
+              )
+
+              if (isClearThumbsConfirmShown) {
+                ConfirmDialog(
+                  title = "Clear thumbnail cache?",
+                  subtitle = "This will delete cached thumbnails from storage and memory.",
+                  onConfirm = {
+                    scope.launch(Dispatchers.IO) {
+                      runCatching {
+                        thumbnailRepository.clearThumbnailCache()
+                      }.onSuccess {
+                        withContext(Dispatchers.Main) {
+                          isClearThumbsConfirmShown = false
+                          Toast.makeText(context, "Thumbnail cache cleared", Toast.LENGTH_SHORT).show()
+                        }
+                      }.onFailure { error ->
+                        withContext(Dispatchers.Main) {
+                          isClearThumbsConfirmShown = false
+                          Toast.makeText(context, "Failed to clear: ${error.message}", Toast.LENGTH_LONG).show()
+                        }
+                      }
+                    }
+                  },
+                  onCancel = { isClearThumbsConfirmShown = false },
+                )
+              }
               
               PreferenceDivider()
               

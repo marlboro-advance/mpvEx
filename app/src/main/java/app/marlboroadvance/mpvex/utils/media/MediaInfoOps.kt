@@ -340,10 +340,10 @@ object MediaInfoOps {
           val hasEmbeddedSubtitles = textCount > 0
 
           val subtitleCodec = if (hasEmbeddedSubtitles) {
-            val codecId = mi.getInfo(MediaInfo. Stream.Text, 0, "CodecID")
+            val codecId = mi.getInfo(MediaInfo.Stream.Text, 0, "CodecID")
 
             when {
-              codecId. contains("PGS", ignoreCase = true) -> "PGS"
+              codecId.contains("PGS", ignoreCase = true) -> "PGS"
               codecId.contains("ASS", ignoreCase = true) -> "ASS"
               codecId.contains("SSA", ignoreCase = true) -> "SSA"
               codecId.contains("SRT", ignoreCase = true) -> "SRT"
@@ -381,4 +381,28 @@ object MediaInfoOps {
     val hasEmbeddedSubtitles: Boolean,
     val subtitleCodec: String = "",
   )
+
+  /**
+   * Extract rotation (in degrees) from the video stream. Returns 0 if not specified or on error.
+   */
+  suspend fun getRotation(
+    context: Context,
+    uri: Uri,
+    fileName: String = "",
+  ): Int = withContext(Dispatchers.IO) {
+    runCatching {
+      val contentResolver = context.contentResolver
+      val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching 0
+      val fd = pfd.detachFd()
+      val mi = MediaInfo()
+      try {
+        mi.Open(fd, fileName)
+        val rotationStr = mi.Get(MediaInfo.Stream.Video, 0, "Rotation")
+        rotationStr.toFloatOrNull()?.toInt() ?: 0
+      } finally {
+        mi.Close()
+        pfd.close()
+      }
+    }.getOrDefault(0)
+  }
 }

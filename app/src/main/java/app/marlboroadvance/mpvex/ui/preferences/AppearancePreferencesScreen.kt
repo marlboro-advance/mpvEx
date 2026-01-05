@@ -257,6 +257,25 @@ object AppearancePreferencesScreen : Screen {
                   )
                 }
               )
+              
+              PreferenceDivider()
+              
+              val showNetworkThumbnails by preferences.showNetworkThumbnails.collectAsState()
+              SwitchPreference(
+                value = showNetworkThumbnails,
+                onValueChange = { preferences.showNetworkThumbnails.set(it) },
+                title = {
+                  Text(
+                    text = stringResource(id = R.string.pref_appearance_show_network_thumbnails_title),
+                  )
+                },
+                summary = {
+                  Text(
+                    text = stringResource(id = R.string.pref_appearance_show_network_thumbnails_summary),
+                    color = MaterialTheme.colorScheme.outline, // Fainter color
+                  )
+                }
+              )
             }
           }
 

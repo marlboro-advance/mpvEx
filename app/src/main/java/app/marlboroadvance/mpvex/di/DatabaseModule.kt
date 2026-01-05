@@ -258,7 +258,40 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
   override fun migrate(db: SupportSQLiteDatabase) {
     try {
       android.util.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
-      db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0")
+      
+      // Get existing columns to check what needs to be added
+      val cursor = db.query("PRAGMA table_info(video_metadata_cache)")
+      val existingColumns = mutableSetOf<String>()
+      while (cursor.moveToNext()) {
+        val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+        existingColumns.add(columnName)
+      }
+      cursor.close()
+      
+      // Add subtitleCodec if it doesn't exist yet (should have been added in MIGRATION_2_3 but might be missing)
+      if (!existingColumns.contains("subtitleCodec")) {
+        try {
+          db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `subtitleCodec` TEXT NOT NULL DEFAULT ''")
+          android.util.Log.d("Migration_5_6", "Added subtitleCodec column")
+        } catch (e: Exception) {
+          android.util.Log.w("Migration_5_6", "Error adding subtitleCodec column, may already exist", e)
+        }
+      } else {
+        android.util.Log.d("Migration_5_6", "subtitleCodec column already exists, skipping")
+      }
+      
+      // Add hasEmbeddedSubtitles if it doesn't exist
+      if (!existingColumns.contains("hasEmbeddedSubtitles")) {
+        try {
+          db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0")
+          android.util.Log.d("Migration_5_6", "Added hasEmbeddedSubtitles column")
+        } catch (e: Exception) {
+          android.util.Log.w("Migration_5_6", "Error adding hasEmbeddedSubtitles column, may already exist", e)
+        }
+      } else {
+        android.util.Log.d("Migration_5_6", "hasEmbeddedSubtitles column already exists, skipping")
+      }
+      
       android.util.Log.d("Migration_5_6", "Migration completed successfully")
     } catch (e: Exception) {
       android.util.Log.e("Migration_5_6", "Migration failed", e)
@@ -281,7 +314,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
         .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }
