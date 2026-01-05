@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.mpvex" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar" />
+    <style name="Theme.mpvex" parent="@style/Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowActionBar">false</item>
+    </style>
 </resources>
