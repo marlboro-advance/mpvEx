@@ -28,6 +28,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -795,7 +796,11 @@ fun PlayerControls(
             Modifier
               .then(
                 if (showSystemNavigationBar) {
-                  Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
@@ -883,7 +888,11 @@ fun PlayerControls(
               )
               .then(
                 if (showSystemNavigationBar) {
-                  Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
@@ -944,7 +953,11 @@ fun PlayerControls(
               )
               .then(
                 if (showSystemNavigationBar) {
-                  Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
@@ -993,7 +1006,11 @@ fun PlayerControls(
             Modifier
               .then(
                 if (showSystemNavigationBar) {
-                  Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
@@ -1068,7 +1085,11 @@ fun PlayerControls(
             Modifier
               .then(
                 if (showSystemNavigationBar) {
-                  Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
