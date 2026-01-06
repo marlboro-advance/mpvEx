@@ -34,9 +34,43 @@ class MPVView(
   var isExiting = false
 
   fun getVideoOutAspect(): Double? {
-    return MPVLib.getPropertyDouble("video-params/aspect")?.let {
-      if (it < 0.001) return 0.0
-      if ((MPVLib.getPropertyInt("video-params/rotate") ?: 0) % 180 == 90) 1.0 / it else it
+    // Try to get aspect from video-params/aspect first
+    val rawAspect = MPVLib.getPropertyDouble("video-params/aspect")
+    val rotate = MPVLib.getPropertyInt("video-params/rotate") ?: 0
+
+    // If aspect is not available or 0, calculate from width and height
+    val finalAspect = if (rawAspect == null || rawAspect < 0.001) {
+      Log.d(TAG, "getVideoOutAspect - Aspect not available, calculating from dimensions")
+      val width = runCatching {
+        MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+      }.getOrDefault(0)
+
+      val height = runCatching {
+        MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+      }.getOrDefault(0)
+
+      Log.d(TAG, "getVideoOutAspect - width: $width, height: $height")
+
+      if (width > 0 && height > 0) {
+        width.toDouble() / height.toDouble()
+      } else {
+        null
+      }
+    } else {
+      rawAspect
+    }
+
+    Log.d(TAG, "getVideoOutAspect - rawAspect: $rawAspect, rotate: $rotate, finalAspect: $finalAspect")
+
+    return finalAspect?.let { aspect ->
+      if (aspect <= 0.001) {
+        Log.d(TAG, "getVideoOutAspect - Aspect too small, returning null")
+        return null
+      }
+      val isRotated = (rotate % 180 == 90)
+      val correctedAspect = if (isRotated) 1.0 / aspect else aspect
+      Log.d(TAG, "getVideoOutAspect - isRotated: $isRotated, correctedAspect: $correctedAspect")
+      correctedAspect
     }
   }
 
@@ -171,6 +205,8 @@ class MPVView(
       "pause" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "paused-for-cache" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "video-params/aspect" to MPVLib.MpvFormat.MPV_FORMAT_DOUBLE,
+      "video-params/w" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
+      "video-params/h" to MPVLib.MpvFormat.MPV_FORMAT_INT64,
       "eof-reached" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "user-data/mpvex/show_text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       "user-data/mpvex/toggle_ui" to MPVLib.MpvFormat.MPV_FORMAT_STRING,

@@ -402,7 +402,12 @@ class PlayerActivity :
     setHttpHeadersFromExtras(intent.extras)
 
     getPlayableUri(intent)?.let(player::playFile)
-    setOrientation()
+
+    // Only set orientation immediately if NOT in Video mode
+    // For Video mode, wait for video-params/aspect to become available
+    if (playerPreferences.orientation.get() != PlayerOrientation.Video) {
+      setOrientation()
+    }
 
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
@@ -1299,9 +1304,7 @@ class PlayerActivity :
 
   /**
    * Observer callback for MPV property changes (Long values).
-   *
-   * This method is called when an MPV property (with Long value) changes.
-   * Extend this method to handle properties as needed.
+   * Handles video width and height changes.
    *
    * @param property The property name that changed
    * @param value The new Long value
@@ -1311,7 +1314,21 @@ class PlayerActivity :
     property: String,
     value: Long,
   ) {
-    // Currently no Long properties are handled
+    when (property) {
+      "video-params/w",
+      "video-params/h" -> {
+        // Safety check: don't access MPV during cleanup
+        if (!mpvInitialized || player.isExiting || isFinishing) return
+
+        val aspect = player.getVideoOutAspect()
+        Log.d(TAG, "Video dimension changed: $property, aspect: $aspect")
+        pipHelper.updatePictureInPictureParams()
+        // Update orientation when video dimensions change (fixes Video orientation mode)
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
+          setOrientation()
+        }
+      }
+    }
   }
 
   /**
@@ -1457,28 +1474,31 @@ class PlayerActivity :
     property: String,
     value: Double,
   ) {
-    // Currently no Double properties are handled
-  }
-
-  /**
-   * Observer callback for MPV property changes (no value parameter).
-   * Handles video aspect ratio changes.
-   *
-   * @param property The property name that changed
-   */
-  internal fun onObserverEvent(property: String) {
+    // Handle Double properties
     when (property) {
       "video-params/aspect" -> {
         // Safety check: don't access MPV during cleanup
         if (!mpvInitialized || player.isExiting || isFinishing) return
-        
+
+        val aspect = player.getVideoOutAspect()
+        Log.d(TAG, "video-params/aspect changed: $aspect")
         pipHelper.updatePictureInPictureParams()
         // Update orientation when video aspect ratio changes (fixes Video orientation mode)
-        if (playerPreferences.orientation.get() == PlayerOrientation.Video) {
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
           setOrientation()
         }
       }
     }
+  }
+
+  /**
+   * Observer callback for MPV property changes (no value parameter).
+   * Handles properties with no value parameter.
+   *
+   * @param property The property name that changed
+   */
+  internal fun onObserverEvent(property: String) {
+    // Currently no properties use this signature
   }
 
   /**
@@ -1555,7 +1575,25 @@ class PlayerActivity :
       }
     }
 
-    setOrientation()
+    // Only set orientation immediately if NOT in Video mode
+    // For Video mode, wait for video-params/aspect to become available
+    if (playerPreferences.orientation.get() != PlayerOrientation.Video) {
+      setOrientation()
+    } else {
+      // For Video mode, try to set orientation after a short delay to ensure
+      // video dimensions are available
+      lifecycleScope.launch {
+        kotlinx.coroutines.delay(100)
+        if (mpvInitialized && !player.isExiting && !isFinishing) {
+          val aspect = player.getVideoOutAspect()
+          Log.d(TAG, "handleFileLoaded - Video mode, aspect after delay: $aspect")
+          if (aspect != null && aspect > 0) {
+            setOrientation()
+          }
+        }
+      }
+    }
+
     applySubtitlePreferences()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
@@ -1570,7 +1608,7 @@ class PlayerActivity :
         // For network files played via proxy (SMB/WebDAV/FTP), use the original network file path
         val networkFilePath = intent.getStringExtra("network_file_path")
         val networkConnectionId = intent.getLongExtra("network_connection_id", -1L)
-        
+
         if (networkFilePath != null && networkConnectionId != -1L) {
           // Pass network file path and connection ID for subtitle discovery
           SubtitleOps.autoloadSubtitles(
@@ -2173,12 +2211,36 @@ class PlayerActivity :
    * IMPORTANT: Preferences are the single source of truth for orientation.
    * This method applies the preference value when videos load.
    * The rotation button temporarily overrides this without changing preferences.
+   *
+   * For "Video" orientation mode, this will wait for video-params/aspect to update
+   * to the correct orientation, starting with landscape as fallback.
    */
   private fun setOrientation() {
+    val orientationPref = playerPreferences.orientation.get()
+
     requestedOrientation =
-      when (playerPreferences.orientation.get()) {
+      when (orientationPref) {
         PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        PlayerOrientation.Video -> determineVideoOrientation()
+        PlayerOrientation.Video -> {
+          // For video orientation, check if aspect is available
+          val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
+          Log.d(TAG, "setOrientation - Video mode: aspect=$aspect")
+          if (aspect == null || aspect <= 0.0) {
+            // Aspect not available yet - wait for video-params/aspect update
+            Log.d(TAG, "setOrientation - Aspect not available, defaulting to landscape")
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+          } else {
+            // Aspect available - set correct orientation now
+            val orientation = if (aspect > 1.0) {
+              Log.d(TAG, "setOrientation - Aspect $aspect > 1.0, setting landscape")
+              ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+              Log.d(TAG, "setOrientation - Aspect $aspect <= 1.0, setting portrait")
+              ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            }
+            orientation
+          }
+        }
         PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
         PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
@@ -2186,33 +2248,6 @@ class PlayerActivity :
         PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
         PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
       }
-  }
-
-  /**
-   * Determines the appropriate orientation based on video aspect ratio.
-   *
-   * @return Orientation constant for landscape (if aspect > 1.0) or portrait.
-   *         Returns sensor landscape as fallback if video aspect is not yet available.
-   */
-  private fun determineVideoOrientation(): Int {
-    // Safety check: ensure MPV is initialized and not being cleaned up
-    if (!mpvInitialized || player.isExiting) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
-    val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
-    
-    // If video aspect is not yet available, default to sensor landscape
-    // This will be updated when video-params/aspect becomes available
-    if (aspect == null || aspect <= 0.0) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
-    return if (aspect > 1.0) {
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    } else {
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
   }
 
   // ==================== Key Event Handling ====================
