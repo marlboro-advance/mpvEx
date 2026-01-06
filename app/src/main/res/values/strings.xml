@@ -192,6 +192,7 @@
     <string name="player_sheets_sub_color_blue">Blue</string>
     <string name="player_sheets_sub_color_alpha">Alpha</string>
     <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
+    <string name="player_sheets_sub_override_ass_subtitle">Force override ASS/SSA subtitle formatting</string>
     <string name="player_sheets_sub_scale_by_window">Scale by window</string>
     <string name="player_sheets_sub_scale_by_window_summary">Scale subtitles by window size and use video margins</string>
     <string name="player_sheets_sub_scale">Scale</string>
