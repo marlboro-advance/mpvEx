@@ -119,18 +119,32 @@ data class ConfigEditorScreen(
           
           // Save to external storage location if set
           if (mpvConfStorageLocation.isNotBlank()) {
-            val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-            val uri = if (tree.findFile(fileName) == null) {
-              val conf = tree.createFile("text/plain", fileName)!!
-              conf.renameTo(fileName)
-              conf.uri
-            } else {
-              tree.findFile(fileName)!!.uri
+            val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+            if (tree == null) {
+              withContext(Dispatchers.Main) {
+                Toast.makeText(context, "No storage location set", Toast.LENGTH_LONG).show()
+              }
+              return@launch
             }
-            val out = context.contentResolver.openOutputStream(uri, "wt")
-            out!!.write(configText.toByteArray())
-            out.flush()
-            out.close()
+
+            val existing = tree.findFile(fileName)
+            val confFile = existing ?: tree.createFile("text/plain", fileName)?.also { it.renameTo(fileName) }
+            val uri = confFile?.uri ?: run {
+              withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Failed to create file", Toast.LENGTH_LONG).show()
+              }
+              return@launch
+            }
+
+            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+              out.write(configText.toByteArray())
+              out.flush()
+            } ?: run {
+              withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Failed to open output stream", Toast.LENGTH_LONG).show()
+              }
+              return@launch
+            }
           }
           
           withContext(Dispatchers.Main) {
