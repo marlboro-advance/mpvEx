@@ -263,6 +263,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
     PermissionUtils.handleStoragePermission(
       onPermissionGranted = { viewModel.refresh() },
     )
+  
+  // Update MainScreen about permission state to control FAB visibility
+  LaunchedEffect(permissionState.status) {
+    if (isAtRoot) {
+      app.marlboroadvance.mpvex.ui.browser.MainScreen.updatePermissionState(
+        isDenied = permissionState.status is PermissionStatus.Denied
+      )
+    }
+  }
 
   // File picker
   val filePicker =

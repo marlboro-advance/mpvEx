@@ -189,6 +189,13 @@ object FolderListScreen : Screen {
       PermissionUtils.handleStoragePermission(
         onPermissionGranted = { viewModel.refresh() },
       )
+    
+    // Update MainScreen about permission state to control FAB visibility
+    LaunchedEffect(permissionState.status) {
+      app.marlboroadvance.mpvex.ui.browser.MainScreen.updatePermissionState(
+        isDenied = permissionState.status is PermissionStatus.Denied
+      )
+    }
 
     // Listen for lifecycle resume events to refresh new video counts when coming back
     DisposableEffect(lifecycleOwner) {

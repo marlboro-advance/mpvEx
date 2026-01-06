@@ -42,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,6 +91,10 @@ object MainScreen : Screen {
   @Volatile
   private var onlyVideosSelected: Boolean = false
   
+  // Track when permission denied screen is showing to hide FAB
+  @Volatile
+  private var isPermissionDenied: Boolean = false
+  
   /**
    * Update selection state and navigation bar visibility
    * This method should be called whenever selection changes
@@ -107,6 +112,13 @@ object MainScreen : Screen {
     // This fixes the issue where bottom bar disappears when only videos are selected
     this.shouldHideNavigationBar = isInSelectionMode && isOnlyVideosSelected
   }
+  
+  /**
+   * Update permission state to control FAB visibility
+   */
+  fun updatePermissionState(isDenied: Boolean) {
+    this.isPermissionDenied = isDenied
+  }
 
   @Composable
   @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -117,6 +129,46 @@ object MainScreen : Screen {
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    
+    // Check storage permission status directly in MainScreen for FAB visibility
+    val hasStoragePermission = remember {
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        android.os.Environment.isExternalStorageManager()
+      } else {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+          context,
+          app.marlboroadvance.mpvex.utils.permission.PermissionUtils.getStoragePermission()
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+      }
+    }
+    
+    // Track permission changes when app resumes
+    var permissionCheckTrigger by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    
+    DisposableEffect(lifecycleOwner) {
+      val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+        if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+          permissionCheckTrigger++
+        }
+      }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      onDispose {
+        lifecycleOwner.lifecycle.removeObserver(observer)
+      }
+    }
+    
+    // Recheck permission when trigger changes
+    val currentHasPermission = remember(permissionCheckTrigger) {
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        android.os.Environment.isExternalStorageManager()
+      } else {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+          context,
+          app.marlboroadvance.mpvex.utils.permission.PermissionUtils.getStoragePermission()
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+      }
+    }
     
     // Create separate list and grid states for each tab to track scroll position
     val foldersListState = rememberLazyListState()
@@ -252,8 +304,11 @@ object MainScreen : Screen {
         }
       },
       floatingActionButton = {
-        // Only show FAB when not in selection mode, and not on Network tab (index 3)
-        if (!isInSelectionMode.value && selectedTab != 3) {
+        // Only show FAB when not in selection mode, not on Network tab (index 3), and permission is granted
+        // For Folders tab (0), also check storage permission directly
+        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && 
+                           (selectedTab != 0 || currentHasPermission)
+        if (shouldShowFab) {
           AnimatedVisibility(
             visible = true,
             enter = fadeIn(),

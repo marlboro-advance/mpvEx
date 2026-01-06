@@ -216,6 +216,7 @@ class PlayerActivity :
   private var isUserFinishing = false
   private var noisyReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
+  private var savePlaybackStateJob: kotlinx.coroutines.Job? = null // Track ongoing save job
 
   // ==================== Background Playback ====================
 
@@ -553,7 +554,21 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      isReady = false
+      // Wait for any pending save operation to complete before destroying MPV
+      // This prevents the race condition where the save coroutine tries to access
+      // MPV properties after MPVLib.destroy() has been called
+      savePlaybackStateJob?.let { job ->
+        Log.d(TAG, "Waiting for save playback state job to complete...")
+        runCatching {
+          // Use runBlocking to ensure we wait for the job to finish
+          // This is safe here as onDestroy is already on the main thread
+          kotlinx.coroutines.runBlocking {
+            job.join()
+          }
+        }
+        Log.d(TAG, "Save playback state job completed")
+      }
+
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
@@ -1772,7 +1787,11 @@ class PlayerActivity :
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaIdentifier.isBlank()) return
 
-    GlobalScope.launch(Dispatchers.IO) {
+    // Cancel any previous pending save operation
+    savePlaybackStateJob?.cancel()
+
+    // Launch new save job and track it
+    savePlaybackStateJob = lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
         Log.d(TAG, "Saving playback state for: $mediaTitle (identifier: $mediaIdentifier)")
