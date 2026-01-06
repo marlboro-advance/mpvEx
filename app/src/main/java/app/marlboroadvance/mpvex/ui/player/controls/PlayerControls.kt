@@ -536,12 +536,13 @@ fun PlayerControls(
 
           when {
             gestureSeekAmount != null -> {
+              val gs = gestureSeekAmount ?: Pair(0, 0)
               Text(
                 stringResource(
                   R.string.player_gesture_seek_indicator,
-                  if (gestureSeekAmount!!.second >= 0) '+' else '-',
-                  Utils.prettyTime(abs(gestureSeekAmount!!.second)),
-                  Utils.prettyTime(gestureSeekAmount!!.first + gestureSeekAmount!!.second),
+                  if (gs.second >= 0) '+' else '-',
+                  Utils.prettyTime(abs(gs.second)),
+                  Utils.prettyTime(gs.first + gs.second),
                 ),
                 style =
                   MaterialTheme.typography.headlineMedium.copy(

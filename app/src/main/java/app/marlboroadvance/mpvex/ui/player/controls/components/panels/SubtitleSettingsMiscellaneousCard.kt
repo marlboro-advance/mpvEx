@@ -87,8 +87,8 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
         val subPos by MPVLib.propInt["sub-pos"].collectAsState()
         SliderItem(
           label = stringResource(R.string.player_sheets_sub_scale),
-          value = subScale!!,
-          valueText = subScale!!.toFixed(2).toString(),
+          value = subScale ?: preferences.subScale.get(),
+          valueText = (subScale ?: preferences.subScale.get()).toFixed(2).toString(),
           onChange = {
             preferences.subScale.set(it)
             MPVLib.setPropertyFloat("sub-scale", it)
@@ -104,7 +104,7 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
         SliderItem(
           label = stringResource(R.string.player_sheets_sub_position),
           value = subPos ?: preferences.subPos.get(),
-          valueText = subPos.toString(),
+          valueText = (subPos ?: preferences.subPos.get()).toString(),
           onChange = {
             preferences.subPos.set(it)
             MPVLib.setPropertyInt("sub-pos", it)

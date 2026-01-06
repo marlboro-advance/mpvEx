@@ -338,9 +338,10 @@ class PlayerActivity :
     // Use windowed loading to prevent ANR with large playlists
     if (playlist.isEmpty() && playlistId != null) {
       lifecycleScope.launch(Dispatchers.IO) {
+        val pid = playlistId ?: return@launch
         try {
           // Get total count first to decide if we need windowed loading
-          val totalCount = playlistRepository.getPlaylistItemCount(playlistId!!)
+          val totalCount = playlistRepository.getPlaylistItemCount(pid)
           
           if (totalCount > 100) {
             // Large playlist: use windowed loading to prevent ANR
@@ -349,7 +350,7 @@ class PlayerActivity :
             val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
             
             val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = playlistId!!,
+              playlistId = pid,
               centerIndex = playlistIndex,
               windowSize = windowSize
             )
@@ -358,16 +359,16 @@ class PlayerActivity :
               playlist = items
               playlistWindowOffset = startOffset
               playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $playlistId (total: $totalCount)")
+              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $pid (total: $totalCount)")
             }
           } else {
             // Small playlist: load everything at once
-            val items = playlistRepository.getPlaylistItemsAsUris(playlistId!!)
+            val items = playlistRepository.getPlaylistItemsAsUris(pid)
             withContext(Dispatchers.Main) {
               playlist = items
               playlistWindowOffset = 0
               playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $playlistId")
+              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $pid")
             }
           }
         } catch (e: Exception) {

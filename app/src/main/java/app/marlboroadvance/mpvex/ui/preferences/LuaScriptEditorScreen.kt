@@ -121,25 +121,37 @@ data class LuaScriptEditorScreen(
             return@launch
           }
           
-          val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())!!
-          
+          val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+          if (tree == null) {
+            withContext(Dispatchers.Main) {
+              Toast.makeText(context, "No storage location set", Toast.LENGTH_LONG).show()
+            }
+            return@launch
+          }
+
           // If renaming, delete old file
           if (!isNewScript && scriptName != null && scriptName != finalFileName) {
             tree.findFile(scriptName)?.delete()
           }
-          
-          val uri = if (tree.findFile(finalFileName) == null) {
-            val script = tree.createFile("text/plain", finalFileName)!!
-            script.renameTo(finalFileName)
-            script.uri
-          } else {
-            tree.findFile(finalFileName)!!.uri
+
+          val existing = tree.findFile(finalFileName)
+          val scriptFile = existing ?: tree.createFile("text/plain", finalFileName)?.also { it.renameTo(finalFileName) }
+          val uri = scriptFile?.uri ?: run {
+            withContext(Dispatchers.Main) {
+              Toast.makeText(context, "Failed to create file", Toast.LENGTH_LONG).show()
+            }
+            return@launch
           }
-          
-          val out = context.contentResolver.openOutputStream(uri, "wt")
-          out!!.write(scriptContent.toByteArray())
-          out.flush()
-          out.close()
+
+          context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+            out.write(scriptContent.toByteArray())
+            out.flush()
+          } ?: run {
+            withContext(Dispatchers.Main) {
+              Toast.makeText(context, "Failed to open output stream", Toast.LENGTH_LONG).show()
+            }
+            return@launch
+          }
           
           withContext(Dispatchers.Main) {
             hasUnsavedChanges = false
