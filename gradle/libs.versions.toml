@@ -82,7 +82,7 @@ coil-core = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
 
 
 [bundles]
-koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel", "koin-startup"]
+koin = ["koin-core", "koin-android", "koin-compose", "koin-viewmodel"]
 compose-navigation3 = ["androidx-navigation3-runtime", "androidx-navigation3-ui"]
 
 [plugins]

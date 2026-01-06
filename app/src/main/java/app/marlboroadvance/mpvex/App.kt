@@ -14,19 +14,27 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.startup.KoinStartup
+import org.koin.core.context.startKoin
 import org.koin.core.annotation.KoinExperimentalAPI
-import org.koin.dsl.koinConfiguration
 
 @OptIn(KoinExperimentalAPI::class)
-class App :
-  Application(),
-  KoinStartup {
+class App : Application() {
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val metadataCache: VideoMetadataCacheRepository by inject()
 
   override fun onCreate() {
     super.onCreate()
+
+    // Initialize Koin
+    startKoin {
+      androidContext(this@App)
+      modules(
+        PreferencesModule,
+        DatabaseModule,
+        FileManagerModule,
+      )
+    }
+
     Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
 
     FastThumbnails.initialize(this)
@@ -38,14 +46,4 @@ class App :
       }
     }
   }
-
-  override fun onKoinStartup() =
-    koinConfiguration {
-      androidContext(this@App)
-      modules(
-        PreferencesModule,
-        DatabaseModule,
-        FileManagerModule,
-      )
-    }
 }
