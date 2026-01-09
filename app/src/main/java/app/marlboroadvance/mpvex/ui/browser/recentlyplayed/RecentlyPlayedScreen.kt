@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -29,9 +30,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
+import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
@@ -235,21 +238,46 @@ private fun RecentItemsContent(
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
+  val thumbnailRepository = koinInject<ThumbnailRepository>()
+  val density = LocalDensity.current
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
   val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
   
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   
-  // Use the shared LazyListState and LazyGridState from CompositionLocal
   val listState = LocalLazyListState.current
   val gridState = LocalLazyGridState.current
   val coroutineScope = rememberCoroutineScope()
   val isRefreshing = remember { mutableStateOf(false) }
+  
+  val thumbWidthDp = if (isGridMode) {
+    (360.dp / videoGridColumns)
+  } else {
+    160.dp
+  }
+  val aspect = 16f / 9f
+  val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
+  val thumbHeightPx = (thumbWidthPx / aspect).toInt()
+  
+  val recentVideos = remember(recentItems) {
+    recentItems.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
+  }
+  
+  LaunchedEffect(recentVideos.size, showVideoThumbnails, thumbWidthPx, thumbHeightPx) {
+    if (showVideoThumbnails && recentVideos.isNotEmpty()) {
+      thumbnailRepository.startFolderThumbnailGeneration(
+        folderId = "recently_played",
+        videos = recentVideos,
+        widthPx = thumbWidthPx,
+        heightPx = thumbHeightPx,
+      )
+    }
+  }
 
-  // Check if at top of list/grid to hide scrollbar
   val isAtTop by remember {
     derivedStateOf {
       if (isGridMode) {
@@ -270,12 +298,11 @@ private fun RecentItemsContent(
 
   PullRefreshBox(
     isRefreshing = isRefreshing,
-    onRefresh = { /* No refresh needed for recently played */ },
+    onRefresh = { },
     listState = listState,
     modifier = modifier.fillMaxSize(),
   ) {
     if (isGridMode) {
-      // Grid mode
       LazyVerticalGridScrollbar(
         state = gridState,
         settings = ScrollbarSettings(
@@ -284,7 +311,7 @@ private fun RecentItemsContent(
         ),
       ) {
         LazyVerticalGrid(
-          columns = GridCells.Fixed(videoGridColumns), // Use video grid columns for history items
+          columns = GridCells.Fixed(videoGridColumns),
           state = gridState,
           modifier = Modifier.fillMaxSize(),
           contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
@@ -378,7 +405,6 @@ private fun RecentItemsContent(
         }
       }
     } else {
-      // List mode
       LazyColumnScrollbar(
         state = listState,
         settings = ScrollbarSettings(

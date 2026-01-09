@@ -806,7 +806,7 @@ fun PlayerControls(
                 }
               )
               .constrainAs(seekbar) {
-                bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
+                bottom.linkTo(parent.bottom, if (isPortrait) 64.dp else spacing.small)
                 start.linkTo(parent.start, spacing.medium)
                 end.linkTo(parent.end, spacing.medium)
               },
