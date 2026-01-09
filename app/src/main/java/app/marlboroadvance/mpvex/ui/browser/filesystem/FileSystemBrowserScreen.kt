@@ -975,6 +975,7 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
+            modifier = Modifier.padding(bottom = 88.dp),
           ) {
             LazyVerticalGrid(
             columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
@@ -1061,6 +1062,7 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
+            modifier = Modifier.padding(bottom = 88.dp),
           ) {
             LazyColumn(
               state = listState,
@@ -1438,10 +1440,11 @@ private fun FileSystemSearchContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
+        modifier = modifier.padding(bottom = 88.dp),
       ) {
         LazyColumn(
           state = listState,
-          modifier = modifier.fillMaxSize(),
+          modifier = Modifier.fillMaxSize(),
           contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
         ) {
           items(searchResults) { item ->

@@ -42,11 +42,7 @@ mediasession = { group = "androidx.media", name = "media", version = "1.7.1" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
-
-# Using local AAR file instead
-# mpv-lib = "com.github.marlboro-advance:mpvlibAndroid:v0.0.1"
 seeker = "com.github.abdallahmehiz:seeker:2.0.1"
-
 material = "com.google.android.material:material:1.14.0-alpha08"
 mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
 
@@ -55,7 +51,6 @@ koin-core = { module = "io.insert-koin:koin-core" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-compose = { module = "io.insert-koin:koin-compose" }
 koin-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" }
-koin-startup = { module = "io.insert-koin:koin-androidx-startup" }
 
 compose-prefs = { module = "me.zhanghai.compose.preference:preference", version = "2.1.0" }
 

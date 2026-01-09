@@ -377,6 +377,7 @@ private fun PlaylistListContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
+        modifier = Modifier.padding(bottom = 88.dp),
       ) {
         LazyVerticalGrid(
           columns = GridCells.Fixed(folderGridColumns),
@@ -411,6 +412,7 @@ private fun PlaylistListContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
+        modifier = Modifier.padding(bottom = 88.dp),
       ) {
         LazyColumn(
           state = listState,

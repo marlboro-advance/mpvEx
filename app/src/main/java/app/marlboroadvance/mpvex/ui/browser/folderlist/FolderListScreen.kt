@@ -419,12 +419,13 @@ object FolderListScreen : Screen {
                     thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
                     thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
                   ),
+                  modifier = Modifier
+                    .padding(padding)
+                    .padding(bottom = 88.dp),
                 ) {
                   LazyColumn(
                     state = searchListState,
-                    modifier = Modifier
-                      .fillMaxSize()
-                      .padding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
                   ) {
                     items(filteredVideos) { video ->
@@ -592,6 +593,7 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
+          modifier = Modifier.padding(bottom = 88.dp),
         ) {
           LazyVerticalGrid(
             columns = GridCells.Fixed(folderGridColumns),
@@ -636,6 +638,7 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
+          modifier = Modifier.padding(bottom = 88.dp),
         ) {
           LazyColumn(
             state = listState,
