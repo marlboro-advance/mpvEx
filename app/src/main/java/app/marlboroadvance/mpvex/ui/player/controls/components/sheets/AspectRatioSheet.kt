@@ -250,9 +250,9 @@ private fun AddCustomRatioRow(
       }
     }
 
-    if (errorMessage != null) {
+    errorMessage?.let { msg ->
       Text(
-        text = errorMessage!!,
+        text = msg,
         color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(start = MaterialTheme.spacing.small, top = 4.dp),

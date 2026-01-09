@@ -9,7 +9,7 @@ import app.marlboroadvance.mpvex.ui.player.VideoAspect
 class PlayerPreferences(
   preferenceStore: PreferenceStore,
 ) {
-  val orientation = preferenceStore.getEnum("player_orientation", PlayerOrientation.SensorLandscape)
+  val orientation = preferenceStore.getEnum("player_orientation", PlayerOrientation.Video)
   val invertDuration = preferenceStore.getBoolean("invert_duration")
   val holdForMultipleSpeed = preferenceStore.getFloat("hold_for_multiple_speed", 2f)
   val showDynamicSpeedOverlay = preferenceStore.getBoolean("show_dynamic_speed_overlay", true)

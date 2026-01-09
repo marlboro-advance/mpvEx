@@ -23,24 +23,24 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
-import kotlin.math.min
 
 class ThumbnailRepository(
   private val context: Context,
 ) {
-  // Get appearance preferences 
   private val appearancePreferences by lazy { 
     org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.preferences.AppearancePreferences>(
       app.marlboroadvance.mpvex.preferences.AppearancePreferences::class.java
     ) 
   }
-  private val diskCacheDimension = 512
-  private val diskJpegQuality = 50
+  private val diskCacheDimension: Int
+    get() = appearancePreferences.thumbnailQuality.get().dimension
+  private val diskJpegQuality = 100
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
   private val ongoingOperations = ConcurrentHashMap<String, Deferred<Bitmap?>>()
 
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val maxconcurrentfolders = 3
 
   private data class FolderState(
     val signature: String,
@@ -76,9 +76,7 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val key = thumbnailKey(video, widthPx, heightPx)
 
-      // Check if this is a network video and if network thumbnails are disabled
       if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
-        // Return null immediately for network videos when thumbnails are disabled
         return@withContext null
       }
 
@@ -93,25 +91,20 @@ class ThumbnailRepository(
       val deferred =
         async {
           try {
-            // 1) Check disk cache
             loadFromDisk(video)?.let { thumbnail ->
               synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
               _thumbnailReadyKeys.tryEmit(key)
               return@async thumbnail
             }
 
-            // 2) Skip generation for network videos if the preference is disabled
             if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
               return@async null
             }
 
-            // 3) Generate with disk cache dimension
-            // FastThumbnails API returns bitmaps at correct aspect ratio
             val thumbnail =
               generateWithFastThumbnails(video, diskCacheDimension)
                 ?: return@async null
 
-            // 4) Cache in memory and disk
             synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
             _thumbnailReadyKeys.tryEmit(key)
             writeToDisk(video, thumbnail)
@@ -126,19 +119,13 @@ class ThumbnailRepository(
       return@withContext deferred.await()
     }
 
-  /**
-   * Cache-only thumbnail lookup: checks memory + disk, but never generates.
-   * Useful when changing view modes (list/grid) so we don't restart generation.
-   */
   suspend fun getCachedThumbnail(
     video: Video,
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
-      // Check if this is a network video and if network thumbnails are disabled
       if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
-        // Return null immediately for network videos when thumbnails are disabled
         return@withContext null
       }
       
@@ -156,9 +143,7 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
-    // Check if this is a network video and if network thumbnails are disabled
     if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
-      // Return null immediately for network videos when thumbnails are disabled
       return null
     }
     
@@ -167,7 +152,6 @@ class ThumbnailRepository(
   }
 
   fun clearThumbnailCache() {
-    // Stop any active folder work.
     folderJobs.values.forEach { it.cancel() }
     folderJobs.clear()
     folderStates.clear()
@@ -177,7 +161,6 @@ class ThumbnailRepository(
       memoryCache.evictAll()
     }
 
-    // Clear disk cache.
     runCatching {
       if (diskDir.exists()) {
         diskDir.listFiles()?.forEach { it.delete() }
@@ -191,7 +174,6 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ) {
-    // Filter out network videos if the preference is disabled
     val filteredVideos = if (appearancePreferences.showNetworkThumbnails.get()) {
       videos
     } else {
@@ -199,6 +181,16 @@ class ThumbnailRepository(
     }
     
     if (filteredVideos.isEmpty()) return
+    
+    folderJobs.entries.removeAll { !it.value.isActive }
+    
+    if (folderJobs.size >= maxconcurrentfolders && !folderJobs.containsKey(folderId)) {
+      folderJobs.entries.firstOrNull()?.let { (oldestId, job) ->
+        job.cancel()
+        folderJobs.remove(oldestId)
+        folderStates.remove(oldestId)
+      }
+    }
     
     val signature = folderSignature(filteredVideos, widthPx, heightPx)
     val state =
@@ -223,10 +215,6 @@ class ThumbnailRepository(
       }
   }
 
-  fun pauseFolderThumbnailGeneration(folderId: String) {
-    folderJobs.remove(folderId)?.cancel()
-  }
-
   fun thumbnailKey(
     video: Video,
     width: Int,
@@ -237,17 +225,12 @@ class ThumbnailRepository(
   }
 
   private fun videoBaseKey(video: Video): String {
-    val base = video.path.ifBlank { video.uri.toString() }
-    
-    // For network URLs, we need a stable key that doesn't include
-    // size or dateModified since those values might change between sessions
-    // or not be available reliably for network streams
     if (isNetworkUrl(video.path)) {
+      val base = video.path.ifBlank { video.uri.toString() }
       return "$base|network"
     }
     
-    // For local files, include mutable file attributes so cache invalidates when file changes
-    return "$base|${video.size}|${video.dateModified}"
+    return "${video.size}|${video.dateModified}|${video.duration}"
   }
 
   private fun keyToFileName(key: String): String {
@@ -259,8 +242,6 @@ class ThumbnailRepository(
 
   private fun diskKey(video: Video): String {
     val baseKey = videoBaseKey(video)
-    // For network URLs, add a special suffix to indicate the 3-second position
-    // This ensures we don't mix thumbnails from different positions
     return if (isNetworkUrl(video.path)) {
       "$baseKey|disk|d$diskCacheDimension|pos3"
     } else {
@@ -307,51 +288,41 @@ class ThumbnailRepository(
   ): Bitmap? {
     return runCatching {
       val positionSec = preferredPositionSeconds(video)
-      // New API: generateAsync(path, position, dimension, useHwDec)
-     val bmp = FastThumbnails.generateAsync(
+      val qualityPreset = appearancePreferences.thumbnailQuality.get().qualityPreset
+      
+      val bmp = FastThumbnails.generateAsync(
           video.path.ifBlank { video.uri.toString() },
           positionSec,
           dimension,
-          false
+          false,
+          qualityPreset
       ) ?: return@runCatching null
       rotateIfNeeded(video, bmp)
     }.getOrNull()
   }
 
   private fun preferredPositionSeconds(video: Video): Double {
-    // Check if this is a network URL
     val isNetworkUrl = isNetworkUrl(video.path)
     
-    // For network URLs, use 3 seconds position
     if (isNetworkUrl) {
       val durationSec = video.duration / 1000.0
       
-      // If duration is known and valid, ensure we don't go beyond it
       if (durationSec > 0.0) {
-        // Use 3 seconds, but don't go beyond 0.1s before the end
         return 2.0.coerceIn(0.0, max(0.0, durationSec - 0.1))
       }
       
-      // If duration is unknown or zero, just use 3 seconds
       return 2.0
     }
     
-    // For local files, use standard positioning
     val durationSec = video.duration / 1000.0
     
-    // Handle invalid duration or very short videos (under 20 seconds)
     if (durationSec <= 0.0 || durationSec < 20.0) return 0.0
     
-    // For longer videos, use the lesser of 3 seconds
     val candidate = 3.0
     
-    // Ensure position is within valid range (not beyond end of video)
     return candidate.coerceIn(0.0, max(0.0, durationSec - 0.1))
   }
   
-  /**
-   * Returns true if the path is a network URL
-   */
   private fun isNetworkUrl(path: String): Boolean {
     return path.startsWith("http://", ignoreCase = true) ||
       path.startsWith("https://", ignoreCase = true) ||

@@ -85,7 +85,7 @@ fun PlaylistActionFab(
       ToggleFloatingActionButton(
         checked = expanded,
         onCheckedChange = { onExpandedChange(!expanded) },
-        containerSize = ToggleFloatingActionButtonDefaults.containerSizeMedium(),
+        containerSize = ToggleFloatingActionButtonDefaults.containerSize(),
         modifier = Modifier
           .semantics {
             traversalIndex = -1f
@@ -128,8 +128,8 @@ fun PlaylistActionFab(
           modifier = Modifier.animateIcon(
             checkedProgress = { checkedProgress },
             size = ToggleFloatingActionButtonDefaults.iconSize(
-              initialSize = 40.dp,
-              finalSize = 24.dp,
+              initialSize = 34.dp,
+              finalSize = 28.dp,
             ),
           ),
         )

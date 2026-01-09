@@ -41,6 +41,7 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
@@ -133,6 +134,11 @@ class PlayerActivity :
   private val advancedPreferences: AdvancedPreferences by inject()
 
   /**
+   * Preferences for browser settings.
+   */
+  private val browserPreferences: BrowserPreferences by inject()
+
+  /**
    * Manager for file operations.
    */
   private val fileManager: FileManager by inject()
@@ -210,6 +216,7 @@ class PlayerActivity :
   private var isUserFinishing = false
   private var noisyReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
+  private var savePlaybackStateJob: kotlinx.coroutines.Job? = null // Track ongoing save job
 
   // ==================== Background Playback ====================
 
@@ -338,9 +345,10 @@ class PlayerActivity :
     // Use windowed loading to prevent ANR with large playlists
     if (playlist.isEmpty() && playlistId != null) {
       lifecycleScope.launch(Dispatchers.IO) {
+        val pid = playlistId ?: return@launch
         try {
           // Get total count first to decide if we need windowed loading
-          val totalCount = playlistRepository.getPlaylistItemCount(playlistId!!)
+          val totalCount = playlistRepository.getPlaylistItemCount(pid)
           
           if (totalCount > 100) {
             // Large playlist: use windowed loading to prevent ANR
@@ -349,7 +357,7 @@ class PlayerActivity :
             val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
             
             val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = playlistId!!,
+              playlistId = pid,
               centerIndex = playlistIndex,
               windowSize = windowSize
             )
@@ -358,16 +366,16 @@ class PlayerActivity :
               playlist = items
               playlistWindowOffset = startOffset
               playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $playlistId (total: $totalCount)")
+              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $pid (total: $totalCount)")
             }
           } else {
             // Small playlist: load everything at once
-            val items = playlistRepository.getPlaylistItemsAsUris(playlistId!!)
+            val items = playlistRepository.getPlaylistItemsAsUris(pid)
             withContext(Dispatchers.Main) {
               playlist = items
               playlistWindowOffset = 0
               playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $playlistId")
+              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $pid")
             }
           }
         } catch (e: Exception) {
@@ -395,7 +403,12 @@ class PlayerActivity :
     setHttpHeadersFromExtras(intent.extras)
 
     getPlayableUri(intent)?.let(player::playFile)
-    setOrientation()
+
+    // Only set orientation immediately if NOT in Video mode
+    // For Video mode, wait for video-params/aspect to become available
+    if (playerPreferences.orientation.get() != PlayerOrientation.Video) {
+      setOrientation()
+    }
 
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
@@ -547,7 +560,21 @@ class PlayerActivity :
         mediaPlaybackService = null
       }
 
-      isReady = false
+      // Wait for any pending save operation to complete before destroying MPV
+      // This prevents the race condition where the save coroutine tries to access
+      // MPV properties after MPVLib.destroy() has been called
+      savePlaybackStateJob?.let { job ->
+        Log.d(TAG, "Waiting for save playback state job to complete...")
+        runCatching {
+          // Use runBlocking to ensure we wait for the job to finish
+          // This is safe here as onDestroy is already on the main thread
+          kotlinx.coroutines.runBlocking {
+            job.join()
+          }
+        }
+        Log.d(TAG, "Save playback state job completed")
+      }
+
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
@@ -1278,9 +1305,7 @@ class PlayerActivity :
 
   /**
    * Observer callback for MPV property changes (Long values).
-   *
-   * This method is called when an MPV property (with Long value) changes.
-   * Extend this method to handle properties as needed.
+   * Handles video width and height changes.
    *
    * @param property The property name that changed
    * @param value The new Long value
@@ -1290,7 +1315,21 @@ class PlayerActivity :
     property: String,
     value: Long,
   ) {
-    // Currently no Long properties are handled
+    when (property) {
+      "video-params/w",
+      "video-params/h" -> {
+        // Safety check: don't access MPV during cleanup
+        if (!mpvInitialized || player.isExiting || isFinishing) return
+
+        val aspect = player.getVideoOutAspect()
+        Log.d(TAG, "Video dimension changed: $property, aspect: $aspect")
+        pipHelper.updatePictureInPictureParams()
+        // Update orientation when video dimensions change (fixes Video orientation mode)
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
+          setOrientation()
+        }
+      }
+    }
   }
 
   /**
@@ -1436,28 +1475,31 @@ class PlayerActivity :
     property: String,
     value: Double,
   ) {
-    // Currently no Double properties are handled
-  }
-
-  /**
-   * Observer callback for MPV property changes (no value parameter).
-   * Handles video aspect ratio changes.
-   *
-   * @param property The property name that changed
-   */
-  internal fun onObserverEvent(property: String) {
+    // Handle Double properties
     when (property) {
       "video-params/aspect" -> {
         // Safety check: don't access MPV during cleanup
         if (!mpvInitialized || player.isExiting || isFinishing) return
-        
+
+        val aspect = player.getVideoOutAspect()
+        Log.d(TAG, "video-params/aspect changed: $aspect")
         pipHelper.updatePictureInPictureParams()
         // Update orientation when video aspect ratio changes (fixes Video orientation mode)
-        if (playerPreferences.orientation.get() == PlayerOrientation.Video) {
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
           setOrientation()
         }
       }
     }
+  }
+
+  /**
+   * Observer callback for MPV property changes (no value parameter).
+   * Handles properties with no value parameter.
+   *
+   * @param property The property name that changed
+   */
+  internal fun onObserverEvent(property: String) {
+    // Currently no properties use this signature
   }
 
   /**
@@ -1534,7 +1576,25 @@ class PlayerActivity :
       }
     }
 
-    setOrientation()
+    // Only set orientation immediately if NOT in Video mode
+    // For Video mode, wait for video-params/aspect to become available
+    if (playerPreferences.orientation.get() != PlayerOrientation.Video) {
+      setOrientation()
+    } else {
+      // For Video mode, try to set orientation after a short delay to ensure
+      // video dimensions are available
+      lifecycleScope.launch {
+        kotlinx.coroutines.delay(100)
+        if (mpvInitialized && !player.isExiting && !isFinishing) {
+          val aspect = player.getVideoOutAspect()
+          Log.d(TAG, "handleFileLoaded - Video mode, aspect after delay: $aspect")
+          if (aspect != null && aspect > 0) {
+            setOrientation()
+          }
+        }
+      }
+    }
+
     applySubtitlePreferences()
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
@@ -1549,7 +1609,7 @@ class PlayerActivity :
         // For network files played via proxy (SMB/WebDAV/FTP), use the original network file path
         val networkFilePath = intent.getStringExtra("network_file_path")
         val networkConnectionId = intent.getLongExtra("network_connection_id", -1L)
-        
+
         if (networkFilePath != null && networkConnectionId != -1L) {
           // Pass network file path and connection ID for subtitle discovery
           SubtitleOps.autoloadSubtitles(
@@ -1766,7 +1826,11 @@ class PlayerActivity :
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaIdentifier.isBlank()) return
 
-    GlobalScope.launch(Dispatchers.IO) {
+    // Cancel any previous pending save operation
+    savePlaybackStateJob?.cancel()
+
+    // Launch new save job and track it
+    savePlaybackStateJob = lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
         Log.d(TAG, "Saving playback state for: $mediaTitle (identifier: $mediaIdentifier)")
@@ -2148,12 +2212,36 @@ class PlayerActivity :
    * IMPORTANT: Preferences are the single source of truth for orientation.
    * This method applies the preference value when videos load.
    * The rotation button temporarily overrides this without changing preferences.
+   *
+   * For "Video" orientation mode, this will wait for video-params/aspect to update
+   * to the correct orientation, starting with landscape as fallback.
    */
   private fun setOrientation() {
+    val orientationPref = playerPreferences.orientation.get()
+
     requestedOrientation =
-      when (playerPreferences.orientation.get()) {
+      when (orientationPref) {
         PlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        PlayerOrientation.Video -> determineVideoOrientation()
+        PlayerOrientation.Video -> {
+          // For video orientation, check if aspect is available
+          val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
+          Log.d(TAG, "setOrientation - Video mode: aspect=$aspect")
+          if (aspect == null || aspect <= 0.0) {
+            // Aspect not available yet - wait for video-params/aspect update
+            Log.d(TAG, "setOrientation - Aspect not available, defaulting to landscape")
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+          } else {
+            // Aspect available - set correct orientation now
+            val orientation = if (aspect > 1.0) {
+              Log.d(TAG, "setOrientation - Aspect $aspect > 1.0, setting landscape")
+              ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+              Log.d(TAG, "setOrientation - Aspect $aspect <= 1.0, setting portrait")
+              ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            }
+            orientation
+          }
+        }
         PlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         PlayerOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
         PlayerOrientation.SensorPortrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
@@ -2161,33 +2249,6 @@ class PlayerActivity :
         PlayerOrientation.ReverseLandscape -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
         PlayerOrientation.SensorLandscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
       }
-  }
-
-  /**
-   * Determines the appropriate orientation based on video aspect ratio.
-   *
-   * @return Orientation constant for landscape (if aspect > 1.0) or portrait.
-   *         Returns sensor landscape as fallback if video aspect is not yet available.
-   */
-  private fun determineVideoOrientation(): Int {
-    // Safety check: ensure MPV is initialized and not being cleaned up
-    if (!mpvInitialized || player.isExiting) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
-    val aspect = runCatching { player.getVideoOutAspect() }.getOrNull()
-    
-    // If video aspect is not yet available, default to sensor landscape
-    // This will be updated when video-params/aspect becomes available
-    if (aspect == null || aspect <= 0.0) {
-      return ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
-    
-    return if (aspect > 1.0) {
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    } else {
-      ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    }
   }
 
   // ==================== Key Event Handling ====================
@@ -2934,7 +2995,17 @@ class PlayerActivity :
           file.isFile && file.extension.lowercase() in videoExtensions
         } ?: return@runCatching
 
-        val siblingFiles = files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        val launchSource = intent.getStringExtra("launch_source") ?: ""
+        val siblingFiles = if (launchSource == "video_list") {
+          val videoSortType = browserPreferences.videoSortType.get()
+          val videoSortOrder = browserPreferences.videoSortOrder.get()
+          val bucketId = parentFolder.absolutePath.replace("\\", "/")
+          val videosInFolder = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(context, setOf(bucketId))
+          val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
+          sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }
+        } else {
+          files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        }
 
         if (siblingFiles.size <= 1) return@runCatching
 

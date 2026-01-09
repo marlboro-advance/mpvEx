@@ -243,8 +243,8 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
       }
       SliderItem(
         stringResource(R.string.player_sheets_sub_typography_border_size),
-        value = borderSize!!,
-        valueText = borderSize.toString(),
+        value = borderSize ?: preferences.borderSize.get(),
+        valueText = (borderSize ?: preferences.borderSize.get()).toString(),
         onChange = {
           preferences.borderSize.set(it)
           MPVLib.setPropertyInt("sub-outline-size", it)
@@ -254,8 +254,8 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
       )
       SliderItem(
         stringResource(R.string.player_sheets_subtitles_shadow_offset),
-        value = shadowOffset!!,
-        valueText = shadowOffset.toString(),
+        value = shadowOffset ?: preferences.shadowOffset.get(),
+        valueText = (shadowOffset ?: preferences.shadowOffset.get()).toString(),
         onChange = {
           preferences.shadowOffset.set(it)
           MPVLib.setPropertyInt("sub-shadow-offset", it)

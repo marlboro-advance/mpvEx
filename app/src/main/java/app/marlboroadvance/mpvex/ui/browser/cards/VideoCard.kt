@@ -189,6 +189,35 @@ fun VideoCard(
             )
           }
 
+          // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
+          // Like MX Player: show NEW for videos added within threshold days that haven't been played
+          if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
+            // Check if video is recently added (within threshold days)
+            val currentTime = System.currentTimeMillis()
+            val videoAge = currentTime - (video.dateAdded * 1000) // dateAdded is in seconds
+            val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
+
+            if (videoAge <= thresholdMillis) {
+              Box(
+                modifier =
+                  Modifier
+                    .align(Alignment.TopStart)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFD32F2F)) // Warning red color
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+              ) {
+                Text(
+                  text = stringResource(R.string.video_label_new),
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                  ),
+                  color = Color.White,
+                )
+              }
+            }
+          }
+
           // Duration overlay
           Box(
             modifier = Modifier
@@ -235,7 +264,7 @@ fun VideoCard(
             if (gridColumns == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall
           },
           color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
-          maxLines = 2,
+          maxLines = maxLines,
           overflow = TextOverflow. Ellipsis,
           textAlign = if (useFolderNameStyle) {
             TextAlign.Center

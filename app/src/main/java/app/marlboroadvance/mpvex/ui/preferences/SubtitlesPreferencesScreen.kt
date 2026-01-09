@@ -201,6 +201,36 @@ object SubtitlesPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val overrideAss by preferences.overrideAssSubs.collectAsState()
+              SwitchPreference(
+                value = overrideAss,
+                onValueChange = { preferences.overrideAssSubs.set(it) },
+                title = { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.player_sheets_sub_override_ass_subtitle),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
+              val scaleByWindow by preferences.scaleByWindow.collectAsState()
+              SwitchPreference(
+                value = scaleByWindow,
+                onValueChange = { preferences.scaleByWindow.set(it) },
+                title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.player_sheets_sub_scale_by_window_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               // Directory picker preference with reload and clear icons on the right
               Box(
                 modifier =

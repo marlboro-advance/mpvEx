@@ -431,8 +431,6 @@ private fun VideoListContent(
   val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
   val thumbHeightPx = (thumbWidthPx / aspect).roundToInt()
 
-  // Start sequential thumbnail generation for the entire folder (even off-viewport).
-  // When this screen is disposed (folder closed), generation pauses for this folder.
   LaunchedEffect(folderId, showVideoThumbnails, videosWithInfo.size, thumbWidthPx, thumbHeightPx) {
     if (showVideoThumbnails && videosWithInfo.isNotEmpty()) {
       thumbnailRepository.startFolderThumbnailGeneration(
@@ -441,11 +439,6 @@ private fun VideoListContent(
         widthPx = thumbWidthPx,
         heightPx = thumbHeightPx,
       )
-    }
-  }
-  DisposableEffect(folderId) {
-    onDispose {
-      thumbnailRepository.pauseFolderThumbnailGeneration(folderId)
     }
   }
 
@@ -476,13 +469,11 @@ private fun VideoListContent(
     }
 
     else -> {
-      // Remember scroll position across recompositions and navigation
       val rememberedListIndex = rememberSaveable { mutableIntStateOf(0) }
       val rememberedListOffset = rememberSaveable { mutableIntStateOf(0) }
       val rememberedGridIndex = rememberSaveable { mutableIntStateOf(0) }
       val rememberedGridOffset = rememberSaveable { mutableIntStateOf(0) }
       
-      // Determine initial position: use remembered position, or find recently played if enabled
       val initialListIndex = if (rememberedListIndex.intValue > 0) {
           rememberedListIndex.intValue
       } else if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
@@ -509,7 +500,6 @@ private fun VideoListContent(
           foundIndex
       } else 0
       
-      // Create the list/grid states with remembered positions
       val listState = rememberLazyListState(
           initialFirstVisibleItemIndex = initialListIndex,
           initialFirstVisibleItemScrollOffset = rememberedListOffset.intValue
@@ -520,7 +510,6 @@ private fun VideoListContent(
           initialFirstVisibleItemScrollOffset = rememberedGridOffset.intValue
       )
       
-      // Save scroll position whenever it changes
       LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
           rememberedListIndex.intValue = listState.firstVisibleItemIndex
           rememberedListOffset.intValue = listState.firstVisibleItemScrollOffset
@@ -533,7 +522,6 @@ private fun VideoListContent(
       
       val coroutineScope = rememberCoroutineScope()
 
-      // Check if at top of list/grid to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
         derivedStateOf {
           if (mediaLayoutMode == MediaLayoutMode.GRID) {
@@ -544,10 +532,8 @@ private fun VideoListContent(
         }
       }
 
-      // Only show scrollbar if list has more than 20 items
       val hasEnoughItems = videosWithInfo.size > 20
 
-      // Animate scrollbar alpha
       val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
@@ -611,7 +597,6 @@ private fun VideoListContent(
             }
           }
         } else {
-          // Original list mode code unchanged
           LazyColumnScrollbar(
             state = listState,
             settings = ScrollbarSettings(

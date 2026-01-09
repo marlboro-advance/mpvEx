@@ -28,7 +28,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -145,6 +147,7 @@ fun PlayerControls(
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
   val showSystemStatusBar by playerPreferences.showSystemStatusBar.collectAsState()
+  val showSystemNavigationBar by playerPreferences.showSystemNavigationBar.collectAsState()
   val interactionSource = remember { MutableInteractionSource() }
   val controlsShown by viewModel.controlsShown.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
@@ -539,12 +542,13 @@ fun PlayerControls(
 
           when {
             gestureSeekAmount != null -> {
+              val gs = gestureSeekAmount ?: Pair(0, 0)
               Text(
                 stringResource(
                   R.string.player_gesture_seek_indicator,
-                  if (gestureSeekAmount!!.second >= 0) '+' else '-',
-                  Utils.prettyTime(abs(gestureSeekAmount!!.second)),
-                  Utils.prettyTime(gestureSeekAmount!!.first + gestureSeekAmount!!.second),
+                  if (gs.second >= 0) '+' else '-',
+                  Utils.prettyTime(abs(gs.second)),
+                  Utils.prettyTime(gs.first + gs.second),
                 ),
                 style =
                   MaterialTheme.typography.headlineMedium.copy(
@@ -792,11 +796,23 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(seekbar) {
-              bottom.linkTo(parent.bottom, if (isPortrait) spacing.larger else spacing.small)
-              start.linkTo(parent.start, spacing.medium)
-              end.linkTo(parent.end, spacing.medium)
-            },
+            Modifier
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(seekbar) {
+                bottom.linkTo(parent.bottom, if (isPortrait) 64.dp else spacing.small)
+                start.linkTo(parent.start, spacing.medium)
+                end.linkTo(parent.end, spacing.medium)
+              },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
           val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
@@ -873,6 +889,17 @@ fun PlayerControls(
                   Modifier
                 }
               )
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
+                } else {
+                  Modifier
+                }
+              )
               .constrainAs(topLeftControls) {
                 top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
                 start.linkTo(parent.start, spacing.medium)
@@ -927,6 +954,17 @@ fun PlayerControls(
                   Modifier
                 }
               )
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
+                } else {
+                  Modifier
+                }
+              )
               .constrainAs(topRightControls) {
                 top.linkTo(parent.top, spacing.small)
                 end.linkTo(parent.end, spacing.medium)
@@ -968,16 +1006,28 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(bottomRightControls) {
-              bottom.linkTo(seekbar.top, spacing.small)
-              if (isPortrait) {
-                start.linkTo(parent.start, spacing.medium)
-                end.linkTo(parent.end, spacing.medium)
-                width = Dimension.fillToConstraints
-              } else {
-                end.linkTo(parent.end, spacing.medium)
-              }
-            },
+            Modifier
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(bottomRightControls) {
+                bottom.linkTo(seekbar.top, spacing.small)
+                if (isPortrait) {
+                  start.linkTo(parent.start, spacing.medium)
+                  end.linkTo(parent.end, spacing.medium)
+                  width = Dimension.fillToConstraints
+                } else {
+                  end.linkTo(parent.end, spacing.medium)
+                }
+              },
         ) {
           if (isPortrait) {
             BottomPlayerControlsPortrait(
@@ -1035,12 +1085,24 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(bottomLeftControls) {
-              bottom.linkTo(seekbar.top, spacing.small)
-              start.linkTo(parent.start, spacing.medium)
-              width = Dimension.fillToConstraints
-              end.linkTo(bottomRightControls.start, spacing.small)
-            },
+            Modifier
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(bottomLeftControls) {
+                bottom.linkTo(seekbar.top, spacing.small)
+                start.linkTo(parent.start, spacing.medium)
+                width = Dimension.fillToConstraints
+                end.linkTo(bottomRightControls.start, spacing.small)
+              },
         ) {
           BottomLeftPlayerControlsLandscape(
             buttons = bottomLeftButtons,

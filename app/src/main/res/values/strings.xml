@@ -33,8 +33,13 @@
     <string name="pref_appearance_show_unplayed_old_video_label_summary">Display a \"New\" label on videos added within specified days that have never been played</string>
     <string name="pref_appearance_unplayed_old_video_days_title">Days threshold for new video label</string>
     <string name="pref_appearance_unplayed_old_video_days_summary">Videos added within the last %d days without playback history will be marked as new</string>
-    <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails</string>
+    <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
     <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
+    <string name="pref_appearance_thumbnail_quality_title">Thumbnail quality</string>
+    <string name="pref_appearance_thumbnail_quality_summary">Higher quality uses more storage and takes longer to generate</string>
+    <string name="pref_appearance_thumbnail_quality_low">Low</string>
+    <string name="pref_appearance_thumbnail_quality_medium">Medium</string>
+    <string name="pref_appearance_thumbnail_quality_high">High</string>
     <string name="video_label_new">NEW</string>
 
     <string name="pref_layout_title">Player Layout</string>
@@ -192,6 +197,7 @@
     <string name="player_sheets_sub_color_blue">Blue</string>
     <string name="player_sheets_sub_color_alpha">Alpha</string>
     <string name="player_sheets_sub_override_ass">Override ASS/SSA subtitles</string>
+    <string name="player_sheets_sub_override_ass_subtitle">Force override ASS/SSA subtitle formatting</string>
     <string name="player_sheets_sub_scale_by_window">Scale by window</string>
     <string name="player_sheets_sub_scale_by_window_summary">Scale subtitles by window size and use video margins</string>
     <string name="player_sheets_sub_scale">Scale</string>
