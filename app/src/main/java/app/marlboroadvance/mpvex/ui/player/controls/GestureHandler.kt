@@ -231,7 +231,8 @@ fun GestureHandler(
                   lastTapRegion == region &&
                   timeSinceLastTap < multiTapContinueWindow &&
                   positionChange < 100f &&
-                  tapCount >= 2
+                  tapCount >= 2 &&
+                  isDoubleTapSeeking
 
                 // Check if this is a valid double-tap
                 val isDoubleTap =
@@ -243,6 +244,8 @@ fun GestureHandler(
                 if (isDoubleTap && !areControlsLocked) {
                   // Valid double-tap detected
                   tapCount = 2
+                  lastTapTime = downTime
+                  lastTapPosition = downPosition
                   pendingSingleTapRegion = null // Cancel pending single tap
                   pendingSingleTapPosition = null
                   wasConsumedByTapGesture = true
@@ -279,6 +282,8 @@ fun GestureHandler(
                   wasConsumedByTapGesture = true
                   pointer.consume()
                   lastSeekTime = System.currentTimeMillis()
+                  lastTapTime = downTime
+                  lastTapPosition = downPosition
 
                   when (region) {
                     "right" -> {
