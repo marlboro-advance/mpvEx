@@ -14,18 +14,7 @@ import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import `is`.xyz.mpv.ThumbnailQuality as MpvThumbnailQuality
 import kotlinx.collections.immutable.ImmutableList
-
-enum class ThumbnailQuality(
-  val dimension: Int, 
-  val titleRes: Int,
-  val qualityPreset: MpvThumbnailQuality
-) {
-  LOW(1024, R.string.pref_appearance_thumbnail_quality_low, MpvThumbnailQuality.FAST),
-  MEDIUM(1024, R.string.pref_appearance_thumbnail_quality_medium, MpvThumbnailQuality.NORMAL),
-  HIGH(1024, R.string.pref_appearance_thumbnail_quality_high, MpvThumbnailQuality.HQ)
-}
 
 class AppearancePreferences(
   preferenceStore: PreferenceStore,
@@ -40,7 +29,6 @@ class AppearancePreferences(
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val showNetworkThumbnails = preferenceStore.getBoolean("show_network_thumbnails", false)
   val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Wavy)
-  val thumbnailQuality = preferenceStore.getEnum("thumbnail_quality", ThumbnailQuality.LOW)
 
   val topLeftControls =
     preferenceStore.getString(

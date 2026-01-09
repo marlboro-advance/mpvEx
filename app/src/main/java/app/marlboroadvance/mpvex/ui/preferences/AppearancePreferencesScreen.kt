@@ -15,22 +15,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton
-import app.marlboroadvance.mpvex.preferences.ThumbnailQuality
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
@@ -281,38 +276,6 @@ object AppearancePreferencesScreen : Screen {
                   )
                 }
               )
-              
-              PreferenceDivider()
-              
-              val thumbnailQuality by preferences.thumbnailQuality.collectAsState()
-              val thumbnailRepository = koinInject<ThumbnailRepository>()
-              val previousQuality = remember { mutableStateOf(thumbnailQuality) }
-              
-              LaunchedEffect(thumbnailQuality) {
-                if (previousQuality.value != thumbnailQuality) {
-                  thumbnailRepository.clearThumbnailCache()
-                  previousQuality.value = thumbnailQuality
-                }
-              }
-              
-              Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                  text = stringResource(id = R.string.pref_appearance_thumbnail_quality_title),
-                  style = MaterialTheme.typography.titleMedium,
-                  modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
-                )
-                Text(
-                  text = stringResource(id = R.string.pref_appearance_thumbnail_quality_summary),
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.outline,
-                  modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                )
-                MultiChoiceSegmentedButton(
-                  choices = ThumbnailQuality.entries.map { context.getString(it.titleRes) }.toImmutableList(),
-                  selectedIndices = persistentListOf(ThumbnailQuality.entries.indexOf(thumbnailQuality)),
-                  onClick = { preferences.thumbnailQuality.set(ThumbnailQuality.entries[it]) },
-                )
-              }
             }
           }
 

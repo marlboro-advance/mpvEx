@@ -63,8 +63,8 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           onValueChange = {
             overrideAssSubs = it
             preferences.overrideAssSubs.set(it)
-            MPVLib.setPropertyString("sub-ass-override", if (it) "force" else "no")
-            MPVLib.setPropertyString("secondary-sub-ass-override", if (it) "force" else "no")
+            MPVLib.setPropertyString("sub-ass-override", if (it) "force" else "scale")
+            MPVLib.setPropertyString("secondary-sub-ass-override", if (it) "force" else "scale")
           },
           { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
         )
@@ -134,8 +134,8 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
               }
               val defaultOverride = preferences.overrideAssSubs.deleteAndGet()
               overrideAssSubs = defaultOverride
-              MPVLib.setPropertyString("sub-ass-override", if (defaultOverride) "force" else "no")
-              MPVLib.setPropertyString("secondary-sub-ass-override", if (defaultOverride) "force" else "no")
+              MPVLib.setPropertyString("sub-ass-override", if (defaultOverride) "force" else "scale")
+              MPVLib.setPropertyString("secondary-sub-ass-override", if (defaultOverride) "force" else "scale")
               val defaultScaleByWindow = preferences.scaleByWindow.deleteAndGet()
               scaleByWindow = defaultScaleByWindow
               val scaleValue = if (defaultScaleByWindow) "yes" else "no"

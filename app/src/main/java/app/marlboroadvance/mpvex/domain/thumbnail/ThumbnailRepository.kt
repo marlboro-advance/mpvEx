@@ -32,8 +32,7 @@ class ThumbnailRepository(
       app.marlboroadvance.mpvex.preferences.AppearancePreferences::class.java
     ) 
   }
-  private val diskCacheDimension: Int
-    get() = appearancePreferences.thumbnailQuality.get().dimension
+  private val diskCacheDimension = 1024
   private val diskJpegQuality = 100
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
@@ -288,14 +287,11 @@ class ThumbnailRepository(
   ): Bitmap? {
     return runCatching {
       val positionSec = preferredPositionSeconds(video)
-      val qualityPreset = appearancePreferences.thumbnailQuality.get().qualityPreset
       
       val bmp = FastThumbnails.generateAsync(
           video.path.ifBlank { video.uri.toString() },
           positionSec,
-          dimension,
-          false,
-          qualityPreset
+          dimension
       ) ?: return@runCatching null
       rotateIfNeeded(video, bmp)
     }.getOrNull()
