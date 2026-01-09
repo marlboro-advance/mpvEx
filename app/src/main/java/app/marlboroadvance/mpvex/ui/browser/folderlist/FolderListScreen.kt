@@ -128,6 +128,13 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val browserPreferences = koinInject<BrowserPreferences>()
+
+    // Defer showing full folder details for a short time to avoid heavy text measurement on startup/restart
+    val showDetailedItemsState = remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+      kotlinx.coroutines.delay(700)
+      showDetailedItemsState.value = true
+    }
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
     val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
@@ -138,6 +145,10 @@ object FolderListScreen : Screen {
     // Using MediaFileRepository singleton directly
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
+
+    // Show-detailed flag snapshot to avoid repeated reads in inner lambdas
+    val showDetailed = showDetailedItemsState.value
+    val lightweightMode = !showDetailed
 
     // Use the LazyListState from CompositionLocal instead of creating a new one
     val listState = LocalLazyListState.current
@@ -626,6 +637,7 @@ private fun FolderListContent(
               },
               newVideoCount = newCount,
               isGridMode = true,
+              lightweight = !hasCompletedInitialLoad,
             )
           }
         }
@@ -668,6 +680,7 @@ private fun FolderListContent(
                 },
                 newVideoCount = newCount,
                 isGridMode = false,
+                lightweight = !hasCompletedInitialLoad,
               )
             }
           }

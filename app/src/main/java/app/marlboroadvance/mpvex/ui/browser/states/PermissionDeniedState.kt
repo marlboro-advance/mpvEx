@@ -120,7 +120,7 @@ fun PermissionDeniedState(
 
       // Title
       Text(
-        text = "Storage Access Required",
+        text = stringResource(R.string.permission_storage_title),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -143,7 +143,7 @@ fun PermissionDeniedState(
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
           Text(
-            text = "mpvEx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions.",
+            text = stringResource(R.string.permission_storage_description),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
@@ -179,7 +179,7 @@ fun PermissionDeniedState(
         shape = RoundedCornerShape(16.dp),
       ) {
         Text(
-          text = "ALLOW ACCESS",
+          text = stringResource(R.string.permission_allow_access),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
         )
@@ -198,7 +198,7 @@ fun PermissionDeniedState(
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-          text = "Why do I see this?",
+          text = stringResource(R.string.permission_why_do_i_see_this),
           style = MaterialTheme.typography.bodyMedium,
           fontWeight = FontWeight.Medium,
         )
@@ -224,7 +224,7 @@ fun PermissionDeniedState(
       },
       title = {
         Text(
-          text = "Why this permission is needed",
+          text = stringResource(R.string.permission_explanation_title),
           style = MaterialTheme.typography.headlineSmall,
           fontWeight = FontWeight.Bold,
         )
@@ -238,25 +238,25 @@ fun PermissionDeniedState(
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
           Text(
-            text = "mpvEx has always required storage access permission as it's essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.",
+            text = stringResource(R.string.permission_explanation_p1),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
 
           Text(
-            text = "However, due to a change in security policy, apps built for Android 11 and above now require additional permission to continue accessing the same.",
+            text = stringResource(R.string.permission_explanation_p2),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
 
           Text(
-            text = "Please know that this permission is only used for the auto-discovery of media/subtitle files on your device and will not allow us to access the private data files stored by other apps in any way.",
+            text = stringResource(R.string.permission_explanation_p3),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
 
           Text(
-            text = "mpvEx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:",
+            text = stringResource(R.string.permission_explanation_p4),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -298,7 +298,7 @@ fun PermissionDeniedState(
           )
 
           Text(
-            text = "Be rest assured, your privacy is our utmost priority, and we neither access your files for other purposes nor transfer or store them to our servers. They remain safe on your device.",
+            text = stringResource(R.string.permission_explanation_p5),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium,

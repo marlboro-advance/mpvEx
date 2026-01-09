@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ fun FolderCard(
   newVideoCount: Int = 0,
   customChipContent: @Composable (() -> Unit)? = null,
   isGridMode: Boolean = false,
+  lightweight: Boolean = false,
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -121,7 +123,7 @@ fun FolderCard(
             tint = MaterialTheme.colorScheme.secondary,
           )
 
-          if (newVideoCount > 0) {
+          if (!lightweight && newVideoCount > 0) {
             Box(
               modifier =
                 Modifier
@@ -153,9 +155,12 @@ fun FolderCard(
           textAlign = androidx.compose.ui. text.style.TextAlign.Center,
         )
 
-        if (showTotalVideosChip && folder.videoCount > 0) {
+        if (!lightweight && showTotalVideosChip && folder.videoCount > 0) {
+          val videoCountText = remember(folder.videoCount) {
+            if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos"
+          }
           Text(
-            if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
+            videoCountText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme. onSurfaceVariant,
           )
@@ -192,7 +197,7 @@ fun FolderCard(
           )
 
           // Show new video count badge if folder contains new videos
-          if (newVideoCount > 0) {
+          if (!lightweight && newVideoCount > 0) {
             Box(
               modifier =
                 Modifier

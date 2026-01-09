@@ -12,7 +12,16 @@
     <string name="pref_preferences">Preferences</string>
 
     <string name="pref_appearance_title">Appearance</string>
-    <string name="pref_appearance_summary">Dark mode, Material You</string>
+    <string name="pref_appearance_summary">Language, Dark Mode, Material You</string>
+    <string name="pref_appearance_category_language">Language</string>
+    <string name="pref_appearance_language_title">App Language</string>
+    <string name="pref_language_system">System Default</string>
+    <string name="pref_language_english">English</string>
+    <string name="pref_language_spanish">Español</string>
+    <string name="pref_language_french">Français</string>
+    <string name="pref_language_restarting">Restarting to apply language...</string>
+    <string name="pref_language_german">Deutsch</string>
+    <string name="pref_language_arabic">العربية</string>
     <string name="pref_appearance_category_theme">Theme</string>
     <string name="pref_appearance_darkmode_system">System</string>
     <string name="pref_appearance_darkmode_light">Light</string>
@@ -30,7 +39,7 @@
     <string name="pref_appearance_show_hidden_files_title">Show Hidden Files</string>
     <string name="pref_appearance_show_hidden_files_summary">Show hidden folders starting with a dot (.) including android, data, system folders and .nomedia files</string>
     <string name="pref_appearance_show_unplayed_old_video_label_title">Show label for new unplayed videos</string>
-    <string name="pref_appearance_show_unplayed_old_video_label_summary">Display a \"New\" label on videos added within specified days that have never been played</string>
+    <string name="pref_appearance_show_unplayed_old_video_label_summary">Display a &quot;New&quot; label on videos added within specified days that have never been played</string>
     <string name="pref_appearance_unplayed_old_video_days_title">Days threshold for new video label</string>
     <string name="pref_appearance_unplayed_old_video_days_summary">Videos added within the last %d days without playback history will be marked as new</string>
     <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
@@ -97,13 +106,13 @@
     <string name="pref_gesture_use_single_tap_for_center_title">Use single tap for center gesture</string>
     <string name="pref_gesture_use_single_tap_for_center_summary">Use a single tap in the center for gestures (like play/pause) instead of a double tap.</string>
 
-    <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
+    <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:&#10;&#10;Left: MBTN_LEFT_DBL&#10;Center: MBTN_MID_DBL&#10;Right: MBTN_RIGHT_DBL</string>
 
     <string name="pref_gesture_media_title">Media controls</string>
     <string name="pref_gesture_media_previous">Previous</string>
     <string name="pref_gesture_media_play">Play/Pause</string>
     <string name="pref_gesture_media_next">Next</string>
-    <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
+    <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:&#10;&#10;Previous: PREV&#10;Play/Pause: PLAYPAUSE&#10;Next: NEXT</string>
 
     <string name="pref_gesture_view_title">View</string>
     <string name="pref_gesture_tap_thumbnail_to_select_title">Tap thumbnail to select</string>
@@ -151,7 +160,7 @@
     <string name="pref_advanced_verbose_logging_summary">Helps in debugging but may hinder performance</string>
     <string name="pref_advanced_clear_playback_history">Clear playback history</string>
     <string name="pref_advanced_clear_playback_history_confirm_title">Are you sure you want to clear your playback history?</string>
-    <string name="pref_advanced_clear_playback_history_confirm_subtitle">This will clear all your previous media\'s playback positions, selected subtitles and audio tracks along with their delays and speeds</string>
+    <string name="pref_advanced_clear_playback_history_confirm_subtitle">This will clear all previous media playback positions, selected subtitles and audio tracks along with their delays and speeds</string>
     <string name="pref_advanced_cleared_playback_history">Cleared playback history</string>
     <string name="pref_advanced_clear_fonts_cache">Clear cached fonts</string>
     <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
@@ -168,6 +177,18 @@
     <string name="pref_about_donate_paypal">PayPal</string>
     <string name="pref_about_donate_paypal_summary">Support the developer on PayPal</string>
     <string name="pref_about_donate_paypal_url" translatable="false">https://paypal.me/aadinarvekar</string>
+
+    <!-- Permission denied state strings -->
+    <string name="permission_storage_title">Storage Access Required</string>
+    <string name="permission_storage_description">Storage access is required to discover media and subtitles on your device.</string>
+    <string name="permission_allow_access">ALLOW ACCESS</string>
+    <string name="permission_why_do_i_see_this">Why do I see this?</string>
+    <string name="permission_explanation_title">Why this permission is needed</string>
+    <string name="permission_explanation_p1">Storage access lets the app find media and subtitle files on your device.</string>
+    <string name="permission_explanation_p2">Apps targeting Android 11 and newer require an additional permission to access files.</string>
+    <string name="permission_explanation_p3">This permission is only used for discovering media files and does not access private data of other apps.</string>
+    <string name="permission_explanation_p4">mpvEx is open source. See the GitHub repository to review how permissions are used.</string>
+    <string name="permission_explanation_p5">We do not transfer or store your files on servers; they remain on your device.</string>
     <string name="pref_about_donate_upi">UPI</string>
     <string name="pref_about_donate_upi_id" translatable="false">aadiinarvekar@upi</string>
 
@@ -245,7 +266,7 @@
     <string name="player_sheets_stats_page_title">Default statistics page</string>
     <string name="player_sheets_stats_page_chip">Page %d</string>
     <string name="player_speed" translatable="false">%.2fx</string>
-    <string name="player_gesture_seek_indicator" translatable="false">%c%s\n[%s]</string>
+    <string name="player_gesture_seek_indicator" translatable="false">%c%s&#10;[%s]</string>
 
     <string name="player_aspect_fit">Fit Screen</string>
     <string name="player_aspect_crop">Crop</string>
@@ -353,4 +374,9 @@
     <string name="playlist_refresh_success">Playlist refreshed successfully</string>
     <string name="playlist_refresh_error">Failed to refresh playlist: %s</string>
     <string name="playlist_m3u_badge">M3U</string>
+
+    <string name="nav_folders">Folders</string>
+    <string name="nav_recent">Recent</string>
+    <string name="nav_playlist">Playlist</string>
+    <string name="nav_network">Network</string>
 </resources>

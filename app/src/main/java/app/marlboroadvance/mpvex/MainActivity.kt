@@ -2,7 +2,7 @@ package app.marlboroadvance.mpvex
 
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -43,13 +43,14 @@ import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
 /**
  * Main entry point for the application
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val networkRepository by inject<NetworkRepository>()
   
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onDestroy() {
+    activityScope.cancel()
     try {
       super.onDestroy()
     } catch (e: Exception) {

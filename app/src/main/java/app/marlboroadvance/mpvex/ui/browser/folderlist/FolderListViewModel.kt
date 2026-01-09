@@ -13,12 +13,17 @@ import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.Semaphore
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -191,7 +196,6 @@ class FolderListViewModel(
       try {
         val showLabel = appearancePreferences.showUnplayedOldVideoLabel.get()
         if (!showLabel) {
-          // If feature is disabled, just return folders with 0 count
           _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
           return@launch
         }
@@ -200,33 +204,34 @@ class FolderListViewModel(
         val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
         val currentTime = System.currentTimeMillis()
 
-        val foldersWithCounts = folders.map { folder ->
-          try {
-            // Get all videos in this folder
-            val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
-              .getVideosInFolder(getApplication(), folder.bucketId)
+        // Limit concurrent per-folder work to avoid IO/CPU spike during restarts
+        val semaphore = kotlinx.coroutines.sync.Semaphore(4)
 
-            // Count new unplayed videos
-            val newCount = videos.count { video ->
-              // Check if video was added within threshold days
-              val videoAge = currentTime - (video.dateAdded * 1000)
-              val isRecent = videoAge <= thresholdMillis
+        val deferred = folders.map { folder ->
+          async {
+            semaphore.withPermit {
+              try {
+                val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
+                  .getVideosInFolder(getApplication(), folder.bucketId)
 
-              // Check if video has been played
-              // A video is considered "played" if it has any playback state
-              val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
-              val isUnplayed = playbackState == null
+                val newCount = videos.count { video ->
+                  val videoAge = currentTime - (video.dateAdded * 1000)
+                  val isRecent = videoAge <= thresholdMillis
+                  val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+                  val isUnplayed = playbackState == null
+                  isRecent && isUnplayed
+                }
 
-              isRecent && isUnplayed
+                FolderWithNewCount(folder, newCount)
+              } catch (e: Exception) {
+                Log.e(TAG, "Error counting new videos for folder ${folder.name}", e)
+                FolderWithNewCount(folder, 0)
+              }
             }
-
-            FolderWithNewCount(folder, newCount)
-          } catch (e: Exception) {
-            Log.e(TAG, "Error counting new videos for folder ${folder.name}", e)
-            FolderWithNewCount(folder, 0)
           }
         }
 
+        val foldersWithCounts = deferred.awaitAll()
         _foldersWithNewCount.value = foldersWithCounts
       } catch (e: Exception) {
         Log.e(TAG, "Error calculating new video counts", e)
@@ -264,16 +269,34 @@ class FolderListViewModel(
 
         val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
-        // Use optimized scan with complete metadata (no flickering)
-        // Fast parallel scanning + batch duration extraction = 5-10x faster than old method
-        val videoFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
-          .getAllVideoFolders(
-            context = getApplication(),
-            showHiddenFiles = showHiddenFiles,
-          )
+// Use fast scan first to populate the UI quickly, then enrich durations in background
+      val fastFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
+        .getAllVideoFoldersFast(
+          context = getApplication(),
+          showHiddenFiles = showHiddenFiles,
+          onProgress = { count -> Log.d(TAG, "Fast scan progress: $count folders") }
+        )
 
-        Log.d(TAG, "Scan completed: found ${videoFolders.size} folders with complete metadata")
-        _allVideoFolders.value = videoFolders
+      Log.d(TAG, "Fast scan completed: found ${'$'}{fastFolders.size} folders (durations pending)")
+      _allVideoFolders.value = fastFolders
+
+      // Start background enrichment to add durations (does not block the UI)
+      viewModelScope.launch(Dispatchers.IO) {
+        try {
+          Log.d(TAG, "Starting background enrichment of video folders")
+          val enriched = app.marlboroadvance.mpvex.repository.MediaFileRepository
+            .enrichVideoFolders(
+              context = getApplication(),
+              folders = fastFolders,
+              onProgress = { processed, total -> Log.d(TAG, "Enrichment progress: $processed/$total") }
+            )
+
+          Log.d(TAG, "Enrichment completed: updated ${'$'}{enriched.size} folders")
+          _allVideoFolders.value = enriched
+        } catch (e: Exception) {
+          Log.e(TAG, "Background enrichment failed", e)
+        }
+      }
 
         // Mark as completed after folders are set
         _hasCompletedInitialLoad.value = true

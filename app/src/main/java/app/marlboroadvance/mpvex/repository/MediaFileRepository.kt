@@ -13,6 +13,11 @@ import app.marlboroadvance.mpvex.utils.storage.FolderScanUtils
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -270,11 +275,23 @@ object MediaFileRepository : KoinComponent {
     bucketIds: Set<String>,
   ): List<Video> =
     withContext(Dispatchers.IO) {
-      val result = mutableListOf<Video>()
-      for (id in bucketIds) {
-        runCatching { result += getVideosInFolder(context, id) }
+      try {
+        // Use coroutineScope to obtain a CoroutineScope for async
+        coroutineScope {
+          val semaphore = Semaphore(6)
+          val deferred = bucketIds.map { id ->
+            async {
+              semaphore.withPermit {
+                runCatching { getVideosInFolder(context, id) }.getOrDefault(emptyList())
+              }
+            }
+          }
+          deferred.awaitAll().flatten()
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error getting videos for buckets", e)
+        emptyList()
       }
-      result
     }
 
   /**

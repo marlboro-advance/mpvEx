@@ -70,6 +70,8 @@ import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import androidx.compose.ui.res.stringResource
+import app.marlboroadvance.mpvex.R
 import org.koin.compose.koinInject
 
 @Serializable
@@ -261,7 +263,12 @@ object MainScreen : Screen {
     }
 
     // Define items for the navigation bar
-    val items = listOf("Folders", "Recent", "Playlist", "Network")
+    val items = listOf(
+        stringResource(R.string.nav_folders),
+        stringResource(R.string.nav_recent),
+        stringResource(R.string.nav_playlist),
+        stringResource(R.string.nav_network)
+    )
     val selectedIcons = listOf(
         Icons.Filled.Folder, 
         Icons.Filled.History,

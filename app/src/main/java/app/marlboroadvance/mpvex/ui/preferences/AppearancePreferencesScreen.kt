@@ -15,14 +15,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.AppLanguage
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton
@@ -33,6 +41,14 @@ import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.SystemClock
+import android.widget.Toast
+import kotlin.system.exitProcess
+import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
@@ -41,6 +57,16 @@ import kotlin.math.roundToInt
 
 @Serializable
 object AppearancePreferencesScreen : Screen {
+
+  private fun restartApp(context: Context) {
+    val packageManager = context.packageManager
+    val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+    val componentName = intent?.component
+    val mainIntent = Intent.makeRestartActivityTask(componentName)
+    context.startActivity(mainIntent)
+    Runtime.getRuntime().exit(0)
+  }
+
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -79,6 +105,59 @@ object AppearancePreferencesScreen : Screen {
               .fillMaxSize()
               .padding(padding),
         ) {
+          item {
+            PreferenceSectionHeader(title = stringResource(id = R.string.pref_appearance_category_language))
+          }
+          
+          item {
+            PreferenceCard {
+              val appLanguage by preferences.appLanguage.collectAsState()
+              
+              ListPreference(
+                value = appLanguage,
+                onValueChange = { newLanguage ->
+                  android.util.Log.d("LanguageDebug", ">>> User selected language: ${newLanguage.name} (${newLanguage.code})")
+                  android.util.Log.d("LanguageDebug", "Current Default Locale: ${java.util.Locale.getDefault()}")
+                  android.util.Log.d("LanguageDebug", "Current Context Locales: ${context.resources.configuration.locales}")
+                  android.util.Log.d("LanguageDebug", "Current AppCompat Locales: ${AppCompatDelegate.getApplicationLocales()}")
+
+                  preferences.appLanguage.set(newLanguage)
+                  try {
+                    val sp = androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+                    val committed = sp.edit().putString("app_language", newLanguage.name).commit()
+                    android.util.Log.d("LanguageDebug", "Synchronous language commit result: $committed")
+                    android.util.Log.d("LanguageDebug", "Saved 'app_language' to SharedPrefs: ${newLanguage.name}")
+                  } catch (t: Throwable) {
+                    android.util.Log.e("LanguageDebug", "Synchronous commit failed", t)
+                  }
+
+                  val localeList = if (newLanguage == AppLanguage.System) {
+                    LocaleListCompat.getEmptyLocaleList()
+                  } else {
+                    LocaleListCompat.forLanguageTags(newLanguage.code)
+                  }
+                  android.util.Log.d("LanguageDebug", "Calling AppCompatDelegate.setApplicationLocales($localeList)")
+                  AppCompatDelegate.setApplicationLocales(localeList)
+                  android.util.Log.d("LanguageDebug", "Current AppCompat Locales after set: ${AppCompatDelegate.getApplicationLocales()}")
+
+                  Toast.makeText(context, context.getString(R.string.pref_language_restarting), Toast.LENGTH_SHORT).show()
+                  android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                      restartApp(context)
+                  }, 300)
+                },
+                values = AppLanguage.entries.toImmutableList(),
+                valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                title = { Text(text = stringResource(R.string.pref_appearance_language_title)) },
+                summary = { 
+                  Text(
+                    text = context.getString(appLanguage.titleRes),
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
+              )
+            }
+          }
+          
           item {
             PreferenceSectionHeader(title = stringResource(id = R.string.pref_appearance_category_theme))
           }

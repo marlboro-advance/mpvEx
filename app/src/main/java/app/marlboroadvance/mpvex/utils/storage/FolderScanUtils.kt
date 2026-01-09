@@ -21,7 +21,7 @@ import java.util.Locale
  */
 object FolderScanUtils {
   private const val TAG = "FolderScanUtils"
-  private const val MAX_CONCURRENT_FOLDERS = 8 // Limit parallel folder scanning (increased for faster processing)
+  private const val MAX_CONCURRENT_FOLDERS = 6 // Limit parallel folder scanning to reduce IO contention during startup/restarts
 
   /**
    * Data class representing folder information during scanning

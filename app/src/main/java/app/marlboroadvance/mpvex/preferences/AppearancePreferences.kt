@@ -19,6 +19,7 @@ import kotlinx.collections.immutable.ImmutableList
 class AppearancePreferences(
   preferenceStore: PreferenceStore,
 ) {
+  val appLanguage = preferenceStore.getEnum("app_language", AppLanguage.System)
   val darkMode = preferenceStore.getEnum("dark_mode", DarkMode.System)
   val materialYou = preferenceStore.getBoolean("material_you", true)
   val amoledMode = preferenceStore.getBoolean("amoled_mode", false)
@@ -101,4 +102,13 @@ fun MultiChoiceSegmentedButton(
       }
     }
   }
+}
+
+enum class AppLanguage(val code: String, val titleRes: Int) {
+  System("system", app.marlboroadvance.mpvex.R.string.pref_language_system),
+  English("en", app.marlboroadvance.mpvex.R.string.pref_language_english),
+  French("fr", app.marlboroadvance.mpvex.R.string.pref_language_french),
+  // Spanish("es", app.marlboroadvance.mpvex.R.string.pref_language_spanish),
+  // German("de", app.marlboroadvance.mpvex.R.string.pref_language_german),
+  // Arabic("ar", app.marlboroadvance.mpvex.R.string.pref_language_arabic),
 }
