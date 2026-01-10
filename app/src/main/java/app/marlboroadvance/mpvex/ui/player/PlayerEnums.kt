@@ -126,6 +126,7 @@ sealed class PlayerUpdates {
 /**
  * Filter presets for quick video color adjustments.
  * Each preset defines specific values for brightness, saturation, contrast, gamma, hue, and sharpness.
+ * Sharpness uses MPV's 'sharpen' property which ranges from -5 (blur) to 5 (sharp).
  */
 enum class FilterPreset(
   val displayName: String,
@@ -155,7 +156,7 @@ enum class FilterPreset(
     contrast = 15,
     gamma = 0,
     hue = 0,
-    sharpness = 1,
+    sharpness = 0,
   ),
   WARM_TONE(
     displayName = "Warm Tone",
@@ -165,7 +166,7 @@ enum class FilterPreset(
     contrast = 5,
     gamma = 5,
     hue = 15,
-    sharpness = 1,
+    sharpness = 0,
   ),
   COOL_TONE(
     displayName = "Cool Tone",
@@ -175,7 +176,7 @@ enum class FilterPreset(
     contrast = 10,
     gamma = 0,
     hue = -15,
-    sharpness = 1,
+    sharpness = 0,
   ),
   SOFT_PASTEL(
     displayName = "Soft Pastel",
@@ -185,7 +186,7 @@ enum class FilterPreset(
     contrast = -10,
     gamma = 5,
     hue = 0,
-    sharpness = 1,
+    sharpness = 0,
   ),
   CINEMATIC(
     displayName = "Cinematic",
@@ -195,7 +196,7 @@ enum class FilterPreset(
     contrast = 20,
     gamma = -5,
     hue = 5,
-    sharpness = 1,
+    sharpness = 0,
   ),
   DRAMATIC(
     displayName = "Dramatic",
@@ -205,7 +206,7 @@ enum class FilterPreset(
     contrast = 30,
     gamma = -10,
     hue = 0,
-    sharpness = 1,
+    sharpness = 0,
   ),
   NIGHT_MODE(
     displayName = "Night Mode",
@@ -215,7 +216,7 @@ enum class FilterPreset(
     contrast = 5,
     gamma = -10,
     hue = 0,
-    sharpness = 1,
+    sharpness = 0,
   ),
   NOSTALGIC(
     displayName = "Nostalgic",
