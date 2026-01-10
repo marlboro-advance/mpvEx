@@ -66,8 +66,9 @@ fun VideoSettingsPanel(
           stringResource(R.string.player_sheets_video_settings_title),
           style = MaterialTheme.typography.titleLarge,
         )
-        VideoSettingsDebandCard()
+        VideoSettingsFilterPresetsCard()
         VideoSettingsFiltersCard()
+        VideoSettingsDebandCard()
       }
     }
   }

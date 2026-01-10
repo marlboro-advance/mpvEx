@@ -231,6 +231,7 @@
     <string name="player_sheets_filters_gamma">Gamma</string>
     <string name="player_sheets_filters_Saturation">Saturation</string>
     <string name="player_sheets_filters_hue">Hue</string>
+    <string name="player_sheets_filters_sharpness">Sharpness</string>
     <string name="player_sheets_filters_warning">Some filters may not work on your current video driver</string>
 
     <string name="player_sheets_speed_slider_label">Speed</string>
