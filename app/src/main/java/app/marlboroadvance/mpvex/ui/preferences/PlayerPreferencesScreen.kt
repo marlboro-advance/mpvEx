@@ -117,8 +117,8 @@ object PlayerPreferencesScreen : Screen {
               SwitchPreference(
                 value = playlistMode,
                 onValueChange = preferences.playlistMode::set,
-                title = { Text(text = "Playlist Mode") },
-                summary = { 
+                title = { Text(text = "Autoplay") },
+                summary = {
                   Text(
                     text = if (playlistMode)
                       "Automatically enable next/previous navigation for all videos in folder"
@@ -130,12 +130,27 @@ object PlayerPreferencesScreen : Screen {
               )
               
               PreferenceDivider()
-              
+
               val rememberBrightness by preferences.rememberBrightness.collectAsState()
               SwitchPreference(
                 value = rememberBrightness,
                 onValueChange = preferences.rememberBrightness::set,
                 title = { Text(text = stringResource(R.string.pref_player_remember_brightness)) },
+              )
+
+              PreferenceDivider()
+
+              val autoPiPOnNavigation by preferences.autoPiPOnNavigation.collectAsState()
+              SwitchPreference(
+                value = autoPiPOnNavigation,
+                onValueChange = preferences.autoPiPOnNavigation::set,
+                title = { Text("Auto Picture-in-Picture") },
+                summary = {
+                  Text(
+                    text = "Automatically enter PIP mode when pressing home or back",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
               )
             }
           }

@@ -393,8 +393,8 @@ object FolderListScreen : Screen {
                   )
                 }
               } else {
-                // Use a separate list state for search results since they're a different context
-                val searchListState = rememberLazyListState()
+                // Use the shared LazyListState from CompositionLocal for FAB to detect scrolling
+                val searchListState = LocalLazyListState.current
 
                 // Check if at top of list to hide scrollbar
                 val isAtTop by remember {
