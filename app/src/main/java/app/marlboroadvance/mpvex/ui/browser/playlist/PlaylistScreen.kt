@@ -377,13 +377,13 @@ private fun PlaylistListContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = Modifier.padding(bottom = 88.dp),
+        modifier = Modifier.padding(bottom = 80.dp),
       ) {
         LazyVerticalGrid(
           columns = GridCells.Fixed(folderGridColumns),
           state = gridState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -412,12 +412,12 @@ private fun PlaylistListContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = Modifier.padding(bottom = 88.dp),
+        modifier = Modifier.padding(bottom = 80.dp),
       ) {
         LazyColumn(
           state = listState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
           verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
           items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->

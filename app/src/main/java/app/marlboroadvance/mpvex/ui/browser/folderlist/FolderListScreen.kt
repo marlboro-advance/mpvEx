@@ -421,12 +421,12 @@ object FolderListScreen : Screen {
                   ),
                   modifier = Modifier
                     .padding(padding)
-                    .padding(bottom = 88.dp),
+                    .padding(bottom = 80.dp),
                 ) {
                   LazyColumn(
                     state = searchListState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
                   ) {
                     items(filteredVideos) { video ->
                       VideoCard(
@@ -593,13 +593,13 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
-          modifier = Modifier.padding(bottom = 88.dp),
+          modifier = Modifier.padding(bottom = 80.dp),
         ) {
           LazyVerticalGrid(
             columns = GridCells.Fixed(folderGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
           ) {
@@ -638,12 +638,12 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
-          modifier = Modifier.padding(bottom = 88.dp),
+          modifier = Modifier.padding(bottom = 80.dp),
         ) {
           LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
           ) {
             items(folders) { folder ->
               val isRecentlyPlayed =

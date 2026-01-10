@@ -639,12 +639,12 @@ private fun PlaylistVideoListContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = modifier.fillMaxSize().padding(bottom = 88.dp),
+        modifier = modifier.fillMaxSize(),
       ) {
         LazyColumn(
           state = listState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
         ) {
           items(
             count = videoItems.size,
