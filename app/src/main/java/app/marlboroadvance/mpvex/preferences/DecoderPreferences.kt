@@ -25,6 +25,7 @@ class DecoderPreferences(
   val gammaFilter = preferenceStore.getInt("filter_gamma")
   val contrastFilter = preferenceStore.getInt("filter_contrast")
   val hueFilter = preferenceStore.getInt("filter_hue")
+  val sharpnessFilter = preferenceStore.getInt("filter_sharpness")
 
   // Interpolation settings
   val videoInterpolation = preferenceStore.getBoolean("video_interpolation", false)
