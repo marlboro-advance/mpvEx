@@ -130,6 +130,40 @@ class MPVView(
       MPVLib.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
     }
 
+    // Apply interpolation settings
+    MPVLib.setOptionString("video-sync", decoderPreferences.videoSync.get().value)
+    if (decoderPreferences.videoInterpolation.get()) {
+      MPVLib.setOptionString("interpolation", "yes")
+    }
+
+    // Apply scaler settings
+    // Spatial upscaling
+    MPVLib.setOptionString("scale", decoderPreferences.videoScale.get().value)
+    if (decoderPreferences.videoScaleParam1.get().isNotBlank()) {
+      MPVLib.setOptionString("scale-param1", decoderPreferences.videoScaleParam1.get())
+    }
+    if (decoderPreferences.videoScaleParam2.get().isNotBlank()) {
+      MPVLib.setOptionString("scale-param2", decoderPreferences.videoScaleParam2.get())
+    }
+
+    // Spatial downscaling
+    MPVLib.setOptionString("dscale", decoderPreferences.videoDownscale.get().value)
+    if (decoderPreferences.videoDownscaleParam1.get().isNotBlank()) {
+      MPVLib.setOptionString("dscale-param1", decoderPreferences.videoDownscaleParam1.get())
+    }
+    if (decoderPreferences.videoDownscaleParam2.get().isNotBlank()) {
+      MPVLib.setOptionString("dscale-param2", decoderPreferences.videoDownscaleParam2.get())
+    }
+
+    // Temporal scaling (for interpolation)
+    MPVLib.setOptionString("tscale", decoderPreferences.videoTscale.get().value)
+    if (decoderPreferences.videoTscaleParam1.get().isNotBlank()) {
+      MPVLib.setOptionString("tscale-param1", decoderPreferences.videoTscaleParam1.get())
+    }
+    if (decoderPreferences.videoTscaleParam2.get().isNotBlank()) {
+      MPVLib.setOptionString("tscale-param2", decoderPreferences.videoTscaleParam2.get())
+    }
+
     MPVLib.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
     MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
 

@@ -644,7 +644,7 @@ private fun PlaylistVideoListContent(
         LazyColumn(
           state = listState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
         ) {
           items(
             count = videoItems.size,

@@ -393,8 +393,8 @@ object FolderListScreen : Screen {
                   )
                 }
               } else {
-                // Use a separate list state for search results since they're a different context
-                val searchListState = rememberLazyListState()
+                // Use the shared LazyListState from CompositionLocal for FAB to detect scrolling
+                val searchListState = LocalLazyListState.current
 
                 // Check if at top of list to hide scrollbar
                 val isAtTop by remember {
@@ -419,13 +419,14 @@ object FolderListScreen : Screen {
                     thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
                     thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
                   ),
+                  modifier = Modifier
+                    .padding(padding)
+                    .padding(bottom = 80.dp),
                 ) {
                   LazyColumn(
                     state = searchListState,
-                    modifier = Modifier
-                      .fillMaxSize()
-                      .padding(padding),
-                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
                   ) {
                     items(filteredVideos) { video ->
                       VideoCard(
@@ -592,12 +593,13 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
+          modifier = Modifier.padding(bottom = 80.dp),
         ) {
           LazyVerticalGrid(
             columns = GridCells.Fixed(folderGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
           ) {
@@ -636,11 +638,12 @@ private fun FolderListContent(
             thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
             thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
           ),
+          modifier = Modifier.padding(bottom = 80.dp),
         ) {
           LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
           ) {
             items(folders) { folder ->
               val isRecentlyPlayed =

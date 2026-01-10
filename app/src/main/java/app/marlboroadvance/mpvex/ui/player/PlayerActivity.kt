@@ -470,6 +470,12 @@ class PlayerActivity :
       return
     }
 
+    // Check if auto PIP is enabled - enter PIP mode instead of finishing
+    if (playerPreferences.autoPiPOnNavigation.get() && isReady) {
+      pipHelper.enterPipMode()
+      return
+    }
+
     isUserFinishing = true
     finish()
   }
@@ -543,6 +549,14 @@ class PlayerActivity :
         restoreAudioFocus = {}
         false
       }
+    }
+  }
+
+  override fun onUserLeaveHint() {
+    super.onUserLeaveHint()
+    // Enter PIP mode when user presses home button if auto PIP is enabled
+    if (playerPreferences.autoPiPOnNavigation.get() && isReady && !isFinishing) {
+      pipHelper.enterPipMode()
     }
   }
 

@@ -564,7 +564,7 @@ private fun VideoListContent(
               columns = GridCells.Fixed(columns),
               state = gridState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(8.dp),
+              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -607,7 +607,7 @@ private fun VideoListContent(
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(8.dp),
+              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
             ) {
               items(
                 count = videosWithInfo.size,

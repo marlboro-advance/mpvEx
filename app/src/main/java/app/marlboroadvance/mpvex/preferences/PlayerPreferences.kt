@@ -60,4 +60,6 @@ class PlayerPreferences(
 
   val repeatMode = preferenceStore.getEnum("repeat_mode", RepeatMode.OFF)
   val shuffleEnabled = preferenceStore.getBoolean("shuffle_enabled", false)
+
+  val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
 }

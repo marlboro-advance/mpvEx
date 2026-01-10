@@ -605,6 +605,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             isLoading = isSearchLoading,
             videoFilesWithPlayback = videoFilesWithPlayback,
             showSubtitleIndicator = showSubtitleIndicator,
+            isAtRoot = isAtRoot,
             onVideoClick = { video ->
               MediaUtils.playFile(video, context, "search")
             },
@@ -893,13 +894,53 @@ private fun FileSystemBrowserContent(
   modifier: Modifier = Modifier,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
+  val browserPreferences = koinInject<BrowserPreferences>()
+  val thumbnailRepository = koinInject<app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+  val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   
   // Check if there are folders mixed with videos AND we're in grid mode - if so, hide video chips and use folder style
   val folders = items.filterIsInstance<FileSystemItem.Folder>()
   val videos = items.filterIsInstance<FileSystemItem.VideoFile>()
   val hasMixedContentInGrid = folders.isNotEmpty() && videos.isNotEmpty() && isGridMode
+  
+  // Calculate thumbnail dimensions
+  val density = androidx.compose.ui.platform.LocalDensity.current
+  val thumbWidthDp = if (isGridMode) {
+    if (folders.isNotEmpty()) {
+      (320 / folderGridColumns).dp
+    } else {
+      (360 / videoGridColumns).dp
+    }
+  } else {
+    160.dp
+  }
+  val aspect = 16f / 9f
+  val thumbWidthPx = with(density) { thumbWidthDp.roundToPx() }
+  val thumbHeightPx = ((thumbWidthPx.toFloat() / aspect).toInt())
+  
+  // Create a unique folderId based on the current directories
+  val folderId = remember(folders, isAtRoot, breadcrumbs) {
+    if (isAtRoot && breadcrumbs.isEmpty()) {
+      "filesystem_root"
+    } else {
+      breadcrumbs.lastOrNull()?.fullPath ?: "filesystem_${breadcrumbs.size}"
+    }
+  }
+  
+  // Generate thumbnails sequentially
+  LaunchedEffect(folderId, showVideoThumbnails, videos.size, thumbWidthPx, thumbHeightPx) {
+    if (showVideoThumbnails && videos.isNotEmpty()) {
+      thumbnailRepository.startFolderThumbnailGeneration(
+        folderId = folderId,
+        videos = videos.map { it.video },
+        widthPx = thumbWidthPx,
+        heightPx = thumbHeightPx,
+      )
+    }
+  }
 
   when {
     isLoading -> {
@@ -975,12 +1016,13 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
+            modifier = Modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
           ) {
             LazyVerticalGrid(
             columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -1061,11 +1103,12 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
+            modifier = Modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
           ) {
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
             ) {
               // Breadcrumb navigation (if not at root)
               if (!isAtRoot && breadcrumbs.isNotEmpty()) {
@@ -1366,6 +1409,7 @@ private fun FileSystemSearchContent(
   isLoading: Boolean,
   videoFilesWithPlayback: Map<Long, Float>,
   showSubtitleIndicator: Boolean,
+  isAtRoot: Boolean,
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
@@ -1438,11 +1482,12 @@ private fun FileSystemSearchContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
+        modifier = modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
       ) {
         LazyColumn(
           state = listState,
-          modifier = modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 88.dp),
+          modifier = Modifier.fillMaxSize(),
+          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
         ) {
           items(searchResults) { item ->
             when (item) {
