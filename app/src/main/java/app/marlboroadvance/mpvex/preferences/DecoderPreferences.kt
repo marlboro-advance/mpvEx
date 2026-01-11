@@ -25,18 +25,19 @@ class DecoderPreferences(
   val gammaFilter = preferenceStore.getInt("filter_gamma")
   val contrastFilter = preferenceStore.getInt("filter_contrast")
   val hueFilter = preferenceStore.getInt("filter_hue")
+  val sharpnessFilter = preferenceStore.getInt("filter_sharpness")
 
   // Interpolation settings
   val videoInterpolation = preferenceStore.getBoolean("video_interpolation", false)
   val videoSync = preferenceStore.getEnum("video_sync", VideoSync.Audio)
 
-  // Spatial scaler (upscaling)
-  val videoScale = preferenceStore.getEnum("video_scale", Scaler.Bilinear)
+  // Spatial scaler (upscaling) - Lanczos provides sharper quality than Bilinear
+  val videoScale = preferenceStore.getEnum("video_scale", Scaler.Lanczos)
   val videoScaleParam1 = preferenceStore.getString("video_scale_param1", "")
   val videoScaleParam2 = preferenceStore.getString("video_scale_param2", "")
 
-  // Spatial scaler (downscaling)
-  val videoDownscale = preferenceStore.getEnum("video_downscale", Scaler.Bilinear)
+  // Spatial scaler (downscaling) - Mitchell provides good anti-aliasing
+  val videoDownscale = preferenceStore.getEnum("video_downscale", Scaler.Mitchell)
   val videoDownscaleParam1 = preferenceStore.getString("video_downscale_param1", "")
   val videoDownscaleParam2 = preferenceStore.getString("video_downscale_param2", "")
 

@@ -123,10 +123,149 @@ sealed class PlayerUpdates {
   ) : PlayerUpdates()
 }
 
+/**
+ * Filter presets for quick video color adjustments.
+ * Each preset defines specific values for brightness, saturation, contrast, gamma, hue, and sharpness.
+ * Sharpness uses MPV's 'sharpen' property which ranges from -5 (blur) to 5 (sharp).
+ */
+enum class FilterPreset(
+  val displayName: String,
+  val description: String,
+  val brightness: Int,
+  val saturation: Int,
+  val contrast: Int,
+  val gamma: Int,
+  val hue: Int,
+  val sharpness: Int,
+) {
+  NONE(
+    displayName = "None",
+    description = "Default settings with no adjustments",
+    brightness = 0,
+    saturation = 0,
+    contrast = 0,
+    gamma = 0,
+    hue = 0,
+    sharpness = 0,
+  ),
+  VIVID(
+    displayName = "Vivid",
+    description = "Enhanced colors with crisp details",
+    brightness = 5,
+    saturation = 25,
+    contrast = 15,
+    gamma = 0,
+    hue = 0,
+    sharpness = 0,
+  ),
+  WARM_TONE(
+    displayName = "Warm Tone",
+    description = "Warmer colors with golden tint",
+    brightness = 5,
+    saturation = 10,
+    contrast = 5,
+    gamma = 5,
+    hue = 15,
+    sharpness = 0,
+  ),
+  COOL_TONE(
+    displayName = "Cool Tone",
+    description = "Cooler colors with blue tint",
+    brightness = 0,
+    saturation = 5,
+    contrast = 10,
+    gamma = 0,
+    hue = -15,
+    sharpness = 0,
+  ),
+  SOFT_PASTEL(
+    displayName = "Soft Pastel",
+    description = "Soft, muted colors with gentle look",
+    brightness = 10,
+    saturation = -15,
+    contrast = -10,
+    gamma = 5,
+    hue = 0,
+    sharpness = 0,
+  ),
+  CINEMATIC(
+    displayName = "Cinematic",
+    description = "Film-like color grading with depth",
+    brightness = -5,
+    saturation = -10,
+    contrast = 20,
+    gamma = -5,
+    hue = 5,
+    sharpness = 0,
+  ),
+  DRAMATIC(
+    displayName = "Dramatic",
+    description = "High contrast dramatic look",
+    brightness = -10,
+    saturation = 15,
+    contrast = 30,
+    gamma = -10,
+    hue = 0,
+    sharpness = 0,
+  ),
+  NIGHT_MODE(
+    displayName = "Night Mode",
+    description = "Reduced brightness for dark environments",
+    brightness = -20,
+    saturation = -5,
+    contrast = 5,
+    gamma = -10,
+    hue = 0,
+    sharpness = 0,
+  ),
+  NOSTALGIC(
+    displayName = "Nostalgic",
+    description = "Vintage film look with soft focus",
+    brightness = 5,
+    saturation = -20,
+    contrast = 10,
+    gamma = 0,
+    hue = 20,
+    sharpness = 0,
+  ),
+  GHIBLI_STYLE(
+    displayName = "Ghibli Style",
+    description = "Soft, dreamy anime colors",
+    brightness = 8,
+    saturation = 15,
+    contrast = -5,
+    gamma = 5,
+    hue = 5,
+    sharpness = 0,
+  ),
+  NEON_POP(
+    displayName = "Neon Pop",
+    description = "Vibrant neon-like colors with edge",
+    brightness = 5,
+    saturation = 40,
+    contrast = 20,
+    gamma = 0,
+    hue = 0,
+    sharpness = 0,
+  ),
+  DEEP_BLACK(
+    displayName = "Deep Black",
+    description = "Enhanced blacks for OLED displays",
+    brightness = -15,
+    saturation = 5,
+    contrast = 25,
+    gamma = -15,
+    hue = 0,
+    sharpness = 0,
+  ),
+}
+
 enum class VideoFilters(
   @StringRes val titleRes: Int,
   val preference: (DecoderPreferences) -> Preference<Int>,
   val mpvProperty: String,
+  val min: Int = -100,
+  val max: Int = 100,
 ) {
   BRIGHTNESS(
     R.string.player_sheets_filters_brightness,
@@ -152,6 +291,13 @@ enum class VideoFilters(
     R.string.player_sheets_filters_hue,
     { it.hueFilter },
     "hue",
+  ),
+  SHARPNESS(
+    titleRes = R.string.player_sheets_filters_sharpness,
+    preference = { it.sharpnessFilter },
+    mpvProperty = "sharpen",
+    min = -5,
+    max = 5,
   ),
 }
 

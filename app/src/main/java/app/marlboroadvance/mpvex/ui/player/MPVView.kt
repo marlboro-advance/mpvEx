@@ -101,7 +101,7 @@ class MPVView(
 
   override fun initOptions() {
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
-    MPVLib.setOptionString("profile", "fast")
+    // Removed profile=fast for better video quality
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
     MPVLib.setOptionString(
@@ -154,6 +154,15 @@ class MPVView(
     if (decoderPreferences.videoDownscaleParam2.get().isNotBlank()) {
       MPVLib.setOptionString("dscale-param2", decoderPreferences.videoDownscaleParam2.get())
     }
+
+    // Chroma upscaling (improves color clarity)
+    MPVLib.setOptionString("cscale", decoderPreferences.videoScale.get().value)
+
+    // Quality enhancements for better video rendering
+    MPVLib.setOptionString("correct-downscaling", "yes")
+    MPVLib.setOptionString("linear-downscaling", "yes")
+    MPVLib.setOptionString("sigmoid-upscaling", "yes")
+    MPVLib.setOptionString("dither-depth", "auto")
 
     // Temporal scaling (for interpolation)
     MPVLib.setOptionString("tscale", decoderPreferences.videoTscale.get().value)
