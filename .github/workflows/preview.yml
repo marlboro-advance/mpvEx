@@ -6,7 +6,9 @@ permissions:
   id-token: write
 
 on:
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:   # Manual trigger → build + publish
+  pull_request:        # PR → build + artifacts only
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
@@ -31,15 +33,15 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: 17
-          cache: 'gradle'
+          cache: gradle
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
+      - name: Build with Gradle (Preview)
         run: ./gradlew assemblePreview
 
-      - name: Sign APK
+      - name: Sign APKs
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/preview
@@ -50,39 +52,40 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
-      - name: Copy build artifacts
+      - name: Collect build artifacts
         id: set_commit
         run: |
           set -e
           commit_count=$(git rev-list --count HEAD)
           build_time=$(date -u +"%Y-%m-%d %H:%M UTC")
+
           echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
           echo "build_time=$build_time" >> $GITHUB_OUTPUT
 
-          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
           mkdir -p output
-          # Initialize empty array for file sizes
-          declare -a file_sizes=()
-          
+          apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+
           for arch in "${apks[@]}"; do
             src="app/build/outputs/apk/preview/app-${arch}-preview-signed.apk"
             dest="output/mpvEx-preview-r${commit_count}-${arch}.apk"
             cp "$src" "$dest"
-            
-            # Get file size in human-readable format
+
             size=$(du -h "$dest" | cut -f1)
             echo "${arch}_size=$size" >> $GITHUB_OUTPUT
           done
 
-      - name: Upload all artifacts
+      - name: Upload preview APKs
         uses: actions/upload-artifact@v4
         with:
           name: preview-apks
           path: output/
 
+
   publish:
     needs: build
+    if: github.event_name == 'workflow_dispatch'   # only manual trigger
     runs-on: ubuntu-latest
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -94,11 +97,13 @@ jobs:
         run: |
           commit_count=${{ needs.build.outputs.commit_count }}
           build_time="${{ needs.build.outputs.build_time }}"
-          echo "<!DOCTYPE html>
-          <html lang='en'>
+
+          cat <<EOF > ./public/index.html
+          <!DOCTYPE html>
+          <html lang="en">
           <head>
-            <meta charset='UTF-8'>
-            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>mpvEx Preview Builds</title>
             <style>
               body { font-family: sans-serif; padding: 2em; background: #0d1117; color: #c9d1d9; }
@@ -106,34 +111,37 @@ jobs:
               a { color: #58a6ff; text-decoration: none; display: block; margin: 8px 0; }
               a:hover { text-decoration: underline; }
               .note { color: #8b949e; font-size: 0.9em; margin-top: 1em; }
-              .filesize { color: #8b949e; font-size: 0.9em; }
             </style>
           </head>
           <body>
             <h1>mpvEx Preview Build r${commit_count}</h1>
             <p>Build time: ${build_time}</p>
-            <p>Download the latest signed APKs:</p>
+            <p>Download signed APKs:</p>
             <ul>
-              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'>Universal (${{ needs.build.outputs.universal_size }})</a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'>arm64-v8a (${{ needs.build.outputs.arm64-v8a_size }})</a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'>armeabi-v7a (${{ needs.build.outputs.armeabi-v7a_size }})</a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86 (${{ needs.build.outputs.x86_size }})</a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-universal.apk">Universal (${{ needs.build.outputs.universal_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-arm64-v8a.apk">arm64-v8a (${{ needs.build.outputs.arm64-v8a_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-armeabi-v7a.apk">armeabi-v7a (${{ needs.build.outputs.armeabi-v7a_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-x86.apk">x86 (${{ needs.build.outputs.x86_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-x86_64.apk">x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
             </ul>
-            <p class='note'>Built automatically by <code>github-actions</code>.</p>
+            <p class="note">Built automatically by GitHub Actions.</p>
           </body>
-          </html>" > ./public/index.html
+          </html>
+          EOF
 
-      - name: Upload to GitHub Pages
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
+
   deploy:
     needs: publish
+    if: github.event_name == 'workflow_dispatch'   # only manual trigger
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
