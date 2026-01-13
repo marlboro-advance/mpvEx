@@ -1585,7 +1585,19 @@ class PlayerActivity :
     GlobalScope.launch(Dispatchers.IO) {
       if (playlist.isNotEmpty()) {
         // For playlist items, save using the current URI
-        saveRecentlyPlayedForUri(playlist[playlistIndex], fileName)
+        // Calculate the window index when using windowed loading
+        val windowIndex = if (playlistTotalCount > 0) {
+          playlistIndex - playlistWindowOffset
+        } else {
+          playlistIndex
+        }
+
+        // Only save if the index is valid within the current window
+        if (windowIndex >= 0 && windowIndex < playlist.size) {
+          saveRecentlyPlayedForUri(playlist[windowIndex], fileName)
+        } else {
+          Log.w(TAG, "Cannot save recently played: invalid window index $windowIndex (playlistIndex: $playlistIndex, offset: $playlistWindowOffset, playlist size: ${playlist.size})")
+        }
       } else {
         // For non-playlist videos, use the original saveRecentlyPlayed
         saveRecentlyPlayed()
