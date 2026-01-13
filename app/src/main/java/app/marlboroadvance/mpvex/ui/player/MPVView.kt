@@ -3,7 +3,7 @@ package app.marlboroadvance.mpvex.ui.player
 import android.content.Context
 import android.os.Environment
 import android.util.AttributeSet
-import android.util.Log
+
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
@@ -11,6 +11,7 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
+import app.marlboroadvance.mpvex.domain.anime4k.Anime4KManager
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity.Companion.TAG
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.toColorHexString
 import `is`.xyz.mpv.BaseMPVView
@@ -30,6 +31,7 @@ class MPVView(
   private val decoderPreferences: DecoderPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val anime4kManager: Anime4KManager by inject()
 
   var isExiting = false
 
@@ -40,7 +42,6 @@ class MPVView(
 
     // If aspect is not available or 0, calculate from width and height
     val finalAspect = if (rawAspect == null || rawAspect < 0.001) {
-      Log.d(TAG, "getVideoOutAspect - Aspect not available, calculating from dimensions")
       val width = runCatching {
         MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
       }.getOrDefault(0)
@@ -48,8 +49,6 @@ class MPVView(
       val height = runCatching {
         MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
       }.getOrDefault(0)
-
-      Log.d(TAG, "getVideoOutAspect - width: $width, height: $height")
 
       if (width > 0 && height > 0) {
         width.toDouble() / height.toDouble()
@@ -60,16 +59,12 @@ class MPVView(
       rawAspect
     }
 
-    Log.d(TAG, "getVideoOutAspect - rawAspect: $rawAspect, rotate: $rotate, finalAspect: $finalAspect")
-
     return finalAspect?.let { aspect ->
       if (aspect <= 0.001) {
-        Log.d(TAG, "getVideoOutAspect - Aspect too small, returning null")
         return null
       }
       val isRotated = (rotate % 180 == 90)
       val correctedAspect = if (isRotated) 1.0 / aspect else aspect
-      Log.d(TAG, "getVideoOutAspect - isRotated: $isRotated, correctedAspect: $correctedAspect")
       correctedAspect
     }
   }
@@ -100,7 +95,9 @@ class MPVView(
   var aid: Int by TrackDelegate("aid")
 
   override fun initOptions() {
-    setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
+    // Note: Anime4K and gpu-next are mutually exclusive in settings
+    val useGpuNext = decoderPreferences.gpuNext.get()
+    setVo(if (useGpuNext) "gpu-next" else "gpu")
     // Removed profile=fast for better video quality
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
@@ -180,6 +177,9 @@ class MPVView(
     MPVLib.setOptionString("hr-seek", if (preciseSeek) "yes" else "no")
     MPVLib.setOptionString("hr-seek-framedrop", if (preciseSeek) "no" else "yes")
 
+    // Anime4K shader initialization (MUST be in initOptions, not after file load!)
+    applyAnime4KShaders()
+
     setupSubtitlesOptions()
     setupAudioOptions()
   }
@@ -213,9 +213,6 @@ class MPVView(
     if (mapped == null) {
       // Fallback to produced glyph
       if (!event.isPrintingKey) {
-        if (event.repeatCount == 0) {
-          Log.d(TAG, "Unmapped non-printable key ${event.keyCode}")
-        }
         return false
       }
 
@@ -359,5 +356,65 @@ class MPVView(
     MPVLib.setOptionString("sub-use-margins", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
+    MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
+    MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
+  }
+
+
+  private fun applyAnime4KShaders() {
+    runCatching {
+      val enabled = decoderPreferences.enableAnime4K.get()
+      if (!enabled) {
+        return
+      }
+      
+      // DEFENSIVE CHECK: Ensure mutual exclusion at initialization time
+      val gpuNextActive = decoderPreferences.gpuNext.get()
+      if (gpuNextActive) {
+        return  // Abort shader loading to prevent incompatible state
+      }
+      
+      // Initialize shader files if needed - THIS IS CRITICAL!
+      if (!anime4kManager.initialize()) {
+        return
+      }
+      
+      // Get preferences
+      val modeStr = decoderPreferences.anime4kMode.get()
+      
+      // Check if mode is OFF - if so, don't apply any shaders
+      if (modeStr == "OFF") {
+        return  // Exit early - user wants it OFF
+      }
+      
+      // Parse user's selected mode
+      val mode = try {
+          Anime4KManager.Mode.valueOf(modeStr)
+      } catch (e: IllegalArgumentException) {
+          Anime4KManager.Mode.OFF
+      }
+      
+      val qualityStr = decoderPreferences.anime4kQuality.get()
+      val quality = try {
+        Anime4KManager.Quality.valueOf(qualityStr)
+      } catch (e: IllegalArgumentException) {
+        Anime4KManager.Quality.BALANCED
+      }
+      
+      // Get shader chain from manager
+      val shaderChain = anime4kManager.getShaderChain(mode, quality)
+      
+      if (shaderChain.isNotEmpty()) {
+        // GPU optimizations for better performance
+        MPVLib.setOptionString("opengl-pbo", "yes")
+        MPVLib.setOptionString("vd-lavc-dr", "yes")
+        MPVLib.setOptionString("opengl-early-flush", "no")
+        
+        // Apply shaders (MUST use setOptionString in initOptions!)
+        MPVLib.setOptionString("glsl-shaders", shaderChain)
+      }
+    }.onFailure {
+      // Don't crash - just continue without shaders
+    }
   }
 }

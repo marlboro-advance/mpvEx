@@ -114,6 +114,10 @@
     <string name="pref_decoder_try_hw_dec_title">Try hardware decoding</string>
     <string name="pref_decoder_gpu_next_title">Use gpu-next</string>
     <string name="pref_decoder_gpu_next_summary">A new rendering backend</string>
+    <string name="pref_decoder_gpu_next_enable_title">Enable gpu-next?</string>
+    <string name="pref_decoder_gpu_next_warning">Enabling gpu-next may cause purple screen issues during playback on some devices.</string>
+    <string name="pref_decoder_gpu_next_purple_screen_fix">If you experience purple screens, try to disable opengl-pbo in Advanced settings (mpv.conf):</string>
+    <string name="pref_decoder_gpu_next_enable_anyway">Enable Anyway</string>
     <string name="pref_decoder_debanding_title">Debanding</string>
     <string name="pref_decoder_yuv420p_title">Use YUV420P pixel format</string>
     <string name="pref_decoder_yuv420p_summary">May fix black screens on some video codecs, can also improve performance at the cost of quality</string>
@@ -157,6 +161,38 @@
     <string name="pref_advanced_cleared_fonts_cache">Cleared cached fonts</string>
     <string name="pref_advanced_enable_recently_played_title">Recently Played</string>
     <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>
+    
+    <string name="pref_advanced_features_tooltip">Enable experimental or advanced features like statistics page and Anime4K upscaling.</string>
+    <string name="pref_anime4k_title">Anime4K upscaling</string>
+    <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
+    <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
+    <string name="pref_anime4k_gpu_next_error">gpu-next is incompatible with Anime4K shaders. When Anime4K is enabled, the app will automatically use the legacy \'gpu\' backend for shader compatibility.</string>
+    <string name="pref_anime4k_cannot_use_with_gpu_next">Cannot use Anime4K when gpu-next is enabled</string>
+    <string name="anime4k_mode_title">Anime4K Mode</string>
+    <string name="anime4k_quality_title">Anime4K Quality</string>
+    <string name="anime4k_mode_toast">Anime4K: Mode %1$s</string>
+    <string name="anime4k_quality_toast">Anime4K: %1$s</string>
+
+    <!-- Anime4K Qualities -->
+    <string name="anime4k_quality_fast">Fast</string>
+    <string name="anime4k_quality_balanced">Balanced</string>
+    <string name="anime4k_quality_high">High</string>
+
+    <!-- Anime4K Modes -->
+    <string name="anime4k_mode_off">Off</string>
+    <string name="anime4k_mode_off_desc">Disabled</string>
+    <string name="anime4k_mode_a">A</string>
+    <string name="anime4k_mode_a_desc">1080p optimized</string>
+    <string name="anime4k_mode_b">B</string>
+    <string name="anime4k_mode_b_desc">720p optimized</string>
+    <string name="anime4k_mode_c">C</string>
+    <string name="anime4k_mode_c_desc">480p optimized</string>
+    <string name="anime4k_mode_a_plus">A+</string>
+    <string name="anime4k_mode_a_plus_desc">Highest quality (slower)</string>
+    <string name="anime4k_mode_b_plus">B+</string>
+    <string name="anime4k_mode_b_plus_desc">High quality (slower)</string>
+    <string name="anime4k_mode_c_plus">C+</string>
+    <string name="anime4k_mode_c_plus_desc">Improved 480p (slower)</string>
 
     <string name="pref_about_title">About</string>
     <string name="pref_about_summary">Acknowledgments, licenses</string>

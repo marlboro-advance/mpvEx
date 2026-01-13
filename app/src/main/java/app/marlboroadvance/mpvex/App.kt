@@ -32,6 +32,7 @@ class App : Application() {
         PreferencesModule,
         DatabaseModule,
         FileManagerModule,
+        app.marlboroadvance.mpvex.di.domainModule,
       )
     }
 
