@@ -7,7 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -87,21 +94,51 @@ private fun ZoomVideoSheet(
         .verticalScroll(rememberScrollState())
         .padding(vertical = MaterialTheme.spacing.medium),
   ) {
-    SliderItem(
-      label = stringResource(id = R.string.player_sheets_zoom_slider_label),
-      value = zoom,
-      valueText =
-        when {
-          isZero && isDefault -> "%.2fx (default)".format(zoom)
-          isDefault -> "%.2fx (default)".format(zoom)
-          isZero -> "%.2fx".format(zoom)
-          else -> "%.2fx".format(zoom)
-        },
-      onChange = onZoomChange,
-      max = 3f,
-      min = -2f,
-      modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-    )
+    Row(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+    ) {
+        androidx.compose.material3.FilledTonalIconButton(
+            onClick = {
+                val newZoom = (zoom - 0.1f).coerceAtLeast(-2f)
+                onZoomChange(newZoom)
+            },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(Icons.Default.Remove, contentDescription = "Decrease zoom")
+        }
+
+        SliderItem(
+          label = stringResource(id = R.string.player_sheets_zoom_slider_label),
+          value = zoom,
+          //valueText =
+            //when {
+             // isZero && isDefault -> "%.2fx (default)".format(zoom)
+              //isDefault -> "%.2fx (default)".format(zoom)
+              //isZero -> "%.2fx".format(zoom)
+              //else -> "%.2fx".format(zoom)
+            //},
+          valueText = "%.2fx".format(zoom),
+          onChange = onZoomChange,
+          max = 3f,
+          min = -2f,
+          modifier = Modifier.weight(1f),
+        )
+
+        androidx.compose.material3.FilledTonalIconButton(
+            onClick = {
+                val newZoom = (zoom + 0.1f).coerceAtMost(3f)
+                onZoomChange(newZoom)
+            },
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Increase zoom")
+        }
+    }
 
     Row(
       modifier =

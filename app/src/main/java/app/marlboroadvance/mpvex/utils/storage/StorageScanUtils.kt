@@ -317,10 +317,21 @@ object StorageScanUtils {
   }
 
   // Folders to skip during scanning (system/cache folders)
-  private val SKIP_FOLDERS = setOf(
-    "android", "data", ".thumbnails", ".cache", "cache",
-    "lost.dir", "system", ".android_secure", ".trash", ".trashbin",
-  )
+private val SKIP_FOLDERS = setOf(
+    // System & OS Junk
+    "android", "data", "obb", "system", "lost.dir", ".android_secure", "android_secure",
+    
+    // Hidden & Temp Files
+    ".thumbnails", "thumbnails", "thumbs", ".thumbs",
+    ".cache", "cache", "temp", "tmp", ".temp", ".tmp",
+    
+    // Trash & Recycle Bins
+    ".trash", "trash", ".trashbin", ".trashed", "recycle", "recycler",
+    
+    // App Clutters
+    "log", "logs", "backup", "backups",
+    "stickers", "whatsapp stickers", "telegram stickers",
+)
 
   /**
    * Checks if a folder contains a .nomedia file

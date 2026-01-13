@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -54,6 +55,13 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.PreferenceCategory
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
 
 @Serializable
 data class ControlLayoutEditorScreen(
@@ -93,20 +101,17 @@ data class ControlLayoutEditorScreen(
           ControlRegion.PORTRAIT_BOTTOM ->
             listOf(
               preferences.portraitBottomControls,
-              // Portrait bottom is independent - no cross-checking with other regions
             )
         }
       }
 
-    // Destructure the list correctly
     val prefToEdit: Preference<String> = prefs[0]
 
-    // State for buttons used in *other* regions (these are disabled)
-    // For PORTRAIT_BOTTOM, this will be empty since it's independent
+    // State for buttons used in *other* regions
     val disabledButtons by remember {
       mutableStateOf(
         if (region == ControlRegion.PORTRAIT_BOTTOM) {
-          emptySet() // Portrait bottom can use any button
+          emptySet()
         } else {
           val otherPref1: Preference<String> = prefs[1]
           val otherPref2: Preference<String> = prefs[2]
@@ -124,7 +129,6 @@ data class ControlLayoutEditorScreen(
       )
     }
 
-    // State for the *current* selection
     var selectedButtons by remember {
       mutableStateOf(
         prefToEdit
@@ -141,21 +145,19 @@ data class ControlLayoutEditorScreen(
       )
     }
 
-    // Automatically save when the user leaves the screen
     DisposableEffect(Unit) {
       onDispose {
         prefToEdit.set(selectedButtons.joinToString(","))
       }
     }
 
-    // --- Dynamic Title based on region ---
     val title =
       remember(region) {
         when (region) {
-          ControlRegion.TOP_RIGHT -> "Edit Top Right" // TODO: strings
-          ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right" // TODO: strings
-          ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left" // TODO: strings
-          ControlRegion.PORTRAIT_BOTTOM -> "Edit Portrait Bottom" // TODO: strings
+          ControlRegion.TOP_RIGHT -> "Edit Top Right"
+          ControlRegion.BOTTOM_RIGHT -> "Edit Bottom Right"
+          ControlRegion.BOTTOM_LEFT -> "Edit Bottom Left"
+          ControlRegion.PORTRAIT_BOTTOM -> "Edit Portrait Bottom"
         }
       }
 
@@ -166,9 +168,7 @@ data class ControlLayoutEditorScreen(
         title = "Reset to default?",
         subtitle = "This will reset the controls in this region to their default configuration.",
         onConfirm = {
-          // Reset only this specific region
           prefToEdit.delete()
-          // Reload the default values
           selectedButtons = prefToEdit
             .get()
             .split(',')
@@ -206,78 +206,111 @@ data class ControlLayoutEditorScreen(
       },
     ) { padding ->
       ProvidePreferenceLocals {
-        Column(
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .padding(padding)
-              .verticalScroll(rememberScrollState()),
-        ) {
-          // --- 1. Selected Controls ---
-          PreferenceCategory(title = { Text("Selected") })
-          FlowRow(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            if (selectedButtons.isEmpty()) {
-              Text(
-                text = "Click buttons from the 'Available' list below to add them here.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 16.dp),
-              )
+        val gridState = rememberLazyGridState()
+        val reorderableState = rememberReorderableLazyGridState(gridState) { from, to ->
+            // Adjust indices because of header (index 0)
+            val fromIndex = from.index - 1
+            val toIndex = to.index - 1
+            
+            if (fromIndex in selectedButtons.indices && toIndex in selectedButtons.indices) {
+                selectedButtons = selectedButtons.toMutableList().apply {
+                    add(toIndex, removeAt(fromIndex))
+                }
             }
-            selectedButtons.forEach { button ->
-              PlayerButtonChip(
-                button = button,
-                enabled = true,
-                onClick = {
-                  // Remove from selected list
-                  selectedButtons = selectedButtons - button
-                },
-                badgeIcon = Icons.Default.RemoveCircle,
-                badgeColor = Color(0xFFEF5350), // Material Design Red 400 - warning red
-              )
-            }
-          }
+        }
 
-          // --- 2. Available Controls ---
-          PreferenceCategory(title = { Text("Available") })
-          FlowRow(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            val availableButtons = allPlayerButtons.filter { it !in selectedButtons }
-            availableButtons.forEach { button ->
-              val isEnabled = button !in disabledButtons
-              PlayerButtonChip(
-                button = button,
-                enabled = isEnabled,
-                onClick = {
-                  // Add to selected list
-                  selectedButtons = selectedButtons + button
-                },
-                badgeIcon = Icons.Default.AddCircle,
-                badgeColor =
-                  if (isEnabled) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    MaterialTheme.colorScheme.onSurface
-                      .copy(
-                        alpha = 0.38f,
-                      )
-                  },
-              )
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Adaptive(minSize = 72.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // --- 1. Header ---
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                PreferenceCategory(title = { Text("Selected (Long press to reorder)") })
             }
-          }
+
+            // --- 2. Selected Controls (Reorderable) ---
+            items(
+                count = selectedButtons.size,
+                key = { selectedButtons[it] },
+                span = { index ->
+                    val button = selectedButtons[index]
+                    if (button == PlayerButton.CURRENT_CHAPTER || button == PlayerButton.VIDEO_TITLE) {
+                        GridItemSpan(maxLineSpan) 
+                    } else {
+                        GridItemSpan(1)
+                    }
+                }
+            ) { index ->
+                val button = selectedButtons[index]
+                ReorderableItem(reorderableState, key = button) {
+                   // Wrap in Box to control alignment/filling within the grid cell
+                   Box(
+                       modifier = Modifier
+                           .draggableHandle()
+                           .then(
+                               if (button == PlayerButton.CURRENT_CHAPTER || button == PlayerButton.VIDEO_TITLE) {
+                                   Modifier.wrapContentWidth(Alignment.Start)
+                               } else {
+                                   Modifier
+                               }
+                           )
+                   ) {
+                        PlayerButtonChip(
+                            button = button,
+                            enabled = true,
+                            onClick = { selectedButtons = selectedButtons - button },
+                            badgeIcon = Icons.Default.RemoveCircle,
+                            badgeColor = Color(0xFFEF5350),
+                        )
+                   }
+                }
+            }
+
+            if (selectedButtons.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                   Text(
+                        text = "Click buttons from the 'Available' list below to add them here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                   )
+                }
+            }
+
+            // --- 3. Available Header ---
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                PreferenceCategory(title = { Text("Available") })
+            }
+
+            // --- 4. Available Controls (FlowRow for original look) ---
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                 FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp), // Adjust padding to match grid content padding visual
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val availableButtons = allPlayerButtons.filter { it !in selectedButtons }
+                    availableButtons.forEach { button ->
+                        val isEnabled = button !in disabledButtons
+                        PlayerButtonChip(
+                            button = button,
+                            enabled = isEnabled,
+                            onClick = { selectedButtons = selectedButtons + button },
+                            badgeIcon = Icons.Default.AddCircle,
+                            badgeColor = if (isEnabled) MaterialTheme.colorScheme.primary 
+                                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        )
+                    }
+                }
+            }
         }
       }
     }

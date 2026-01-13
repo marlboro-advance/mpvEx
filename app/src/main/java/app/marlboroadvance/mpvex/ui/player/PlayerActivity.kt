@@ -1,4 +1,4 @@
-package app.marlboroadvance.mpvex.ui.player
+﻿package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -23,7 +23,6 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
-import android.app.NotificationManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -56,6 +55,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -218,7 +218,7 @@ class PlayerActivity :
   private var noisyReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
   private var savePlaybackStateJob: kotlinx.coroutines.Job? = null // Track ongoing save job
-  private var isEnteringPipMode = false // Track PiP mode transition to prevent premature pausing
+  private var wasPlayingBeforePause = false // Track if video was playing before pause
 
   // ==================== Background Playback ====================
 
@@ -318,11 +318,9 @@ class PlayerActivity :
       }
     }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Only enable edge-to-edge on Android 9.0+ (API 28+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      enableEdgeToEdge()
-    }
+    enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
 
@@ -399,7 +397,7 @@ class PlayerActivity :
     // Extract fileName early so it's available when video loads
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
-      fileName = intent.data?.lastPathSegment ?: "Video"
+      fileName = intent.data?.lastPathSegment ?: "Unknown Video"
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
 
@@ -417,11 +415,8 @@ class PlayerActivity :
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
 
-    // Only set layoutInDisplayCutoutMode on Android 9.0+ (API 28+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      window.attributes.layoutInDisplayCutoutMode =
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-    }
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
 
   override fun attachBaseContext(newBase: Context?) {
@@ -449,6 +444,7 @@ class PlayerActivity :
     onBackPressedDispatcher.addCallback(
       this,
       object : OnBackPressedCallback(true) {
+        @RequiresApi(Build.VERSION_CODES.P)
         override fun handleOnBackPressed() {
           handleBackPress()
         }
@@ -456,6 +452,7 @@ class PlayerActivity :
     )
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun handleBackPress() {
     // Dismiss overlays first
     if (viewModel.sheetShown.value != Sheets.None) {
@@ -485,6 +482,7 @@ class PlayerActivity :
     finish()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun setupPlayerControls() {
     binding.controls.setContent {
       MpvexTheme {
@@ -560,36 +558,23 @@ class PlayerActivity :
     super.onUserLeaveHint()
     // Enter PIP mode when user presses home button if auto PIP is enabled
     if (playerPreferences.autoPiPOnNavigation.get() && isReady && !isFinishing) {
-      isEnteringPipMode = true
       pipHelper.enterPipMode()
-
-      // Reset flag as a fallback if PiP entry fails
-      // onPictureInPictureModeChanged should clear it, but if PiP doesn't start,
-      // this ensures the flag doesn't stay true forever
-      android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-        if (isEnteringPipMode && !isInPictureInPictureMode) {
-          isEnteringPipMode = false
-          Log.d(TAG, "PiP entry timeout - flag reset")
-        }
-      }, 500) // 500ms should be enough for PiP to start
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
-    Log.d(TAG, "PlayerActivity onDestroy - isFinishing: $isFinishing, isUserFinishing: $isUserFinishing, isInPip: $isInPictureInPictureMode")
+    Log.d(TAG, "PlayerActivity onDestroy")
 
     runCatching {
-      // Always stop service when activity is destroyed
-      // This ensures notification is cleared when user swipes app from recents or clears all apps
-      if (serviceBound) {
-        runCatching { unbindService(serviceConnection) }
-        serviceBound = false
-      }
-      runCatching {
+      if (isUserFinishing || isFinishing) {
+        if (serviceBound) {
+          runCatching { unbindService(serviceConnection) }
+          serviceBound = false
+        }
         stopService(Intent(this, MediaPlaybackService::class.java))
-        Log.d(TAG, "MediaPlaybackService stopped in onDestroy")
+        mediaPlaybackService = null
       }
-      mediaPlaybackService = null
 
       // Wait for any pending save operation to complete before destroying MPV
       // This prevents the race condition where the save coroutine tries to access
@@ -621,6 +606,8 @@ class PlayerActivity :
     if (!mpvInitialized) return
 
     player.isExiting = true
+
+    if (!isFinishing) return
 
     runCatching {
       MPVLib.removeObserver(playerObserver)
@@ -664,14 +651,14 @@ class PlayerActivity :
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPause() {
     runCatching {
-      val isInPip = isInPictureInPictureMode || isEnteringPipMode
-      // Respect background playback preference
-      // Don't pause if entering PiP mode or already in PiP mode
-      val shouldPause = !isInPip && !audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing
+      val isInPip = isInPictureInPictureMode
+      val shouldPause = !audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing
 
-      if (shouldPause) {
+      if (!isInPip && shouldPause) {
+        wasPlayingBeforePause = !(viewModel.paused ?: true)
         viewModel.pause()
       }
 
@@ -688,6 +675,7 @@ class PlayerActivity :
     super.onPause()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
       // Restore UI immediately for responsive exit
@@ -713,30 +701,19 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      val isInPip = isInPictureInPictureMode
-
-      // Respect background playback preference
-      // Start background playback if enabled and not finishing
-      // Also keep playback alive when in PiP mode
+      // Don't start background playback if activity is finishing or user is leaving
       if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get() && !isUserFinishing && !isFinishing) {
-        // Service already started in handleFileLoaded, just need to let it continue
-        Log.d(TAG, "Background playback enabled, keeping notification active")
-      } else if ((!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing || isFinishing) && !isInPip) {
-        // Stop service if background playback is disabled or user is finishing, but NOT if in PiP
-        viewModel.pause()
+        startBackgroundPlayback()
+      } else {
+        if (!audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing || isFinishing) {
+          viewModel.pause()
+        }
         if (serviceBound) {
           runCatching {
             unbindService(serviceConnection)
+            serviceBound = false
           }
-          serviceBound = false
         }
-        runCatching {
-          stopService(Intent(this, MediaPlaybackService::class.java))
-        }
-        mediaPlaybackService = null
-      } else if (isInPip) {
-        // Keep playing in PiP mode - don't pause or stop service
-        Log.d(TAG, "In PiP mode - keeping playback active")
       }
     }.onFailure { e ->
       Log.e(TAG, "Error during onStop", e)
@@ -745,14 +722,13 @@ class PlayerActivity :
     super.onStop()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onStart() {
     super.onStart()
 
     runCatching {
       setupWindowFlags()
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        setupSystemUI()
-      }
+      setupSystemUI()
 
       if (!noisyReceiverRegistered) {
         val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
@@ -767,10 +743,19 @@ class PlayerActivity :
         }
       }
 
-      // Stop background playback if preference is disabled
-      if (serviceBound && !audioPreferences.automaticBackgroundPlayback.get()) {
+      if (serviceBound) {
         endBackgroundPlayback()
       }
+
+      // Resume playback if it was playing before pause (e.g. screen lock)
+      if (wasPlayingBeforePause && isReady) {
+        lifecycleScope.launch(Dispatchers.Main) {
+           delay(200) // Small delay to ensure surface is ready
+           viewModel.unpause()
+        }
+        wasPlayingBeforePause = false
+      }
+
     }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
     }
@@ -814,16 +799,15 @@ class PlayerActivity :
       if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun restoreSystemUI() {
     // Clear flags first for immediate effect
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-    // Set cutout mode before showing bars for smoother transition (only on Android 9.0+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      window.attributes.layoutInDisplayCutoutMode =
-        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-    }
+    // Set cutout mode before showing bars for smoother transition
+    window.attributes.layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
 
     // Update window insets configuration
     WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -1263,7 +1247,7 @@ class PlayerActivity :
     }
 
     // For file:// and content:// URIs
-    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Video"
+    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Unknown Video"
   }
 
   /**
@@ -1460,15 +1444,11 @@ class PlayerActivity :
           }
         } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
           // No repeat, end of playlist: close if setting is enabled
-          isUserFinishing = true
-          stopNotificationService()
           finishAndRemoveTask()
         }
       } else {
         // Single video playback (no playlist)
         if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
-          isUserFinishing = true
-          stopNotificationService()
           finishAndRemoveTask()
         }
       }
@@ -1585,7 +1565,7 @@ class PlayerActivity :
       fileName = getFileName(intent)
       // Ensure fileName is not blank - use a fallback if necessary
       if (fileName.isBlank()) {
-        fileName = intent.data?.lastPathSegment ?: "Video"
+        fileName = intent.data?.lastPathSegment ?: "Unknown Video"
       }
       mediaIdentifier = getMediaIdentifier(intent, fileName)
     } else if (mediaIdentifier.isBlank()) {
@@ -1650,14 +1630,6 @@ class PlayerActivity :
     viewModel.setMediaTitle(fileName)
 
     viewModel.unpause()
-
-    // Capture thumbnail once after video loads
-    captureThumbnailForNotification()
-
-    // Start notification service only if background playback preference is enabled
-    if (!serviceBound && audioPreferences.automaticBackgroundPlayback.get()) {
-      startBackgroundPlayback()
-    }
 
     if (subtitlesPreferences.autoloadMatchingSubtitles.get()) {
       lifecycleScope.launch {
@@ -1756,10 +1728,8 @@ class PlayerActivity :
             // Update background service if connected
             if (serviceBound && mediaPlaybackService != null) {
               val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-
-              // Don't capture thumbnail here - let the service handle it with retry logic
-              // The service will attempt to capture the thumbnail asynchronously
-              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = null)
+              val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
+              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
             }
           }
 
@@ -1866,43 +1836,6 @@ class PlayerActivity :
     MPVLib.setPropertyInt("sub-pos", subtitlesPreferences.subPos.get())
 
     Log.d(TAG, "Applied subtitle preferences")
-  }
-
-  /**
-   * Captures a thumbnail from the video for use in the notification.
-   * This is only called once when a video loads, and the same thumbnail
-   * is used for the entire playback duration.
-   */
-  private fun captureThumbnailForNotification() {
-    lifecycleScope.launch(Dispatchers.IO) {
-      try {
-        // Wait for MPV to fully render the first frame
-        kotlinx.coroutines.delay(2000)
-
-        // Capture thumbnail with reasonable size (512px)
-        val thumbnail = MPVLib.grabThumbnail(512)
-
-        if (thumbnail != null) {
-          Log.d(TAG, "Thumbnail captured successfully for notification")
-
-          // Update the service with the captured thumbnail
-          withContext(Dispatchers.Main) {
-            if (serviceBound && mediaPlaybackService != null) {
-              val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
-            } else {
-              // If service is not bound yet, set the thumbnail globally
-              // It will be used when service connects
-              MediaPlaybackService.thumbnail = thumbnail
-            }
-          }
-        } else {
-          Log.w(TAG, "Failed to capture thumbnail - notification will not have thumbnail")
-        }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error capturing thumbnail for notification", e)
-      }
-    }
   }
 
   /**
@@ -2240,13 +2173,12 @@ class PlayerActivity :
    * @param isInPictureInPictureMode true if entering PiP, false if exiting
    * @param newConfig The new configuration
    */
+  @RequiresApi(Build.VERSION_CODES.P)
   override fun onPictureInPictureModeChanged(
     isInPictureInPictureMode: Boolean,
     newConfig: Configuration,
   ) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-
-    isEnteringPipMode = false
 
     pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
 
@@ -2280,11 +2212,10 @@ class PlayerActivity :
    * Restores window configuration when exiting Picture-in-Picture mode.
    * Hides system UI for immersive playback.
    */
+  @RequiresApi(Build.VERSION_CODES.P)
   private fun exitPipUIMode() {
     setupWindowFlags()
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      setupSystemUI()
-    }
+    setupSystemUI()
   }
 
   /**
@@ -2299,16 +2230,7 @@ class PlayerActivity :
 
     binding.controls.alpha = 0f
 
-    isEnteringPipMode = true
     pipHelper.enterPipMode()
-
-    // Reset flag as a fallback if PiP entry fails
-    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-      if (isEnteringPipMode && !isInPictureInPictureMode) {
-        isEnteringPipMode = false
-        Log.d(TAG, "PiP entry timeout (overlay) - flag reset")
-      }
-    }, 500)
   }
 
   // ==================== Orientation Management ====================
@@ -2595,14 +2517,8 @@ class PlayerActivity :
 
         if (fileName.isNotBlank()) {
           val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-
-          // Use the already captured thumbnail if available
-          // Thumbnail was captured once in captureThumbnailForNotification()
-          mediaPlaybackService?.setMediaInfo(
-            title = fileName,
-            artist = artist,
-            thumbnail = MediaPlaybackService.thumbnail
-          )
+          val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
+          mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
         }
       }
 
@@ -2623,20 +2539,10 @@ class PlayerActivity :
   private fun startBackgroundPlayback() {
     if (fileName.isBlank() || !isReady) return
 
-    // Check if service is already bound to prevent duplicate bindings
-    if (serviceBound) {
-      Log.d(TAG, "Service already bound, skipping start")
-      return
-    }
-
     Log.d(TAG, "Starting background playback")
-    try {
-      val intent = Intent(this, MediaPlaybackService::class.java)
-      startForegroundService(intent)
-      bindService(intent, serviceConnection, BIND_AUTO_CREATE)
-    } catch (e: Exception) {
-      Log.e(TAG, "Error starting background playback", e)
-    }
+    val intent = Intent(this, MediaPlaybackService::class.java)
+    startForegroundService(intent)
+    bindService(intent, serviceConnection, BIND_AUTO_CREATE)
   }
 
   /**
@@ -2654,37 +2560,7 @@ class PlayerActivity :
       }
       serviceBound = false
     }
-
-    // Stop the service - Android will automatically clean up the notification
-    try {
-      stopService(Intent(this, MediaPlaybackService::class.java))
-    } catch (e: Exception) {
-      Log.e(TAG, "Error stopping service", e)
-    }
-
-    mediaPlaybackService = null
-  }
-
-  /**
-   * Stops only the notification service without affecting playback state.
-   */
-  private fun stopNotificationService() {
-    // Stop the service - Android will automatically clean up the notification
-    try {
-      stopService(Intent(this, MediaPlaybackService::class.java))
-    } catch (e: Exception) {
-      Log.e(TAG, "Error stopping service", e)
-    }
-
-    if (serviceBound) {
-      try {
-        unbindService(serviceConnection)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error unbinding service", e)
-      }
-      serviceBound = false
-    }
-
+    stopService(Intent(this, MediaPlaybackService::class.java))
     mediaPlaybackService = null
   }
 
@@ -2971,9 +2847,6 @@ class PlayerActivity :
       MPVLib.command("loadfile", playableUri)
     }
 
-    // Clear old thumbnail when switching videos
-    MediaPlaybackService.thumbnail = null
-
     // Update media title (this will trigger UI update)
     MPVLib.setPropertyString("force-media-title", fileName)
     viewModel.setMediaTitle(fileName)
@@ -2986,12 +2859,6 @@ class PlayerActivity :
         title = fileName,
         durationMs = durationMs,
       )
-    }
-
-    // Update background service notification if service is bound
-    if (serviceBound && mediaPlaybackService != null) {
-      val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-      mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = null)
     }
   }
 

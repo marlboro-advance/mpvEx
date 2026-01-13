@@ -508,10 +508,19 @@ fun PlayerControls(
           enter = fadeIn(),
           exit = fadeOut(),
           modifier =
-            Modifier.constrainAs(unlockControlsButton) {
-              top.linkTo(parent.top, spacing.medium)
-              start.linkTo(parent.start, spacing.medium)
-            },
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(unlockControlsButton) {
+                // Significantly moves down the lock icon in portrait mode to avoid status bar overlap
+                top.linkTo(parent.top, if (isPortrait) 56.dp else spacing.medium)
+                start.linkTo(parent.start, spacing.medium)
+              },
         ) {
           ControlsButton(
             Icons.Filled.Lock,

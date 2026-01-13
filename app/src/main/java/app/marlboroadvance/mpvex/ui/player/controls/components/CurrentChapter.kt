@@ -46,7 +46,6 @@ fun CurrentChapter(
   onClick: () -> Unit = {},
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
-  val hideBackground by appearancePreferences.hidePlayerButtonsBackground.collectAsState()
 
   Surface(
     modifier =
@@ -56,24 +55,16 @@ fun CurrentChapter(
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
     color =
-      if (hideBackground) {
-        Color.Transparent
-      } else {
         MaterialTheme.colorScheme.surfaceContainer.copy(
           alpha = 0.55f,
-        )
-      },
-    contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        ),
+    contentColor = MaterialTheme.colorScheme.onSurface,
     tonalElevation = 0.dp,
     border =
-      if (hideBackground) {
-        null
-      } else {
         BorderStroke(
           1.dp,
           MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-        )
-      },
+        ),
   ) {
     AnimatedContent(
       targetState = chapter,
@@ -102,7 +93,7 @@ fun CurrentChapter(
             Modifier
               .padding(end = MaterialTheme.spacing.extraSmall)
               .size(20.dp),
-          tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          tint = MaterialTheme.colorScheme.onSurface,
         )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
@@ -110,7 +101,7 @@ fun CurrentChapter(
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          color = MaterialTheme.colorScheme.onSurface,
         )
         currentChapter.name.let {
           Text(
@@ -118,7 +109,7 @@ fun CurrentChapter(
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
-            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface,
             overflow = TextOverflow.Clip,
           )
           Text(
@@ -128,7 +119,7 @@ fun CurrentChapter(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Bold,
-            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface,
           )
         }
       }
