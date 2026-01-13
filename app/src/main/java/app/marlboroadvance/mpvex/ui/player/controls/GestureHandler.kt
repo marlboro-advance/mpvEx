@@ -105,6 +105,7 @@ fun GestureHandler(
   var dynamicSpeedStartValue by remember { mutableStateOf(2f) }
   var lastAppliedSpeed by remember { mutableStateOf(2f) }
   var hasSwipedEnough by remember { mutableStateOf(false) }
+  var longPressTriggeredDuringTouch by remember { mutableStateOf(false) }
   val currentVolume by viewModel.currentVolume.collectAsState()
   val currentMPVVolume by MPVLib.propInt["volume"].collectAsState()
   val currentBrightness by viewModel.currentBrightness.collectAsState()
@@ -127,11 +128,11 @@ fun GestureHandler(
   var lastSeekTime by remember { mutableStateOf<Long?>(null) }
 
   // Auto-reset tap count on timeout and execute single tap if no double tap detected
-  LaunchedEffect(tapCount) {
+  LaunchedEffect(tapCount, longPressTriggeredDuringTouch) {
     if (tapCount == 1 && pendingSingleTapRegion != null) {
       delay(doubleTapTimeout)
-      // Timeout occurred, execute single tap action only if not double-tap seeking
-      if (tapCount == 1 && pendingSingleTapRegion != null && !isDoubleTapSeeking) {
+      // Timeout occurred, execute single tap action only if not double-tap seeking and not triggered by long press
+      if (tapCount == 1 && pendingSingleTapRegion != null && !isDoubleTapSeeking && !longPressTriggeredDuringTouch) {
         val region = pendingSingleTapRegion!!
         val isCenterTap = region == "center"
         if (useSingleTapForCenter && isCenterTap) {
@@ -329,6 +330,9 @@ fun GestureHandler(
           val down = awaitFirstDown(requireUnconsumed = false)
           val startPosition = down.position
 
+          // Reset long press tracking at the start of each gesture
+          longPressTriggeredDuringTouch = false
+
           // State for horizontal seeking
           var startingPosition = position ?: 0
           var startingX = startPosition.x
@@ -364,6 +368,7 @@ fun GestureHandler(
               if (distance < 10f && multipleSpeedGesture > 0f) {
                 longPressTriggered = true
                 isLongPressing = true
+                longPressTriggeredDuringTouch = true
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 originalSpeed = playbackSpeed ?: 1f
                 MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
