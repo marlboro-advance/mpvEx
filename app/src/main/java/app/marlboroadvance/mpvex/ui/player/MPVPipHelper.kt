@@ -170,18 +170,6 @@ class MPVPipHelper(
 
   fun enterPipMode() {
     runCatching {
-      // Resume playback if paused before entering PiP
-      // This ensures video continues playing in PiP window
-      try {
-        val isPaused = MPVLib.getPropertyBoolean("pause")
-        if (isPaused == true) {
-          Log.d("MPVPipHelper", "Auto-resuming playback for PiP mode")
-          MPVLib.setPropertyBoolean("pause", false)
-        }
-      } catch (e: Exception) {
-        Log.w("MPVPipHelper", "Could not check/resume playback state for PiP", e)
-        // Don't fail PiP entry if playback state check fails
-      }
       activity.enterPictureInPictureMode(buildPipParams())
     }.onFailure {
       Log.e("MPVPipHelper", "Failed to enter PiP mode", it)

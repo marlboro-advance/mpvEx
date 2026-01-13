@@ -37,7 +37,7 @@ class MediaPlaybackService :
   KoinComponent {
   companion object {
     private const val TAG = "MediaPlaybackService"
-    const val NOTIFICATION_ID = 1
+    private const val NOTIFICATION_ID = 1
     private const val NOTIFICATION_CHANNEL_ID = "mpvex_playback_channel"
 
     var thumbnail: Bitmap? = null
@@ -67,7 +67,6 @@ class MediaPlaybackService :
   private var mediaTitle = ""
   private var mediaArtist = ""
   private var paused = false
-  private var lastVideoTitle = ""
 
   inner class MediaPlaybackBinder : Binder() {
     fun getService() = this@MediaPlaybackService
@@ -84,7 +83,6 @@ class MediaPlaybackService :
     MPVLib.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG)
     MPVLib.observeProperty("media-title", MPVLib.MpvFormat.MPV_FORMAT_STRING)
     MPVLib.observeProperty("metadata/artist", MPVLib.MpvFormat.MPV_FORMAT_STRING)
-    MPVLib.observeProperty("force-media-title", MPVLib.MpvFormat.MPV_FORMAT_STRING)
   }
 
   override fun onBind(intent: Intent): IBinder = binder
@@ -97,43 +95,27 @@ class MediaPlaybackService :
   ): Int {
     Log.d(TAG, "Service starting")
 
-    try {
-      // Handle media button events
-      intent?.let {
-        MediaButtonReceiver.handleIntent(mediaSession, it)
-      }
-
-      // Read current state from MPV (safe if MPV is not fully ready yet)
-      val rawMediaTitle = runCatching { MPVLib.getPropertyString("media-title") }.getOrNull() ?: ""
-      val forceMediaTitle = runCatching { MPVLib.getPropertyString("force-media-title") }.getOrNull() ?: ""
-      val isPaused = runCatching { MPVLib.getPropertyBoolean("pause") }.getOrElse { true }
-
-      // Use force-media-title as fallback (set by PlayerActivity) or a default message
-      mediaTitle = if (rawMediaTitle.isNotBlank()) {
-        rawMediaTitle
-      } else if (forceMediaTitle.isNotBlank()) {
-        forceMediaTitle
-      } else {
-        getString(R.string.notification_playing)
-      }
-
-      mediaArtist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-      paused = isPaused == true
-
-      updateMediaSession()
-
-      val type =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-        } else {
-          0
-        }
-      ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
-    } catch (e: Exception) {
-      Log.e(TAG, "Error in onStartCommand", e)
+    // Handle media button events
+    intent?.let {
+      MediaButtonReceiver.handleIntent(mediaSession, it)
     }
 
-    return START_REDELIVER_INTENT
+    // Read current state from MPV
+    mediaTitle = MPVLib.getPropertyString("media-title") ?: ""
+    mediaArtist = MPVLib.getPropertyString("metadata/artist") ?: ""
+    paused = MPVLib.getPropertyBoolean("pause") == true
+
+    updateMediaSession()
+
+    val type =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+      } else {
+        0
+      }
+    ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+
+    return START_NOT_STICKY
   }
 
   override fun onGetRoot(
@@ -154,31 +136,11 @@ class MediaPlaybackService :
     artist: String,
     thumbnail: Bitmap? = null,
   ) {
-    val finalTitle = title.takeIf { it.isNotBlank() } ?: mediaTitle
-    mediaTitle = finalTitle
+    MediaPlaybackService.thumbnail = thumbnail
+    mediaTitle = title
     mediaArtist = artist
-
-    // Check if this is a new video (title changed significantly)
-    val isNewVideo = lastVideoTitle != finalTitle && finalTitle.isNotBlank()
-    lastVideoTitle = finalTitle
-
-    if (isNewVideo) {
-      Log.d(TAG, "New video detected: $finalTitle")
-      // Clear old thumbnail only for new videos
-      MediaPlaybackService.thumbnail = null
-    }
-
-    // If thumbnail was provided, use it
-    if (thumbnail != null) {
-      MediaPlaybackService.thumbnail = thumbnail
-    }
-
-    // Update notification and media session
-    updateNotification()
     updateMediaSession()
   }
-
-  
 
   private fun setupMediaSession() {
     mediaSession =
@@ -232,23 +194,14 @@ class MediaPlaybackService :
 
   private fun updateMediaSession() {
     try {
-      // Check if media session is initialized
-      if (!::mediaSession.isInitialized) {
-        Log.w(TAG, "MediaSession not initialized, skipping update")
-        updateNotification()
-        return
-      }
-
       // Update metadata
       val duration = MPVLib.getPropertyDouble("duration")?.times(1000)?.toLong() ?: 0L
-      val displayTitle = mediaTitle.takeIf { it.isNotBlank() } ?: getString(R.string.notification_playing)
-
       val metadataBuilder =
         MediaMetadataCompat
           .Builder()
-          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, displayTitle)
+          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, mediaTitle)
           .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, mediaArtist)
-          .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, displayTitle)
+          .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, mediaTitle)
           .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
 
       thumbnail?.let {
@@ -285,11 +238,6 @@ class MediaPlaybackService :
 
   private fun updateNotification() {
     try {
-      if (!::mediaSession.isInitialized) {
-        Log.w(TAG, "Cannot update notification - media session not initialized")
-        return
-      }
-
       val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
       notificationManager.notify(NOTIFICATION_ID, buildNotification())
     } catch (e: Exception) {
@@ -302,22 +250,13 @@ class MediaPlaybackService :
       Intent(this, PlayerActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
       }
-    val pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT or
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        PendingIntent.FLAG_IMMUTABLE
-      } else {
-        0
-      }
     val pendingIntent =
       PendingIntent.getActivity(
         this,
         0,
         openAppIntent,
-        pendingIntentFlags,
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
-
-    // Ensure we always have a valid title
-    val displayTitle = mediaTitle.takeIf { it.isNotBlank() } ?: getString(R.string.notification_playing)
 
     // Create notification actions
     val previousAction =
@@ -352,7 +291,7 @@ class MediaPlaybackService :
 
     return NotificationCompat
       .Builder(this, NOTIFICATION_CHANNEL_ID)
-      .setContentTitle(displayTitle)
+      .setContentTitle(mediaTitle)
       .setContentText(mediaArtist.ifBlank { getString(R.string.notification_playing) })
       .setSmallIcon(R.drawable.ic_launcher_foreground)
       .setLargeIcon(thumbnail)
@@ -396,63 +335,33 @@ class MediaPlaybackService :
     value: String,
   ) {
     when (property) {
-      "media-title", "force-media-title" -> {
-        // Only update if the value is not blank
-        if (value.isNotBlank()) {
-          mediaTitle = value
-          lastVideoTitle = value
-          updateMediaSession()
-        }
-      }
-      "metadata/artist" -> {
-        mediaArtist = value
-        updateMediaSession()
-      }
+      "media-title" -> mediaTitle = value
+      "metadata/artist" -> mediaArtist = value
     }
+    updateMediaSession()
   }
 
   override fun eventProperty(
     property: String,
     value: Double,
-  ) {
-    // Currently unused
-  }
+  ) {}
 
   override fun eventProperty(
     property: String,
     value: MPVNode,
-  ) {
-    // Currently unused
-  }
+  ) {}
 
   override fun event(eventId: Int, data: MPVNode) {
-    if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) {
-      Log.d(TAG, "MPV shutdown event, stopping service")
-      stopSelf()
-    }
+    if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) stopSelf()
   }
 
   override fun onDestroy() {
     try {
       Log.d(TAG, "Service destroyed")
 
-      // Remove observer safely
-      runCatching {
-        MPVLib.removeObserver(this)
-      }.onFailure { e ->
-        Log.e(TAG, "Error removing MPV observer", e)
-      }
-
-      // Release media session safely
-      if (::mediaSession.isInitialized) {
-        runCatching {
-          mediaSession.isActive = false
-          mediaSession.release()
-        }.onFailure { e ->
-          Log.e(TAG, "Error releasing media session", e)
-        }
-      }
-
+      MPVLib.removeObserver(this)
+      mediaSession.isActive = false
+      mediaSession.release()
       super.onDestroy()
     } catch (e: Exception) {
       Log.e(TAG, "Error in onDestroy", e)
