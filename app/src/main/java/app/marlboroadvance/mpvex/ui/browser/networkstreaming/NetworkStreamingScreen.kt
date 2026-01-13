@@ -229,7 +229,7 @@ object NetworkStreamingScreen : Screen {
                       NetworkBrowserScreen(
                         connectionId = conn.id,
                         connectionName = conn.name,
-                        currentPath = conn.path,
+                        currentPath = "/",  // Always start at root - conn.path is already included in connection
                       ),
                     )
                   }
