@@ -56,6 +56,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -219,6 +220,7 @@ class PlayerActivity :
   private var mpvInitialized = false // Track MPV initialization state
   private var savePlaybackStateJob: kotlinx.coroutines.Job? = null // Track ongoing save job
   private var isEnteringPipMode = false // Track PiP mode transition to prevent premature pausing
+  private var wasPlayingBeforePause = false // Track if video was playing before pause
 
   // ==================== Background Playback ====================
 
@@ -672,6 +674,7 @@ class PlayerActivity :
       val shouldPause = !isInPip && !audioPreferences.automaticBackgroundPlayback.get() || isUserFinishing
 
       if (shouldPause) {
+        wasPlayingBeforePause = !(viewModel.paused ?: true)
         viewModel.pause()
       }
 
@@ -771,6 +774,16 @@ class PlayerActivity :
       if (serviceBound && !audioPreferences.automaticBackgroundPlayback.get()) {
         endBackgroundPlayback()
       }
+
+      // Resume playback if it was playing before pause (e.g. screen lock)
+      if (wasPlayingBeforePause && isReady) {
+        lifecycleScope.launch(Dispatchers.Main) {
+           delay(200) // Small delay to ensure surface is ready
+           viewModel.unpause()
+        }
+        wasPlayingBeforePause = false
+      }
+
     }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
     }
@@ -921,7 +934,9 @@ class PlayerActivity :
       // Clean existing scripts first
       fileManager.deleteContent(scriptsDir)
       Log.d(TAG, "Cleaned scripts directory")
-      
+
+      val scriptsDirPath = File(filesDir.path, "scripts")
+
       // Copy user-selected Lua scripts if enabled
       if (advancedPreferences.enableLuaScripts.get()) {
         val selectedScripts = advancedPreferences.selectedLuaScripts.get()
