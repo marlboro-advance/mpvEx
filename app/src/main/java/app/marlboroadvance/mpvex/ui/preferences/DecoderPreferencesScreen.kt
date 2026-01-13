@@ -10,17 +10,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -40,7 +48,9 @@ object DecoderPreferencesScreen : Screen {
   @Composable
   override fun Content() {
     val preferences = koinInject<DecoderPreferences>()
+    val advancedPreferences = koinInject<AdvancedPreferences>()
     val backstack = LocalBackStack.current
+    var showGpuNextWarning by remember { mutableStateOf(false) }
     Scaffold(
       topBar = {
         TopAppBar(
@@ -100,8 +110,15 @@ object DecoderPreferencesScreen : Screen {
               val gpuNext by preferences.gpuNext.collectAsState()
               SwitchPreference(
                 value = gpuNext,
-                onValueChange = {
-                  preferences.gpuNext.set(it)
+                onValueChange = { enabled ->
+                    if (enabled && !gpuNext) {
+                        showGpuNextWarning = true
+                    } else {
+                        preferences.gpuNext.set(enabled)
+                        if (enabled) {
+                            preferences.enableAnime4K.set(false)
+                        }
+                    }
                 },
                 title = { Text(stringResource(R.string.pref_decoder_gpu_next_title)) },
                 summary = {
@@ -111,6 +128,51 @@ object DecoderPreferencesScreen : Screen {
                   )
                 },
               )
+
+              if (showGpuNextWarning) {
+                  AlertDialog(
+                      onDismissRequest = { showGpuNextWarning = false },
+                      title = { Text(stringResource(R.string.pref_decoder_gpu_next_enable_title)) },
+                      text = {
+                          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                              Text(stringResource(R.string.pref_decoder_gpu_next_warning))
+                              Text(stringResource(R.string.pref_decoder_gpu_next_purple_screen_fix))
+                              
+                              Surface(
+                                  color = MaterialTheme.colorScheme.errorContainer,
+                                  shape = MaterialTheme.shapes.small
+                              ) {
+                                  Column(modifier = Modifier.padding(8.dp)) {
+                                      Text(
+                                          text = stringResource(R.string.pref_anime4k_incompatibility),
+                                          style = MaterialTheme.typography.titleSmall,
+                                          color = MaterialTheme.colorScheme.onErrorContainer
+                                      )
+                                      Text(
+                                          text = stringResource(R.string.pref_anime4k_gpu_next_error),
+                                          style = MaterialTheme.typography.bodySmall,
+                                          color = MaterialTheme.colorScheme.onErrorContainer
+                                      )
+                                  }
+                              }
+                          }
+                      },
+                      confirmButton = {
+                          Button(onClick = {
+                              preferences.gpuNext.set(true)
+                              preferences.enableAnime4K.set(false)
+                              showGpuNextWarning = false
+                          }) {
+                              Text(stringResource(R.string.pref_decoder_gpu_next_enable_anyway))
+                          }
+                      },
+                      dismissButton = {
+                          TextButton(onClick = { showGpuNextWarning = false }) {
+                              Text(stringResource(R.string.generic_cancel))
+                          }
+                      }
+                  )
+              }
 
               PreferenceDivider()
 
@@ -196,7 +258,7 @@ object DecoderPreferencesScreen : Screen {
                 onClick = { backstack.add(UpscaleFilterScreen) },
               )
 
-              PreferenceDivider()
+
 
               me.zhanghai.compose.preference.Preference(
                 title = { Text("Downscaling Filter") },
@@ -207,6 +269,26 @@ object DecoderPreferencesScreen : Screen {
                   )
                 },
                 onClick = { backstack.add(DownscaleFilterScreen) },
+              )
+              
+              PreferenceDivider()
+              
+              val enableAnime4K by preferences.enableAnime4K.collectAsState()
+              SwitchPreference(
+                value = enableAnime4K,
+                onValueChange = { enabled ->
+                    preferences.enableAnime4K.set(enabled)
+                    if (enabled) {
+                        preferences.gpuNext.set(false)
+                    }
+                },
+                title = { Text(stringResource(R.string.pref_anime4k_title)) },
+                summary = { 
+                  Text(
+                    stringResource(R.string.pref_anime4k_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  ) 
+                },
               )
             }
           }

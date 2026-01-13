@@ -57,6 +57,14 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import org.koin.compose.koinInject
 
+import app.marlboroadvance.mpvex.preferences.DecoderPreferences
+import app.marlboroadvance.mpvex.domain.anime4k.Anime4KManager
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.ui.platform.LocalContext
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MoreSheet(
@@ -68,8 +76,18 @@ fun MoreSheet(
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
+  val decoderPreferences = koinInject<DecoderPreferences>()
+  val anime4kManager = koinInject<Anime4KManager>()
   koinInject<PlayerPreferences>()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
+  
+  val enableAnime4K by decoderPreferences.enableAnime4K.collectAsState()
+  val anime4kMode by decoderPreferences.anime4kMode.collectAsState()
+  val anime4kQuality by decoderPreferences.anime4kQuality.collectAsState()
+  val gpuNext by decoderPreferences.gpuNext.collectAsState()
+  
+  val context = LocalContext.current
+  val scope = rememberCoroutineScope()
 
   PlayerSheet(
     onDismissRequest,
@@ -160,6 +178,105 @@ fun MoreSheet(
             },
             selected = statisticsPage == page,
           )
+        }
+      }
+      
+      // Anime4K Controls
+      if (enableAnime4K && !gpuNext) {
+        Text(text = stringResource(R.string.anime4k_mode_title))
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(Anime4KManager.Mode.entries) { mode ->
+            FilterChip(
+              label = { Text(stringResource(mode.titleRes)) },
+              selected = anime4kMode == mode.name,
+              onClick = {
+                if (gpuNext) {
+                  scope.launch(Dispatchers.Main.immediate) {
+                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
+                  }
+                  return@FilterChip
+                }
+                decoderPreferences.anime4kMode.set(mode.name)
+                
+                // Apply shaders immediately (runtime change)
+                scope.launch(Dispatchers.IO) {
+                  runCatching {
+                    val qualityStr = decoderPreferences.anime4kQuality.get()
+                    val quality = try {
+                      Anime4KManager.Quality.valueOf(qualityStr)
+                    } catch (e: IllegalArgumentException) {
+                      Anime4KManager.Quality.BALANCED
+                    }
+                    val currentMode = try {
+                        Anime4KManager.Mode.valueOf(mode.name)
+                    } catch (e: IllegalArgumentException) {
+                        Anime4KManager.Mode.OFF
+                    }
+                    
+                    val shaderChain = anime4kManager.getShaderChain(currentMode, quality)
+                    
+                    // Use setPropertyString for runtime changes (not setOptionString!)
+                    MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
+                    
+                    // Show toast on main thread
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                      Toast.makeText(context, context.getString(R.string.anime4k_mode_toast, context.getString(mode.titleRes)), Toast.LENGTH_SHORT).show()
+                    }
+                  }
+                }
+              }
+            )
+          }
+        }
+        
+        Text(text = stringResource(R.string.anime4k_quality_title))
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(Anime4KManager.Quality.entries) { quality ->
+             FilterChip(
+              label = { Text(stringResource(quality.titleRes)) },
+              selected = anime4kQuality == quality.name,
+              onClick = {
+                if (gpuNext) {
+                  scope.launch(Dispatchers.Main.immediate) {
+                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
+                  }
+                  return@FilterChip
+                }
+                decoderPreferences.anime4kQuality.set(quality.name)
+
+                // Apply shaders immediately (runtime change)
+                scope.launch(Dispatchers.IO) {
+                  runCatching {
+                    val modeStr = decoderPreferences.anime4kMode.get()
+                    val modeEnum = try {
+                      Anime4KManager.Mode.valueOf(modeStr)
+                    } catch (e: IllegalArgumentException) {
+                      Anime4KManager.Mode.OFF
+                    }
+                    val currentQuality = try {
+                        Anime4KManager.Quality.valueOf(quality.name)
+                    } catch (e: IllegalArgumentException) {
+                        Anime4KManager.Quality.BALANCED
+                    }
+                    
+                    val shaderChain = anime4kManager.getShaderChain(modeEnum, currentQuality)
+                    
+                    // Use setPropertyString for runtime changes (not setOptionString!)
+                    MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
+                    
+                    // Show toast on main thread
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                      Toast.makeText(context, context.getString(R.string.anime4k_quality_toast, context.getString(quality.titleRes)), Toast.LENGTH_SHORT).show()
+                    }
+                  }
+                }
+              }
+            )
+          }
         }
       }
       Text(text = stringResource(id = R.string.pref_audio_channels))
