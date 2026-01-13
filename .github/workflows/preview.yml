@@ -95,11 +95,40 @@ jobs:
             echo "${arch}_size=$size" >> $GITHUB_OUTPUT
           done
 
-      - name: Upload preview APKs
+      - name: Upload preview APK - universal
         uses: actions/upload-artifact@v4
         with:
-          name: preview-apks
-          path: output/
+          name: mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-universal
+          path: output/mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-universal.apk
+          if-no-files-found: error
+
+      - name: Upload preview APK - arm64-v8a
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-arm64-v8a
+          path: output/mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-arm64-v8a.apk
+          if-no-files-found: error
+
+      - name: Upload preview APK - armeabi-v7a
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-armeabi-v7a
+          path: output/mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-armeabi-v7a.apk
+          if-no-files-found: error
+
+      - name: Upload preview APK - x86
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-x86
+          path: output/mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-x86.apk
+          if-no-files-found: error
+
+      - name: Upload preview APK - x86_64
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-x86_64
+          path: output/mpvEx-preview-r${{ steps.set_commit.outputs.commit_count }}-x86_64.apk
+          if-no-files-found: error
 
 
   publish:
@@ -108,11 +137,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifacts
+      - name: Download all preview APKs
         uses: actions/download-artifact@v4
         with:
-          name: preview-apks
+          pattern: mpvEx-preview-r*
           path: ./public
+          merge-multiple: true
 
       - name: Generate download page
         run: |
