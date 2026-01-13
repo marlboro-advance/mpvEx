@@ -6,8 +6,9 @@ permissions:
   id-token: write
 
 on:
-  workflow_dispatch:   # Manual trigger → build + publish
-  pull_request:        # PR → build + artifacts only
+  workflow_dispatch:
+  push:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
@@ -41,16 +42,36 @@ jobs:
       - name: Build with Gradle (Preview)
         run: ./gradlew assemblePreview
 
-      - name: Sign APKs
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: app/build/outputs/apk/preview
-          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE }}
-          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "35.0.0"
+      - name: Setup signing keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > app/build/outputs/apk/preview/signingKey.jks
+
+      - name: Sign APKs manually
+        run: |
+          set -e
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          apksigner=$ANDROID_HOME/build-tools/35.0.0/apksigner
+
+          # Align and sign each APK
+          for apk in app/build/outputs/apk/preview/app-*-preview.apk; do
+            basename=$(basename "$apk" .apk)
+            aligned="app/build/outputs/apk/preview/${basename}-aligned.apk"
+            signed="app/build/outputs/apk/preview/${basename}-signed.apk"
+
+            # Align the APK
+            $ANDROID_HOME/build-tools/35.0.0/zipalign -f 4 "$apk" "$aligned"
+
+            # Sign the aligned APK
+            "$apksigner" sign \
+              --ks app/build/outputs/apk/preview/signingKey.jks \
+              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
+              --ks-pass pass:"${{ secrets.SIGNING_STORE_PASSWORD }}" \
+              --key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+              --out "$signed" \
+              "$aligned"
+
+            echo "Signed: $basename"
+          done
 
       - name: Collect build artifacts
         id: set_commit
@@ -120,7 +141,7 @@ jobs:
             <ul>
               <li><a href="mpvEx-preview-r${commit_count}-universal.apk">Universal (${{ needs.build.outputs.universal_size }})</a></li>
               <li><a href="mpvEx-preview-r${commit_count}-arm64-v8a.apk">arm64-v8a (${{ needs.build.outputs.arm64-v8a_size }})</a></li>
-              <li><a href="mpvEx-preview-r${commit_count}-armeabi-v7a.apk">armeabi-v7a (${{ needs.build.outputs.armeabi-v7a_size }})</a></li>
+              <li><a href="mpvEx-preview-r${commit_count}-armeabi-v7a.apk">armeabi-v7a (${{ needs.build.outputs.armeabi_v7a_size }})</a></li>
               <li><a href="mpvEx-preview-r${commit_count}-x86.apk">x86 (${{ needs.build.outputs.x86_size }})</a></li>
               <li><a href="mpvEx-preview-r${commit_count}-x86_64.apk">x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
             </ul>

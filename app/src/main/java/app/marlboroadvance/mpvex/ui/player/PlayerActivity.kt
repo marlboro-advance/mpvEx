@@ -55,7 +55,6 @@ import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -287,7 +286,7 @@ class PlayerActivity :
       when (focusChange) {
         AudioManager.AUDIOFOCUS_LOSS,
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-        -> {
+          -> {
           // Save current state to restore later
           val oldRestore = restoreAudioFocus
           val wasPlayerPaused = viewModel.paused ?: false
@@ -334,7 +333,7 @@ class PlayerActivity :
 
     playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
     playlistIndex = intent.getIntExtra("playlist_index", 0)
-    
+
     // Load playlist from intent extras first (fast path - backward compatibility)
     playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
       intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
@@ -342,7 +341,7 @@ class PlayerActivity :
       @Suppress("DEPRECATION")
       intent.getParcelableArrayListExtra("playlist") ?: emptyList()
     }
-    
+
     // If playlist is empty but playlist_id is provided, load asynchronously from database
     // Use windowed loading to prevent ANR with large playlists
     if (playlist.isEmpty() && playlistId != null) {
@@ -351,19 +350,19 @@ class PlayerActivity :
         try {
           // Get total count first to decide if we need windowed loading
           val totalCount = playlistRepository.getPlaylistItemCount(pid)
-          
+
           if (totalCount > 100) {
             // Large playlist: use windowed loading to prevent ANR
             val windowSize = 100
             val halfWindow = windowSize / 2
             val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
-            
+
             val items = playlistRepository.getPlaylistItemsWindowAsUris(
               playlistId = pid,
               centerIndex = playlistIndex,
               windowSize = windowSize
             )
-            
+
             withContext(Dispatchers.Main) {
               playlist = items
               playlistWindowOffset = startOffset
@@ -385,7 +384,7 @@ class PlayerActivity :
         }
       }
     }
-    
+
     // Only auto-generate playlist from folder if playlist mode is enabled and no playlist_id
     if (playlist.isEmpty() && playlistId == null && playerPreferences.playlistMode.get()) {
       val path = parsePathFromIntent(intent)
@@ -746,16 +745,6 @@ class PlayerActivity :
       if (serviceBound) {
         endBackgroundPlayback()
       }
-
-      // Resume playback if it was playing before pause (e.g. screen lock)
-      if (wasPlayingBeforePause && isReady) {
-        lifecycleScope.launch(Dispatchers.Main) {
-           delay(200) // Small delay to ensure surface is ready
-           viewModel.unpause()
-        }
-        wasPlayingBeforePause = false
-      }
-
     }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
     }
@@ -794,9 +783,9 @@ class PlayerActivity :
     @Suppress("DEPRECATION")
     binding.root.systemUiVisibility =
       View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-      View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-      View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-      if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
+        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+        if (playerPreferences.showSystemStatusBar.get()) 0 else View.SYSTEM_UI_FLAG_LOW_PROFILE
   }
 
   @RequiresApi(Build.VERSION_CODES.P)
@@ -843,7 +832,7 @@ class PlayerActivity :
 
     // Add observer after initialization
     MPVLib.addObserver(playerObserver)
-    
+
     // Copy fonts asynchronously (not critical for initial playback)
     lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
@@ -905,38 +894,38 @@ class PlayerActivity :
       // Clean existing scripts first
       fileManager.deleteContent(scriptsDir)
       Log.d(TAG, "Cleaned scripts directory")
-      
+
       // Copy user-selected Lua scripts if enabled
       if (advancedPreferences.enableLuaScripts.get()) {
         val selectedScripts = advancedPreferences.selectedLuaScripts.get()
         val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
-        
+
         Log.d(TAG, "Lua scripts enabled: ${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString()}")
-        
+
         if (selectedScripts.isEmpty()) {
           Log.d(TAG, "No Lua scripts selected, skipping copy")
           return@runCatching
         }
-        
+
         if (mpvConfStorageUri.isBlank()) {
           Log.w(TAG, "MPV config storage URI not set, cannot copy Lua scripts")
           return@runCatching
         }
-        
+
         val tree = DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
         if (tree == null) {
           Log.e(TAG, "Failed to access MPV config storage directory")
           return@runCatching
         }
-        
+
         if (!tree.exists() || !tree.canRead()) {
           Log.e(TAG, "MPV config storage directory does not exist or cannot be read")
           return@runCatching
         }
-        
+
         var successCount = 0
         var failCount = 0
-        
+
         selectedScripts.forEach { scriptName ->
           runCatching {
             val scriptFile = tree.findFile(scriptName)
@@ -961,7 +950,7 @@ class PlayerActivity :
             failCount++
           }
         }
-        
+
         Log.d(TAG, "Lua scripts copy completed: $successCount succeeded, $failCount failed")
       } else {
         Log.d(TAG, "Lua scripts disabled in preferences")
@@ -1079,7 +1068,7 @@ class PlayerActivity :
   private fun setHttpHeadersFromExtras(extras: Bundle?) {
     // Build header map starting with auto-detected referer
     val headerMap = mutableMapOf<String, String>()
-    
+
     // Automatically extract and set referer domain from the URL
     val uri = extractUriFromIntent(intent)
     if (uri != null && HttpUtils.isNetworkStream(uri)) {
@@ -1114,7 +1103,7 @@ class PlayerActivity :
       val headersString = headerMap
         .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
         .joinToString(",")
-      
+
       MPVLib.setPropertyString("http-header-fields", headersString)
       Log.d(TAG, "Set HTTP headers: $headersString")
     }
@@ -1130,7 +1119,7 @@ class PlayerActivity :
     if (!HttpUtils.isNetworkStream(uri)) return
 
     val headerMap = mutableMapOf<String, String>()
-    
+
     // Automatically extract and set referer domain from the URI
     HttpUtils.extractRefererDomain(uri)?.let { referer ->
       headerMap["Referer"] = referer
@@ -1142,7 +1131,7 @@ class PlayerActivity :
       val headersString = headerMap
         .map { "${it.key}: ${it.value.replace(",", "\\,")}" }
         .joinToString(",")
-      
+
       MPVLib.setPropertyString("http-header-fields", headersString)
       Log.d(TAG, "Set HTTP headers for playlist item: $headersString")
     }
@@ -1575,12 +1564,12 @@ class PlayerActivity :
 
     setIntentExtras(intent.extras)
 
-          lifecycleScope.launch(Dispatchers.IO) {
-        // Load playback state (will skip track restoration if preferred language configured)
-        val hasState = loadVideoPlaybackState(fileName)
+    lifecycleScope.launch(Dispatchers.IO) {
+      // Load playback state (will skip track restoration if preferred language configured)
+      val hasState = loadVideoPlaybackState(fileName)
 
-        // Apply track selection logic (defaults only apply when no saved state)
-        trackSelector.onFileLoaded(hasState)
+      // Apply track selection logic (defaults only apply when no saved state)
+      trackSelector.onFileLoaded(hasState)
 
       // Apply default zoom only if there's no saved state
       if (!hasState) {
@@ -1679,10 +1668,10 @@ class PlayerActivity :
           return@launch
         }
 
-         // Skip fetching for playlist items - they already have correct titles from playlist metadata
+        // Skip fetching for playlist items - they already have correct titles from playlist metadata
         val launchSource = intent.getStringExtra("launch_source")
-        if (intent.hasExtra("title") && launchSource != null && 
-            (launchSource.contains("playlist") || launchSource == "m3u_playlist")) {
+        if (intent.hasExtra("title") && launchSource != null &&
+          (launchSource.contains("playlist") || launchSource == "m3u_playlist")) {
           Log.d(TAG, "Skipping title fetch for playlist item with custom title: $fileName")
           return@launch
         }
@@ -1831,7 +1820,7 @@ class PlayerActivity :
     val scaleValue = if (scaleByWindow) "yes" else "no"
     MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
     MPVLib.setPropertyString("sub-use-margins", scaleValue)
-    
+
     MPVLib.setPropertyFloat("sub-scale", subtitlesPreferences.subScale.get())
     MPVLib.setPropertyInt("sub-pos", subtitlesPreferences.subPos.get())
 
@@ -1882,7 +1871,7 @@ class PlayerActivity :
             audioDelay =
               (
                 (MPVLib.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS
-              ).toInt(),
+                ).toInt(),
             timeRemaining = timeRemaining,
             externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
           ),
@@ -1951,7 +1940,7 @@ class PlayerActivity :
     if (state.externalSubtitles.isNotBlank()) {
       val externalSubUris = state.externalSubtitles.split("|").filter { it.isNotBlank() }
       Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
-      
+
       for (subUri in externalSubUris) {
         runCatching {
           MPVLib.command("sub-add", subUri, "cached")
@@ -1960,7 +1949,7 @@ class PlayerActivity :
           Log.e(TAG, "Failed to restore external subtitle: $subUri", e)
         }
       }
-      
+
       // Update ViewModel's tracked list
       viewModel.setExternalSubtitles(externalSubUris)
     }
@@ -2141,20 +2130,20 @@ class PlayerActivity :
    */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
-    
+
     // Update the intent first so getFileName uses the new intent data
     setIntent(intent)
-    
+
     // Extract the new fileName before loading the file
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
       fileName = intent.data?.lastPathSegment ?: "Unknown Video"
     }
     mediaIdentifier = getMediaIdentifier(intent, fileName)
-    
+
     // Set HTTP headers (including referer) BEFORE loading the new file
     setHttpHeadersFromExtras(intent.extras)
-    
+
     // Load the new file
     getPlayableUri(intent)?.let { uri ->
       // Avoid blocking UI thread while mpv opens network streams (e.g., HLS).
@@ -2308,7 +2297,7 @@ class PlayerActivity :
       KeyEvent.KEYCODE_DPAD_DOWN,
       KeyEvent.KEYCODE_DPAD_RIGHT,
       KeyEvent.KEYCODE_DPAD_LEFT,
-      -> {
+        -> {
         if (isTrackSheetOpen) {
           return super.onKeyDown(keyCode, event)
         }
@@ -2734,7 +2723,7 @@ class PlayerActivity :
     if (playlistTotalCount > 0 && playlistId != null) {
       // Calculate the actual index within the loaded window
       val windowIndex = index - playlistWindowOffset
-      
+
       // Check if we need to expand the window
       if (windowIndex < 0 || windowIndex >= playlist.size) {
         // Index is outside the current window - expand asynchronously
@@ -2743,18 +2732,18 @@ class PlayerActivity :
             val windowSize = 100
             val halfWindow = windowSize / 2
             val newOffset = (index - halfWindow).coerceAtLeast(0)
-            
+
             val items = playlistRepository.getPlaylistItemsWindowAsUris(
               playlistId = playlistId!!,
               centerIndex = index,
               windowSize = windowSize
             )
-            
+
             withContext(Dispatchers.Main) {
               playlist = items
               playlistWindowOffset = newOffset
               Log.d(TAG, "Expanded playlist window: offset=$newOffset, size=${items.size}")
-              
+
               // Now load the item with the updated window
               loadPlaylistItemInternal(index)
             }
@@ -2764,7 +2753,7 @@ class PlayerActivity :
         }
         return
       }
-      
+
       // Item is within current window - use local index
       loadPlaylistItemInternal(index)
     } else {
@@ -2784,7 +2773,7 @@ class PlayerActivity :
     } else {
       index
     }
-    
+
     if (windowIndex < 0 || windowIndex >= playlist.size) {
       Log.e(TAG, "Invalid playlist index: $index (window index: $windowIndex)")
       return
