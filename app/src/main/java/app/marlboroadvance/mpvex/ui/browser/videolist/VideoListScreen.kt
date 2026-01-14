@@ -241,26 +241,24 @@ data class VideoListScreen(
       },
       floatingActionButton = {
         if (sortedVideosWithInfo.isNotEmpty()) {
-          Box(modifier = Modifier.padding(end = 16.dp, bottom = 96.dp)) {
-            FloatingActionButton(
-              onClick = {
-                coroutineScope.launch {
-                  val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
-                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
-                  val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
-                    File(it.filePath).parent == folderPath
-                  }
-
-                  if (lastPlayedInFolder != null) {
-                    MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
-                  } else {
-                    MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
-                  }
+          FloatingActionButton(
+            onClick = {
+              coroutineScope.launch {
+                val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
+                val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
+                val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
+                  File(it.filePath).parent == folderPath
                 }
-              },
-            ) {
-              Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
-            }
+
+                if (lastPlayedInFolder != null) {
+                  MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                } else {
+                  MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
+                }
+              }
+            },
+          ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
           }
         }
       }
