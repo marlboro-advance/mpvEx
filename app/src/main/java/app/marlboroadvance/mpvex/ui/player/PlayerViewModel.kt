@@ -26,6 +26,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ import org.koin.core.component.inject
 import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
+
 
 enum class RepeatMode {
   OFF,      // No repeat
@@ -75,6 +77,13 @@ class PlayerViewModel(
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val json: Json by inject()
+  private val videoMetadataDao: app.marlboroadvance.mpvex.database.dao.VideoMetadataDao by inject()
+  private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
+  
+  // Progressive playlist metadata loading
+  private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
+  val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
+  private var _playlistMetadataJob: kotlinx.coroutines.Job? = null
 
   // MPV properties with efficient collection
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
@@ -1023,14 +1032,164 @@ class PlayerViewModel(
     val activity = host as? PlayerActivity ?: return null
     if (activity.playlist.isEmpty()) return null
 
+    // Check if current video has subtitles
+    val currentHasSubtitles = subtitleTracks.value.isNotEmpty()
+    
+    // Get current video resolution for currently playing
+    val currentWidth = MPVLib.getPropertyInt("width") ?: 0
+    val currentHeight = MPVLib.getPropertyInt("height") ?: 0
+    val currentResolution = formatResolution(currentWidth, currentHeight)
+    
+    // Get current video progress
+    val currentPos = pos ?: 0
+    val currentDuration = duration ?: 0
+    val currentProgress = if (currentDuration > 0) {
+      ((currentPos.toFloat() / currentDuration.toFloat()) * 100f).coerceIn(0f, 100f)
+    } else 0f
+
     return activity.playlist.mapIndexed { index, uri ->
       val title = activity.getPlaylistItemTitle(uri)
+      // Get path for thumbnail generation
+      val path = uri.path ?: uri.toString()
+      val isCurrentlyPlaying = index == activity.playlistIndex
       app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem(
         uri = uri,
         title = title,
         index = index,
-        isPlaying = index == activity.playlistIndex,
+        isPlaying = isCurrentlyPlaying,
+        path = path,
+        // For currently playing video, use live data
+        hasSubtitles = if (isCurrentlyPlaying) currentHasSubtitles else false,
+        resolution = if (isCurrentlyPlaying) currentResolution else "",
+        progressPercent = if (isCurrentlyPlaying) currentProgress else 0f,
+        isWatched = isCurrentlyPlaying && currentProgress >= 95f,
       )
+    }
+  }
+  
+  /**
+   * Starts progressive metadata extraction for the current playlist.
+   * Updates playlistItems flow as metadata becomes available.
+   */
+  fun startPlaylistMetadataExtraction(context: android.content.Context) {
+    val activity = host as? PlayerActivity ?: return
+    if (activity.playlist.isEmpty()) return
+
+    // Cancel any existing job
+    _playlistMetadataJob?.cancel()
+
+    // 1. Initial Load: Get what we have immediately
+    val initialItems = getPlaylistData() ?: emptyList()
+    
+    // 2. Load cached metadata for ALL items immediately
+    viewModelScope.launch(Dispatchers.IO) {
+      // Load all cached metadata once to avoid repeated DB calls
+      val allMetadataMap = try {
+        videoMetadataDao.getAllMetadata().associateBy { it.path }
+      } catch (e: Exception) {
+        emptyMap()
+      }
+      
+      // Update items with saved resolution/subtitles if available (no progress)
+      val itemsWithProgress = initialItems.mapIndexed { index, item ->
+        if (index == activity.playlistIndex) return@mapIndexed item
+        
+        val metadata = allMetadataMap[item.path]
+        if (metadata != null) {
+           item.copy(
+             resolution = formatResolution(metadata.width, metadata.height),
+             hasSubtitles = metadata.hasEmbeddedSubtitles
+           )
+        } else {
+           item
+        }
+      }
+      
+      _playlistItems.value = itemsWithProgress
+      
+      // 3. Background Extraction: Process items
+      _playlistMetadataJob = viewModelScope.launch(Dispatchers.IO) {
+        val jobScope = this
+        // Items to process: missing resolution (we only care about metadata now)
+        val itemsToProcess = itemsWithProgress.filterIndexed { index, item -> 
+          index != activity.playlistIndex && item.resolution.isBlank()
+        }
+        
+        android.util.Log.d("PlayerViewModel", "Starting metadata extraction for ${itemsToProcess.size} items")
+        
+        itemsToProcess.forEach { item ->
+          if (!jobScope.isActive) return@launch
+          
+          try {
+             // Skip if we already have metadata (resolution is set) - this means we processed it in step 2
+             if (item.resolution.isNotBlank()) return@forEach
+          
+            // Extract metadata using MediaInfo
+            val uri = item.uri
+            val path = item.path
+            val fileName = item.title.takeIf { it.isNotBlank() } ?: path.substringAfterLast("/")
+            
+            val result = app.marlboroadvance.mpvex.utils.media.MediaInfoOps.extractBasicMetadata(context, uri, fileName)
+            val metadata = result.getOrNull()
+            
+            if (metadata != null && metadata.durationMs > 0) {
+              val resolution = formatResolution(metadata.width, metadata.height)
+               
+              // Save to database
+              try {
+                 videoMetadataDao.insertMetadata(
+                   app.marlboroadvance.mpvex.database.entities.VideoMetadataEntity(
+                     path = path,
+                     duration = metadata.durationMs,
+                     width = metadata.width,
+                     height = metadata.height,
+                     fps = metadata.fps,
+                     hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
+                     subtitleCodec = metadata.subtitleCodec,
+                     size = metadata.sizeBytes,
+                     dateModified = System.currentTimeMillis(), // Fallback as we don't have real modification time
+                     lastScanned = System.currentTimeMillis()
+                   )
+                 )
+              } catch (e: Exception) {
+                 android.util.Log.e("PlayerViewModel", "Failed to cache metadata", e)
+              }
+              
+
+              
+               // Optimally update item
+               _playlistItems.update { list ->
+                   val newList = list.toMutableList()
+                   val index = newList.indexOfFirst { it.index == item.index }
+                   if (index != -1) {
+                       newList[index] = newList[index].copy(
+                           resolution = resolution,
+                           hasSubtitles = metadata.hasEmbeddedSubtitles
+                       )
+                   }
+                   newList
+               }
+            }
+          } catch (e: Exception) {
+            android.util.Log.e("PlayerViewModel", "Error extracting metadata", e)
+          }
+        }
+      }
+    }
+  }
+
+
+  private fun formatResolution(width: Int, height: Int): String {
+    if (width <= 0 || height <= 0) return ""
+    // Use height for standard resolution naming
+    return when {
+      height >= 2160 -> "4K"
+      height >= 1440 -> "1440p"
+      height >= 1080 -> "1080p"
+      height >= 720 -> "720p"
+      height >= 480 -> "480p"
+      height >= 360 -> "360p"
+      else -> "${height}p"
     }
   }
 

@@ -2173,6 +2173,46 @@ class PlayerActivity :
     // Update the intent first so getFileName uses the new intent data
     setIntent(intent)
 
+    // Reset playlist state for new video
+    playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
+    playlistIndex = intent.getIntExtra("playlist_index", 0)
+    playlistWindowOffset = 0
+    playlistTotalCount = -1
+
+    // Load playlist from intent extras first (fast path)
+    playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    }
+
+    // If playlist is empty but playlist_id is provided, load from database
+    if (playlist.isEmpty() && playlistId != null) {
+      lifecycleScope.launch(Dispatchers.IO) {
+        val pid = playlistId ?: return@launch
+        try {
+          val totalCount = playlistRepository.getPlaylistItemCount(pid)
+          val items = playlistRepository.getPlaylistItemsAsUris(pid)
+          withContext(Dispatchers.Main) {
+            playlist = items
+            playlistTotalCount = totalCount
+            Log.d(TAG, "onNewIntent: Loaded ${items.size} items from playlist $pid")
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "onNewIntent: Failed to load playlist from database", e)
+        }
+      }
+    }
+
+    // Auto-generate playlist from folder if playlist mode is enabled and no playlist_id
+    if (playlist.isEmpty() && playlistId == null && playerPreferences.playlistMode.get()) {
+      val path = parsePathFromIntent(intent)
+      if (path != null) {
+        generatePlaylistFromFolder(path)
+      }
+    }
+
     // Extract the new fileName before loading the file
     fileName = getFileName(intent)
     if (fileName.isBlank()) {
