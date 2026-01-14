@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccessTime
@@ -28,10 +29,12 @@ import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -234,6 +237,22 @@ data class VideoListScreen(
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
           showRename = selectionManager.isSingleSelection,
         )
+      },
+      floatingActionButton = {
+        if (sortedVideosWithInfo.isNotEmpty()) {
+          FloatingActionButton(
+            onClick = {
+              val recentlyPlayedVideo = sortedVideosWithInfo.find { it.video.path == recentlyPlayedFilePath }
+              if (recentlyPlayedVideo != null) {
+                MediaUtils.playFile(recentlyPlayedVideo.video, context, "recently_played_button")
+              } else {
+                MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
+              }
+            }
+          ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
+          }
+        }
       },
     ) { padding ->
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
