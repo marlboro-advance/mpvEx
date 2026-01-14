@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +53,7 @@ import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
+import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 @Composable
@@ -69,18 +72,18 @@ fun SubtitleDelayPanel(
     val delayControlCard = createRef()
 
     val delay by MPVLib.propDouble["sub-delay"].collectAsState()
-    val delayInt by remember { derivedStateOf { ((delay ?: 0.0) * 1000).roundToInt() } }
+    val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
     val speed by MPVLib.propDouble["sub-speed"].collectAsState()
     val speedFloat by remember { derivedStateOf { (speed ?: 1.0).toFloat() } }
     SubtitleDelayCard(
-      delayMs = delayInt,
+      delay = delayFloat,
       onDelayChange = {
-        MPVLib.setPropertyDouble("sub-delay", it / 1000.0)
+        MPVLib.setPropertyDouble("sub-delay", it.toDouble())
       },
       speed = speedFloat,
       onSpeedChange = { MPVLib.setPropertyDouble("sub-speed", it.toDouble()) },
       onApply = {
-        preferences.defaultSubDelay.set(delayInt)
+        preferences.defaultSubDelay.set((delayFloat * 1000).roundToInt())
         val currentSpeed = speed ?: 1.0
         if (currentSpeed in 0.1..10.0) preferences.defaultSubSpeed.set(currentSpeed.toFloat())
       },
@@ -100,8 +103,8 @@ fun SubtitleDelayPanel(
 
 @Composable
 fun SubtitleDelayCard(
-  delayMs: Int,
-  onDelayChange: (Int) -> Unit,
+  delay: Float,
+  onDelayChange: (Float) -> Unit,
   speed: Float,
   onSpeedChange: (Float) -> Unit,
   onApply: () -> Unit,
@@ -110,7 +113,7 @@ fun SubtitleDelayCard(
   modifier: Modifier = Modifier,
 ) {
   DelayCard(
-    delayMs = delayMs,
+    delay = delay,
     onDelayChange = onDelayChange,
     onApply = onApply,
     onReset = onReset,
@@ -125,6 +128,9 @@ fun SubtitleDelayCard(
         max = 10f,
         step = 0.01f,
         min = 0.1f,
+        increaseIcon = Icons.Filled.Add,
+        decreaseIcon = Icons.Filled.Remove,
+        valueFormatter = { "%.2f".format(it) }
       )
     },
     delayType = DelayType.Subtitle,
@@ -135,8 +141,8 @@ fun SubtitleDelayCard(
 @Suppress("LambdaParameterInRestartableEffect") // Intentional
 @Composable
 fun DelayCard(
-  delayMs: Int,
-  onDelayChange: (Int) -> Unit,
+  delay: Float,
+  onDelayChange: (Float) -> Unit,
   onApply: () -> Unit,
   onReset: () -> Unit,
   title: @Composable () -> Unit,
@@ -173,12 +179,15 @@ fun DelayCard(
       title()
       OutlinedNumericChooser(
         label = { Text(stringResource(R.string.player_sheets_sub_delay_card_delay)) },
-        value = delayMs,
+        value = delay,
         onChange = onDelayChange,
-        step = 50,
-        min = Int.MIN_VALUE,
-        max = Int.MAX_VALUE,
-        suffix = { Text(stringResource(R.string.generic_unit_ms)) },
+        step = 0.1f,
+        min = Float.NEGATIVE_INFINITY,
+        max = Float.POSITIVE_INFINITY,
+        suffix = { Text("s") },
+        increaseIcon = Icons.Filled.Add,
+        decreaseIcon = Icons.Filled.Remove,
+        valueFormatter = { "%.1f".format(it) }
       )
       Column(
         modifier = Modifier.animateContentSize(),
@@ -189,20 +198,20 @@ fun DelayCard(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
         var timerStart by remember { mutableStateOf<Long?>(null) }
-        var finalDelay by remember { mutableIntStateOf(delayMs) }
+        var finalDelay by remember { mutableStateOf(delay) }
         LaunchedEffect(isDirectionPositive) {
           if (isDirectionPositive == null) {
             onDelayChange(finalDelay)
             return@LaunchedEffect
           }
-          finalDelay = delayMs
+          finalDelay = delay
           val startTime = System.currentTimeMillis()
           timerStart = startTime
-          val startingDelay: Int = finalDelay
+          val startingDelay: Float = finalDelay
           while (isDirectionPositive != null && timerStart != null) {
             val elapsed = System.currentTimeMillis() - startTime
             val direction = isDirectionPositive ?: break
-            finalDelay = startingDelay + (if (direction) elapsed else -elapsed).toInt()
+            finalDelay = startingDelay + (if (direction) elapsed / 1000f else -elapsed / 1000f)
             // Arbitrary delay of 20ms
             delay(20)
           }
