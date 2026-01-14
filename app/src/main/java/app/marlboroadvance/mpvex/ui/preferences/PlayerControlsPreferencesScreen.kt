@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.ui.preferences
 // import androidx.compose.material.icons.outlined.VideoLabel // No longer needed here
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -55,6 +56,7 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
+import app.marlboroadvance.mpvex.ui.preferences.components.PlayerButtonChip
 import org.koin.compose.koinInject
 
 // Enum to identify which region we are editing
@@ -132,9 +134,6 @@ object PlayerControlsPreferencesScreen : Screen {
             PreferenceSectionHeader(title = "Landscape Controls")
           }
           
-          // Top Left is not shown here since it only contains constant buttons (BACK_ARROW, VIDEO_TITLE)
-          // that cannot be customized
-
           item {
             PreferenceCard {
               PreferenceCategoryWithEditButton(
@@ -174,6 +173,8 @@ object PlayerControlsPreferencesScreen : Screen {
 
           item {
             PreferenceCard {
+
+            
               PreferenceCategoryWithEditButton(
                 title = stringResource(id = R.string.pref_layout_portrait_bottom_controls),
                 onClick = {
@@ -379,8 +380,8 @@ object PlayerControlsPreferencesScreen : Screen {
         Modifier
           .fillMaxWidth()
           .padding(horizontal = 16.dp, vertical = 8.dp),
-      horizontalArrangement = Arrangement.spacedBy(12.dp), // Increased spacing
-      verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically), // <-- FIXED
+      horizontalArrangement = Arrangement.spacedBy(8.dp), // Increased spacing
+      verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
       if (buttons.isEmpty()) {
         Text(
@@ -390,41 +391,14 @@ object PlayerControlsPreferencesScreen : Screen {
         )
       } else {
         buttons.forEach { button ->
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            if (button != PlayerButton.VIDEO_TITLE) {
-              Icon(
-                imageVector = button.icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.outline,
-              )
-            }
-
-            // --- NEW LOGIC ---
-            when (button) {
-              PlayerButton.VIDEO_TITLE -> {
-                Text(
-                  "Video Title", // TODO: strings
-                  style = MaterialTheme.typography.bodyLarge,
-                  color = MaterialTheme.colorScheme.outline,
-                )
-              }
-              PlayerButton.CURRENT_CHAPTER -> {
-                Text(
-                  "1:06 • C1", // TODO: strings
-                  style = MaterialTheme.typography.bodyLarge,
-                  color = MaterialTheme.colorScheme.outline,
-                )
-              }
-              else -> {
-                // Do nothing, just show the icon
-              }
-            }
-            // --- END NEW LOGIC ---
-          }
+          // Use the chip in "preview mode" (no badge, enabled=true but no onClick)
+          PlayerButtonChip(
+            button = button,
+            enabled = true,
+            onClick = null, 
+            badgeIcon = null,
+            badgeColor = null
+          )
         }
       }
     }
