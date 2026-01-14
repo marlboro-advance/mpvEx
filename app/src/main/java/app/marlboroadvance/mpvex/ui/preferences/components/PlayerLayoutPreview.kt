@@ -53,7 +53,7 @@ fun PlayerLayoutPreview(
   modifier: Modifier = Modifier,
 ) {
   // Device Frame aspect ratio
-  val aspectRatio = if (isLandscape) 20f / 9f else 9f / 20f // Slightly wider for modern phone look
+  val aspectRatio = if (isLandscape) 16f / 9f else 9f / 16f
 
   Box(
     modifier = modifier,
@@ -203,10 +203,6 @@ private fun BoxScope.LandscapeCustomControls(
         .padding(top = 16.dp, end = 16.dp),
     contentAlignment = Alignment.TopEnd
   ) {
-    if (highlight == ControlRegionReference.TOP_RIGHT) {
-        HighlightOverlay()
-    }
-    
     // Single Row as per user request
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
@@ -225,10 +221,6 @@ private fun BoxScope.LandscapeCustomControls(
         .padding(bottom = 8.dp), // Extra space
     contentAlignment = Alignment.BottomEnd
   ) {
-     if (highlight == ControlRegionReference.BOTTOM_RIGHT) {
-        HighlightOverlay()
-    }
-    
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
         modifier = Modifier.wrapContentWidth()
@@ -246,10 +238,6 @@ private fun BoxScope.LandscapeCustomControls(
         .padding(bottom = 8.dp),
     contentAlignment = Alignment.BottomStart
   ) {
-     if (highlight == ControlRegionReference.BOTTOM_LEFT) {
-        HighlightOverlay()
-    }
-    
      Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
         modifier = Modifier.wrapContentWidth()
@@ -362,10 +350,6 @@ private fun BoxScope.PortraitCustomControls(
         .padding(bottom = 16.dp), // Above seekbar
     contentAlignment = Alignment.Center
   ) {
-     if (highlight == ControlRegionReference.PORTRAIT_BOTTOM) {
-        HighlightOverlay()
-    }
-    
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
          FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -403,15 +387,7 @@ private fun MiniChip(button: PlayerButton) {
   }
 }
 
-@Composable
-private fun BoxScope.HighlightOverlay() {
-    // Just a border indication instead of full fill to keep it clean
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .border(2.dp, Color.Yellow.copy(alpha=0.7f), RoundedCornerShape(4.dp))
-    )
-}
+
 
 
 

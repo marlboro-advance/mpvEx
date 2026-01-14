@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.presentation.components
-
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +34,9 @@ fun OutlinedNumericChooser(
   min: Int = 0,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
+  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.RemoveCircle,
+  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.AddCircle,
+  valueFormatter: ((Int) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
   Row(
@@ -40,13 +44,16 @@ fun OutlinedNumericChooser(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    RepeatingIconButton(onClick = { onChange(value - step) }) {
-      Icon(Icons.Filled.RemoveCircle, null)
+    RepeatingIconButton(
+      onClick = { onChange(value - step) },
+      modifier = Modifier.size(48.dp)
+    ) {
+      Icon(decreaseIcon, null)
     }
     var valueString by remember { mutableStateOf("$value") }
     LaunchedEffect(value) {
       if (valueString.isBlank() && value == 0) return@LaunchedEffect
-      valueString = value.toString()
+      valueString = valueFormatter?.invoke(value) ?: value.toString()
     }
     OutlinedTextField(
       label = label,
@@ -71,7 +78,10 @@ fun OutlinedNumericChooser(
       modifier = Modifier.weight(1f),
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
     )
-    RepeatingIconButton(onClick = { onChange(value + step) }) {
+    RepeatingIconButton(
+      onClick = { onChange(value + step) },
+      modifier = Modifier.size(48.dp)
+    ) {
       Icon(Icons.Filled.AddCircle, null)
     }
   }
@@ -87,6 +97,9 @@ fun OutlinedNumericChooser(
   min: Float = 0f,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
+  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.RemoveCircle,
+  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.AddCircle,
+  valueFormatter: ((Float) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
   Row(
@@ -94,13 +107,16 @@ fun OutlinedNumericChooser(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
   ) {
-    RepeatingIconButton(onClick = { onChange(value - step) }) {
-      Icon(Icons.Filled.RemoveCircle, null)
+    RepeatingIconButton(
+      onClick = { onChange(value - step) },
+      modifier = Modifier.size(48.dp)
+    ) {
+      Icon(decreaseIcon, null)
     }
     var valueString by remember { mutableStateOf("$value") }
     LaunchedEffect(value) {
       if (valueString.isBlank() && value == 0f) return@LaunchedEffect
-      valueString = value.toString().dropLastWhile { it == '0' }.dropLastWhile { it == '.' }
+      valueString = valueFormatter?.invoke(value) ?: value.toString().dropLastWhile { it == '0' }.dropLastWhile { it == '.' }
     }
     OutlinedTextField(
       value = valueString,
@@ -127,7 +143,10 @@ fun OutlinedNumericChooser(
       suffix = suffix,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
     )
-    RepeatingIconButton(onClick = { onChange(value + step) }) {
+    RepeatingIconButton(
+      onClick = { onChange(value + step) },
+      modifier = Modifier.size(48.dp)
+    ) {
       Icon(Icons.Filled.AddCircle, null)
     }
   }

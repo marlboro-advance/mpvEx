@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.filled.KeyboardAlt
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -304,7 +307,7 @@ fun MoreSheet(
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TimePickerDialog(
   onDismissRequest: () -> Unit,
@@ -317,51 +320,54 @@ fun TimePickerDialog(
     properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
     Surface(
-      shape = MaterialTheme.shapes.medium,
-      color = MaterialTheme.colorScheme.surface,
-      modifier = modifier.padding(MaterialTheme.spacing.medium),
+      shape = MaterialTheme.shapes.extraLarge,
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      tonalElevation = 6.dp,
+      modifier = modifier
+          .width(360.dp) // Fixed wide width to fit presets
+          .padding(MaterialTheme.spacing.medium),
     ) {
       Column(
         modifier =
           Modifier
             .verticalScroll(rememberScrollState())
-            .width(IntrinsicSize.Max)
-            .animateContentSize()
-            .padding(MaterialTheme.spacing.medium),
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
       ) {
         var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
-        Text(
-          text =
-            stringResource(
-              id =
-                if (currentLayoutType == 1) {
-                  R.string.timer_picker_pick_time
-                } else {
-                  R.string.timer_picker_enter_timer
-                },
-            ),
-        )
-
-        val state =
-          rememberTimePickerState(
-            remainingTime / 3600,
-            (remainingTime % 3600) / 60,
-            is24Hour = true,
-          )
-        Box(
-          contentAlignment = Alignment.Center,
-        ) {
-          if (currentLayoutType == 1) {
-            TimePicker(state = state)
-          } else {
-            TimeInput(state = state)
-          }
-        }
-        Row(
-          horizontalArrangement = Arrangement.SpaceBetween,
-          modifier = Modifier.fillMaxWidth(),
-        ) {
-          IconButton(onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 }) {
+        
+        // Header
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                  text = stringResource(R.string.timer_title), // "Sleep Timer"
+                  style = MaterialTheme.typography.labelMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                  text =
+                    stringResource(
+                      id =
+                        if (currentLayoutType == 1) {
+                          R.string.timer_picker_pick_time
+                        } else {
+                          R.string.timer_picker_enter_timer
+                        },
+                    ),
+                  style = MaterialTheme.typography.headlineSmall,
+                  color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            // Toggle Button
+             IconButton(
+                onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
             Icon(
               imageVector =
                 if (currentLayoutType ==
@@ -372,14 +378,78 @@ fun TimePickerDialog(
                   Icons.Default.KeyboardAlt
                 },
               contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary
             )
           }
-          Row {
+        }
+
+        val state =
+          rememberTimePickerState(
+            remainingTime / 3600,
+            (remainingTime % 3600) / 60,
+            is24Hour = true,
+          )
+          
+        Box(
+          contentAlignment = Alignment.Center,
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          if (currentLayoutType == 1) {
+            TimePicker(state = state)
+          } else {
+            TimeInput(state = state)
+          }
+        }
+        
+        // Quick Presets
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                "Quick Presets",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val presets = listOf(15, 30, 45, 60)
+                presets.forEach { minutes ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { 
+                            onTimeSelect(minutes * 60)
+                            onDismissRequest()
+                        },
+                        label = { Text("${minutes}m") }
+                    )
+                }
+            }
+        }
+
+        // Actions
+        Row(
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          TextButton(onClick = {
+             onTimeSelect(0)
+             onDismissRequest()
+          }) {
+              Text(stringResource(id = R.string.generic_reset))
+          }
+          Spacer(Modifier.weight(1f))
+          Row(
+              horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
             TextButton(onClick = onDismissRequest) {
               Text(stringResource(id = R.string.generic_cancel))
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            TextButton(
+            Button(
               onClick = {
                 onTimeSelect(state.hour * 3600 + state.minute * 60)
                 onDismissRequest()

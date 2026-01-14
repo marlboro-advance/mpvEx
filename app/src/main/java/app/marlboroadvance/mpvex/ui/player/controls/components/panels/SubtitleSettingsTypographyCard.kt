@@ -249,7 +249,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
           preferences.borderSize.set(it)
           MPVLib.setPropertyInt("sub-outline-size", it)
         },
-        max = 100,
+        max = 20,
         icon = { Icon(Icons.Default.BorderColor, null) },
       )
       SliderItem(
