@@ -205,7 +205,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
     rememberSelectionManager(
       items = folders,
       getId = { it.path },
-      onDeleteItems = { foldersToDelete ->
+      onDeleteItems = { foldersToDelete, _ ->
         viewModel.deleteFolders(foldersToDelete)
       },
       onOperationComplete = { viewModel.refresh() },
@@ -215,7 +215,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
     rememberSelectionManager(
       items = videos,
       getId = { it.id },
-      onDeleteItems = { videosToDelete ->
+      onDeleteItems = { videosToDelete, _ ->
         viewModel.deleteVideos(videosToDelete)
       },
       onRenameItem = { video, newName ->

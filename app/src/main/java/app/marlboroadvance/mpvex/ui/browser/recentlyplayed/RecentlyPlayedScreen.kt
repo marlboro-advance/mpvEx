@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -76,6 +77,7 @@ object RecentlyPlayedScreen : Screen {
     val recentVideos by viewModel.recentVideos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
+    val deleteFilesCheckbox = rememberSaveable { mutableStateOf(false) }
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
@@ -89,27 +91,27 @@ object RecentlyPlayedScreen : Screen {
             is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
           }
         },
-        onDeleteItems = { items ->
+        onDeleteItems = { items, deleteFiles ->
           val videos = items.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video }
           val playlistIds = items.filterIsInstance<RecentlyPlayedItem.PlaylistItem>().map { it.playlist.id }
-          
+
           var successCount = 0
           var failCount = 0
-          
+
           // Delete videos from history
           if (videos.isNotEmpty()) {
-            val (videoSuccess, videoFail) = viewModel.deleteVideosFromHistory(videos)
+            val (videoSuccess, videoFail) = viewModel.deleteVideosFromHistory(videos, deleteFiles)
             successCount += videoSuccess
             failCount += videoFail
           }
-          
+
           // Delete playlist items from history
           if (playlistIds.isNotEmpty()) {
             val (playlistSuccess, playlistFail) = viewModel.deletePlaylistsFromHistory(playlistIds)
             successCount += playlistSuccess
             failCount += playlistFail
           }
-          
+
           Pair(successCount, failCount)
         },
         onRenameItem = null, // Cannot rename from history screen
@@ -213,14 +215,54 @@ object RecentlyPlayedScreen : Screen {
         // Remove selected items from history
         val itemCount = selectionManager.selectedCount
         val itemText = if (itemCount == 1) "item" else "items"
+        val deleteFiles = deleteFilesCheckbox.value
+
+        val title = if (deleteFiles) {
+          "Delete $itemCount $itemText?"
+        } else {
+          "Remove $itemCount $itemText from history?"
+        }
+
+        val subtitle = buildString {
+          if (deleteFiles) {
+            append("This will permanently delete the original video file(s) from your device storage.\n\n")
+            append("This action cannot be undone.")
+          } else {
+            append("This will remove the selected $itemText from your recently played list. ")
+            append("The original video files will not be deleted.")
+          }
+        }
+
         ConfirmDialog(
-          title = "Remove $itemCount $itemText from history?",
-          subtitle = "This will remove the selected $itemText from your recently played list. The video files will not be deleted.",
-          onConfirm = {
-            selectionManager.deleteSelected()
-            deleteDialogOpen.value = false
+          title = title,
+          subtitle = subtitle,
+          customContent = {
+            androidx.compose.foundation.layout.Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+              androidx.compose.material3.Checkbox(
+                checked = deleteFilesCheckbox.value,
+                onCheckedChange = {
+                  deleteFilesCheckbox.value = it
+                },
+              )
+              androidx.compose.material3.Text(
+                text = "Also delete original file(s)",
+                modifier = Modifier.padding(start = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+              )
+            }
           },
-          onCancel = { deleteDialogOpen.value = false },
+          onConfirm = {
+            selectionManager.deleteSelected(deleteFilesCheckbox.value)
+            deleteDialogOpen.value = false
+            deleteFilesCheckbox.value = false
+          },
+          onCancel = {
+            deleteDialogOpen.value = false
+            deleteFilesCheckbox.value = false
+          },
         )
       }
     }
