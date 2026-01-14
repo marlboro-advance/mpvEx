@@ -152,7 +152,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       rememberSelectionManager(
         items = filteredVideoItems,
         getId = { it.playlistItem.id },
-        onDeleteItems = { itemsToDelete ->
+        onDeleteItems = { itemsToDelete, _ ->
           // Remove all items in a single coroutine to avoid concurrent deletion race conditions
           coroutineScope.launch {
             val videosToRemove = itemsToDelete.map { it.video }

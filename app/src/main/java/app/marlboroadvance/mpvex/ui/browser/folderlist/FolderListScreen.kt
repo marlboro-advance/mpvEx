@@ -174,7 +174,7 @@ object FolderListScreen : Screen {
       rememberSelectionManager(
         items = sortedFolders,
         getId = { it.bucketId },
-        onDeleteItems = { folders ->
+        onDeleteItems = { folders, _ ->
           // Delete all videos in selected folders via ViewModel
           val ids = folders.map { it.bucketId }.toSet()
           val videos = MediaFileRepository.getVideosForBuckets(context, ids)

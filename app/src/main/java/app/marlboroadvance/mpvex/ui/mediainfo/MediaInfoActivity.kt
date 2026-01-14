@@ -99,6 +99,12 @@ class MediaInfoActivity : ComponentActivity() {
     }
   }
 
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    // Activity will recompose with the new intent
+  }
+
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   private fun MediaInfoScreen(
