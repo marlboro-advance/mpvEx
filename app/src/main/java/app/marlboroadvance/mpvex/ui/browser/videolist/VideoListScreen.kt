@@ -95,6 +95,7 @@ import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlin.math.roundToInt
 
 @Serializable
@@ -240,20 +241,29 @@ data class VideoListScreen(
       },
       floatingActionButton = {
         if (sortedVideosWithInfo.isNotEmpty()) {
-          FloatingActionButton(
-            onClick = {
-              val recentlyPlayedVideo = sortedVideosWithInfo.find { it.video.path == recentlyPlayedFilePath }
-              if (recentlyPlayedVideo != null) {
-                MediaUtils.playFile(recentlyPlayedVideo.video, context, "recently_played_button")
-              } else {
-                MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
-              }
+          Box(modifier = Modifier.padding(end = 16.dp, bottom = 96.dp)) {
+            FloatingActionButton(
+              onClick = {
+                coroutineScope.launch {
+                  val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
+                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
+                  val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
+                    File(it.filePath).parent == folderPath
+                  }
+
+                  if (lastPlayedInFolder != null) {
+                    MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                  } else {
+                    MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
+                  }
+                }
+              },
+            ) {
+              Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
             }
-          ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
           }
         }
-      },
+      }
     ) { padding ->
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
       
