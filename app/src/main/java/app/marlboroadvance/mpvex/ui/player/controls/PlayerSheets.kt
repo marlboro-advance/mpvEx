@@ -17,6 +17,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.FrameNavigationSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
@@ -216,6 +217,20 @@ fun PlayerSheets(
         onSeekTo = { position, _ -> viewModel.seekTo(position) },
         onDismissRequest = onDismissRequest,
       )
+    }
+
+    Sheets.Playlist -> {
+      val playlist = viewModel.getPlaylistData()
+      if (playlist != null) {
+        val playlistImmutable = playlist.toImmutableList()
+        PlaylistSheet(
+          playlist = playlistImmutable,
+          onDismissRequest = onDismissRequest,
+          onItemClick = { item ->
+            viewModel.playPlaylistItem(item.index)
+          },
+        )
+      }
     }
   }
 }

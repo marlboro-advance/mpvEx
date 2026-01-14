@@ -1019,6 +1019,26 @@ class PlayerViewModel(
     return "${activity.playlistIndex + 1}/${activity.playlist.size}"
   }
 
+  fun getPlaylistData(): List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>? {
+    val activity = host as? PlayerActivity ?: return null
+    if (activity.playlist.isEmpty()) return null
+
+    return activity.playlist.mapIndexed { index, uri ->
+      val title = activity.getPlaylistItemTitle(uri)
+      app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem(
+        uri = uri,
+        title = title,
+        index = index,
+        isPlaying = index == activity.playlistIndex,
+      )
+    }
+  }
+
+  fun playPlaylistItem(index: Int) {
+    val activity = host as? PlayerActivity ?: return
+    activity.playPlaylistItem(index)
+  }
+
   fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false
 
   fun hasPrevious(): Boolean = (host as? PlayerActivity)?.hasPrevious() ?: false

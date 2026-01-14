@@ -1242,6 +1242,31 @@ class PlayerActivity :
   }
 
   /**
+   * Gets the display title for a playlist item URI.
+   *
+   * @param uri The URI to get the title for
+   * @return The display name/title of the file
+   */
+  internal fun getPlaylistItemTitle(uri: Uri): String {
+    // Try content resolver first for content:// URIs
+    getDisplayNameFromUri(uri)?.let { return it }
+
+    // Extract filename from URL/URI
+    return extractFileNameFromUri(uri)
+  }
+
+  /**
+   * Plays a playlist item by index.
+   *
+   * @param index The index of the playlist item to play
+   */
+  internal fun playPlaylistItem(index: Int) {
+    if (index in playlist.indices) {
+      loadPlaylistItem(index)
+    }
+  }
+
+  /**
    * Extracts the URI from the intent based on intent type.
    *
    * @param intent The intent to extract URI from
