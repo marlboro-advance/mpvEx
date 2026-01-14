@@ -375,18 +375,29 @@ class PlayerViewModel(
 
   fun pauseUnpause() {
     viewModelScope.launch(Dispatchers.IO) {
-      MPVLib.command("cycle", "pause")
+      val isPaused = MPVLib.getPropertyBoolean("pause") ?: false
+      if (isPaused) {
+        // We are about to unpause, so request focus
+        withContext(Dispatchers.Main) { host.requestAudioFocus() }
+        MPVLib.setPropertyBoolean("pause", false)
+      } else {
+        // We are about to pause
+        MPVLib.setPropertyBoolean("pause", true)
+        withContext(Dispatchers.Main) { host.abandonAudioFocus() }
+      }
     }
   }
 
   fun pause() {
     viewModelScope.launch(Dispatchers.IO) {
       MPVLib.setPropertyBoolean("pause", true)
+      withContext(Dispatchers.Main) { host.abandonAudioFocus() }
     }
   }
 
   fun unpause() {
     viewModelScope.launch(Dispatchers.IO) {
+      withContext(Dispatchers.Main) { host.requestAudioFocus() }
       MPVLib.setPropertyBoolean("pause", false)
     }
   }

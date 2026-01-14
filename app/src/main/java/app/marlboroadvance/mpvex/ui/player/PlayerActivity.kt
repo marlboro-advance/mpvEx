@@ -523,16 +523,14 @@ class PlayerActivity :
           .setAcceptsDelayedFocusGain(true)
           .setWillPauseWhenDucked(true)
           .build()
-      requestAudioFocusForPlayback()
+      requestAudioFocus()
     }
   }
 
   /**
-   * Requests audio focus for media playback.
-   *
    * @return true if audio focus was granted immediately, false otherwise
    */
-  private fun requestAudioFocusForPlayback(): Boolean {
+  override fun requestAudioFocus(): Boolean {
     val req = audioFocusRequest ?: return false
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
@@ -542,7 +540,7 @@ class PlayerActivity :
       }
 
       AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
-        restoreAudioFocus = { requestAudioFocusForPlayback() }
+        restoreAudioFocus = { requestAudioFocus() }
         false
       }
 
@@ -634,11 +632,15 @@ class PlayerActivity :
     }
   }
 
-  private fun cleanupAudio() {
+  override fun abandonAudioFocus() {
     if (restoreAudioFocus != {}) {
       audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
       restoreAudioFocus = {}
     }
+  }
+
+  private fun cleanupAudio() {
+    abandonAudioFocus()
   }
 
   private fun cleanupReceivers() {
