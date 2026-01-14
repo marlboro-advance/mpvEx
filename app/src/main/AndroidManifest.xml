@@ -39,6 +39,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.mpvex">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -218,6 +219,7 @@
         <activity
             android:name=".ui.mediainfo.MediaInfoActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.mpvex"
             android:label="Media Info">
             <intent-filter>
