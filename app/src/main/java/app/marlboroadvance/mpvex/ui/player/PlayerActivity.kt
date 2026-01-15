@@ -40,14 +40,14 @@ import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import app.marlboroadvance.mpvex.utils.media.HttpUtils
+import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -205,7 +205,14 @@ class PlayerActivity :
    * Total count of items in the full playlist (when using windowed loading).
    * -1 means unknown or not using windowed loading.
    */
-  private var playlistTotalCount: Int = -1
+  var playlistTotalCount: Int = -1
+    private set
+
+  /**
+   * Indicates whether the current playlist is an M3U playlist sourced from database.
+   * Used to skip thumbnail/metadata extraction for network streams.
+   */
+  private var isM3uPlaylist: Boolean = false
 
   /**
    * Helper for managing Picture-in-Picture mode.
@@ -343,41 +350,24 @@ class PlayerActivity :
     }
 
     // If playlist is empty but playlist_id is provided, load asynchronously from database
-    // Use windowed loading to prevent ANR with large playlists
+    // Load all items - LazyColumn handles pagination/virtualization efficiently
     if (playlist.isEmpty() && playlistId != null) {
       lifecycleScope.launch(Dispatchers.IO) {
         val pid = playlistId ?: return@launch
         try {
-          // Get total count first to decide if we need windowed loading
-          val totalCount = playlistRepository.getPlaylistItemCount(pid)
+          // Check if this is an M3U playlist
+          val playlistEntity = playlistRepository.getPlaylistById(pid)
+          isM3uPlaylist = playlistEntity?.isM3uPlaylist ?: false
 
-          if (totalCount > 100) {
-            // Large playlist: use windowed loading to prevent ANR
-            val windowSize = 100
-            val halfWindow = windowSize / 2
-            val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
+          // Load all items - LazyColumn will handle virtualization/pagination efficiently
+          val items = playlistRepository.getPlaylistItemsAsUris(pid)
+          val totalCount = items.size
 
-            val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = pid,
-              centerIndex = playlistIndex,
-              windowSize = windowSize
-            )
-
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = startOffset
-              playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $pid (total: $totalCount)")
-            }
-          } else {
-            // Small playlist: load everything at once
-            val items = playlistRepository.getPlaylistItemsAsUris(pid)
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = 0
-              playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $pid")
-            }
+          withContext(Dispatchers.Main) {
+            playlist = items
+            playlistWindowOffset = 0
+            playlistTotalCount = totalCount
+            Log.d(TAG, "Loaded all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
           }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load playlist from database", e)
@@ -1629,18 +1619,11 @@ class PlayerActivity :
     GlobalScope.launch(Dispatchers.IO) {
       if (playlist.isNotEmpty()) {
         // For playlist items, save using the current URI
-        // Calculate the window index when using windowed loading
-        val windowIndex = if (playlistTotalCount > 0) {
-          playlistIndex - playlistWindowOffset
+        // All items are loaded, so playlistIndex is the direct index
+        if (playlistIndex >= 0 && playlistIndex < playlist.size) {
+          saveRecentlyPlayedForUri(playlist[playlistIndex], fileName)
         } else {
-          playlistIndex
-        }
-
-        // Only save if the index is valid within the current window
-        if (windowIndex >= 0 && windowIndex < playlist.size) {
-          saveRecentlyPlayedForUri(playlist[windowIndex], fileName)
-        } else {
-          Log.w(TAG, "Cannot save recently played: invalid window index $windowIndex (playlistIndex: $playlistIndex, offset: $playlistWindowOffset, playlist size: ${playlist.size})")
+          Log.w(TAG, "Cannot save recently played: invalid playlist index $playlistIndex (playlist size: ${playlist.size})")
         }
       } else {
         // For non-playlist videos, use the original saveRecentlyPlayed
@@ -2831,63 +2814,20 @@ class PlayerActivity :
    * Load a playlist item by index
    */
   private fun loadPlaylistItem(index: Int) {
-    // Check if we're using windowed loading
-    if (playlistTotalCount > 0 && playlistId != null) {
-      // Calculate the actual index within the loaded window
-      val windowIndex = index - playlistWindowOffset
-
-      // Check if we need to expand the window
-      if (windowIndex < 0 || windowIndex >= playlist.size) {
-        // Index is outside the current window - expand asynchronously
-        lifecycleScope.launch(Dispatchers.IO) {
-          try {
-            val windowSize = 100
-            val halfWindow = windowSize / 2
-            val newOffset = (index - halfWindow).coerceAtLeast(0)
-
-            val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = playlistId!!,
-              centerIndex = index,
-              windowSize = windowSize
-            )
-
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = newOffset
-              Log.d(TAG, "Expanded playlist window: offset=$newOffset, size=${items.size}")
-
-              // Now load the item with the updated window
-              loadPlaylistItemInternal(index)
-            }
-          } catch (e: Exception) {
-            Log.e(TAG, "Failed to expand playlist window", e)
-          }
-        }
-        return
-      }
-
-      // Item is within current window - use local index
-      loadPlaylistItemInternal(index)
-    } else {
-      // Not using windowed loading or small playlist
-      if (index < 0 || index >= playlist.size) return
-      loadPlaylistItemInternal(index)
+    // All items are loaded - just validate index and load directly
+    if (index < 0 || index >= playlist.size) {
+      Log.e(TAG, "Invalid playlist index: $index (playlist size: ${playlist.size})")
+      return
     }
+    loadPlaylistItemInternal(index)
   }
 
   /**
-   * Internal method to load a playlist item - assumes the item is in the loaded window
+   * Internal method to load a playlist item
    */
   private fun loadPlaylistItemInternal(index: Int) {
-    // Calculate the actual index within the loaded window
-    val windowIndex = if (playlistTotalCount > 0) {
-      index - playlistWindowOffset
-    } else {
-      index
-    }
-
-    if (windowIndex < 0 || windowIndex >= playlist.size) {
-      Log.e(TAG, "Invalid playlist index: $index (window index: $windowIndex)")
+    if (index < 0 || index >= playlist.size) {
+      Log.e(TAG, "Invalid playlist index: $index (playlist size: ${playlist.size})")
       return
     }
 
@@ -2896,7 +2836,7 @@ class PlayerActivity :
       saveVideoPlaybackState(fileName)
     }
 
-    val uri = playlist[windowIndex]
+    val uri = playlist[index]
     val playableUri = uri.openContentFd(this) ?: uri.toString()
 
     // Update playlist index
@@ -3005,15 +2945,8 @@ class PlayerActivity :
     }
 
     // Also check the current playlist item if playing from a playlist
-    if (playlist.isNotEmpty() && playlistIndex < playlist.size) {
-      val windowIndex = if (playlistTotalCount > 0) {
-        playlistIndex - playlistWindowOffset
-      } else {
-        playlistIndex
-      }
-      if (windowIndex >= 0 && windowIndex < playlist.size) {
-        return isUriM3U(playlist[windowIndex])
-      }
+    if (playlist.isNotEmpty() && playlistIndex >= 0 && playlistIndex < playlist.size) {
+      return isUriM3U(playlist[playlistIndex])
     }
 
     return false
@@ -3207,6 +3140,10 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Check if the current playlist is an M3U playlist (sourced from database).
+   */
+  fun isCurrentPlaylistM3U(): Boolean = isM3uPlaylist
 
 
   companion object {

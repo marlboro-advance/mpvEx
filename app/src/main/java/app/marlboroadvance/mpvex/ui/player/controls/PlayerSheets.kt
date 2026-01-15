@@ -233,12 +233,16 @@ fun PlayerSheets(
 
       if (playlist.isNotEmpty()) {
         val playlistImmutable = playlist.toImmutableList()
+        val totalCount = viewModel.getPlaylistTotalCount()
+        val isM3U = viewModel.isPlaylistM3U()
         PlaylistSheet(
           playlist = playlistImmutable,
           onDismissRequest = onDismissRequest,
           onItemClick = { item ->
             viewModel.playPlaylistItem(item.index)
           },
+          totalCount = totalCount,
+          isM3UPlaylist = isM3U,
         )
       }
     }

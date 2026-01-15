@@ -187,6 +187,8 @@ fun PlaylistSheet(
   playlist: ImmutableList<PlaylistItem>,
   onDismissRequest: () -> Unit,
   onItemClick: (PlaylistItem) -> Unit,
+  totalCount: Int = playlist.size,
+  isM3UPlaylist: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -249,7 +251,7 @@ fun PlaylistSheet(
           )
         }
         Text(
-          text = "${playlist.size} items",
+          text = "$totalCount items",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -263,6 +265,7 @@ fun PlaylistSheet(
         onClick = {
           onItemClick(item)
         },
+        skipThumbnail = isM3UPlaylist,
       )
     },
   )
@@ -274,6 +277,7 @@ fun PlaylistTrack(
   context: Context,
   thumbnailCache: LRUBitmapCache,
   onClick: () -> Unit,
+  skipThumbnail: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   // Use theme colors dynamically
@@ -288,8 +292,9 @@ fun PlaylistTrack(
   }
 
   // Load thumbnail asynchronously for all items (not just visible ones)
+  // Skip thumbnail loading for M3U playlists (network streams)
   LaunchedEffect(videoPath) {
-    if (thumbnail == null && !thumbnailCache.containsKey(videoPath)) {
+    if (!skipThumbnail && thumbnail == null && !thumbnailCache.containsKey(videoPath)) {
       withContext(Dispatchers.IO) {
         try {
           val bmp = loadMediaStoreThumbnail(context, item.uri)

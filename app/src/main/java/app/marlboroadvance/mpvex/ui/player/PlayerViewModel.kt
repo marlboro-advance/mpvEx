@@ -8,6 +8,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.view.WindowInsetsCompat
@@ -221,6 +222,7 @@ class PlayerViewModel(
   private var seekCoalesceJob: Job? = null
 
   private companion object {
+    const val TAG = "PlayerViewModel"
     const val SEEK_COALESCE_DELAY_MS = 60L
     val VALID_SUBTITLE_EXTENSIONS =
       setOf("srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "txt", "pgs")
@@ -1036,7 +1038,19 @@ class PlayerViewModel(
   fun getPlaylistInfo(): String? {
     val activity = host as? PlayerActivity ?: return null
     if (activity.playlist.isEmpty()) return null
-    return "${activity.playlistIndex + 1}/${activity.playlist.size}"
+
+    val totalCount = getPlaylistTotalCount()
+    return "${activity.playlistIndex + 1}/$totalCount"
+  }
+
+  fun isPlaylistM3U(): Boolean {
+    val activity = host as? PlayerActivity ?: return false
+    return activity.isCurrentPlaylistM3U()
+  }
+
+  fun getPlaylistTotalCount(): Int {
+    val activity = host as? PlayerActivity ?: return 0
+    return activity.playlist.size
   }
 
   fun getPlaylistData(): List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>? {
@@ -1075,13 +1089,24 @@ class PlayerViewModel(
   }
 
   private fun getVideoMetadata(uri: Uri): Pair<String, String> {
+    // Skip metadata extraction for network streams and M3U playlists
+    if (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms") {
+      return "" to ""
+    }
+
+    // Skip M3U/M3U8 files
+    val uriString = uri.toString().lowercase()
+    if (uriString.contains(".m3u8") || uriString.contains(".m3u")) {
+      return "" to ""
+    }
+
     val retriever = android.media.MediaMetadataRetriever()
     return try {
       // For file:// URIs, use the path directly (faster)
       if (uri.scheme == "file") {
         retriever.setDataSource(uri.path)
       } else {
-        // For content:// or other schemes, use context
+        // For content:// URIs, use context
         retriever.setDataSource(host.context, uri)
       }
 
@@ -1146,9 +1171,17 @@ class PlayerViewModel(
    * Loads metadata for all playlist items asynchronously in the background.
    * Updates the playlist items as metadata becomes available.
    * Uses batched updates to avoid O(n²) complexity with large playlists.
+   * Skips metadata extraction for M3U playlists (network streams).
    */
   private fun loadPlaylistMetadataAsync(items: List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>) {
     viewModelScope.launch(Dispatchers.IO) {
+      // Skip metadata extraction for M3U playlists
+      val activity = host as? PlayerActivity
+      if (activity?.isCurrentPlaylistM3U() == true) {
+        Log.d(TAG, "Skipping metadata extraction for M3U playlist")
+        return@launch
+      }
+
       // Limit concurrent metadata extraction to avoid overwhelming resources
       val batchSize = 5
       items.chunked(batchSize).forEach { batch ->
