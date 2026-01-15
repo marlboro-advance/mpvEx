@@ -59,6 +59,15 @@ object SearchablePreferences {
                 screen = AppearancePreferencesScreen,
             ))
             
+            // Motion/Animation preferences
+            add(SearchablePreference(
+                titleRes = R.string.pref_motion_quality_title,
+                summaryRes = R.string.pref_motion_high_quality_desc,
+                keywords = listOf("animation", "motion", "transition", "reduce motion", "performance", "120fps", "spring"),
+                category = "Animations",
+                screen = AppearancePreferencesScreen,
+            ))
+            
             // Layout preferences
             add(SearchablePreference(
                 titleRes = R.string.pref_layout_title,
@@ -265,24 +274,145 @@ object SearchablePreferences {
     }
 
     /**
-     * Search preferences by query.
-     * Matches against title, summary, and keywords.
+     * Search preferences by query with fuzzy matching support.
+     * 
+     * Matches against title, summary, keywords, and category.
+     * Supports typo tolerance using fuzzy string matching.
      */
     fun search(query: String, getStringRes: (Int) -> String): List<SearchablePreference> {
         if (query.isBlank()) return emptyList()
         
         val normalizedQuery = query.lowercase().trim()
         
-        return allPreferences.filter { pref ->
-            val title = getStringRes(pref.titleRes).lowercase()
-            val summary = pref.summaryRes?.let { getStringRes(it).lowercase() } ?: ""
-            val keywords = pref.keywords.joinToString(" ").lowercase()
-            val category = pref.category.lowercase()
+        // Score each preference by match quality
+        return allPreferences
+            .map { pref ->
+                val title = getStringRes(pref.titleRes).lowercase()
+                val summary = pref.summaryRes?.let { getStringRes(it).lowercase() } ?: ""
+                val keywords = pref.keywords.joinToString(" ").lowercase()
+                val category = pref.category.lowercase()
+                
+                // Calculate match score (higher = better match)
+                val score = calculateMatchScore(normalizedQuery, title, summary, keywords, category)
+                pref to score
+            }
+            .filter { it.second > 0 }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .distinctBy { it.titleRes }
+    }
+    
+    /**
+     * Calculate match score for a preference.
+     * Returns a score > 0 for matches, 0 for no match.
+     * 
+     * Exact matches score highest, fuzzy matches score lower.
+     */
+    private fun calculateMatchScore(
+        query: String,
+        title: String,
+        summary: String,
+        keywords: String,
+        category: String
+    ): Int {
+        var score = 0
+        
+        // Exact contains matches (highest priority)
+        if (title.contains(query)) score += 100
+        if (summary.contains(query)) score += 50
+        if (keywords.contains(query)) score += 75
+        if (category.contains(query)) score += 25
+        
+        // Word-level matching
+        val queryWords = query.split(" ").filter { it.isNotBlank() }
+        for (word in queryWords) {
+            if (title.contains(word)) score += 30
+            if (summary.contains(word)) score += 15
+            if (keywords.contains(word)) score += 20
+            if (category.contains(word)) score += 10
+        }
+        
+        // Fuzzy matching for typo tolerance (only if no exact matches)
+        if (score == 0) {
+            val allText = "$title $summary $keywords $category"
+            val words = allText.split(" ", ",").filter { it.length >= 3 }
             
-            title.contains(normalizedQuery) ||
-                summary.contains(normalizedQuery) ||
-                keywords.contains(normalizedQuery) ||
-                category.contains(normalizedQuery)
-        }.distinctBy { it.titleRes }
+            for (word in words) {
+                if (fuzzyMatch(query, word)) {
+                    score += 20
+                    break
+                }
+            }
+            
+            // Try matching each query word fuzzily
+            for (queryWord in queryWords) {
+                if (queryWord.length >= 2) {
+                    for (word in words) {
+                        if (fuzzyMatch(queryWord, word)) {
+                            score += 10
+                        }
+                    }
+                }
+            }
+        }
+        
+        return score
+    }
+    
+    /**
+     * Simple fuzzy matching using Levenshtein distance.
+     * Returns true if the distance is within tolerance.
+     */
+    private fun fuzzyMatch(query: String, target: String): Boolean {
+        if (query.length < 2 || target.length < 2) return false
+        
+        // Allow more tolerance for longer words
+        val maxDistance = when {
+            query.length <= 3 -> 1
+            query.length <= 5 -> 2
+            else -> 3
+        }
+        
+        return levenshteinDistance(query, target) <= maxDistance
+    }
+    
+    /**
+     * Calculate Levenshtein distance between two strings.
+     */
+    private fun levenshteinDistance(s1: String, s2: String): Int {
+        val len1 = s1.length
+        val len2 = s2.length
+        
+        // Quick exit for identical or empty strings
+        if (s1 == s2) return 0
+        if (len1 == 0) return len2
+        if (len2 == 0) return len1
+        
+        // Use shorter string for columns to save space
+        val (shorter, longer) = if (len1 < len2) s1 to s2 else s2 to s1
+        val shortLen = shorter.length
+        val longLen = longer.length
+        
+        // Only need two rows of the matrix
+        var prevRow = IntArray(shortLen + 1) { it }
+        var currRow = IntArray(shortLen + 1)
+        
+        for (i in 1..longLen) {
+            currRow[0] = i
+            for (j in 1..shortLen) {
+                val cost = if (longer[i - 1] == shorter[j - 1]) 0 else 1
+                currRow[j] = minOf(
+                    currRow[j - 1] + 1,      // insertion
+                    prevRow[j] + 1,          // deletion
+                    prevRow[j - 1] + cost    // substitution
+                )
+            }
+            // Swap rows
+            val temp = prevRow
+            prevRow = currRow
+            currRow = temp
+        }
+        
+        return prevRow[shortLen]
     }
 }
