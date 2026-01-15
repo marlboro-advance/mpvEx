@@ -147,7 +147,7 @@ data class VideoListScreen(
       rememberSelectionManager(
         items = sortedVideosWithInfo.map { it.video },
         getId = { it.id },
-        onDeleteItems = { viewModel.deleteVideos(it) },
+        onDeleteItems = { items, _ -> viewModel.deleteVideos(items) },
         onRenameItem = { video, newName -> viewModel.renameVideo(video, newName) },
         onOperationComplete = { viewModel.refresh() },
       )

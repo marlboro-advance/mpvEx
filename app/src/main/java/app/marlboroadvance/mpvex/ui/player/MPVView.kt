@@ -95,10 +95,8 @@ class MPVView(
   var aid: Int by TrackDelegate("aid")
 
   override fun initOptions() {
-    // Note: Anime4K and gpu-next are mutually exclusive in settings
-    val useGpuNext = decoderPreferences.gpuNext.get()
-    setVo(if (useGpuNext) "gpu-next" else "gpu")
-    // Removed profile=fast for better video quality
+    setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
+    MPVLib.setOptionString("profile", "fast")
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)
     MPVLib.setOptionString(
@@ -125,49 +123,6 @@ class MPVView(
 
     VideoFilters.entries.forEach {
       MPVLib.setOptionString(it.mpvProperty, it.preference(decoderPreferences).get().toString())
-    }
-
-    // Apply interpolation settings
-    MPVLib.setOptionString("video-sync", decoderPreferences.videoSync.get().value)
-    if (decoderPreferences.videoInterpolation.get()) {
-      MPVLib.setOptionString("interpolation", "yes")
-    }
-
-    // Apply scaler settings
-    // Spatial upscaling
-    MPVLib.setOptionString("scale", decoderPreferences.videoScale.get().value)
-    if (decoderPreferences.videoScaleParam1.get().isNotBlank()) {
-      MPVLib.setOptionString("scale-param1", decoderPreferences.videoScaleParam1.get())
-    }
-    if (decoderPreferences.videoScaleParam2.get().isNotBlank()) {
-      MPVLib.setOptionString("scale-param2", decoderPreferences.videoScaleParam2.get())
-    }
-
-    // Spatial downscaling
-    MPVLib.setOptionString("dscale", decoderPreferences.videoDownscale.get().value)
-    if (decoderPreferences.videoDownscaleParam1.get().isNotBlank()) {
-      MPVLib.setOptionString("dscale-param1", decoderPreferences.videoDownscaleParam1.get())
-    }
-    if (decoderPreferences.videoDownscaleParam2.get().isNotBlank()) {
-      MPVLib.setOptionString("dscale-param2", decoderPreferences.videoDownscaleParam2.get())
-    }
-
-    // Chroma upscaling (improves color clarity)
-    MPVLib.setOptionString("cscale", decoderPreferences.videoScale.get().value)
-
-    // Quality enhancements for better video rendering
-    MPVLib.setOptionString("correct-downscaling", "yes")
-    MPVLib.setOptionString("linear-downscaling", "yes")
-    MPVLib.setOptionString("sigmoid-upscaling", "yes")
-    MPVLib.setOptionString("dither-depth", "auto")
-
-    // Temporal scaling (for interpolation)
-    MPVLib.setOptionString("tscale", decoderPreferences.videoTscale.get().value)
-    if (decoderPreferences.videoTscaleParam1.get().isNotBlank()) {
-      MPVLib.setOptionString("tscale-param1", decoderPreferences.videoTscaleParam1.get())
-    }
-    if (decoderPreferences.videoTscaleParam2.get().isNotBlank()) {
-      MPVLib.setOptionString("tscale-param2", decoderPreferences.videoTscaleParam2.get())
     }
 
     MPVLib.setOptionString("speed", playerPreferences.defaultSpeed.get().toString())
@@ -354,8 +309,6 @@ class MPVView(
     val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
     MPVLib.setOptionString("sub-scale-by-window", scaleByWindow)
     MPVLib.setOptionString("sub-use-margins", scaleByWindow)
-    MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
-    MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
   }

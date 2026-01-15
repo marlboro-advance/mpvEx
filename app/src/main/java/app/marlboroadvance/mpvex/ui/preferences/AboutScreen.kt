@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,10 +56,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity.Companion.collectDeviceInfo
+import app.marlboroadvance.mpvex.ui.UpdateDialog
+import app.marlboroadvance.mpvex.ui.UpdateViewModel
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import kotlinx.serialization.Serializable
@@ -75,6 +80,12 @@ object AboutScreen : Screen {
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
     val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName
     val buildType = BuildConfig.BUILD_TYPE
+
+    val updateViewModel: UpdateViewModel = viewModel(context as androidx.activity.ComponentActivity)
+    val updateState by updateViewModel.updateState.collectAsState()
+    val downloadProgress by updateViewModel.downloadProgress.collectAsState()
+    val isDownloading by updateViewModel.isDownloading.collectAsState()
+
     Scaffold(
       topBar = {
         TopAppBar(
@@ -113,6 +124,33 @@ object AboutScreen : Screen {
       )
       val cornerRadius = 28.dp
 
+      // Update Dialog
+      when (val state = updateState) {
+          is UpdateViewModel.UpdateState.Available -> {
+              UpdateDialog(
+                  release = state.release,
+                  isDownloading = isDownloading,
+                  progress = downloadProgress,
+                  actionLabel = "Update",
+                  onDismiss = { updateViewModel.dismiss() },
+                  onAction = { updateViewModel.downloadUpdate(state.release) },
+                  onIgnore = { updateViewModel.dismiss() }
+              )
+          }
+          is UpdateViewModel.UpdateState.ReadyToInstall -> {
+              UpdateDialog(
+                  release = state.release,
+                  isDownloading = false,
+                  progress = 100f,
+                  actionLabel = "Install",
+                  onDismiss = { updateViewModel.dismiss() },
+                  onAction = { updateViewModel.installUpdate(state.release) },
+                  onIgnore = { updateViewModel.dismiss() }
+              )
+          }
+          else -> {}
+      }
+      
       Column(
         modifier =
           Modifier
@@ -273,6 +311,62 @@ object AboutScreen : Screen {
         }
 
         Spacer(Modifier.height(8.dp))
+
+        // Updates Section
+        PreferenceSectionHeader(title = "Updates")
+        PreferenceCard {
+              val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsState()
+              Column {
+                  Row(
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .clickable { updateViewModel.toggleAutoUpdate(!isAutoUpdateEnabled) }
+                          .padding(16.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.SpaceBetween
+                  ) {
+                      Column(
+                          modifier = Modifier.weight(1f)
+                      ) {
+                          Text(
+                              text = "Auto Check for Updates",
+                              style = MaterialTheme.typography.titleMedium,
+                              fontWeight = FontWeight.SemiBold,
+                              color = cs.onSurface
+                          )
+                          Spacer(modifier = Modifier.height(2.dp))
+                          Text(
+                              text = "Check on startup",
+                              style = MaterialTheme.typography.bodyMedium,
+                              color = cs.outline
+                          )
+                      }
+                      androidx.compose.material3.Switch(
+                          checked = isAutoUpdateEnabled,
+                          onCheckedChange = { updateViewModel.toggleAutoUpdate(it) }
+                      )
+                  }
+                  
+                  PreferenceDivider()
+                  
+                  Column(modifier = Modifier.padding(16.dp)) {
+                      Button(
+                          onClick = { updateViewModel.checkForUpdate(manual = true) },
+                          modifier = Modifier.fillMaxWidth().height(50.dp),
+                          shape = RoundedCornerShape(12.dp),
+                          colors = ButtonDefaults.buttonColors(
+                              containerColor = cs.secondaryContainer, 
+                              contentColor = cs.onSecondaryContainer
+                          ),
+                          elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                      ) {
+                           Icon(Icons.Default.Update, null, modifier = Modifier.size(18.dp))
+                           Spacer(Modifier.width(8.dp))
+                           Text("Check for Updates Now", fontWeight = FontWeight.SemiBold)
+                      }
+                  }
+              }
+        }
 
         // Donate Section
         PreferenceSectionHeader(

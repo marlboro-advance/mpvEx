@@ -86,14 +86,14 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 
 /**
  * Playlist detail screen showing videos in a playlist.
- * 
+ *
  * **M3U Playlist Behavior:**
- * M3U playlists (streaming URLs) are handled differently to prevent ANR issues:
- * - Each stream is played individually (no playlist navigation in PlayerActivity)
- * - No next/previous buttons - each stream URL is opened standalone
- * - This prevents loading thousands of URLs into memory at once
- * - Users can manually select and play different streams from the list
- * 
+ * M3U playlists (streaming URLs) now support full playlist navigation:
+ * - Next/previous buttons available during playback
+ * - Playlist continuation and shuffle modes
+ * - Full playlist loaded into PlayerActivity
+ * - Uses windowed loading for large playlists to prevent ANR
+ *
  * **Regular Playlist Behavior:**
  * Local file playlists support full playlist navigation:
  * - Next/previous buttons available during playback
@@ -156,7 +156,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       rememberSelectionManager(
         items = filteredVideoItems,
         getId = { it.playlistItem.id },
-        onDeleteItems = { itemsToDelete ->
+        onDeleteItems = { itemsToDelete, _ ->
           // Remove all items in a single coroutine to avoid concurrent deletion race conditions
           coroutineScope.launch {
             val videosToRemove = itemsToDelete.map { it.video }
@@ -483,28 +483,23 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
                   viewModel.updatePlayHistory(item.video.path)
                 }
 
-                if (playlist?.isM3uPlaylist == true) {
-                  // M3U playlists: Play only the clicked stream (no playlist navigation)
-                  MediaUtils.playFile(item.video, context, "m3u_playlist")
-                } else {
-                  // Regular playlists: Play with full playlist navigation
-                  val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
-                  if (startIndex >= 0) {
-                    if (videos.size == 1) {
-                      MediaUtils.playFile(item.video, context, "playlist_detail")
-                    } else {
-                      val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
-                      intent.setClass(context, PlayerActivity::class.java)
-                      intent.putExtra("internal_launch", true)
-                      intent.putExtra("playlist_index", startIndex)
-                      intent.putExtra("launch_source", "playlist")
-                      intent.putExtra("playlist_id", playlistId)
-                      intent.putExtra("title", videos[startIndex].displayName)
-                      context.startActivity(intent)
-                    }
-                  } else {
+                // Play with full playlist navigation (both M3U and regular playlists)
+                val startIndex = videoItems.indexOfFirst { it.playlistItem.id == item.playlistItem.id }
+                if (startIndex >= 0) {
+                  if (videos.size == 1) {
                     MediaUtils.playFile(item.video, context, "playlist_detail")
+                  } else {
+                    val intent = Intent(Intent.ACTION_VIEW, videos[startIndex].uri)
+                    intent.setClass(context, PlayerActivity::class.java)
+                    intent.putExtra("internal_launch", true)
+                    intent.putExtra("playlist_index", startIndex)
+                    intent.putExtra("launch_source", "playlist")
+                    intent.putExtra("playlist_id", playlistId)
+                    intent.putExtra("title", videos[startIndex].displayName)
+                    context.startActivity(intent)
                   }
+                } else {
+                  MediaUtils.playFile(item.video, context, "playlist_detail")
                 }
               }
             },

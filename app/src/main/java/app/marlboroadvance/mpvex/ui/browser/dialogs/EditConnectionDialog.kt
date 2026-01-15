@@ -55,6 +55,7 @@ fun EditConnectionSheet(
   var password by remember(connection.id) { mutableStateOf(connection.password) }
   var path by remember(connection.id) { mutableStateOf(connection.path) }
   var isAnonymous by remember(connection.id) { mutableStateOf(connection.isAnonymous) }
+  var useHttps by remember(connection.id) { mutableStateOf(connection.useHttps) }
   var passwordVisible by remember { mutableStateOf(false) }
   var protocolMenuExpanded by remember { mutableStateOf(false) }
 
@@ -73,6 +74,7 @@ fun EditConnectionSheet(
         password = if (isAnonymous) "" else password,
         path = path.ifBlank { "/" },
         isAnonymous = isAnonymous,
+        useHttps = useHttps,
       )
     onSave(updatedConnection)
   }
@@ -189,6 +191,29 @@ fun EditConnectionSheet(
               )
               Spacer(modifier = Modifier.width(8.dp))
               Text("Anonymous/Guest Access")
+            }
+            
+            // HTTPS checkbox (only for WebDAV)
+            if (protocol == NetworkProtocol.WEBDAV) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+              ) {
+                Checkbox(
+                  checked = useHttps,
+                  onCheckedChange = { 
+                    useHttps = it
+                    // Auto-update port when toggling HTTPS
+                    if (it && port == "80") {
+                      port = "443"
+                    } else if (!it && port == "443") {
+                      port = "80"
+                    }
+                  },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Use HTTPS (Secure Connection)")
+              }
             }
 
             // Username and Password in one row

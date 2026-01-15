@@ -4,6 +4,7 @@ package app.marlboroadvance.mpvex.presentation.components
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -76,7 +77,12 @@ fun PlayerSheet(
     } else {
       420.dp
     }
-  val maxHeight = LocalConfiguration.current.screenHeightDp.dp * .95f
+  val maxHeight =
+    if (LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT) {
+      LocalConfiguration.current.screenHeightDp.dp * .65f
+    } else {
+      LocalConfiguration.current.screenHeightDp.dp * .95f
+    }
 
   var backgroundAlpha by remember { mutableFloatStateOf(0f) }
   val alpha by animateFloatAsState(

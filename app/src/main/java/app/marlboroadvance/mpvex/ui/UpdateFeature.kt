@@ -1,0 +1,390 @@
+package app.marlboroadvance.mpvex.ui
+import android.app.Application
+import android.content.Context
+import android.content.Intent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import app.marlboroadvance.mpvex.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+
+// --- Data Models ---
+
+@Serializable
+data class Release(
+    @SerialName("tag_name") val tagName: String,
+    @SerialName("name") val name: String,
+    @SerialName("body") val body: String,
+    @SerialName("assets") val assets: List<Asset>
+)
+
+@Serializable
+data class Asset(
+    @SerialName("browser_download_url") val downloadUrl: String,
+    @SerialName("name") val name: String,
+    @SerialName("size") val size: Long,
+    @SerialName("content_type") val contentType: String
+)
+
+// --- Domain Manager ---
+
+class UpdateManager(
+    private val context: Context
+) {
+    private val client = OkHttpClient()
+    private val json = Json { ignoreUnknownKeys = true }
+
+    suspend fun checkForUpdate(): Release? {
+        val release = getLatestRelease("https://api.github.com/repos/marlboro-advance/mpvEx/releases/latest")
+        val currentVersion = BuildConfig.VERSION_NAME.replace("-dev", "")
+        val remoteVersion = release.tagName.removePrefix("v")
+        
+        return if (isNewerVersion(remoteVersion, currentVersion)) {
+            release
+        } else {
+            null
+        }
+    }
+
+    private suspend fun getLatestRelease(url: String): Release {
+        val request = Request.Builder().url(url).build()
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) throw IOException("Unexpected code $response")
+        
+        val responseBody = response.body?.string() ?: throw IOException("Empty body")
+        return json.decodeFromString<Release>(responseBody)
+    }
+
+    private fun isNewerVersion(remote: String, current: String): Boolean {
+        val rParts = remote.split(".").map { it.toIntOrNull() ?: 0 }
+        val cParts = current.split(".").map { it.toIntOrNull() ?: 0 }
+        
+        for (i in 0 until maxOf(rParts.size, cParts.size)) {
+            val r = rParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (r > c) return true
+            if (r < c) return false
+        }
+        return false
+    }
+
+    fun downloadUpdate(release: Release): Flow<Float> {
+        val asset = release.assets.firstOrNull { it.name.endsWith(".apk") } 
+            ?: throw Exception("No APK asset found")
+        
+        val destination = File(context.externalCacheDir, asset.name)
+        return downloadApk(asset.downloadUrl, destination)
+    }
+
+    private fun downloadApk(url: String, destination: File): Flow<Float> = flow {
+        val request = Request.Builder().url(url).build()
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+        val body = response.body ?: throw IOException("Empty body")
+        val contentLength = body.contentLength()
+        val inputStream = body.byteStream()
+        val outputStream = FileOutputStream(destination)
+
+        try {
+            val buffer = ByteArray(8 * 1024)
+            var bytesRead: Int
+            var totalBytesRead: Long = 0
+
+            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                outputStream.write(buffer, 0, bytesRead)
+                totalBytesRead += bytesRead
+                val progress = if (contentLength > 0) {
+                    (totalBytesRead.toFloat() / contentLength.toFloat()) * 100
+                } else {
+                    -1f 
+                }
+                emit(progress)
+            }
+            outputStream.flush()
+            emit(100f) 
+        } finally {
+            inputStream.close()
+            outputStream.close()
+        }
+    }.flowOn(Dispatchers.IO)
+    
+    fun getApkFile(release: Release): File? {
+        val asset = release.assets.firstOrNull { it.name.endsWith(".apk") } ?: return null
+        val file = File(context.externalCacheDir, asset.name)
+        return if (file.exists()) file else null
+    }
+
+    fun clearCache() {
+         context.externalCacheDir?.listFiles()?.forEach { 
+             if (it.name.endsWith(".apk")) it.delete()
+         }
+    }
+}
+
+// --- ViewModel ---
+
+class UpdateViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val updateManager = UpdateManager(application)
+
+    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
+
+    private val _downloadProgress = MutableStateFlow<Float>(0f)
+    val downloadProgress: StateFlow<Float> = _downloadProgress.asStateFlow()
+    
+    private val _isDownloading = MutableStateFlow(false)
+    val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
+
+    private val prefs = application.getSharedPreferences("mpvEx_prefs", Context.MODE_PRIVATE)
+    private val _isAutoUpdateEnabled = MutableStateFlow(prefs.getBoolean("auto_update", false))
+    val isAutoUpdateEnabled: StateFlow<Boolean> = _isAutoUpdateEnabled.asStateFlow()
+
+    fun toggleAutoUpdate(enabled: Boolean) {
+        prefs.edit().putBoolean("auto_update", enabled).apply()
+        _isAutoUpdateEnabled.value = enabled
+        if (enabled) {
+            checkForUpdate(manual = false)
+        }
+    }
+
+    init {
+        if (isAutoUpdateEnabled.value) {
+            checkForUpdate(manual = false)
+        }
+    }
+
+    sealed class UpdateState {
+        object Idle : UpdateState()
+        object Loading : UpdateState()
+        data class Available(val release: Release) : UpdateState()
+        object NoUpdate : UpdateState()
+        object Error : UpdateState()
+        data class ReadyToInstall(val release: Release) : UpdateState()
+    }
+
+    fun checkForUpdate(manual: Boolean = false) {
+        viewModelScope.launch {
+            _updateState.value = UpdateState.Loading
+            try {
+                val release = updateManager.checkForUpdate()
+                if (release != null) {
+                    val existingFile = updateManager.getApkFile(release)
+                     if (existingFile != null) {
+                         _updateState.value = UpdateState.ReadyToInstall(release)
+                     } else {
+                         _updateState.value = UpdateState.Available(release)
+                     }
+                } else {
+                    if (manual) _updateState.value = UpdateState.NoUpdate
+                    else _updateState.value = UpdateState.Idle
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                if (manual) _updateState.value = UpdateState.Error
+                else _updateState.value = UpdateState.Idle
+            }
+        }
+    }
+
+    fun downloadUpdate(release: Release) {
+        viewModelScope.launch {
+            _isDownloading.value = true
+            try {
+                updateManager.downloadUpdate(release).collect { progress ->
+                    _downloadProgress.value = progress
+                }
+                _isDownloading.value = false
+                 _updateState.value = UpdateState.ReadyToInstall(release)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _isDownloading.value = false
+                _updateState.value = UpdateState.Error 
+            }
+        }
+    }
+
+    fun installUpdate(release: Release) {
+        val file = updateManager.getApkFile(release) ?: return
+        val context = getApplication<Application>()
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    }
+    
+    fun dismiss() {
+        _updateState.value = UpdateState.Idle
+    }
+}
+
+// --- UI Components ---
+
+@Composable
+fun UpdateDialog(
+    release: Release,
+    isDownloading: Boolean,
+    progress: Float,
+    actionLabel: String,
+    onDismiss: () -> Unit,
+    onAction: () -> Unit,
+    onIgnore: () -> Unit
+) {
+    val downloadSize = release.assets.find { it.name.endsWith(".apk") }?.size ?: 0L
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { 
+            Icon(
+                imageVector = if (actionLabel == "Install") Icons.Filled.SystemUpdate else Icons.Filled.CloudDownload,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            ) 
+        },
+        title = { 
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                Text(
+                    text = if (actionLabel == "Install") "Ready to Install" else "New Version Available",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "v${release.tagName}", 
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        text = {
+            Column {
+                if (downloadSize > 0 && !isDownloading && actionLabel != "Install") {
+                    Text(
+                        text = "Size: ${formatFileSize(downloadSize)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                androidx.compose.material3.Surface(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, 
+                        MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = release.body,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                
+                if (isDownloading) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                    ) {
+                         Text(text = "Downloading...", style = MaterialTheme.typography.bodySmall)
+                         Text(text = "${progress.toInt()}%", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { if (progress >= 0) progress / 100f else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (!isDownloading) {
+                Button(onClick = onAction) {
+                    Text(actionLabel)
+                }
+            }
+        },
+        dismissButton = {
+            if (!isDownloading) {
+                Row {
+                    TextButton(onClick = onIgnore) {
+                        Text("Skip This Version")
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text("Not Now")
+                    }
+                }
+            }
+        }
+    )
+}
+
+private fun formatFileSize(size: Long): String {
+    if (size <= 0) return "Unknown size"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
+    return String.format("%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+}

@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.Decoder
@@ -17,6 +19,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.FrameNavigationSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
 import dev.vivvvek.seeker.Segment
@@ -216,6 +219,32 @@ fun PlayerSheets(
         onSeekTo = { position, _ -> viewModel.seekTo(position) },
         onDismissRequest = onDismissRequest,
       )
+    }
+
+
+    Sheets.Playlist -> {
+      // Refresh playlist items when sheet is shown
+      LaunchedEffect(Unit) {
+        viewModel.refreshPlaylistItems()
+      }
+
+      // Observe playlist updates
+      val playlist by viewModel.playlistItems.collectAsState()
+
+      if (playlist.isNotEmpty()) {
+        val playlistImmutable = playlist.toImmutableList()
+        val totalCount = viewModel.getPlaylistTotalCount()
+        val isM3U = viewModel.isPlaylistM3U()
+        PlaylistSheet(
+          playlist = playlistImmutable,
+          onDismissRequest = onDismissRequest,
+          onItemClick = { item ->
+            viewModel.playPlaylistItem(item.index)
+          },
+          totalCount = totalCount,
+          isM3UPlaylist = isM3U,
+        )
+      }
     }
   }
 }

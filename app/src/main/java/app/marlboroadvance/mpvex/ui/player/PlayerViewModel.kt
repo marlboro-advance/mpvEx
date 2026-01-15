@@ -8,6 +8,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.view.WindowInsetsCompat
@@ -44,6 +45,7 @@ import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
+
 enum class RepeatMode {
   OFF,      // No repeat
   ONE,      // Repeat current file
@@ -75,6 +77,25 @@ class PlayerViewModel(
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val json: Json by inject()
+  private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
+
+  // Playlist items for the playlist sheet
+  private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
+  val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
+
+  // Cache for video metadata to avoid re-extracting - limited size to prevent unbounded growth
+  private val metadataCache = LinkedHashMap<String, Pair<String, String>>(101, 1f, true) // key: uri.toString(), value: (duration, resolution)
+  private val METADATA_CACHE_MAX_SIZE = 100
+
+  private fun updateMetadataCache(key: String, value: Pair<String, String>) {
+    synchronized(metadataCache) {
+      metadataCache[key] = value
+      // Remove oldest entry if cache exceeds max size
+      if (metadataCache.size > METADATA_CACHE_MAX_SIZE) {
+        metadataCache.remove(metadataCache.keys.firstOrNull())
+      }
+    }
+  }
 
   // MPV properties with efficient collection
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
@@ -201,6 +222,7 @@ class PlayerViewModel(
   private var seekCoalesceJob: Job? = null
 
   private companion object {
+    const val TAG = "PlayerViewModel"
     const val SEEK_COALESCE_DELAY_MS = 60L
     val VALID_SUBTITLE_EXTENSIONS =
       setOf("srt", "ass", "ssa", "sub", "idx", "vtt", "sup", "txt", "pgs")
@@ -375,18 +397,29 @@ class PlayerViewModel(
 
   fun pauseUnpause() {
     viewModelScope.launch(Dispatchers.IO) {
-      MPVLib.command("cycle", "pause")
+      val isPaused = MPVLib.getPropertyBoolean("pause") ?: false
+      if (isPaused) {
+        // We are about to unpause, so request focus
+        withContext(Dispatchers.Main) { host.requestAudioFocus() }
+        MPVLib.setPropertyBoolean("pause", false)
+      } else {
+        // We are about to pause
+        MPVLib.setPropertyBoolean("pause", true)
+        withContext(Dispatchers.Main) { host.abandonAudioFocus() }
+      }
     }
   }
 
   fun pause() {
     viewModelScope.launch(Dispatchers.IO) {
       MPVLib.setPropertyBoolean("pause", true)
+      withContext(Dispatchers.Main) { host.abandonAudioFocus() }
     }
   }
 
   fun unpause() {
     viewModelScope.launch(Dispatchers.IO) {
+      withContext(Dispatchers.Main) { host.requestAudioFocus() }
       MPVLib.setPropertyBoolean("pause", false)
     }
   }
@@ -1005,7 +1038,180 @@ class PlayerViewModel(
   fun getPlaylistInfo(): String? {
     val activity = host as? PlayerActivity ?: return null
     if (activity.playlist.isEmpty()) return null
-    return "${activity.playlistIndex + 1}/${activity.playlist.size}"
+
+    val totalCount = getPlaylistTotalCount()
+    return "${activity.playlistIndex + 1}/$totalCount"
+  }
+
+  fun isPlaylistM3U(): Boolean {
+    val activity = host as? PlayerActivity ?: return false
+    return activity.isCurrentPlaylistM3U()
+  }
+
+  fun getPlaylistTotalCount(): Int {
+    val activity = host as? PlayerActivity ?: return 0
+    return activity.playlist.size
+  }
+
+  fun getPlaylistData(): List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>? {
+    val activity = host as? PlayerActivity ?: return null
+    if (activity.playlist.isEmpty()) return null
+
+    // Get current video progress
+    val currentPos = pos ?: 0
+    val currentDuration = duration ?: 0
+    val currentProgress = if (currentDuration > 0) {
+      ((currentPos.toFloat() / currentDuration.toFloat()) * 100f).coerceIn(0f, 100f)
+    } else 0f
+
+    return activity.playlist.mapIndexed { index, uri ->
+      val title = activity.getPlaylistItemTitle(uri)
+      // Get path for thumbnail generation
+      val path = uri.path ?: uri.toString()
+      val isCurrentlyPlaying = index == activity.playlistIndex
+
+      // Try to get from cache first (synchronized access)
+      val cacheKey = uri.toString()
+      val (durationStr, resolutionStr) = synchronized(metadataCache) { metadataCache[cacheKey] } ?: ("" to "")
+
+      app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem(
+        uri = uri,
+        title = title,
+        index = index,
+        isPlaying = isCurrentlyPlaying,
+        path = path,
+        progressPercent = if (isCurrentlyPlaying) currentProgress else 0f,
+        isWatched = isCurrentlyPlaying && currentProgress >= 95f,
+        duration = durationStr,
+        resolution = resolutionStr,
+      )
+    }
+  }
+
+  private fun getVideoMetadata(uri: Uri): Pair<String, String> {
+    // Skip metadata extraction for network streams and M3U playlists
+    if (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms") {
+      return "" to ""
+    }
+
+    // Skip M3U/M3U8 files
+    val uriString = uri.toString().lowercase()
+    if (uriString.contains(".m3u8") || uriString.contains(".m3u")) {
+      return "" to ""
+    }
+
+    val retriever = android.media.MediaMetadataRetriever()
+    return try {
+      // For file:// URIs, use the path directly (faster)
+      if (uri.scheme == "file") {
+        retriever.setDataSource(uri.path)
+      } else {
+        // For content:// URIs, use context
+        retriever.setDataSource(host.context, uri)
+      }
+
+      // Get duration
+      val durationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+      val durationStr = if (durationMs != null) {
+        val seconds = durationMs.toLong() / 1000
+        val minutes = seconds / 60
+        val remainingSeconds = seconds % 60
+        "${minutes}:${remainingSeconds.toString().padStart(2, '0')}"
+      } else ""
+
+      // Get resolution
+      val width = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+      val height = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+      val resolutionStr = if (width != null && height != null) {
+        "${width}x${height}"
+      } else ""
+
+      durationStr to resolutionStr
+    } catch (e: Exception) {
+      android.util.Log.e("PlayerViewModel", "Failed to get video metadata for $uri", e)
+      "" to ""
+    } finally {
+      try {
+        retriever.release()
+      } catch (e: Exception) {
+        // Ignore release errors
+      }
+    }
+  }
+  
+  
+
+  fun playPlaylistItem(index: Int) {
+    val activity = host as? PlayerActivity ?: return
+    activity.playPlaylistItem(index)
+  }
+
+  /**
+   * Refreshes the playlist items to update the currently playing indicator.
+   * Called when a new video starts playing to update the playlist UI.
+   */
+  fun refreshPlaylistItems() {
+    viewModelScope.launch(Dispatchers.IO) {
+      val updatedItems = getPlaylistData()
+      if (updatedItems != null) {
+        // Clear cache if playlist size changed
+        if (_playlistItems.value.size != updatedItems.size) {
+          metadataCache.clear()
+        }
+
+        _playlistItems.value = updatedItems
+
+        // Load metadata asynchronously in the background
+        loadPlaylistMetadataAsync(updatedItems)
+      }
+    }
+  }
+
+  /**
+   * Loads metadata for all playlist items asynchronously in the background.
+   * Updates the playlist items as metadata becomes available.
+   * Uses batched updates to avoid O(n²) complexity with large playlists.
+   * Skips metadata extraction for M3U playlists (network streams).
+   */
+  private fun loadPlaylistMetadataAsync(items: List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      // Skip metadata extraction for M3U playlists
+      val activity = host as? PlayerActivity
+      if (activity?.isCurrentPlaylistM3U() == true) {
+        Log.d(TAG, "Skipping metadata extraction for M3U playlist")
+        return@launch
+      }
+
+      // Limit concurrent metadata extraction to avoid overwhelming resources
+      val batchSize = 5
+      items.chunked(batchSize).forEach { batch ->
+        val updates = mutableMapOf<String, Pair<String, String>>()
+
+        // Extract metadata for the batch
+        batch.forEach { item ->
+          val cacheKey = item.uri.toString()
+
+          // Skip if already in cache (synchronized access)
+          if (!synchronized(metadataCache) { metadataCache.containsKey(cacheKey) }) {
+            // Extract metadata
+            val (durationStr, resolutionStr) = getVideoMetadata(item.uri)
+
+            // Update cache and track update
+            updateMetadataCache(cacheKey, durationStr to resolutionStr)
+            updates[cacheKey] = durationStr to resolutionStr
+          }
+        }
+
+        // Apply all batched updates at once (single playlist update)
+        if (updates.isNotEmpty()) {
+          _playlistItems.value = _playlistItems.value.map { currentItem ->
+            val cacheKey = currentItem.uri.toString()
+            val (durationStr, resolutionStr) = updates[cacheKey] ?: return@map currentItem
+            currentItem.copy(duration = durationStr, resolution = resolutionStr)
+          }
+        }
+      }
+    }
   }
 
   fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false

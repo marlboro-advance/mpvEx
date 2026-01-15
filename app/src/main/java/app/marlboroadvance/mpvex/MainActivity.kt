@@ -32,6 +32,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import androidx.compose.runtime.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.repository.NetworkRepository
 import app.marlboroadvance.mpvex.ui.browser.MainScreen
@@ -82,6 +83,37 @@ class MainActivity : ComponentActivity() {
       MpvexTheme {
         Surface {
           Navigator()
+          // Global Update Dialog
+          val updateViewModel: app.marlboroadvance.mpvex.ui.UpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel(this@MainActivity)
+          val updateState by updateViewModel.updateState.collectAsState()
+          val downloadProgress by updateViewModel.downloadProgress.collectAsState()
+          val isDownloading by updateViewModel.isDownloading.collectAsState()
+          
+          when (val state = updateState) {
+              is app.marlboroadvance.mpvex.ui.UpdateViewModel.UpdateState.Available -> {
+                  app.marlboroadvance.mpvex.ui.UpdateDialog(
+                      release = state.release,
+                      isDownloading = isDownloading,
+                      progress = downloadProgress,
+                      actionLabel = "Update",
+                      onDismiss = { updateViewModel.dismiss() },
+                      onAction = { updateViewModel.downloadUpdate(state.release) },
+                      onIgnore = { updateViewModel.dismiss() }
+                  )
+              }
+              is app.marlboroadvance.mpvex.ui.UpdateViewModel.UpdateState.ReadyToInstall -> {
+                  app.marlboroadvance.mpvex.ui.UpdateDialog(
+                      release = state.release,
+                      isDownloading = false,
+                      progress = 100f,
+                      actionLabel = "Install",
+                      onDismiss = { updateViewModel.dismiss() },
+                      onAction = { updateViewModel.installUpdate(state.release) },
+                      onIgnore = { updateViewModel.dismiss() }
+                  )
+              }
+              else -> {}
+          }
         }
       }
     }

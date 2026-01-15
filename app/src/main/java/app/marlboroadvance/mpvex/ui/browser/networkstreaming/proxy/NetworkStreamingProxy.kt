@@ -626,10 +626,12 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
    */
   private suspend fun getStreamWithOffsetWebDAV(streamInfo: StreamInfo, offset: Long): InputStream? {
     try {
-      val protocol = if (streamInfo.connection.port == 443) "https" else "http"
+      val protocol = if (streamInfo.connection.useHttps) "https" else "http"
       val cleanBasePath = streamInfo.connection.path.trimEnd('/')
       val cleanFilePath = if (streamInfo.filePath.startsWith("/")) streamInfo.filePath else "/${streamInfo.filePath}"
       val url = "$protocol://${streamInfo.connection.host}:${streamInfo.connection.port}$cleanBasePath$cleanFilePath"
+
+      Log.d(TAG, "WebDAV stream request - Protocol: $protocol, URL: $url")
 
       // Use OkHttp directly to add Range header support
       val okHttpClient = okhttp3.OkHttpClient.Builder()

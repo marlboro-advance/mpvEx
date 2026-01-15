@@ -18,22 +18,43 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
 
   // Note: Sardine-Android uses OkHttp which properly handles UTF-8 encoding by default
   private var sardine: Sardine? = null
-  private var baseUrl: String = ""
+
+  /**
+   * Build full WebDAV URL from connection and relative path
+   * Standard approach: protocol://host:port/basePath/relativePath
+   * relativePath should be relative to the basePath (connection.path)
+   */
+  private fun buildUrl(relativePath: String): String {
+    val protocol = if (connection.useHttps) "https" else "http"
+    val basePath = connection.path.trim('/')
+    val cleanPath = relativePath.trim('/')
+    
+    // If relativePath is "/" or empty, it means we're at the root of the connection
+    // In that case, just use the basePath (connection.path)
+    return when {
+      cleanPath.isEmpty() || cleanPath == "/" -> {
+        if (basePath.isEmpty()) {
+          "$protocol://${connection.host}:${connection.port}/"
+        } else {
+          "$protocol://${connection.host}:${connection.port}/$basePath"
+        }
+      }
+      basePath.isEmpty() -> "$protocol://${connection.host}:${connection.port}/$cleanPath"
+      else -> "$protocol://${connection.host}:${connection.port}/$basePath/$cleanPath"
+    }
+  }
 
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
-        // Support both HTTP and HTTPS
-        val protocol = if (connection.port == 443) "https" else "http"
-        baseUrl = "$protocol://${connection.host}:${connection.port}${connection.path}"
-
         val client = OkHttpSardine()
         if (!connection.isAnonymous) {
           client.setCredentials(connection.username, connection.password)
         }
 
-        // Test connection
-        client.exists(baseUrl)
+        // Test connection by checking if base path exists
+        val testUrl = buildUrl("")
+        client.exists(testUrl)
 
         sardine = client
         Result.success(Unit)
@@ -55,17 +76,7 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
       try {
         val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
 
-        // Construct URL properly to avoid double slashes
-        val url = if (path.startsWith("http")) {
-          path
-        } else {
-          // Remove trailing slash from baseUrl to prevent double slashes
-          val cleanBaseUrl = baseUrl.trimEnd('/')
-          // Ensure path starts with / for proper URL construction
-          val cleanPath = if (path.startsWith("/")) path else "/$path"
-          "$cleanBaseUrl$cleanPath"
-        }
-
+        val url = buildUrl(path)
         val resources = client.list(url)
 
         val files =
@@ -73,12 +84,12 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
             .drop(1) // Skip the directory itself
             .map { resource: DavResource ->
               val resourceName = resource.name ?: ""
-              val filePath = if (path.endsWith("/")) {
-                "$path$resourceName"
-              } else if (path.isEmpty() || path == "/") {
-                "/$resourceName"
+              
+              // Build child path by appending filename to current path
+              val filePath = if (path.isEmpty() || path == "/") {
+                resourceName
               } else {
-                "$path/$resourceName"
+                "${path.trimEnd('/')}/$resourceName"
               }
 
               NetworkFile(
@@ -106,16 +117,8 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
       try {
         val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
 
-        val protocol = if (connection.port == 443) "https" else "http"
-        val url = if (path.startsWith("http")) {
-          path
-        } else {
-          // Properly construct URL without double slashes
-          val cleanBasePath = connection.path.trimEnd('/')
-          val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-          "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
-        }
-
+        val url = buildUrl(path)
+        
         // Use PROPFIND to get file properties including size
         val resources = client.list(url, 0) // depth 0 = only the resource itself
         if (resources.isNotEmpty() && !resources[0].isDirectory) {
@@ -139,16 +142,7 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
           streamClient.setCredentials(connection.username, connection.password)
         }
 
-        val protocol = if (connection.port == 443) "https" else "http"
-        val url = if (path.startsWith("http")) {
-          path
-        } else {
-          // Properly construct URL without double slashes
-          val cleanBasePath = connection.path.trimEnd('/')
-          val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-          "$protocol://${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
-        }
-
+        val url = buildUrl(path)
         val rawStream = streamClient.get(url)
 
         if (rawStream == null) {
@@ -183,25 +177,22 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        // Properly construct URL without double slashes
-        val url = if (path.startsWith("http")) {
-          path
-        } else {
-          val cleanBaseUrl = baseUrl.trimEnd('/')
-          val cleanPath = if (path.startsWith("/")) path else "/$path"
-          "$cleanBaseUrl$cleanPath"
+        val protocol = if (connection.useHttps) "https" else "http"
+        val basePath = connection.path.trim('/')
+        val cleanPath = path.trim('/')
+        
+        val fullPath = when {
+          cleanPath.isEmpty() -> basePath
+          basePath.isEmpty() -> cleanPath
+          else -> "$basePath/$cleanPath"
         }
 
-        // Build WebDAV URI for mpv
-        val uriString =
-          if (connection.isAnonymous) {
-            url
-          } else {
-            val protocol = if (connection.port == 443) "https" else "http"
-            val cleanBasePath = connection.path.trimEnd('/')
-            val cleanFilePath = if (path.startsWith("/")) path else "/$path"
-            "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}$cleanBasePath$cleanFilePath"
-          }
+        // Build WebDAV URI with credentials embedded for mpv
+        val uriString = if (connection.isAnonymous) {
+          "$protocol://${connection.host}:${connection.port}/$fullPath"
+        } else {
+          "$protocol://${connection.username}:${connection.password}@${connection.host}:${connection.port}/$fullPath"
+        }
 
         Result.success(Uri.parse(uriString))
       } catch (e: Exception) {

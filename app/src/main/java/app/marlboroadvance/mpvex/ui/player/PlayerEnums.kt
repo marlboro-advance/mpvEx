@@ -81,6 +81,7 @@ enum class Sheets {
   VideoZoom,
   AspectRatios,
   FrameNavigation,
+  Playlist,
 }
 
 enum class Panels {
@@ -336,82 +337,4 @@ enum class DebandSettings(
     0,
     200,
   ),
-}
-
-enum class VideoSync(
-  val displayName: String,
-  val value: String,
-) {
-  Audio("Sync to audio", "audio"),
-  DisplayResample("Display resample", "display-resample"),
-  DisplayResampleVdrop("Display resample (video drop)", "display-resample-vdrop"),
-  DisplayVdrop("Display (video drop)", "display-vdrop"),
-  DisplayAdrop("Display (audio drop)", "display-adrop"),
-  ;
-
-  companion object {
-    fun getDisplayResampleModes(): List<VideoSync> =
-      listOf(
-        DisplayResample,
-        DisplayResampleVdrop,
-        DisplayVdrop,
-        DisplayAdrop,
-      )
-  }
-}
-
-enum class Scaler(
-  val displayName: String,
-  val value: String,
-) {
-  Bilinear("Bilinear", "bilinear"),
-  BicubicFast("Bicubic Fast", "bicubic_fast"),
-  Oversample("Oversample", "oversample"),
-  Spline16("Spline 16", "spline16"),
-  Spline36("Spline 36", "spline36"),
-  Spline64("Spline 64", "spline64"),
-  Sinc("Sinc", "sinc"),
-  Lanczos("Lanczos", "lanczos"),
-  Ginseng("Ginseng", "ginseng"),
-  Jinc("Jinc", "jinc"),
-  EwaLanczos("EWA Lanczos", "ewa_lanczos"),
-  EwaHanning("EWA Hanning", "ewa_hanning"),
-  EwaGinseng("EWA Ginseng", "ewa_ginseng"),
-  EwaLanczossharp("EWA Lanczos Sharp", "ewa_lanczossharp"),
-  EwaLanczos4sharpest("EWA Lanczos 4 Sharpest", "ewa_lanczos4sharpest"),
-  EwaLanczossoft("EWA Lanczos Soft", "ewa_lanczossoft"),
-  Haasnsoft("Haasnsoft", "haasnsoft"),
-  Bicubic("Bicubic", "bicubic"),
-  Hermite("Hermite", "hermite"),
-  CatmullRom("Catmull-Rom", "catmull_rom"),
-  Mitchell("Mitchell", "mitchell"),
-  Robidoux("Robidoux", "robidoux"),
-  Robidouxsharp("Robidoux Sharp", "robidouxsharp"),
-  EwaRobidoux("EWA Robidoux", "ewa_robidoux"),
-  EwaRobidouxsharp("EWA Robidoux Sharp", "ewa_robidouxsharp"),
-  Box("Box", "box"),
-  Nearest("Nearest", "nearest"),
-  Triangle("Triangle", "triangle"),
-  Gaussian("Gaussian", "gaussian"),
-  Bartlett("Bartlett", "bartlett"),
-  Cosine("Cosine", "cosine"),
-  Tukey("Tukey", "tukey"),
-  Hamming("Hamming", "hamming"),
-  Quadric("Quadric", "quadric"),
-  Welch("Welch", "welch"),
-  Kaiser("Kaiser", "kaiser"),
-  Blackman("Blackman", "blackman"),
-  Sphinx("Sphinx", "sphinx"),
-}
-
-enum class TemporalScaler(
-  val displayName: String,
-  val value: String,
-) {
-  Oversample("Oversample", "oversample"),
-  Linear("Linear", "linear"),
-  CatmullRom("Catmull-Rom", "catmull_rom"),
-  Mitchell("Mitchell", "mitchell"),
-  Gaussian("Gaussian", "gaussian"),
-  Bicubic("Bicubic", "bicubic"),
 }

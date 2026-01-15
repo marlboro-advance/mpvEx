@@ -35,7 +35,83 @@
     <string name="pref_appearance_unplayed_old_video_days_summary">Videos added within the last %d days without playback history will be marked as new</string>
     <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
     <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
+    <string name="pref_appearance_theme_picker_label">App Theme</string>
+    <string name="pref_appearance_auto_scroll_title">Auto-scroll to last played</string>
+    <string name="pref_appearance_auto_scroll_summary">Automatically scroll to the last played video when opening video lists</string>
     <string name="video_label_new">NEW</string>
+
+    <!-- Theme names -->
+    <string name="theme_default">Default</string>
+    <string name="theme_dynamic">Dynamic</string>
+    <string name="theme_cloudflare">Cloudflare</string>
+    <string name="theme_cotton_candy">Cotton Candy</string>
+    <string name="theme_doom">Doom</string>
+    <string name="theme_green_apple">Green Apple</string>
+    <string name="theme_lavender">Lavender</string>
+    <string name="theme_midnight">Midnight</string>
+    <string name="theme_mocha">Mocha</string>
+    <string name="theme_strawberry">Strawberry</string>
+    <string name="theme_tidal">Tidal</string>
+    <string name="theme_nord">Nord</string>
+    <string name="theme_tako_green">Tako</string>
+    <string name="theme_yin_yang">Yin Yang</string>
+    <string name="theme_yotsuba">Yotsuba</string>
+    <string name="theme_sapphire">Sapphire</string>
+    <string name="theme_sunset">Sunset</string>
+    <string name="theme_ocean">Ocean</string>
+    <string name="theme_forest">Forest</string>
+    <string name="theme_rose_gold">Rose Gold</string>
+    <string name="theme_violet">Violet</string>
+    <string name="theme_amber">Amber</string>
+    <string name="theme_coral">Coral</string>
+    <string name="theme_slate">Slate</string>
+    <string name="theme_dracula">Dracula</string>
+    <string name="theme_monochrome">Monochrome</string>
+
+    <!-- Motion Preferences -->
+    <string name="pref_category_animations">Animations</string>
+    <string name="pref_motion_quality_title">Animation Quality</string>
+    <string name="pref_motion_high_quality">Fluid</string>
+    <string name="pref_motion_high_quality_desc">Smooth animations with scale effects and shared element transitions</string>
+    <string name="pref_motion_minimal">Minimal</string>
+    <string name="pref_motion_minimal_desc">Fast animations with reduced effects</string>
+    <string name="pref_motion_slide">Slide</string>
+    <string name="pref_motion_slide_desc">Clean slide transitions in/out</string>
+    <string name="pref_motion_none">Instant</string>
+    <string name="pref_motion_none_desc">Immediate transitions for accessibility or performance</string>
+
+    <!-- Settings Search -->
+    <string name="settings_search_hint">Search settings…</string>
+    <string name="settings_search_no_results">No settings found</string>
+    <string name="settings_search_title">Search</string>
+
+    <!-- Player Preferences Hardcoded -->
+    <string name="pref_autoplay_title">Autoplay</string>
+    <string name="pref_autoplay_summary">Automatically enable next/previous navigation for all videos in folder</string>
+    <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
+    <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
+    <string name="pref_dynamic_speed_overlay_title">Dynamic Speed Overlay</string>
+    <string name="pref_dynamic_speed_overlay_summary">Show advance overlay for speed control during long press and swipe</string>
+    <string name="pref_show_navigation_bar_title">Show navigation bar with controls</string>
+
+    <!-- Gesture Preferences Hardcoded -->
+    <string name="pref_double_tap_seek_area_width_title">Double Tap Seek Area Width</string>
+    <string name="pref_double_tap_seek_area_width_summary">Current: %d%%</string>
+
+    <!-- Advanced Preferences Hardcoded -->
+    <string name="pref_export_settings_title">Export Settings</string>
+    <string name="pref_export_settings_summary">Export settings to an XML file</string>
+    <string name="pref_import_settings_title">Import Settings</string>
+    <string name="pref_import_settings_summary">Import settings from an XML file</string>
+    <string name="pref_enable_lua_scripts_title">Enable Lua Scripts</string>
+    <string name="pref_enable_lua_scripts_summary">Load Lua scripts from configuration directory</string>
+    <string name="pref_manage_lua_scripts_title">Manage Lua Scripts</string>
+    <string name="pref_manage_lua_scripts_summary">Manage enabled Lua scripts</string>
+    <string name="pref_clear_config_cache_title">Clear config cache</string>
+    <string name="pref_clear_config_cache_summary">Clear the cached mpv.conf settings</string>
+    <string name="pref_clear_thumbnail_cache_title">Clear thumbnail cache</string>
+    <string name="pref_clear_thumbnail_cache_summary">Delete all cached video thumbnails (will regenerate as you browse folders)</string>
+
 
     <string name="pref_layout_title">Player Layout</string>
     <string name="pref_layout_summary">Customize player button layout</string>

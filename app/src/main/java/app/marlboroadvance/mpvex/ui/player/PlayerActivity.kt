@@ -40,14 +40,14 @@ import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
-import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.ui.player.controls.PlayerControls
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
-import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import app.marlboroadvance.mpvex.utils.media.HttpUtils
+import app.marlboroadvance.mpvex.utils.media.SubtitleOps
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -205,7 +205,14 @@ class PlayerActivity :
    * Total count of items in the full playlist (when using windowed loading).
    * -1 means unknown or not using windowed loading.
    */
-  private var playlistTotalCount: Int = -1
+  var playlistTotalCount: Int = -1
+    private set
+
+  /**
+   * Indicates whether the current playlist is an M3U playlist sourced from database.
+   * Used to skip thumbnail/metadata extraction for network streams.
+   */
+  private var isM3uPlaylist: Boolean = false
 
   /**
    * Helper for managing Picture-in-Picture mode.
@@ -343,41 +350,24 @@ class PlayerActivity :
     }
 
     // If playlist is empty but playlist_id is provided, load asynchronously from database
-    // Use windowed loading to prevent ANR with large playlists
+    // Load all items - LazyColumn handles pagination/virtualization efficiently
     if (playlist.isEmpty() && playlistId != null) {
       lifecycleScope.launch(Dispatchers.IO) {
         val pid = playlistId ?: return@launch
         try {
-          // Get total count first to decide if we need windowed loading
-          val totalCount = playlistRepository.getPlaylistItemCount(pid)
+          // Check if this is an M3U playlist
+          val playlistEntity = playlistRepository.getPlaylistById(pid)
+          isM3uPlaylist = playlistEntity?.isM3uPlaylist ?: false
 
-          if (totalCount > 100) {
-            // Large playlist: use windowed loading to prevent ANR
-            val windowSize = 100
-            val halfWindow = windowSize / 2
-            val startOffset = (playlistIndex - halfWindow).coerceAtLeast(0)
+          // Load all items - LazyColumn will handle virtualization/pagination efficiently
+          val items = playlistRepository.getPlaylistItemsAsUris(pid)
+          val totalCount = items.size
 
-            val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = pid,
-              centerIndex = playlistIndex,
-              windowSize = windowSize
-            )
-
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = startOffset
-              playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (windowed, offset=$startOffset) from playlist $pid (total: $totalCount)")
-            }
-          } else {
-            // Small playlist: load everything at once
-            val items = playlistRepository.getPlaylistItemsAsUris(pid)
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = 0
-              playlistTotalCount = totalCount
-              Log.d(TAG, "Loaded ${items.size} items (full) from playlist $pid")
-            }
+          withContext(Dispatchers.Main) {
+            playlist = items
+            playlistWindowOffset = 0
+            playlistTotalCount = totalCount
+            Log.d(TAG, "Loaded all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
           }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load playlist from database", e)
@@ -523,16 +513,14 @@ class PlayerActivity :
           .setAcceptsDelayedFocusGain(true)
           .setWillPauseWhenDucked(true)
           .build()
-      requestAudioFocusForPlayback()
+      requestAudioFocus()
     }
   }
 
   /**
-   * Requests audio focus for media playback.
-   *
    * @return true if audio focus was granted immediately, false otherwise
    */
-  private fun requestAudioFocusForPlayback(): Boolean {
+  override fun requestAudioFocus(): Boolean {
     val req = audioFocusRequest ?: return false
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
@@ -542,7 +530,7 @@ class PlayerActivity :
       }
 
       AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> {
-        restoreAudioFocus = { requestAudioFocusForPlayback() }
+        restoreAudioFocus = { requestAudioFocus() }
         false
       }
 
@@ -634,11 +622,15 @@ class PlayerActivity :
     }
   }
 
-  private fun cleanupAudio() {
+  override fun abandonAudioFocus() {
     if (restoreAudioFocus != {}) {
       audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
       restoreAudioFocus = {}
     }
+  }
+
+  private fun cleanupAudio() {
+    abandonAudioFocus()
   }
 
   private fun cleanupReceivers() {
@@ -688,6 +680,23 @@ class PlayerActivity :
     }
 
     super.finish()
+  }
+
+  @RequiresApi(Build.VERSION_CODES.P)
+  override fun finishAndRemoveTask() {
+    runCatching {
+      // Restore UI immediately for responsive exit (same as finish())
+      if (!isInPictureInPictureMode) {
+        restoreSystemUI()
+      }
+      isReady = false
+      isUserFinishing = true
+      setReturnIntent()
+    }.onFailure { e ->
+      Log.e(TAG, "Error during finishAndRemoveTask", e)
+    }
+
+    super.finishAndRemoveTask()
   }
 
   override fun onStop() {
@@ -1240,6 +1249,31 @@ class PlayerActivity :
   }
 
   /**
+   * Gets the display title for a playlist item URI.
+   *
+   * @param uri The URI to get the title for
+   * @return The display name/title of the file
+   */
+  internal fun getPlaylistItemTitle(uri: Uri): String {
+    // Try content resolver first for content:// URIs
+    getDisplayNameFromUri(uri)?.let { return it }
+
+    // Extract filename from URL/URI
+    return extractFileNameFromUri(uri)
+  }
+
+  /**
+   * Plays a playlist item by index.
+   *
+   * @param index The index of the playlist item to play
+   */
+  internal fun playPlaylistItem(index: Int) {
+    if (index in playlist.indices) {
+      loadPlaylistItem(index)
+    }
+  }
+
+  /**
    * Extracts the URI from the intent based on intent type.
    *
    * @param intent The intent to extract URI from
@@ -1585,7 +1619,12 @@ class PlayerActivity :
     GlobalScope.launch(Dispatchers.IO) {
       if (playlist.isNotEmpty()) {
         // For playlist items, save using the current URI
-        saveRecentlyPlayedForUri(playlist[playlistIndex], fileName)
+        // All items are loaded, so playlistIndex is the direct index
+        if (playlistIndex >= 0 && playlistIndex < playlist.size) {
+          saveRecentlyPlayedForUri(playlist[playlistIndex], fileName)
+        } else {
+          Log.w(TAG, "Cannot save recently played: invalid playlist index $playlistIndex (playlist size: ${playlist.size})")
+        }
       } else {
         // For non-playlist videos, use the original saveRecentlyPlayed
         saveRecentlyPlayed()
@@ -1615,8 +1654,11 @@ class PlayerActivity :
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
 
-    MPVLib.setPropertyString("force-media-title", fileName)
-    viewModel.setMediaTitle(fileName)
+    // Don't force media-title for m3u/m3u8 streams - let MPV provide it
+    if (!isCurrentStreamM3U()) {
+      MPVLib.setPropertyString("force-media-title", fileName)
+      viewModel.setMediaTitle(fileName)
+    }
 
     viewModel.unpause()
 
@@ -1665,6 +1707,12 @@ class PlayerActivity :
       try {
         val uri = extractUriFromIntent(intent)
         if (uri == null || !HttpUtils.isNetworkStream(uri)) {
+          return@launch
+        }
+
+        // Skip fetching for m3u/m3u8 streams - let MPV provide the title
+        if (isCurrentStreamM3U()) {
+          Log.d(TAG, "Skipping title fetch for m3u/m3u8 stream: $uri")
           return@launch
         }
 
@@ -1813,8 +1861,6 @@ class PlayerActivity :
     val overrideAssSubs = subtitlesPreferences.overrideAssSubs.get()
     MPVLib.setPropertyString("sub-ass-override", if (overrideAssSubs) "force" else "scale")
     MPVLib.setPropertyString("secondary-sub-ass-override", if (overrideAssSubs) "force" else "scale")
-    MPVLib.setPropertyString("sub-ass-force-margins", "yes")
-    MPVLib.setPropertyString("secondary-sub-ass-force-margins", "yes")
     
     val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
     val scaleValue = if (scaleByWindow) "yes" else "no"
@@ -2133,6 +2179,55 @@ class PlayerActivity :
 
     // Update the intent first so getFileName uses the new intent data
     setIntent(intent)
+
+    // Check if this intent has playlist information
+    val hasPlaylistExtras = intent.hasExtra("playlist_id") ||
+                           intent.hasExtra("playlist")
+
+    // Load playlist from intent extras first (fast path)
+    val playlistFromIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    }
+
+    // Only update playlist state if we have new playlist information
+    // This prevents losing the playlist when coming back from notification/PiP
+    if (hasPlaylistExtras || playlistFromIntent.isNotEmpty()) {
+      val newPlaylistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
+      playlistId = newPlaylistId
+      playlistIndex = intent.getIntExtra("playlist_index", 0)
+      playlistWindowOffset = 0
+      playlistTotalCount = -1
+      playlist = playlistFromIntent
+    }
+
+    // If playlist is empty but playlist_id is provided, load from database
+    if (playlist.isEmpty() && playlistId != null) {
+      lifecycleScope.launch(Dispatchers.IO) {
+        val pid = playlistId ?: return@launch
+        try {
+          val totalCount = playlistRepository.getPlaylistItemCount(pid)
+          val items = playlistRepository.getPlaylistItemsAsUris(pid)
+          withContext(Dispatchers.Main) {
+            playlist = items
+            playlistTotalCount = totalCount
+            Log.d(TAG, "onNewIntent: Loaded ${items.size} items from playlist $pid")
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "onNewIntent: Failed to load playlist from database", e)
+        }
+      }
+    }
+
+    // Auto-generate playlist from folder if playlist mode is enabled and no playlist_id
+    if (playlist.isEmpty() && playlistId == null && playerPreferences.playlistMode.get()) {
+      val path = parsePathFromIntent(intent)
+      if (path != null) {
+        generatePlaylistFromFolder(path)
+      }
+    }
 
     // Extract the new fileName before loading the file
     fileName = getFileName(intent)
@@ -2719,63 +2814,20 @@ class PlayerActivity :
    * Load a playlist item by index
    */
   private fun loadPlaylistItem(index: Int) {
-    // Check if we're using windowed loading
-    if (playlistTotalCount > 0 && playlistId != null) {
-      // Calculate the actual index within the loaded window
-      val windowIndex = index - playlistWindowOffset
-
-      // Check if we need to expand the window
-      if (windowIndex < 0 || windowIndex >= playlist.size) {
-        // Index is outside the current window - expand asynchronously
-        lifecycleScope.launch(Dispatchers.IO) {
-          try {
-            val windowSize = 100
-            val halfWindow = windowSize / 2
-            val newOffset = (index - halfWindow).coerceAtLeast(0)
-
-            val items = playlistRepository.getPlaylistItemsWindowAsUris(
-              playlistId = playlistId!!,
-              centerIndex = index,
-              windowSize = windowSize
-            )
-
-            withContext(Dispatchers.Main) {
-              playlist = items
-              playlistWindowOffset = newOffset
-              Log.d(TAG, "Expanded playlist window: offset=$newOffset, size=${items.size}")
-
-              // Now load the item with the updated window
-              loadPlaylistItemInternal(index)
-            }
-          } catch (e: Exception) {
-            Log.e(TAG, "Failed to expand playlist window", e)
-          }
-        }
-        return
-      }
-
-      // Item is within current window - use local index
-      loadPlaylistItemInternal(index)
-    } else {
-      // Not using windowed loading or small playlist
-      if (index < 0 || index >= playlist.size) return
-      loadPlaylistItemInternal(index)
+    // All items are loaded - just validate index and load directly
+    if (index < 0 || index >= playlist.size) {
+      Log.e(TAG, "Invalid playlist index: $index (playlist size: ${playlist.size})")
+      return
     }
+    loadPlaylistItemInternal(index)
   }
 
   /**
-   * Internal method to load a playlist item - assumes the item is in the loaded window
+   * Internal method to load a playlist item
    */
   private fun loadPlaylistItemInternal(index: Int) {
-    // Calculate the actual index within the loaded window
-    val windowIndex = if (playlistTotalCount > 0) {
-      index - playlistWindowOffset
-    } else {
-      index
-    }
-
-    if (windowIndex < 0 || windowIndex >= playlist.size) {
-      Log.e(TAG, "Invalid playlist index: $index (window index: $windowIndex)")
+    if (index < 0 || index >= playlist.size) {
+      Log.e(TAG, "Invalid playlist index: $index (playlist size: ${playlist.size})")
       return
     }
 
@@ -2784,7 +2836,7 @@ class PlayerActivity :
       saveVideoPlaybackState(fileName)
     }
 
-    val uri = playlist[windowIndex]
+    val uri = playlist[index]
     val playableUri = uri.openContentFd(this) ?: uri.toString()
 
     // Update playlist index
@@ -2837,8 +2889,12 @@ class PlayerActivity :
     }
 
     // Update media title (this will trigger UI update)
-    MPVLib.setPropertyString("force-media-title", fileName)
-    viewModel.setMediaTitle(fileName)
+    // Don't force media-title for m3u/m3u8 streams - let MPV provide it
+    val isM3U = uri.toString().lowercase().contains(".m3u8") || uri.toString().lowercase().contains(".m3u")
+    if (!isM3U) {
+      MPVLib.setPropertyString("force-media-title", fileName)
+      viewModel.setMediaTitle(fileName)
+    }
 
     // Update media session metadata
     lifecycleScope.launch {
@@ -2848,6 +2904,8 @@ class PlayerActivity :
         title = fileName,
         durationMs = durationMs,
       )
+      // Refresh playlist items to update the currently playing indicator
+      viewModel.refreshPlaylistItems()
     }
   }
 
@@ -2862,8 +2920,46 @@ class PlayerActivity :
   /**
    * Get the current video title for controls display.
    * Used as a fallback when MPV hasn't set the media-title property yet.
+   * For m3u/m3u8 streams, returns the raw media-title from MPV instead of parsing.
    */
-  fun getTitleForControls(): String = fileName
+  fun getTitleForControls(): String {
+    // For m3u/m3u8 streams, use MPV's raw media-title directly
+    if (isCurrentStreamM3U()) {
+      val rawTitle = MPVLib.getPropertyString("media-title")
+      if (!rawTitle.isNullOrBlank()) {
+        return rawTitle
+      }
+    }
+    return fileName
+  }
+
+  /**
+   * Check if the currently playing media is an m3u or m3u8 stream.
+   * Checks both the intent URI and the current playlist item if playing from a playlist.
+   */
+  private fun isCurrentStreamM3U(): Boolean {
+    // First check the intent URI
+    val uri = extractUriFromIntent(intent)
+    if (uri != null && isUriM3U(uri)) {
+      return true
+    }
+
+    // Also check the current playlist item if playing from a playlist
+    if (playlist.isNotEmpty() && playlistIndex >= 0 && playlistIndex < playlist.size) {
+      return isUriM3U(playlist[playlistIndex])
+    }
+
+    return false
+  }
+
+  /**
+   * Check if a specific URI is an m3u or m3u8 file/stream.
+   */
+  private fun isUriM3U(uri: Uri): Boolean {
+    val lowerUrl = uri.toString().lowercase()
+    return lowerUrl.contains(".m3u8") || lowerUrl.contains(".m3u") ||
+      lowerUrl.endsWith(".m3u8") || lowerUrl.endsWith(".m3u")
+  }
 
   /**
    * Save recently played for a specific URI
@@ -3044,6 +3140,10 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * Check if the current playlist is an M3U playlist (sourced from database).
+   */
+  fun isCurrentPlaylistM3U(): Boolean = isM3uPlaylist
 
 
   companion object {

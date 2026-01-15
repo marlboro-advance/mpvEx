@@ -111,7 +111,7 @@ object PlaylistScreen : Screen {
     val selectionManager = rememberSelectionManager(
       items = filteredPlaylists,
       getId = { it.playlist.id },
-      onDeleteItems = { itemsToDelete ->
+      onDeleteItems = { itemsToDelete, _ ->
         // Delete all items sequentially (this is a suspend function, so it blocks until complete)
         itemsToDelete.forEach { item ->
           viewModel.deletePlaylist(item.playlist)

@@ -310,21 +310,44 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     }
   }
 
-  suspend fun deleteVideosFromHistory(videos: List<Video>): Pair<Int, Int> {
+  suspend fun deleteVideosFromHistory(videos: List<Video>, deleteFiles: Boolean = false): Pair<Int, Int> {
     return try {
       var successCount = 0
       var failCount = 0
-      
+
       videos.forEach { video ->
         try {
+          // Delete from history database
           recentlyPlayedRepository.deleteByFilePath(video.path)
+
+          // If deleteFiles is true and it's a local file, delete the actual file from disk
+          if (deleteFiles) {
+            // Check if it's a local file (not a network URL)
+            val isNetworkUri = video.path.startsWith("http://", ignoreCase = true) ||
+              video.path.startsWith("https://", ignoreCase = true) ||
+              video.path.startsWith("rtmp://", ignoreCase = true) ||
+              video.path.startsWith("rtsp://", ignoreCase = true)
+
+            if (!isNetworkUri) {
+              val file = File(video.path)
+              if (file.exists()) {
+                if (file.delete()) {
+                  Log.d("RecentlyPlayedViewModel", "Deleted file: ${video.path}")
+                } else {
+                  Log.w("RecentlyPlayedViewModel", "Failed to delete file: ${video.path}")
+                  failCount++
+                }
+              }
+            }
+          }
+
           successCount++
         } catch (e: Exception) {
           Log.e("RecentlyPlayedViewModel", "Error deleting video from history: ${video.path}", e)
           failCount++
         }
       }
-      
+
       Pair(successCount, failCount)
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error deleting videos from history", e)

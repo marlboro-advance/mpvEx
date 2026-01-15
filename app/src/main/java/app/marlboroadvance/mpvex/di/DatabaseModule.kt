@@ -300,6 +300,28 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
   }
 }
 
+/**
+ * Migration from version 6 to version 7
+ *
+ * Changes:
+ * - Adds useHttps column to network_connections table for explicit HTTPS control on WebDAV
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_6_7", "Starting migration from version 6 to 7")
+      
+      // Add useHttps column to network_connections table
+      db.execSQL("ALTER TABLE `network_connections` ADD COLUMN `useHttps` INTEGER NOT NULL DEFAULT 0")
+      
+      android.util.Log.d("Migration_6_7", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_6_7", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -314,7 +336,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
         .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }

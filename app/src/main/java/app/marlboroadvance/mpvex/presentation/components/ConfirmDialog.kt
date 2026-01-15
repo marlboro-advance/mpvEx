@@ -28,6 +28,7 @@ fun ConfirmDialog(
   onConfirm: () -> Unit,
   onCancel: () -> Unit,
   modifier: Modifier = Modifier,
+  customContent: (@Composable () -> Unit)? = null,
 ) {
   BasicAlertDialog(
     onCancel,
@@ -54,6 +55,9 @@ fun ConfirmDialog(
           fontWeight = FontWeight.Medium,
           color = AlertDialogDefaults.textContentColor,
         )
+        if (customContent != null) {
+          customContent()
+        }
         Row(
           Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.End,

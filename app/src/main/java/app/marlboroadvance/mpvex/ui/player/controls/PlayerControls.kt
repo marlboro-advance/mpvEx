@@ -923,6 +923,7 @@ fun PlayerControls(
               mediaTitle = mediaTitle,
               hideBackground = hideBackground,
               onBackPress = onBackPress,
+              onOpenSheet = onOpenSheet,
               viewModel = viewModel,
             )
           } else {
@@ -930,6 +931,7 @@ fun PlayerControls(
               mediaTitle = mediaTitle,
               hideBackground = hideBackground,
               onBackPress = onBackPress,
+              onOpenSheet = onOpenSheet,
               viewModel = viewModel,
             )
           }

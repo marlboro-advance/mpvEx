@@ -109,6 +109,10 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.VIDEO_TITLE -> {
+      val playlistModeEnabled = viewModel.hasPlaylistSupport()
+
+      val titleInteractionSource = remember { MutableInteractionSource() }
+
       Surface(
         shape = CircleShape,
         color =
@@ -131,7 +135,21 @@ fun RenderPlayerButton(
               MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
           },
-        modifier = Modifier.height(buttonSize),
+        modifier =
+          Modifier
+            .height(buttonSize)
+            .clip(CircleShape)
+            .clickable(
+              interactionSource = titleInteractionSource,
+              indication = ripple(
+                bounded = true,
+              ),
+              enabled = playlistModeEnabled,
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Playlist)
+              },
+            ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,

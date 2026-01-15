@@ -20,6 +20,7 @@ data class NetworkConnection(
   val isAnonymous: Boolean = false,
   val lastConnected: Long = 0,
   val autoConnect: Boolean = false,
+  val useHttps: Boolean = false,  // For WebDAV: use HTTPS instead of HTTP
 )
 
 /**
