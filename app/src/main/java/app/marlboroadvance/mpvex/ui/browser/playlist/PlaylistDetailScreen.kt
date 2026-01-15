@@ -408,7 +408,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
               }
             }
           ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play playlist")
+            Icon(Icons.Filled.PlayArrow, contentDescription = "Play playlist", modifier = Modifier.size(32.dp))
           }
         }
       },
