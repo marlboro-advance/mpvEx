@@ -81,13 +81,6 @@ class MainActivity : ComponentActivity() {
     }
   }
 
-  override fun onNewIntent(intent: android.content.Intent) {
-    super.onNewIntent(intent)
-    setIntent(intent)
-    // MainActivity typically doesn't need to handle intents beyond MAIN/LAUNCHER,
-    // but this ensures clean state management with singleTask launch mode
-  }
-
   override fun onDestroy() {
     try {
       super.onDestroy()
