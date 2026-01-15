@@ -692,6 +692,23 @@ class PlayerActivity :
     super.finish()
   }
 
+  @RequiresApi(Build.VERSION_CODES.P)
+  override fun finishAndRemoveTask() {
+    runCatching {
+      // Restore UI immediately for responsive exit (same as finish())
+      if (!isInPictureInPictureMode) {
+        restoreSystemUI()
+      }
+      isReady = false
+      isUserFinishing = true
+      setReturnIntent()
+    }.onFailure { e ->
+      Log.e(TAG, "Error during finishAndRemoveTask", e)
+    }
+
+    super.finishAndRemoveTask()
+  }
+
   override fun onStop() {
     runCatching {
       pipHelper.onStop()
