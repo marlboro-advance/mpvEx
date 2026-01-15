@@ -48,6 +48,9 @@ class ThumbnailRepository(
 
   private val folderStates = ConcurrentHashMap<String, FolderState>()
   private val folderJobs = ConcurrentHashMap<String, Job>()
+  
+  // Track videos that failed with FastThumbnails and should use MediaStore
+  private val useMediaStoreForVideo = ConcurrentHashMap<String, Boolean>()
 
   private val _thumbnailReadyKeys =
     MutableSharedFlow<String>(
@@ -100,9 +103,28 @@ class ThumbnailRepository(
               return@async null
             }
 
-            val thumbnail =
-              generateWithFastThumbnails(video, diskCacheDimension)
-                ?: return@async null
+            // Check if this video should use MediaStore
+            val videoKey = videoBaseKey(video)
+            val thumbnail = if (useMediaStoreForVideo.containsKey(videoKey)) {
+              // Use MediaStore for this video
+              android.util.Log.d("ThumbnailRepository", "Using MediaStore for ${video.displayName}")
+              generateWithMediaStore(video, diskCacheDimension)
+            } else {
+              // Try FastThumbnails first
+              val fastResult = generateWithFastThumbnails(video, diskCacheDimension)
+              if (fastResult == null) {
+                // FastThumbnails failed, mark for MediaStore and try it
+                android.util.Log.w("ThumbnailRepository", "FastThumbnails failed for ${video.displayName}, falling back to MediaStore")
+                useMediaStoreForVideo[videoKey] = true
+                generateWithMediaStore(video, diskCacheDimension)
+              } else {
+                fastResult
+              }
+            }
+
+            if (thumbnail == null) {
+              return@async null
+            }
 
             synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
             _thumbnailReadyKeys.tryEmit(key)
@@ -155,6 +177,7 @@ class ThumbnailRepository(
     folderJobs.clear()
     folderStates.clear()
     ongoingOperations.clear()
+    useMediaStoreForVideo.clear()
 
     synchronized(memoryCache) {
       memoryCache.evictAll()
@@ -291,10 +314,122 @@ class ThumbnailRepository(
       val bmp = FastThumbnails.generateAsync(
           video.path.ifBlank { video.uri.toString() },
           positionSec,
-          dimension
+          dimension,
+          useHwDec = false
       ) ?: return@runCatching null
       rotateIfNeeded(video, bmp)
     }.getOrNull()
+  }
+
+  private suspend fun generateWithMediaStore(
+    video: Video,
+    dimension: Int,
+  ): Bitmap? {
+    // MediaStore only works for local files, not network URLs
+    if (isNetworkUrl(video.path)) {
+      android.util.Log.w("ThumbnailRepository", "Cannot use MediaStore for network URL: ${video.path}")
+      return null
+    }
+    
+    return withContext(Dispatchers.IO) {
+      // Try MediaStore first
+      val mediaStoreThumbnail = runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+          // Use modern API for Android Q+
+          // Build proper MediaStore content URI
+          val contentUri = android.content.ContentUris.withAppendedId(
+            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            video.id
+          )
+          android.util.Log.d("ThumbnailRepository", "Generating MediaStore thumbnail for ${video.displayName} using loadThumbnail")
+          val thumbnail = context.contentResolver.loadThumbnail(
+            contentUri,
+            android.util.Size(dimension, dimension),
+            null
+          )
+          android.util.Log.d("ThumbnailRepository", "MediaStore thumbnail generated successfully for ${video.displayName}")
+          rotateIfNeeded(video, thumbnail)
+        } else {
+          // Use legacy API for older versions
+          android.util.Log.d("ThumbnailRepository", "Generating MediaStore thumbnail for ${video.displayName} using getThumbnail")
+          @Suppress("DEPRECATION")
+          val thumbnail = android.provider.MediaStore.Video.Thumbnails.getThumbnail(
+            context.contentResolver,
+            video.id,
+            android.provider.MediaStore.Video.Thumbnails.MINI_KIND,
+            null
+          )
+          if (thumbnail != null) {
+            // Scale to desired dimension
+            val scaled = Bitmap.createScaledBitmap(
+              thumbnail,
+              dimension,
+              (dimension * thumbnail.height) / thumbnail.width,
+              true
+            )
+            if (scaled != thumbnail) {
+              thumbnail.recycle()
+            }
+            android.util.Log.d("ThumbnailRepository", "MediaStore thumbnail generated successfully for ${video.displayName}")
+            rotateIfNeeded(video, scaled)
+          } else {
+            android.util.Log.w("ThumbnailRepository", "MediaStore returned null thumbnail for ${video.displayName}")
+            null
+          }
+        }
+      }.onFailure { e ->
+        android.util.Log.w("ThumbnailRepository", "MediaStore thumbnail failed for ${video.displayName}, will try ThumbnailUtils: ${e.message}")
+      }.getOrNull()
+      
+      // If MediaStore failed, try ThumbnailUtils as last resort
+      if (mediaStoreThumbnail != null) {
+        return@withContext mediaStoreThumbnail
+      }
+      
+      // Fallback to ThumbnailUtils (extracts directly from file)
+      runCatching {
+        android.util.Log.d("ThumbnailRepository", "Generating thumbnail using ThumbnailUtils for ${video.displayName}")
+        val file = java.io.File(video.path)
+        if (!file.exists()) {
+          android.util.Log.e("ThumbnailRepository", "File does not exist: ${video.path}")
+          return@runCatching null
+        }
+        
+        val thumbnail = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+          android.media.ThumbnailUtils.createVideoThumbnail(
+            file,
+            android.util.Size(dimension, dimension),
+            null
+          )
+        } else {
+          @Suppress("DEPRECATION")
+          android.media.ThumbnailUtils.createVideoThumbnail(
+            video.path,
+            android.provider.MediaStore.Video.Thumbnails.MINI_KIND
+          )?.let { thumb ->
+            // Scale to desired dimension
+            Bitmap.createScaledBitmap(
+              thumb,
+              dimension,
+              (dimension * thumb.height) / thumb.width,
+              true
+            ).also {
+              if (it != thumb) thumb.recycle()
+            }
+          }
+        }
+        
+        if (thumbnail != null) {
+          android.util.Log.d("ThumbnailRepository", "ThumbnailUtils thumbnail generated successfully for ${video.displayName}")
+          rotateIfNeeded(video, thumbnail)
+        } else {
+          android.util.Log.e("ThumbnailRepository", "ThumbnailUtils returned null for ${video.displayName}")
+          null
+        }
+      }.onFailure { e ->
+        android.util.Log.e("ThumbnailRepository", "ThumbnailUtils thumbnail generation failed for ${video.displayName}", e)
+      }.getOrNull()
+    }
   }
 
   private fun preferredPositionSeconds(video: Video): Double {
