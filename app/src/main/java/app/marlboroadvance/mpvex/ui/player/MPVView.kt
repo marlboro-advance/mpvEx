@@ -311,8 +311,6 @@ class MPVView(
     MPVLib.setOptionString("sub-use-margins", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
-    MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
-    MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
   }
 
 

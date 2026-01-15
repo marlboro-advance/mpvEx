@@ -1671,8 +1671,11 @@ class PlayerActivity :
     viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
     viewModel.restoreCustomAspectRatio()
 
-    MPVLib.setPropertyString("force-media-title", fileName)
-    viewModel.setMediaTitle(fileName)
+    // Don't force media-title for m3u/m3u8 streams - let MPV provide it
+    if (!isCurrentStreamM3U()) {
+      MPVLib.setPropertyString("force-media-title", fileName)
+      viewModel.setMediaTitle(fileName)
+    }
 
     viewModel.unpause()
 
@@ -1721,6 +1724,12 @@ class PlayerActivity :
       try {
         val uri = extractUriFromIntent(intent)
         if (uri == null || !HttpUtils.isNetworkStream(uri)) {
+          return@launch
+        }
+
+        // Skip fetching for m3u/m3u8 streams - let MPV provide the title
+        if (isCurrentStreamM3U()) {
+          Log.d(TAG, "Skipping title fetch for m3u/m3u8 stream: $uri")
           return@launch
         }
 
@@ -1869,8 +1878,6 @@ class PlayerActivity :
     val overrideAssSubs = subtitlesPreferences.overrideAssSubs.get()
     MPVLib.setPropertyString("sub-ass-override", if (overrideAssSubs) "force" else "scale")
     MPVLib.setPropertyString("secondary-sub-ass-override", if (overrideAssSubs) "force" else "scale")
-    MPVLib.setPropertyString("sub-ass-force-margins", "yes")
-    MPVLib.setPropertyString("secondary-sub-ass-force-margins", "yes")
     
     val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
     val scaleValue = if (scaleByWindow) "yes" else "no"
@@ -2942,8 +2949,12 @@ class PlayerActivity :
     }
 
     // Update media title (this will trigger UI update)
-    MPVLib.setPropertyString("force-media-title", fileName)
-    viewModel.setMediaTitle(fileName)
+    // Don't force media-title for m3u/m3u8 streams - let MPV provide it
+    val isM3U = uri.toString().lowercase().contains(".m3u8") || uri.toString().lowercase().contains(".m3u")
+    if (!isM3U) {
+      MPVLib.setPropertyString("force-media-title", fileName)
+      viewModel.setMediaTitle(fileName)
+    }
 
     // Update media session metadata
     lifecycleScope.launch {
@@ -2969,8 +2980,53 @@ class PlayerActivity :
   /**
    * Get the current video title for controls display.
    * Used as a fallback when MPV hasn't set the media-title property yet.
+   * For m3u/m3u8 streams, returns the raw media-title from MPV instead of parsing.
    */
-  fun getTitleForControls(): String = fileName
+  fun getTitleForControls(): String {
+    // For m3u/m3u8 streams, use MPV's raw media-title directly
+    if (isCurrentStreamM3U()) {
+      val rawTitle = MPVLib.getPropertyString("media-title")
+      if (!rawTitle.isNullOrBlank()) {
+        return rawTitle
+      }
+    }
+    return fileName
+  }
+
+  /**
+   * Check if the currently playing media is an m3u or m3u8 stream.
+   * Checks both the intent URI and the current playlist item if playing from a playlist.
+   */
+  private fun isCurrentStreamM3U(): Boolean {
+    // First check the intent URI
+    val uri = extractUriFromIntent(intent)
+    if (uri != null && isUriM3U(uri)) {
+      return true
+    }
+
+    // Also check the current playlist item if playing from a playlist
+    if (playlist.isNotEmpty() && playlistIndex < playlist.size) {
+      val windowIndex = if (playlistTotalCount > 0) {
+        playlistIndex - playlistWindowOffset
+      } else {
+        playlistIndex
+      }
+      if (windowIndex >= 0 && windowIndex < playlist.size) {
+        return isUriM3U(playlist[windowIndex])
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Check if a specific URI is an m3u or m3u8 file/stream.
+   */
+  private fun isUriM3U(uri: Uri): Boolean {
+    val lowerUrl = uri.toString().lowercase()
+    return lowerUrl.contains(".m3u8") || lowerUrl.contains(".m3u") ||
+      lowerUrl.endsWith(".m3u8") || lowerUrl.endsWith(".m3u")
+  }
 
   /**
    * Save recently played for a specific URI
