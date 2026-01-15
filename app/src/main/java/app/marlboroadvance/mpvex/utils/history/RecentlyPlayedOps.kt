@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.utils.history
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,10 @@ object RecentlyPlayedOps {
     if (!preferences.enableRecentlyPlayed.get()) return@withContext false
     getLastPlayed() != null
   }
+  suspend fun getRecentlyPlayed(limit: Int = 50): List<RecentlyPlayedEntity> {
+    return repository.getRecentlyPlayed(limit)
+  }
+
   @OptIn(ExperimentalCoroutinesApi::class)
   fun observeLastPlayedPath(): Flow<String?> =
     repository
