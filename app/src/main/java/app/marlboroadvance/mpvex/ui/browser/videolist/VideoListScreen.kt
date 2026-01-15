@@ -31,7 +31,9 @@ import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
@@ -82,6 +84,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
@@ -98,11 +101,13 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlin.math.roundToInt
 
+
 @Serializable
 data class VideoListScreen(
   private val bucketId: String,
   private val folderName: String,
 ) : Screen {
+  @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -166,6 +171,9 @@ data class VideoListScreen(
     val privateSpaceMovedCount = remember { mutableIntStateOf(0) }
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
+
+    // FAB visibility state
+    val isFabVisible = remember { mutableStateOf(true) }
 
     // Predictive back: Only intercept when in selection mode
     BackHandler(enabled = selectionManager.isInSelectionMode) {
@@ -242,6 +250,10 @@ data class VideoListScreen(
       floatingActionButton = {
         if (sortedVideosWithInfo.isNotEmpty()) {
           FloatingActionButton(
+            modifier = Modifier.animateFloatingActionButton(
+              visible = isFabVisible.value && !selectionManager.isInSelectionMode,
+              alignment = Alignment.BottomEnd,
+            ),
             onClick = {
               coroutineScope.launch {
                 val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
@@ -286,6 +298,7 @@ data class VideoListScreen(
           }
         },
         onVideoLongClick = { video -> selectionManager.toggle(video) },
+        isFabVisible = isFabVisible,
         modifier = Modifier.padding(padding),
       )
 
@@ -440,6 +453,7 @@ private fun VideoListContent(
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
   onVideoLongClick: (Video) -> Unit,
+  isFabVisible: androidx.compose.runtime.MutableState<Boolean>,
   modifier: Modifier = Modifier,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -546,6 +560,14 @@ private fun VideoListContent(
           rememberedGridIndex.intValue = gridState.firstVisibleItemIndex
           rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
       }
+
+      FabScrollHelper.trackScrollForFabVisibility(
+        listState = listState,
+        gridState = if (mediaLayoutMode == MediaLayoutMode.GRID) gridState else null,
+        isFabVisible = isFabVisible,
+        expanded = false,
+        onExpandedChange = {},
+      )
       
       val coroutineScope = rememberCoroutineScope()
 
