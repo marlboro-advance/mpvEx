@@ -17,27 +17,22 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
-import app.marlboroadvance.mpvex.preferences.MotionPreferences
 import app.marlboroadvance.mpvex.preferences.MultiChoiceSegmentedButton
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.preferences.components.ThemePicker
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
-import app.marlboroadvance.mpvex.ui.theme.MotionQuality
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
-import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
@@ -52,9 +47,7 @@ object AppearancePreferencesScreen : Screen {
         val preferences = koinInject<AppearancePreferences>()
         val browserPreferences = koinInject<BrowserPreferences>()
         val gesturePreferences = koinInject<GesturePreferences>()
-        val motionPreferences = koinInject<MotionPreferences>()
         val backstack = LocalBackStack.current
-        val context = LocalContext.current
         val systemDarkTheme = isSystemInDarkTheme()
 
         val darkMode by preferences.darkMode.collectAsState()
@@ -139,30 +132,6 @@ object AppearancePreferencesScreen : Screen {
                                     )
                                 },
                                 enabled = darkMode != DarkMode.Light
-                            )
-                        }
-                    }
-
-                    // Animations Section
-                    item {
-                        PreferenceSectionHeader(title = stringResource(id = R.string.pref_category_animations))
-                    }
-
-                    item {
-                        PreferenceCard {
-                            val motionQuality by motionPreferences.motionQuality.collectAsState()
-                            ListPreference(
-                                value = motionQuality,
-                                onValueChange = { motionPreferences.motionQuality.set(it) },
-                                values = MotionQuality.entries,
-                                title = { Text(text = stringResource(id = R.string.pref_motion_quality_title)) },
-                                summary = {
-                                    Text(
-                                        text = stringResource(motionQuality.descriptionRes),
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
-                                },
-                                valueToText = { AnnotatedString(context.getString(it.titleRes)) }
                             )
                         }
                     }
@@ -312,4 +281,3 @@ object AppearancePreferencesScreen : Screen {
         }
     }
 }
-

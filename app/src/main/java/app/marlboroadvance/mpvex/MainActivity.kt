@@ -6,6 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideIn
+import androidx.compose.animation.slideOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -14,15 +22,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
-import app.marlboroadvance.mpvex.preferences.MotionPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import androidx.compose.runtime.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -31,7 +39,6 @@ import app.marlboroadvance.mpvex.ui.browser.MainScreen
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
-import app.marlboroadvance.mpvex.ui.theme.LocalMotionSpec
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
-import org.koin.compose.koinInject
 
 /**
  * Main entry point for the application
@@ -166,32 +172,55 @@ class MainActivity : ComponentActivity() {
     // Create shared LazyListState and LazyGridState that will be used by all screens
     val lazyListState = rememberLazyListState()
     val lazyGridState = rememberLazyGridState()
-    
-    // Get motion preferences and resolve to MotionSpec
-    val motionPreferences = koinInject<MotionPreferences>()
-    val motionQuality by motionPreferences.motionQuality.collectAsState()
-    val currentMotionSpec = remember(motionQuality) { motionQuality.toMotionSpec() }
 
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
     
-    // Provide LocalBackStack, LazyList/Grid states, and MotionSpec to all screens
+    // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
       LocalBackStack provides typedBackstack,
       LocalLazyListState provides lazyListState,
-      LocalLazyGridState provides lazyGridState,
-      LocalMotionSpec provides currentMotionSpec,
+      LocalLazyGridState provides lazyGridState
     ) {
-      // Get transition specs from current motion spec
-      val motionSpec = LocalMotionSpec.current
-      
       NavDisplay(
         backStack = typedBackstack,
         onBack = { typedBackstack.removeLastOrNull() },
         entryProvider = { route -> NavEntry(route) { route.Content() } },
-        popTransitionSpec = { motionSpec.popTransition() },
-        transitionSpec = { motionSpec.screenTransition() },
-        predictivePopTransitionSpec = { motionSpec.predictivePopTransition() },
+        popTransitionSpec = {
+          (
+            fadeIn(animationSpec = tween(220)) +
+              slideIn(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }
+          ) togetherWith (
+              fadeOut(animationSpec = tween(220)) +
+                slideOut(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }
+          )
+        },
+        transitionSpec = {
+          (
+            fadeIn(animationSpec = tween(220)) +
+              slideIn(animationSpec = tween(220)) { IntOffset(it.width / 2, 0) }
+          ) togetherWith (
+              fadeOut(animationSpec = tween(220)) +
+                slideOut(animationSpec = tween(220)) { IntOffset(-it.width / 2, 0) }
+          )
+        },
+        predictivePopTransitionSpec = {
+          (
+            fadeIn(animationSpec = tween(220)) +
+              scaleIn(
+                animationSpec = tween(220, delayMillis = 30),
+                initialScale = .9f,
+                TransformOrigin(-1f, .5f),
+              )
+          ) togetherWith (
+              fadeOut(animationSpec = tween(220)) +
+                scaleOut(
+                  animationSpec = tween(220, delayMillis = 30),
+                  targetScale = .9f,
+                  TransformOrigin(-1f, .5f),
+                )
+          )
+        },
       )
     }
   }

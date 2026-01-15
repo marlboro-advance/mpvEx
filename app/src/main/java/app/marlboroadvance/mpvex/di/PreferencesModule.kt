@@ -8,7 +8,6 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
-import app.marlboroadvance.mpvex.preferences.MotionPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SettingsManager
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
@@ -32,6 +31,5 @@ val PreferencesModule =
     singleOf(::AdvancedPreferences)
     singleOf(::BrowserPreferences)
     singleOf(::FoldersPreferences)
-    singleOf(::MotionPreferences)
     singleOf(::SettingsManager)
   }

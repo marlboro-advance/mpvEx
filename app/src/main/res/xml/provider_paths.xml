@@ -14,6 +14,10 @@
     <external-files-path
         name="external_files_storage"
         path="." />
+    <!-- Allow sharing files from external cache directory (used for downloaded APK updates) -->
+    <external-cache-path
+        name="external_cache"
+        path="." />
     <!-- Allow sharing files from removable media (SD cards, USB OTG mounted at /mnt/media_rw/) -->
     <root-path
         name="root_path"
