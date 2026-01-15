@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -79,35 +80,58 @@ fun BrowserTopBar(
   onTitleLongPress: (() -> Unit)? = null,
   useRemoveIcon: Boolean = false,
 ) {
-  if (isInSelectionMode) {
-    SelectionTopBar(
-      selectedCount = selectedCount,
-      totalCount = totalCount,
-      onCancel = onCancelSelection,
-      onDelete = onDeleteClick,
-      onRename = onRenameClick,
-      isSingleSelection = isSingleSelection,
-      onInfo = onInfoClick,
-      onShare = onShareClick,
-      onPlay = onPlayClick,
-      onBlacklist = onBlacklistClick,
-      onSelectAll = onSelectAll,
-      onInvertSelection = onInvertSelection,
-      onDeselectAll = onDeselectAll,
-      modifier = modifier,
-      useRemoveIcon = useRemoveIcon,
-    )
-  } else {
-    NormalTopBar(
-      title = title,
-      onBackClick = onBackClick,
-      onSortClick = onSortClick,
-      onSettingsClick = onSettingsClick,
-      onSearchClick = onSearchClick,
-      additionalActions = additionalActions,
-      modifier = modifier,
-      onTitleLongPress = onTitleLongPress,
-    )
+  // Animated transition between Normal and Selection modes using simple slide
+  androidx.compose.animation.AnimatedContent(
+    targetState = isInSelectionMode,
+    transitionSpec = {
+      // Simple slide animation: selection slides down from top, normal slides up from bottom
+      if (targetState) {
+        // Entering selection mode: slide in from top
+        androidx.compose.animation.slideInVertically(
+          initialOffsetY = { -it }
+        ) togetherWith androidx.compose.animation.slideOutVertically(
+          targetOffsetY = { it }
+        )
+      } else {
+        // Exiting selection mode: slide in from bottom
+        androidx.compose.animation.slideInVertically(
+          initialOffsetY = { it }
+        ) togetherWith androidx.compose.animation.slideOutVertically(
+          targetOffsetY = { -it }
+        )
+      }
+    },
+    label = "TopBarModeTransition",
+    modifier = modifier,
+  ) { inSelectionMode ->
+    if (inSelectionMode) {
+      SelectionTopBar(
+        selectedCount = selectedCount,
+        totalCount = totalCount,
+        onCancel = onCancelSelection,
+        onDelete = onDeleteClick,
+        onRename = onRenameClick,
+        isSingleSelection = isSingleSelection,
+        onInfo = onInfoClick,
+        onShare = onShareClick,
+        onPlay = onPlayClick,
+        onBlacklist = onBlacklistClick,
+        onSelectAll = onSelectAll,
+        onInvertSelection = onInvertSelection,
+        onDeselectAll = onDeselectAll,
+        useRemoveIcon = useRemoveIcon,
+      )
+    } else {
+      NormalTopBar(
+        title = title,
+        onBackClick = onBackClick,
+        onSortClick = onSortClick,
+        onSettingsClick = onSettingsClick,
+        onSearchClick = onSearchClick,
+        additionalActions = additionalActions,
+        onTitleLongPress = onTitleLongPress,
+      )
+    }
   }
 }
 
