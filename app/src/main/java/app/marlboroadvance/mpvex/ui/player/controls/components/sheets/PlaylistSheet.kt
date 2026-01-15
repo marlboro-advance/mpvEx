@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -29,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,10 +77,28 @@ fun PlaylistSheet(
 ) {
   // Use theme colors dynamically
   val accentColor = MaterialTheme.colorScheme.primary
+  
+  // Scroll state for the playlist
+  val lazyListState = rememberLazyListState()
+  
+  // Find the currently playing item index - tracks changes in playlist items
+  val playingItemIndex by remember {
+    derivedStateOf {
+      playlist.indexOfFirst { it.isPlaying }
+    }
+  }
+  
+  // Scroll to the currently playing item when the playing item changes or when sheet opens
+  LaunchedEffect(playingItemIndex) {
+    if (playingItemIndex >= 0) {
+      lazyListState.animateScrollToItem(playingItemIndex)
+    }
+  }
 
   GenericTracksSheet(
     playlist,
     onDismissRequest = onDismissRequest,
+    lazyListState = lazyListState,
     modifier = modifier.padding(vertical = MaterialTheme.spacing.smaller),
     header = {
       // Header showing current playlist info

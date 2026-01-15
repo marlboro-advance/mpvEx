@@ -2173,18 +2173,27 @@ class PlayerActivity :
     // Update the intent first so getFileName uses the new intent data
     setIntent(intent)
 
-    // Reset playlist state for new video
-    playlistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
-    playlistIndex = intent.getIntExtra("playlist_index", 0)
-    playlistWindowOffset = 0
-    playlistTotalCount = -1
+    // Check if this intent has playlist information
+    val hasPlaylistExtras = intent.hasExtra("playlist_id") ||
+                           intent.hasExtra("playlist")
 
     // Load playlist from intent extras first (fast path)
-    playlist = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+    val playlistFromIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
       intent.getParcelableArrayListExtra("playlist", Uri::class.java) ?: emptyList()
     } else {
       @Suppress("DEPRECATION")
       intent.getParcelableArrayListExtra("playlist") ?: emptyList()
+    }
+
+    // Only update playlist state if we have new playlist information
+    // This prevents losing the playlist when coming back from notification/PiP
+    if (hasPlaylistExtras || playlistFromIntent.isNotEmpty()) {
+      val newPlaylistId = intent.getIntExtra("playlist_id", -1).takeIf { it != -1 }
+      playlistId = newPlaylistId
+      playlistIndex = intent.getIntExtra("playlist_index", 0)
+      playlistWindowOffset = 0
+      playlistTotalCount = -1
+      playlist = playlistFromIntent
     }
 
     // If playlist is empty but playlist_id is provided, load from database
@@ -2927,6 +2936,8 @@ class PlayerActivity :
         title = fileName,
         durationMs = durationMs,
       )
+      // Refresh playlist items to update the currently playing indicator
+      viewModel.refreshPlaylistItems()
     }
   }
 

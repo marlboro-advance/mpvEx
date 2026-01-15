@@ -1198,6 +1198,19 @@ class PlayerViewModel(
     activity.playPlaylistItem(index)
   }
 
+  /**
+   * Refreshes the playlist items to update the currently playing indicator.
+   * Called when a new video starts playing to update the playlist UI.
+   */
+  fun refreshPlaylistItems() {
+    viewModelScope.launch(Dispatchers.IO) {
+      val updatedItems = getPlaylistData()
+      if (updatedItems != null) {
+        _playlistItems.value = updatedItems
+      }
+    }
+  }
+
   fun hasNext(): Boolean = (host as? PlayerActivity)?.hasNext() ?: false
 
   fun hasPrevious(): Boolean = (host as? PlayerActivity)?.hasPrevious() ?: false
