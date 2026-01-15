@@ -4,7 +4,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.Decoder
 import app.marlboroadvance.mpvex.ui.player.Panels
@@ -219,9 +224,18 @@ fun PlayerSheets(
       )
     }
 
+
     Sheets.Playlist -> {
-      val playlist = viewModel.getPlaylistData()
-      if (playlist != null) {
+      // Trigger progressive metadata extraction when playlist sheet opens
+      val context = androidx.compose.ui.platform.LocalContext.current
+      LaunchedEffect(Unit) {
+        viewModel.startPlaylistMetadataExtraction(context)
+      }
+      
+      // Observe progressive updates
+      val playlist by viewModel.playlistItems.collectAsState()
+      
+      if (playlist.isNotEmpty()) {
         val playlistImmutable = playlist.toImmutableList()
         PlaylistSheet(
           playlist = playlistImmutable,
