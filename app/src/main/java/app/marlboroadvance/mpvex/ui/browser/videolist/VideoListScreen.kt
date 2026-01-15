@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccessTime
@@ -28,10 +29,14 @@ import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +84,7 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper
 import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
@@ -92,13 +98,16 @@ import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 import app.marlboroadvance.mpvex.ui.browser.dialogs.GridColumnSelector
+import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlin.math.roundToInt
+
 
 @Serializable
 data class VideoListScreen(
   private val bucketId: String,
   private val folderName: String,
 ) : Screen {
+  @OptIn(ExperimentalMaterial3ExpressiveApi::class)
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -162,6 +171,9 @@ data class VideoListScreen(
     val privateSpaceMovedCount = remember { mutableIntStateOf(0) }
 
     val displayFolderName = videos.firstOrNull()?.bucketDisplayName ?: folderName
+
+    // FAB visibility state
+    val isFabVisible = remember { mutableStateOf(true) }
 
     // Predictive back: Only intercept when in selection mode
     BackHandler(enabled = selectionManager.isInSelectionMode) {
@@ -235,6 +247,33 @@ data class VideoListScreen(
           showRename = selectionManager.isSingleSelection,
         )
       },
+      floatingActionButton = {
+        if (sortedVideosWithInfo.isNotEmpty()) {
+          FloatingActionButton(
+            modifier = Modifier.animateFloatingActionButton(
+              visible = isFabVisible.value && !selectionManager.isInSelectionMode,
+              alignment = Alignment.BottomEnd,
+            ),
+            onClick = {
+              coroutineScope.launch {
+                val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
+                val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
+                val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
+                  File(it.filePath).parent == folderPath
+                }
+
+                if (lastPlayedInFolder != null) {
+                  MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                } else {
+                  MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
+                }
+              }
+            },
+          ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
+          }
+        }
+      }
     ) { padding ->
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
       
@@ -259,6 +298,7 @@ data class VideoListScreen(
           }
         },
         onVideoLongClick = { video -> selectionManager.toggle(video) },
+        isFabVisible = isFabVisible,
         modifier = Modifier.padding(padding),
       )
 
@@ -413,6 +453,7 @@ private fun VideoListContent(
   selectionManager: SelectionManager<Video, Long>,
   onVideoClick: (Video) -> Unit,
   onVideoLongClick: (Video) -> Unit,
+  isFabVisible: androidx.compose.runtime.MutableState<Boolean>,
   modifier: Modifier = Modifier,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -519,6 +560,14 @@ private fun VideoListContent(
           rememberedGridIndex.intValue = gridState.firstVisibleItemIndex
           rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
       }
+
+      FabScrollHelper.trackScrollForFabVisibility(
+        listState = listState,
+        gridState = if (mediaLayoutMode == MediaLayoutMode.GRID) gridState else null,
+        isFabVisible = isFabVisible,
+        expanded = false,
+        onExpandedChange = {},
+      )
       
       val coroutineScope = rememberCoroutineScope()
 
