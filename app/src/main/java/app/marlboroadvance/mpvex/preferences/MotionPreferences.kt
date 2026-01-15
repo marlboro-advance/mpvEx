@@ -14,10 +14,10 @@ class MotionPreferences(
 ) {
     /**
      * The selected motion quality tier.
-     * 
-     * Defaults to [MotionQuality.HighQuality] for the best visual experience.
-     * Users can switch to [MotionQuality.Minimal] for faster animations
-     * or [MotionQuality.NoMotion] for accessibility/performance.
+     *
+     * Defaults to [MotionQuality.MINIMAL] for a balanced experience.
+     * Users can switch to [MotionQuality.HIGH] for smoother fluid animations
+     * or [MotionQuality.NONE] for accessibility/performance.
      */
     val motionQuality = preferenceStore.getEnum("motion_quality", MotionQuality.MINIMAL)
 }

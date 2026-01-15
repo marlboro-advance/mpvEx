@@ -26,7 +26,6 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,13 +76,25 @@ class PlayerViewModel(
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
   private val json: Json by inject()
-  private val videoMetadataDao: app.marlboroadvance.mpvex.database.dao.VideoMetadataDao by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
-  
-  // Progressive playlist metadata loading
+
+  // Playlist items for the playlist sheet
   private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
   val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
-  private var _playlistMetadataJob: kotlinx.coroutines.Job? = null
+
+  // Cache for video metadata to avoid re-extracting - limited size to prevent unbounded growth
+  private val metadataCache = LinkedHashMap<String, Pair<String, String>>(101, 1f, true) // key: uri.toString(), value: (duration, resolution)
+  private val METADATA_CACHE_MAX_SIZE = 100
+
+  private fun updateMetadataCache(key: String, value: Pair<String, String>) {
+    synchronized(metadataCache) {
+      metadataCache[key] = value
+      // Remove oldest entry if cache exceeds max size
+      if (metadataCache.size > METADATA_CACHE_MAX_SIZE) {
+        metadataCache.remove(metadataCache.keys.firstOrNull())
+      }
+    }
+  }
 
   // MPV properties with efficient collection
   val paused by MPVLib.propBoolean["pause"].collectAsState(viewModelScope)
@@ -1032,14 +1043,6 @@ class PlayerViewModel(
     val activity = host as? PlayerActivity ?: return null
     if (activity.playlist.isEmpty()) return null
 
-    // Check if current video has subtitles
-    val currentHasSubtitles = subtitleTracks.value.isNotEmpty()
-    
-    // Get current video resolution for currently playing
-    val currentWidth = MPVLib.getPropertyInt("width") ?: 0
-    val currentHeight = MPVLib.getPropertyInt("height") ?: 0
-    val currentResolution = formatResolution(currentWidth, currentHeight)
-    
     // Get current video progress
     val currentPos = pos ?: 0
     val currentDuration = duration ?: 0
@@ -1052,146 +1055,66 @@ class PlayerViewModel(
       // Get path for thumbnail generation
       val path = uri.path ?: uri.toString()
       val isCurrentlyPlaying = index == activity.playlistIndex
+
+      // Try to get from cache first (synchronized access)
+      val cacheKey = uri.toString()
+      val (durationStr, resolutionStr) = synchronized(metadataCache) { metadataCache[cacheKey] } ?: ("" to "")
+
       app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem(
         uri = uri,
         title = title,
         index = index,
         isPlaying = isCurrentlyPlaying,
         path = path,
-        // For currently playing video, use live data
-        hasSubtitles = if (isCurrentlyPlaying) currentHasSubtitles else false,
-        resolution = if (isCurrentlyPlaying) currentResolution else "",
         progressPercent = if (isCurrentlyPlaying) currentProgress else 0f,
         isWatched = isCurrentlyPlaying && currentProgress >= 95f,
+        duration = durationStr,
+        resolution = resolutionStr,
       )
     }
   }
-  
-  /**
-   * Starts progressive metadata extraction for the current playlist.
-   * Updates playlistItems flow as metadata becomes available.
-   */
-  fun startPlaylistMetadataExtraction(context: android.content.Context) {
-    val activity = host as? PlayerActivity ?: return
-    if (activity.playlist.isEmpty()) return
 
-    // Cancel any existing job
-    _playlistMetadataJob?.cancel()
+  private fun getVideoMetadata(uri: Uri): Pair<String, String> {
+    val retriever = android.media.MediaMetadataRetriever()
+    return try {
+      // For file:// URIs, use the path directly (faster)
+      if (uri.scheme == "file") {
+        retriever.setDataSource(uri.path)
+      } else {
+        // For content:// or other schemes, use context
+        retriever.setDataSource(host.context, uri)
+      }
 
-    // 1. Initial Load: Get what we have immediately
-    val initialItems = getPlaylistData() ?: emptyList()
-    
-    // 2. Load cached metadata for ALL items immediately
-    viewModelScope.launch(Dispatchers.IO) {
-      // Load all cached metadata once to avoid repeated DB calls
-      val allMetadataMap = try {
-        videoMetadataDao.getAllMetadata().associateBy { it.path }
+      // Get duration
+      val durationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+      val durationStr = if (durationMs != null) {
+        val seconds = durationMs.toLong() / 1000
+        val minutes = seconds / 60
+        val remainingSeconds = seconds % 60
+        "${minutes}:${remainingSeconds.toString().padStart(2, '0')}"
+      } else ""
+
+      // Get resolution
+      val width = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+      val height = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+      val resolutionStr = if (width != null && height != null) {
+        "${width}x${height}"
+      } else ""
+
+      durationStr to resolutionStr
+    } catch (e: Exception) {
+      android.util.Log.e("PlayerViewModel", "Failed to get video metadata for $uri", e)
+      "" to ""
+    } finally {
+      try {
+        retriever.release()
       } catch (e: Exception) {
-        emptyMap()
-      }
-      
-      // Update items with saved resolution/subtitles if available (no progress)
-      val itemsWithProgress = initialItems.mapIndexed { index, item ->
-        if (index == activity.playlistIndex) return@mapIndexed item
-        
-        val metadata = allMetadataMap[item.path]
-        if (metadata != null) {
-           item.copy(
-             resolution = formatResolution(metadata.width, metadata.height),
-             hasSubtitles = metadata.hasEmbeddedSubtitles
-           )
-        } else {
-           item
-        }
-      }
-      
-      _playlistItems.value = itemsWithProgress
-      
-      // 3. Background Extraction: Process items
-      _playlistMetadataJob = viewModelScope.launch(Dispatchers.IO) {
-        val jobScope = this
-        // Items to process: missing resolution (we only care about metadata now)
-        val itemsToProcess = itemsWithProgress.filterIndexed { index, item -> 
-          index != activity.playlistIndex && item.resolution.isBlank()
-        }
-        
-        android.util.Log.d("PlayerViewModel", "Starting metadata extraction for ${itemsToProcess.size} items")
-        
-        itemsToProcess.forEach { item ->
-          if (!jobScope.isActive) return@launch
-          
-          try {
-             // Skip if we already have metadata (resolution is set) - this means we processed it in step 2
-             if (item.resolution.isNotBlank()) return@forEach
-          
-            // Extract metadata using MediaInfo
-            val uri = item.uri
-            val path = item.path
-            val fileName = item.title.takeIf { it.isNotBlank() } ?: path.substringAfterLast("/")
-            
-            val result = app.marlboroadvance.mpvex.utils.media.MediaInfoOps.extractBasicMetadata(context, uri, fileName)
-            val metadata = result.getOrNull()
-            
-            if (metadata != null && metadata.durationMs > 0) {
-              val resolution = formatResolution(metadata.width, metadata.height)
-               
-              // Save to database
-              try {
-                 videoMetadataDao.insertMetadata(
-                   app.marlboroadvance.mpvex.database.entities.VideoMetadataEntity(
-                     path = path,
-                     duration = metadata.durationMs,
-                     width = metadata.width,
-                     height = metadata.height,
-                     fps = metadata.fps,
-                     hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles,
-                     subtitleCodec = metadata.subtitleCodec,
-                     size = metadata.sizeBytes,
-                     dateModified = System.currentTimeMillis(), // Fallback as we don't have real modification time
-                     lastScanned = System.currentTimeMillis()
-                   )
-                 )
-              } catch (e: Exception) {
-                 android.util.Log.e("PlayerViewModel", "Failed to cache metadata", e)
-              }
-              
-
-              
-               // Optimally update item
-               _playlistItems.update { list ->
-                   val newList = list.toMutableList()
-                   val index = newList.indexOfFirst { it.index == item.index }
-                   if (index != -1) {
-                       newList[index] = newList[index].copy(
-                           resolution = resolution,
-                           hasSubtitles = metadata.hasEmbeddedSubtitles
-                       )
-                   }
-                   newList
-               }
-            }
-          } catch (e: Exception) {
-            android.util.Log.e("PlayerViewModel", "Error extracting metadata", e)
-          }
-        }
+        // Ignore release errors
       }
     }
   }
-
-
-  private fun formatResolution(width: Int, height: Int): String {
-    if (width <= 0 || height <= 0) return ""
-    // Use height for standard resolution naming
-    return when {
-      height >= 2160 -> "4K"
-      height >= 1440 -> "1440p"
-      height >= 1080 -> "1080p"
-      height >= 720 -> "720p"
-      height >= 480 -> "480p"
-      height >= 360 -> "360p"
-      else -> "${height}p"
-    }
-  }
+  
+  
 
   fun playPlaylistItem(index: Int) {
     val activity = host as? PlayerActivity ?: return
@@ -1206,7 +1129,54 @@ class PlayerViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       val updatedItems = getPlaylistData()
       if (updatedItems != null) {
+        // Clear cache if playlist size changed
+        if (_playlistItems.value.size != updatedItems.size) {
+          metadataCache.clear()
+        }
+
         _playlistItems.value = updatedItems
+
+        // Load metadata asynchronously in the background
+        loadPlaylistMetadataAsync(updatedItems)
+      }
+    }
+  }
+
+  /**
+   * Loads metadata for all playlist items asynchronously in the background.
+   * Updates the playlist items as metadata becomes available.
+   * Uses batched updates to avoid O(n²) complexity with large playlists.
+   */
+  private fun loadPlaylistMetadataAsync(items: List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>) {
+    viewModelScope.launch(Dispatchers.IO) {
+      // Limit concurrent metadata extraction to avoid overwhelming resources
+      val batchSize = 5
+      items.chunked(batchSize).forEach { batch ->
+        val updates = mutableMapOf<String, Pair<String, String>>()
+
+        // Extract metadata for the batch
+        batch.forEach { item ->
+          val cacheKey = item.uri.toString()
+
+          // Skip if already in cache (synchronized access)
+          if (!synchronized(metadataCache) { metadataCache.containsKey(cacheKey) }) {
+            // Extract metadata
+            val (durationStr, resolutionStr) = getVideoMetadata(item.uri)
+
+            // Update cache and track update
+            updateMetadataCache(cacheKey, durationStr to resolutionStr)
+            updates[cacheKey] = durationStr to resolutionStr
+          }
+        }
+
+        // Apply all batched updates at once (single playlist update)
+        if (updates.isNotEmpty()) {
+          _playlistItems.value = _playlistItems.value.map { currentItem ->
+            val cacheKey = currentItem.uri.toString()
+            val (durationStr, resolutionStr) = updates[cacheKey] ?: return@map currentItem
+            currentItem.copy(duration = durationStr, resolution = resolutionStr)
+          }
+        }
       }
     }
   }

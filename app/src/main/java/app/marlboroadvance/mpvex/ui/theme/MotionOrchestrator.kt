@@ -21,9 +21,9 @@ import androidx.compose.ui.unit.IntOffset
 
 /**
  * MotionSpec defines animation specifications for the entire application.
- * 
+ *
  * This interface provides four tiers of animation quality:
- * - [HighQualityMotion]: Rich animations with scale effects
+ * - [HighQualityMotion]: Fluid animations with scale effects
  * - [SlideMotion]: Clean slide in/out transitions
  * - [MinimalMotion]: Fast 150ms tweens for snappy feel
  * - [NoMotion]: Instant transitions for accessibility
@@ -61,11 +61,11 @@ interface MotionSpec {
 val LocalMotionSpec = staticCompositionLocalOf<MotionSpec> { HighQualityMotion }
 
 // =============================================================================
-// High Quality Motion
+// Fluid Motion
 // =============================================================================
 
 /**
- * High-quality motion with smooth deceleration and scale effects.
+ * Fluid motion with smooth deceleration and scale effects.
  */
 object HighQualityMotion : MotionSpec {
     

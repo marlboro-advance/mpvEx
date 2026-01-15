@@ -1,7 +1,10 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.MediaStore
+import android.provider.MediaStore.Video.Thumbnails
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,17 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.PlayArrow
-
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -50,9 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import `is`.xyz.mpv.FastThumbnails
 import kotlinx.collections.immutable.ImmutableList
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -63,10 +57,130 @@ data class PlaylistItem(
   val isPlaying: Boolean,
   val progressPercent: Float = 0f, // 0-100, progress of video watched
   val isWatched: Boolean = false,  // True if video is fully watched (100%)
-  val hasSubtitles: Boolean = false, // True if subtitles are available
   val path: String = "", // Video path for thumbnail loading
-  val resolution: String = "", // Video quality e.g. "1080p", "720p"
+  val duration: String = "", // Duration in formatted string (e.g., "10:30")
+  val resolution: String = "", // Resolution (e.g., "1920x1080")
 )
+
+/**
+ * LRU (Least Recently Used) cache for Bitmap thumbnails with a maximum size limit.
+ * This prevents memory issues when dealing with large playlists (100+ videos).
+ */
+class LRUBitmapCache(private val maxSize: Int) {
+  private val cache = LinkedHashMap<String, Bitmap?>(maxSize + 1, 1f, true)
+
+  operator fun get(key: String): Bitmap? = synchronized(this) { cache[key] }
+
+  operator fun set(key: String, value: Bitmap?) = synchronized(this) {
+    cache[key] = value
+    if (cache.size > maxSize) {
+      // Remove the least recently used item
+      cache.remove(cache.keys.firstOrNull())
+    }
+  }
+
+  fun containsKey(key: String): Boolean = synchronized(this) { cache.containsKey(key) }
+
+  fun clear() = synchronized(this) { cache.clear() }
+}
+
+/**
+ * Loads a thumbnail from MediaStore cache (much faster than generating new thumbnails).
+ * Falls back to null if no cached thumbnail exists (in which case a placeholder will be shown).
+ */
+private fun loadMediaStoreThumbnail(context: Context, uri: Uri): Bitmap? {
+  return try {
+    when (uri.scheme) {
+      // For content:// URIs, we need to find the video ID first
+      "content" -> {
+        val path = uri.path
+        if (path != null) {
+          // Extract video ID from path if it's a MediaStore URI
+          val videoId = extractVideoId(uri, context)
+          if (videoId != null) {
+            Thumbnails.getThumbnail(
+              context.contentResolver,
+              videoId,
+              Thumbnails.MINI_KIND,
+              null
+            )
+          } else {
+            null
+          }
+        } else {
+          null
+        }
+      }
+      // For file:// URIs, try to find the corresponding MediaStore entry
+      "file" -> {
+        val filePath = uri.path ?: return null
+        val projection = arrayOf(
+          MediaStore.Video.Media._ID
+        )
+        val selection = "${MediaStore.Video.Media.DATA} = ?"
+        val selectionArgs = arrayOf(filePath)
+
+        context.contentResolver.query(
+          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          selection,
+          selectionArgs,
+          null
+        )?.use { cursor ->
+          if (cursor.moveToFirst()) {
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+            val videoId = cursor.getLong(idColumn)
+            Thumbnails.getThumbnail(
+              context.contentResolver,
+              videoId,
+              Thumbnails.MINI_KIND,
+              null
+            )
+          } else {
+            null
+          }
+        }
+      }
+      else -> null
+    }
+  } catch (e: Exception) {
+    // Fallback with placeholder if thumbnail loading fails
+    null
+  }
+}
+
+/**
+ * Extracts the video ID from a content:// URI.
+ */
+private fun extractVideoId(uri: Uri, context: Context): Long? {
+  return try {
+    val path = uri.path ?: return null
+    // Extract ID from path like /external/video/media/123
+    val idString = path.substringAfterLast('/').toLongOrNull() ?: return null
+
+    // Verify this ID exists in MediaStore
+    val projection = arrayOf(MediaStore.Video.Media._ID)
+    val selection = "${MediaStore.Video.Media._ID} = ?"
+    val selectionArgs = arrayOf(idString.toString())
+
+    context.contentResolver.query(
+      MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+      projection,
+      selection,
+      selectionArgs,
+      null
+    )?.use { cursor ->
+      if (cursor.moveToFirst()) {
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+        cursor.getLong(idColumn)
+      } else {
+        null
+      }
+    }
+  } catch (e: Exception) {
+    null
+  }
+}
 
 @Composable
 fun PlaylistSheet(
@@ -75,19 +189,26 @@ fun PlaylistSheet(
   onItemClick: (PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val context = LocalContext.current
+
   // Use theme colors dynamically
   val accentColor = MaterialTheme.colorScheme.primary
-  
+
+  // Thumbnail cache with LRU eviction - limited size to prevent memory issues with large playlists
+  val thumbnailCache by remember {
+    mutableStateOf(LRUBitmapCache(maxSize = 50))
+  }
+
   // Scroll state for the playlist
   val lazyListState = rememberLazyListState()
-  
+
   // Find the currently playing item index - tracks changes in playlist items
   val playingItemIndex by remember {
     derivedStateOf {
       playlist.indexOfFirst { it.isPlaying }
     }
   }
-  
+
   // Scroll to the currently playing item when the playing item changes or when sheet opens
   LaunchedEffect(playingItemIndex) {
     if (playingItemIndex >= 0) {
@@ -114,12 +235,6 @@ fun PlaylistSheet(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
         if (currentItem != null) {
-          Icon(
-            imageVector = Icons.Filled.PlayArrow,
-            contentDescription = null,
-            tint = accentColor,
-            modifier = Modifier.size(20.dp),
-          )
           Text(
             text = "Now Playing",
             style = MaterialTheme.typography.titleSmall.copy(
@@ -143,12 +258,10 @@ fun PlaylistSheet(
     track = { item ->
       PlaylistTrack(
         item = item,
+        context = context,
+        thumbnailCache = thumbnailCache as LRUBitmapCache,
         onClick = {
           onItemClick(item)
-          // Auto-dismiss when selecting a different video
-          if (!item.isPlaying) {
-            onDismissRequest()
-          }
         },
       )
     },
@@ -158,6 +271,8 @@ fun PlaylistSheet(
 @Composable
 fun PlaylistTrack(
   item: PlaylistItem,
+  context: Context,
+  thumbnailCache: LRUBitmapCache,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -166,20 +281,22 @@ fun PlaylistTrack(
   val accentSecondary = MaterialTheme.colorScheme.tertiary
   val successColor = MaterialTheme.colorScheme.tertiary
 
-  // Thumbnail state
-  var thumbnail by remember(item.uri) { mutableStateOf<Bitmap?>(null) }
+  // Thumbnail state - uses cache to persist across recompositions
+  val videoPath = item.path.ifBlank { item.uri.toString() }
+  var thumbnail by remember(videoPath) {
+    mutableStateOf(thumbnailCache[videoPath])
+  }
 
-  // Load thumbnail asynchronously
-  LaunchedEffect(item.uri, item.path) {
-    if (thumbnail == null) {
+  // Load thumbnail asynchronously for all items (not just visible ones)
+  LaunchedEffect(videoPath) {
+    if (thumbnail == null && !thumbnailCache.containsKey(videoPath)) {
       withContext(Dispatchers.IO) {
         try {
-          val videoPath = item.path.ifBlank { item.uri.toString() }
-          // Generate thumbnail at 3 seconds, 256px dimension
-          val bmp = FastThumbnails.generateAsync(videoPath, 3.0, 256)
+          val bmp = loadMediaStoreThumbnail(context, item.uri)
           thumbnail = bmp
+          thumbnailCache[videoPath] = bmp
         } catch (e: Exception) {
-          // Silently fail - will show placeholder
+          thumbnailCache[videoPath] = null
         }
       }
     }
@@ -245,103 +362,33 @@ fun PlaylistTrack(
             modifier = Modifier.size(24.dp),
           )
         }
-        
-        // Episode number badge in bottom-left
+
+        // Video number badge in top-left with better visibility
         Box(
           modifier = Modifier
-            .align(Alignment.BottomStart)
-            .padding(4.dp)
+            .align(Alignment.TopStart)
+            .padding(6.dp)
             .background(
-              color = accentColor,
-              shape = RoundedCornerShape(3.dp),
+              color = Color.Black.copy(alpha = 0.7f),
+              shape = RoundedCornerShape(6.dp),
             )
-            .size(16.dp),
-          contentAlignment = Alignment.Center,
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
           Text(
             text = "${item.index + 1}",
-            style = MaterialTheme.typography.labelSmall.copy(
+            style = MaterialTheme.typography.labelMedium.copy(
               fontWeight = FontWeight.Bold,
-              fontSize = 8.sp,
+              fontSize = 12.sp,
             ),
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = Color.White,
           )
-        }
-
-        // Video quality badge in top-left
-        if (item.resolution.isNotBlank()) {
-          Box(
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(4.dp)
-              .background(
-                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(3.dp),
-              )
-              .padding(horizontal = 4.dp, vertical = 1.dp),
-          ) {
-            Text(
-              text = item.resolution,
-              style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 8.sp,
-              ),
-              color = Color.White,
-            )
-          }
-        }
-
-        // Subtitle indicator badge in bottom-right
-        if (item.hasSubtitles) {
-          Box(
-            modifier = Modifier
-              .align(Alignment.BottomEnd)
-              .padding(4.dp)
-              .background(
-                color = accentColor,
-                shape = RoundedCornerShape(3.dp),
-              )
-              .size(16.dp),
-            contentAlignment = Alignment.Center,
-          ) {
-            Icon(
-              imageVector = Icons.Filled.ClosedCaption,
-              contentDescription = "Subtitles available",
-              tint = MaterialTheme.colorScheme.onPrimary,
-              modifier = Modifier.size(10.dp),
-            )
-          }
-        }
-
-        // Playing overlay indicator
-        if (item.isPlaying) {
-          Box(
-            modifier = Modifier
-              .matchParentSize()
-              .background(
-                Brush.radialGradient(
-                  listOf(
-                    accentColor.copy(alpha = 0.3f),
-                    Color.Transparent,
-                  )
-                )
-              ),
-            contentAlignment = Alignment.Center,
-          ) {
-            Icon(
-              imageVector = Icons.Filled.PlayArrow,
-              contentDescription = null,
-              tint = accentColor,
-              modifier = Modifier.size(28.dp),
-            )
-          }
         }
       }
 
       // Title and info
       Column(
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Text(
           text = item.title,
@@ -358,6 +405,44 @@ fun PlaylistTrack(
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
+
+        // Duration and resolution chips
+        if (item.duration.isNotEmpty() || item.resolution.isNotEmpty()) {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
+            if (item.duration.isNotEmpty()) {
+              Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = RoundedCornerShape(4.dp),
+              ) {
+                Text(
+                  text = item.duration,
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                  ),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
+            if (item.resolution.isNotEmpty()) {
+              Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = RoundedCornerShape(4.dp),
+              ) {
+                Text(
+                  text = item.resolution,
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                  style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                  ),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
+          }
+        }
       }
 
       // Status badges
