@@ -38,8 +38,29 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.key
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.layout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.Arrangement
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
@@ -54,7 +75,6 @@ import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.SingleActionGesture
-import app.marlboroadvance.mpvex.ui.player.controls.components.DoubleTapSeekTriangles
 import app.marlboroadvance.mpvex.ui.theme.playerRippleConfiguration
 import org.koin.compose.koinInject
 import kotlin.math.abs
@@ -739,6 +759,25 @@ fun DoubleTapToSeekOvals(
   val seekAreaFraction = doubleTapSeekAreaWidth / 100f
   
   val alpha by animateFloatAsState(if (amount == 0) 0f else 0.2f, label = "double_tap_animation_alpha")
+
+  // Scale animation for text
+  var scaleTarget by remember { mutableStateOf(1f) }
+  val scale by animateFloatAsState(
+      targetValue = scaleTarget,
+      animationSpec = androidx.compose.animation.core.tween(durationMillis = 150),
+      label = "text_scale"
+  )
+  
+  LaunchedEffect(amount) {
+      if (amount != 0) {
+          scaleTarget = 1.2f
+          delay(100)
+          scaleTarget = 1f
+      } else {
+        scaleTarget = 1f
+      }
+  }
+
   Box(
     modifier = modifier.fillMaxSize(),
     contentAlignment = if (amount > 0) Alignment.CenterEnd else Alignment.CenterStart,
@@ -763,14 +802,33 @@ fun DoubleTapToSeekOvals(
             )
           }
           if (showSeekIcon || showSeekTime) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              DoubleTapSeekTriangles(isForward = amount > 0)
-              Text(
-                text = text ?: pluralStringResource(R.plurals.seconds, amount, amount),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                color = Color.White,
-              )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (amount < 0) {
+                    CombiningChevronsAnimation(isRight = false, trigger = amount)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "- ${abs(amount)}",
+                        fontSize = 22.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = Color.White,
+                        modifier = Modifier.scale(scale)
+                    )
+                } else {
+                    Text(
+                        text = "+ ${abs(amount)}",
+                        fontSize = 22.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = Color.White,
+                        modifier = Modifier.scale(scale)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    CombiningChevronsAnimation(isRight = true, trigger = amount)
+                }
             }
           }
         }
@@ -793,4 +851,76 @@ fun calculateNewHorizontalGestureValue(originalValue: Int, startingX: Float, new
 
 fun calculateNewHorizontalGestureValue(originalValue: Float, startingX: Float, newX: Float, sensitivity: Float): Float {
   return originalValue + ((newX - startingX) * sensitivity)
+}
+
+@Composable
+fun CombiningChevronsAnimation(
+    isRight: Boolean,
+    trigger: Int,
+    modifier: Modifier = Modifier
+) {
+    // List of active animations (unique IDs)
+    val animations = remember { mutableStateListOf<Long>() }
+
+    // Fire a new animation whenever trigger changes
+    LaunchedEffect(trigger) {
+        animations.add(System.nanoTime())
+    }
+
+    Row(modifier = modifier) {
+        Box {
+             // Static Chevron
+             Icon(
+                imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(48.dp)
+            )
+            
+            // Render active moving chevrons
+            animations.forEach { animId ->
+                key(animId) {
+                    MovingChevron(
+                        isRight = isRight,
+                        onFinished = { animations.remove(animId) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MovingChevron(
+    isRight: Boolean,
+    onFinished: () -> Unit
+) {
+    val progress = remember { Animatable(0f) }
+    
+    LaunchedEffect(Unit) {
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(250, easing = LinearEasing)
+        )
+        onFinished()
+    }
+    
+    val startOffset = if (isRight) -15f else 15f
+    val currentOffset = startOffset * (1f - progress.value)
+    val alpha = 1f - progress.value
+    
+    Icon(
+        imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+        contentDescription = null,
+        tint = Color.White,
+        modifier = Modifier
+            .size(48.dp)
+            .alpha(alpha)
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                layout(placeable.width, placeable.height) {
+                    placeable.placeRelative(x = currentOffset.dp.roundToPx(), y = 0)
+                }
+            } 
+    )
 }
