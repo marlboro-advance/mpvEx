@@ -495,6 +495,7 @@ object FolderListScreen : Screen {
         onConfirm = { selectionManager.deleteSelected() },
         itemType = "folder",
         itemCount = selectionManager.selectedCount,
+        itemNames = selectionManager.getSelectedItems().map { it.name },
       )
     }
   }

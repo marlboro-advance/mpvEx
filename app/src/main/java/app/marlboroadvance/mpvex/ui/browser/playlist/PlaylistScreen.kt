@@ -319,6 +319,7 @@ object PlaylistScreen : Screen {
         },
         itemCount = selectionManager.selectedCount,
         itemType = "playlist",
+        itemNames = selectionManager.getSelectedItems().map { it.playlist.name },
       )
     }
   }
