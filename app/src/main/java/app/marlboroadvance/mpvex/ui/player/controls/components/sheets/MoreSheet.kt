@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.KeyboardAlt
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -35,6 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -90,7 +95,21 @@ fun MoreSheet(
   val gpuNext by decoderPreferences.gpuNext.collectAsState()
   
   val context = LocalContext.current
-  val scope = rememberCoroutineScope()
+val scope = rememberCoroutineScope()
+var infoDialogData by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+if (infoDialogData != null) {
+    AlertDialog(
+        onDismissRequest = { infoDialogData = null },
+        title = { Text(infoDialogData!!.first) },
+        text = { Text(infoDialogData!!.second) },
+        confirmButton = {
+            TextButton(onClick = { infoDialogData = null }) {
+                Text(stringResource(R.string.generic_ok))
+            }
+        }
+    )
+}
 
   PlayerSheet(
     onDismissRequest,
@@ -154,7 +173,20 @@ fun MoreSheet(
           }
         }
       }
-      Text(stringResource(R.string.player_sheets_stats_page_title))
+      SectionHeaderWithInfo(
+        title = stringResource(R.string.player_sheets_stats_page_title),
+        onInfoClick = {
+             val descResName = "player_sheets_stats_page_${statisticsPage}_desc"
+             val resId = context.resources.getIdentifier(descResName, "string", context.packageName)
+             val description = if (resId != 0) context.getString(resId) else ""
+             
+             // Title for dialog: "Page X" or "Direct Title"
+             val titleRes = if (statisticsPage == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip
+             val title = if (statisticsPage == 0) context.getString(titleRes) else context.getString(titleRes, statisticsPage)
+             
+             infoDialogData = Pair(context.getString(R.string.player_sheets_stats_page_title), "$title: $description")
+        }
+      )
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
@@ -184,9 +216,20 @@ fun MoreSheet(
         }
       }
       
-      // Anime4K Controls
+      // Shaders Controls
       if (enableAnime4K && !gpuNext) {
-        Text(text = stringResource(R.string.anime4k_mode_title))
+        // Presets (Mode) - Now on Top
+        SectionHeaderWithInfo(
+            title = stringResource(R.string.anime4k_mode_title),
+            onInfoClick = {
+                val modeEnum = try { Anime4KManager.Mode.valueOf(anime4kMode) } catch (e: Exception) { Anime4KManager.Mode.OFF }
+                val descResName = "anime4k_mode_${modeEnum.name.lowercase()}_desc"
+                val resId = context.resources.getIdentifier(descResName, "string", context.packageName)
+                val description = if (resId != 0) context.getString(resId) else ""
+                
+                infoDialogData = Pair(context.getString(modeEnum.titleRes), description)
+            }
+        )
         LazyRow(
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
@@ -195,12 +238,6 @@ fun MoreSheet(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4kMode == mode.name,
               onClick = {
-                if (gpuNext) {
-                  scope.launch(Dispatchers.Main.immediate) {
-                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
-                  }
-                  return@FilterChip
-                }
                 decoderPreferences.anime4kMode.set(mode.name)
                 
                 // Apply shaders immediately (runtime change)
@@ -220,7 +257,7 @@ fun MoreSheet(
                     
                     val shaderChain = anime4kManager.getShaderChain(currentMode, quality)
                     
-                    // Use setPropertyString for runtime changes (not setOptionString!)
+                    // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
                     
                     // Show toast on main thread
@@ -233,57 +270,76 @@ fun MoreSheet(
             )
           }
         }
-        
-        Text(text = stringResource(R.string.anime4k_quality_title))
-        LazyRow(
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-        ) {
-          items(Anime4KManager.Quality.entries) { quality ->
-             FilterChip(
-              label = { Text(stringResource(quality.titleRes)) },
-              selected = anime4kQuality == quality.name,
-              onClick = {
-                if (gpuNext) {
-                  scope.launch(Dispatchers.Main.immediate) {
-                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
-                  }
-                  return@FilterChip
-                }
-                decoderPreferences.anime4kQuality.set(quality.name)
 
-                // Apply shaders immediately (runtime change)
-                scope.launch(Dispatchers.IO) {
-                  runCatching {
-                    val modeStr = decoderPreferences.anime4kMode.get()
-                    val modeEnum = try {
-                      Anime4KManager.Mode.valueOf(modeStr)
-                    } catch (e: IllegalArgumentException) {
-                      Anime4KManager.Mode.OFF
-                    }
-                    val currentQuality = try {
-                        Anime4KManager.Quality.valueOf(quality.name)
-                    } catch (e: IllegalArgumentException) {
-                        Anime4KManager.Quality.BALANCED
-                    }
-                    
-                    val shaderChain = anime4kManager.getShaderChain(modeEnum, currentQuality)
-                    
-                    // Use setPropertyString for runtime changes (not setOptionString!)
-                    MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    
-                    // Show toast on main thread
-                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                      Toast.makeText(context, context.getString(R.string.anime4k_quality_toast, context.getString(quality.titleRes)), Toast.LENGTH_SHORT).show()
+        // Variants (Quality) - Now on Bottom, Hidden if Presets is OFF
+        if (anime4kMode != "OFF") {
+            SectionHeaderWithInfo(
+                title = stringResource(R.string.anime4k_quality_title),
+                onInfoClick = {
+                     val qualityEnum = try { Anime4KManager.Quality.valueOf(anime4kQuality) } catch (e: Exception) { Anime4KManager.Quality.BALANCED }
+                     val descResName = "anime4k_quality_${qualityEnum.name.lowercase()}_desc"
+                     val resId = context.resources.getIdentifier(descResName, "string", context.packageName)
+                     val description = if (resId != 0) context.getString(resId) else ""
+                     
+                     infoDialogData = Pair(context.getString(qualityEnum.titleRes), description)
+                }
+            )
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+            ) {
+              items(Anime4KManager.Quality.entries) { quality ->
+                 FilterChip(
+                  label = { Text(stringResource(quality.titleRes)) },
+                  selected = anime4kQuality == quality.name,
+                  onClick = {
+                    decoderPreferences.anime4kQuality.set(quality.name)
+
+                    // Apply shaders immediately (runtime change)
+                    scope.launch(Dispatchers.IO) {
+                      runCatching {
+                        val modeStr = decoderPreferences.anime4kMode.get()
+                        val modeEnum = try {
+                          Anime4KManager.Mode.valueOf(modeStr)
+                        } catch (e: IllegalArgumentException) {
+                          Anime4KManager.Mode.OFF
+                        }
+                        val currentQuality = try {
+                            Anime4KManager.Quality.valueOf(quality.name)
+                        } catch (e: IllegalArgumentException) {
+                            Anime4KManager.Quality.BALANCED
+                        }
+                        
+                        val shaderChain = anime4kManager.getShaderChain(modeEnum, currentQuality)
+                        
+                        // Use setPropertyString for runtime changes
+                        MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
+                        
+                        // Show toast on main thread
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                          Toast.makeText(context, context.getString(R.string.anime4k_quality_toast, context.getString(quality.titleRes)), Toast.LENGTH_SHORT).show()
+                        }
+                      }
                     }
                   }
-                }
+                )
               }
-            )
-          }
+            }
         }
       }
-      Text(text = stringResource(id = R.string.pref_audio_channels))
       val audioChannels by audioPreferences.audioChannels.collectAsState()
+      SectionHeaderWithInfo(
+        title = stringResource(id = R.string.pref_audio_channels),
+        onInfoClick = {
+            val descResName = "pref_audio_channels_${audioChannels.value.replace("-safe", "_safe").replace("-", "_")}_desc"
+            // Special handling for reversed stereo if value string doesn't match resource convention
+            val finalDescResName = if (audioChannels.name == "ReverseStereo") "pref_audio_channels_reverse_stereo_desc" else descResName
+            
+            val resId = context.resources.getIdentifier(finalDescResName, "string", context.packageName)
+            val description = if (resId != 0) context.getString(resId) else ""
+            
+            infoDialogData = Pair(context.getString(audioChannels.title), description)
+        }
+      )
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
@@ -462,4 +518,34 @@ fun TimePickerDialog(
       }
     }
   }
+  }
+
+
+@Composable
+fun SectionHeaderWithInfo(
+  title: String,
+  onInfoClick: () -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.Start,
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Text(
+      text = title,
+      style = MaterialTheme.typography.titleMedium,
+      color = MaterialTheme.colorScheme.primary
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+    IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
+      Icon(
+        imageVector = Icons.Outlined.Info,
+        contentDescription = "Info",
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.size(16.dp)
+      )
+    }
+  }
 }
+
