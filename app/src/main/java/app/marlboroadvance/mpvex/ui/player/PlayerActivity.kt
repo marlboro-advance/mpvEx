@@ -1716,11 +1716,10 @@ class PlayerActivity :
           return@launch
         }
 
-        // Skip fetching for playlist items - they already have correct titles from playlist metadata
-        val launchSource = intent.getStringExtra("launch_source")
-        if (intent.hasExtra("title") && launchSource != null &&
-          (launchSource.contains("playlist") || launchSource == "m3u_playlist")) {
-          Log.d(TAG, "Skipping title fetch for playlist item with custom title: $fileName")
+        // Skip fetching if title was provided in intent extras (e.g. from Jellyfin or other external launchers)
+        // This prevents overwriting the correct title with a generic filename from the URL (like "stream")
+        if (intent.hasExtra("title") || intent.hasExtra("filename")) {
+          Log.d(TAG, "Skipping title fetch because title was explicitly provided in intent: $fileName")
           return@launch
         }
 
