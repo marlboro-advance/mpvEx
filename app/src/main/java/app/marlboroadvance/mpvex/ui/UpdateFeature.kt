@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -128,11 +129,55 @@ class UpdateManager(
     }
 
     fun downloadUpdate(release: Release): Flow<Float> {
-        val asset = release.assets.firstOrNull { it.name.endsWith(".apk") } 
-            ?: throw Exception("No APK asset found")
+        val asset = selectBestApkAsset(release.assets)
+            ?: throw Exception("No compatible APK asset found")
         
         val destination = File(context.externalCacheDir, asset.name)
         return downloadApk(asset.downloadUrl, destination)
+    }
+
+    private fun selectBestApkAsset(assets: List<Asset>): Asset? {
+        val deviceArch = getDeviceArchitecture()
+        
+        // First, try to find architecture-specific APK
+        val archSpecificApk = assets.firstOrNull { asset ->
+            asset.name.endsWith(".apk") && asset.name.contains(deviceArch, ignoreCase = true)
+        }
+        
+        if (archSpecificApk != null) {
+            return archSpecificApk
+        }
+        
+        // Fallback to universal APK
+        val universalApk = assets.firstOrNull { asset ->
+            asset.name.endsWith(".apk") && asset.name.contains("universal", ignoreCase = true)
+        }
+        
+        if (universalApk != null) {
+            return universalApk
+        }
+        
+        // Last resort: any APK
+        return assets.firstOrNull { it.name.endsWith(".apk") }
+    }
+
+    private fun getDeviceArchitecture(): String {
+        // Get the primary ABI (Application Binary Interface)
+        val primaryAbi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Build.SUPPORTED_ABIS[0]
+        } else {
+            @Suppress("DEPRECATION")
+            Build.CPU_ABI
+        }
+        
+        // Map Android ABI names to your APK naming convention
+        return when (primaryAbi) {
+            "arm64-v8a" -> "arm64-v8a"
+            "armeabi-v7a" -> "armeabi-v7a"
+            "x86" -> "x86"
+            "x86_64" -> "x86_64"
+            else -> "universal" // Fallback for unknown architectures
+        }
     }
 
     private fun downloadApk(url: String, destination: File): Flow<Float> = flow {
@@ -169,7 +214,7 @@ class UpdateManager(
     }.flowOn(Dispatchers.IO)
     
     fun getApkFile(release: Release): File? {
-        val asset = release.assets.firstOrNull { it.name.endsWith(".apk") } ?: return null
+        val asset = selectBestApkAsset(release.assets) ?: return null
         val file = File(context.externalCacheDir, asset.name)
         return if (file.exists()) file else null
     }
