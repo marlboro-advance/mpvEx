@@ -81,6 +81,15 @@ object SearchablePreferences {
                 screen = AppearancePreferencesScreen,
             ))
 
+            // Motion/Animation preferences
+            add(SearchablePreference(
+                titleRes = R.string.pref_motion_quality_title,
+                summaryRes = R.string.pref_motion_high_quality_desc,
+                keywords = listOf("animation", "motion", "transition", "reduce motion", "performance", "120fps", "spring", "smooth"),
+                category = "Appearance",
+                screen = AppearancePreferencesScreen,
+            ))
+
             // Layout preferences
             add(SearchablePreference(
                 titleRes = R.string.pref_layout_title,
