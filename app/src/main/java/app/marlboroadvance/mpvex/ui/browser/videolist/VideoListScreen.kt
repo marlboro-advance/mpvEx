@@ -250,10 +250,12 @@ data class VideoListScreen(
       floatingActionButton = {
         if (sortedVideosWithInfo.isNotEmpty()) {
           FloatingActionButton(
-            modifier = Modifier.animateFloatingActionButton(
-              visible = isFabVisible.value && !selectionManager.isInSelectionMode,
-              alignment = Alignment.BottomEnd,
-            ),
+            modifier = Modifier
+              .padding(bottom = 20.dp, end = 16.dp)
+              .animateFloatingActionButton(
+                visible = isFabVisible.value && !selectionManager.isInSelectionMode,
+                alignment = Alignment.BottomEnd,
+              ),
             onClick = {
               coroutineScope.launch {
                 val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
@@ -319,6 +321,7 @@ data class VideoListScreen(
         onConfirm = { selectionManager.deleteSelected() },
         itemType = "video",
         itemCount = selectionManager.selectedCount,
+        itemNames = selectionManager.getSelectedItems().map { it.displayName },
       )
 
       // Rename Dialog

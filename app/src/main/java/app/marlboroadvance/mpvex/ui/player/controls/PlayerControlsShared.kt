@@ -32,16 +32,16 @@ import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOn
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOutMap
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOn
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.ShuffleOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,13 +49,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,7 +71,6 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.CurrentChapter
 import app.marlboroadvance.mpvex.ui.theme.controlColor
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
-import kotlinx.coroutines.flow.update
 
 @Composable
 fun RenderPlayerButton(
@@ -371,7 +366,7 @@ fun RenderPlayerButton(
                 viewModel.toggleFrameNavigationExpanded()
               }
             },
-            onLongClick = { viewModel.sheetShown.update { Sheets.FrameNavigation } },
+            onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
             color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(buttonSize),
           )
@@ -414,7 +409,7 @@ fun RenderPlayerButton(
               indication = ripple(bounded = true),
               onClick = {
                 clickEvent()
-                viewModel.sheetShown.update { Sheets.VideoZoom }
+                onOpenSheet(Sheets.VideoZoom)
               },
               onLongClick = {
                 clickEvent()
@@ -446,7 +441,10 @@ fun RenderPlayerButton(
       } else {
         ControlsButton(
           Icons.Default.ZoomIn,
-          onClick = { viewModel.sheetShown.update { Sheets.VideoZoom } },
+          onClick = {
+            clickEvent()
+            onOpenSheet(Sheets.VideoZoom)
+          },
           onLongClick = { viewModel.resetVideoZoom() },
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
           modifier = Modifier.size(buttonSize),
@@ -478,7 +476,7 @@ fun RenderPlayerButton(
             VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Fit)
           }
         },
-        onLongClick = { viewModel.sheetShown.update { Sheets.AspectRatios } },
+        onLongClick = { onOpenSheet(Sheets.AspectRatios) },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )

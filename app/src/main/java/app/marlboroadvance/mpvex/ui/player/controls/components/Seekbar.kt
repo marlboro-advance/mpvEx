@@ -562,7 +562,7 @@ fun StandardSeekbar(
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val interactionSource = remember { MutableInteractionSource() }
-    val thumbWidth = 4.dp
+    val thumbWidth = 6.dp
 
     Slider(
         value = position,
@@ -572,7 +572,7 @@ fun StandardSeekbar(
         modifier = Modifier.fillMaxWidth(),
         interactionSource = interactionSource,
         track = { sliderState ->
-            val disabledAlpha = 77f / 255f
+            val disabledAlpha = 0.3f
             val bufferAlpha = 0.5f
 
             Canvas(
@@ -590,70 +590,132 @@ fun StandardSeekbar(
 
               val playedPx = size.width * playedFraction
               val readAheadPx = size.width * readAheadFraction
-
-              val cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
-              // Match Material/old SliderDefaults.Track behavior: keep a small empty gap around the thumb.
-              val thumbTrackGapSize = 10.dp.toPx()
+              val trackHeight = size.height
+              val outerRadius = trackHeight / 2f
+              val innerRadius = 2.dp.toPx()
+              
+              // We want flat gaps around the thumb.
+              val thumbTrackGapSize = 14.dp.toPx()
               val gapHalf = thumbTrackGapSize / 2f
-              val leftEnd = (playedPx - gapHalf).coerceIn(0f, size.width)
-              val rightStart = (playedPx + gapHalf).coerceIn(0f, size.width)
+              
+              // Define gaps based on chapters + the current thumb position
+              // Chapter gaps are always flat. Thumb gap is flat.
+              // Ends of the bar (0 and size.width) are rounded.
 
-              // Calculate chapter gaps
               val chapterGapHalf = 1.dp.toPx()
+              
+              // Collect all non-drawable zones (gaps)
+              // 1. Thumb gap
+              val thumbGapStart = (playedPx - gapHalf).coerceIn(0f, size.width)
+              val thumbGapEnd = (playedPx + gapHalf).coerceIn(0f, size.width)
+              
+              // 2. Chapter gaps
               val chapterGaps = chapters
                 .map { (it.start / duration).coerceIn(0f, 1f) * size.width }
                 .filter { it > 0f && it < size.width }
-                .sorted()
                 .map { x -> (x - chapterGapHalf) to (x + chapterGapHalf) }
-
-              // Helper to draw track with chapter gaps
-              fun drawTrackWithGaps(startX: Float, endX: Float, color: Color) {
-                if (endX <= startX) return
-                var segmentStart = startX
-                for ((gapStart, gapEnd) in chapterGaps) {
-                  if (gapStart > segmentStart && gapStart < endX) {
-                    val segmentEnd = gapStart.coerceAtMost(endX)
-                    if (segmentEnd > segmentStart) {
-                      drawRoundRect(
-                        color = color,
-                        topLeft = Offset(segmentStart, 0f),
-                        size = androidx.compose.ui.geometry.Size(segmentEnd - segmentStart, size.height),
-                        cornerRadius = cornerRadius,
-                      )
-                    }
-                    segmentStart = gapEnd.coerceAtLeast(segmentStart)
+              
+              // Helper to draw a segment with selective rounding
+              fun drawSegment(startX: Float, endX: Float, color: Color) {
+                  if (endX - startX < 0.5f) return
+                  
+                  val path = Path()
+                  
+                  // Determine rounding for LEFT side of this segment
+                  val isOuterLeft = startX <= 0.5f
+                  val isInnerLeft = kotlin.math.abs(startX - thumbGapEnd) < 0.5f
+                  
+                  val cornerRadiusLeft = when {
+                      isOuterLeft -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
+                      isInnerLeft -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
+                      else -> androidx.compose.ui.geometry.CornerRadius.Zero
                   }
-                }
-                if (segmentStart < endX) {
-                  drawRoundRect(
-                    color = color,
-                    topLeft = Offset(segmentStart, 0f),
-                    size = androidx.compose.ui.geometry.Size(endX - segmentStart, size.height),
-                    cornerRadius = cornerRadius,
+
+                  // Determine rounding for RIGHT side of this segment
+                  val isOuterRight = endX >= size.width - 0.5f
+                  val isInnerRight = kotlin.math.abs(endX - thumbGapStart) < 0.5f
+
+                  val cornerRadiusRight = when {
+                      isOuterRight -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
+                      isInnerRight -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
+                      else -> androidx.compose.ui.geometry.CornerRadius.Zero
+                  }
+                  
+                  path.addRoundRect(
+                      androidx.compose.ui.geometry.RoundRect(
+                          left = startX,
+                          top = 0f,
+                          right = endX,
+                          bottom = trackHeight,
+                          topLeftCornerRadius = cornerRadiusLeft,
+                          bottomLeftCornerRadius = cornerRadiusLeft,
+                          topRightCornerRadius = cornerRadiusRight,
+                          bottomRightCornerRadius = cornerRadiusRight
+                      )
                   )
-                }
+                  drawPath(path, color)
               }
-
-              // Base (unplayed) track: draw as two segments to leave a blank gap at the thumb.
-              if (leftEnd > 0f) {
-                drawTrackWithGaps(0f, leftEnd, primaryColor.copy(alpha = disabledAlpha))
+              
+              // Draw Logic:
+              // We effectively have a list of content ranges for each layer (Background, Buffer, Played).
+              // We need to subtract the 'gaps' from these ranges.
+              
+              // Combined list of gaps to exclude from DRAWING
+              // For the background/buffer, we exclude chapter gaps AND the thumb gap.
+              // For the played part, we only draw up to the thumb gap start, excluding chapter gaps.
+              fun drawRangeWithGaps(
+                  rangeStart: Float, 
+                  rangeEnd: Float, 
+                  gaps: List<Pair<Float, Float>>, 
+                  color: Color
+              ) {
+                  if (rangeEnd <= rangeStart) return
+                  
+                  // Filter and sort gaps that intersect the range
+                  val relevantGaps = gaps
+                      .filter { (gStart, gEnd) -> gEnd > rangeStart && gStart < rangeEnd }
+                      .sortedBy { it.first }
+                  
+                  var currentPos = rangeStart
+                  
+                  for ((gStart, gEnd) in relevantGaps) {
+                      // Draw from currentPos to start of gap
+                      val segmentEnd = gStart.coerceAtMost(rangeEnd)
+                      if (segmentEnd > currentPos) {
+                          drawSegment(currentPos, segmentEnd, color)
+                      }
+                      currentPos = gEnd.coerceAtLeast(currentPos)
+                  }
+                  
+                  // Draw remaining tail
+                  if (currentPos < rangeEnd) {
+                      drawSegment(currentPos, rangeEnd, color)
+                  }
               }
-              if (rightStart < size.width) {
-                drawTrackWithGaps(rightStart, size.width, primaryColor.copy(alpha = disabledAlpha))
+              
+              val allGaps = (chapterGaps + (thumbGapStart to thumbGapEnd)).sortedBy { it.first }
+              
+              // 1. Unplayed Background (draw whole width, masking played area is optional but cleaner to just draw 'unplayed' parts)
+              // Actually, standard sliders usually draw the background color across the whole unplayed duration.
+              // But we have a 'played' color on top. 
+              // To handle transparency correctly, we should avoid overlapping if the colors have alpha.
+              // Assuming background and buffer might overlap.
+              
+              // Background: From thumbGapEnd to Width
+              drawRangeWithGaps(thumbGapEnd, size.width, chapterGaps, primaryColor.copy(alpha = disabledAlpha))
+              // Also Background: From 0 to thumbGapStart? Usually played color covers this. 
+              // If played color is transparent, we might need background underneath. 
+              // Assuming played color is opaque or intended to be standalone.
+              // If we want the track to be present "behind" the thumb gap? No, image shows a clean cut.
+              
+              // 2. Buffer: From thumbGapEnd to readAheadPx
+              if (readAheadPx > thumbGapEnd) {
+                  drawRangeWithGaps(thumbGapEnd, readAheadPx, chapterGaps, primaryColor.copy(alpha = bufferAlpha))
               }
-
-              // Buffered segment
-              if (readAheadPx > playedPx) {
-                val bufferStart = maxOf(rightStart, playedPx)
-                val bufferEnd = readAheadPx.coerceIn(0f, size.width)
-                if (bufferEnd > bufferStart) {
-                  drawTrackWithGaps(bufferStart, bufferEnd, primaryColor.copy(alpha = bufferAlpha))
-                }
-              }
-
-              // Played segment (up to the left side of the thumb gap)
-              if (leftEnd > 0f) {
-                drawTrackWithGaps(0f, leftEnd, primaryColor)
+              
+              // 3. Played: From 0 to thumbGapStart
+              if (thumbGapStart > 0) {
+                  drawRangeWithGaps(0f, thumbGapStart, chapterGaps, primaryColor)
               }
             }
         },
@@ -667,6 +729,7 @@ fun StandardSeekbar(
         }
     )
 }
+
 
 @Preview
 @Composable

@@ -1,29 +1,27 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
 import android.text.format.DateUtils
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardAlt
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -34,39 +32,32 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.domain.anime4k.Anime4KManager
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
-import app.marlboroadvance.mpvex.preferences.AudioChannels
-import app.marlboroadvance.mpvex.preferences.AudioPreferences
+import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.PlayerSheet
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import `is`.xyz.mpv.MPVLib
-import org.koin.compose.koinInject
-
-import app.marlboroadvance.mpvex.preferences.DecoderPreferences
-import app.marlboroadvance.mpvex.domain.anime4k.Anime4KManager
-import android.widget.Toast
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -78,7 +69,6 @@ fun MoreSheet(
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
-  val audioPreferences = koinInject<AudioPreferences>()
   val decoderPreferences = koinInject<DecoderPreferences>()
   val anime4kManager = koinInject<Anime4KManager>()
   koinInject<PlayerPreferences>()
@@ -90,7 +80,21 @@ fun MoreSheet(
   val gpuNext by decoderPreferences.gpuNext.collectAsState()
   
   val context = LocalContext.current
-  val scope = rememberCoroutineScope()
+val scope = rememberCoroutineScope()
+var infoDialogData by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+if (infoDialogData != null) {
+    AlertDialog(
+        onDismissRequest = { },
+        title = { Text(infoDialogData!!.first) },
+        text = { Text(infoDialogData!!.second) },
+        confirmButton = {
+            TextButton(onClick = { infoDialogData = null }) {
+                Text(stringResource(R.string.generic_ok))
+            }
+        }
+    )
+}
 
   PlayerSheet(
     onDismissRequest,
@@ -154,7 +158,20 @@ fun MoreSheet(
           }
         }
       }
-      Text(stringResource(R.string.player_sheets_stats_page_title))
+      SectionHeaderWithInfo(
+        title = stringResource(R.string.player_sheets_stats_page_title),
+        onInfoClick = {
+             val descResName = "player_sheets_stats_page_${statisticsPage}_desc"
+             val resId = context.resources.getIdentifier(descResName, "string", context.packageName)
+             val description = if (resId != 0) context.getString(resId) else ""
+             
+             // Title for dialog: "Page X" or "Direct Title"
+             val titleRes = if (statisticsPage == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip
+             val title = if (statisticsPage == 0) context.getString(titleRes) else context.getString(titleRes, statisticsPage)
+             
+             infoDialogData = Pair(context.getString(R.string.player_sheets_stats_page_title), "$title: $description")
+        }
+      )
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
@@ -184,9 +201,14 @@ fun MoreSheet(
         }
       }
       
-      // Anime4K Controls
+      // Shaders Controls
       if (enableAnime4K && !gpuNext) {
-        Text(text = stringResource(R.string.anime4k_mode_title))
+        // Presets (Mode) - Now on Top
+        Text(
+            text = stringResource(R.string.anime4k_mode_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
         LazyRow(
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
@@ -195,12 +217,6 @@ fun MoreSheet(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4kMode == mode.name,
               onClick = {
-                if (gpuNext) {
-                  scope.launch(Dispatchers.Main.immediate) {
-                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
-                  }
-                  return@FilterChip
-                }
                 decoderPreferences.anime4kMode.set(mode.name)
                 
                 // Apply shaders immediately (runtime change)
@@ -217,24 +233,23 @@ fun MoreSheet(
                     } catch (e: IllegalArgumentException) {
                         Anime4KManager.Mode.OFF
                     }
-                    
+
                     val shaderChain = anime4kManager.getShaderChain(currentMode, quality)
-                    
-                    // Use setPropertyString for runtime changes (not setOptionString!)
+
+                    // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    
-                    // Show toast on main thread
-                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                      Toast.makeText(context, context.getString(R.string.anime4k_mode_toast, context.getString(mode.titleRes)), Toast.LENGTH_SHORT).show()
-                    }
                   }
                 }
               }
             )
           }
         }
-        
-        Text(text = stringResource(R.string.anime4k_quality_title))
+
+        Text(
+            text = stringResource(R.string.anime4k_quality_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
         LazyRow(
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
@@ -242,13 +257,8 @@ fun MoreSheet(
              FilterChip(
               label = { Text(stringResource(quality.titleRes)) },
               selected = anime4kQuality == quality.name,
+              enabled = anime4kMode != "OFF",
               onClick = {
-                if (gpuNext) {
-                  scope.launch(Dispatchers.Main.immediate) {
-                    Toast.makeText(context, context.getString(R.string.pref_anime4k_cannot_use_with_gpu_next), Toast.LENGTH_LONG).show()
-                  }
-                  return@FilterChip
-                }
                 decoderPreferences.anime4kQuality.set(quality.name)
 
                 // Apply shaders immediately (runtime change)
@@ -265,42 +275,16 @@ fun MoreSheet(
                     } catch (e: IllegalArgumentException) {
                         Anime4KManager.Quality.BALANCED
                     }
-                    
+
                     val shaderChain = anime4kManager.getShaderChain(modeEnum, currentQuality)
-                    
-                    // Use setPropertyString for runtime changes (not setOptionString!)
+
+                    // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    
-                    // Show toast on main thread
-                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                      Toast.makeText(context, context.getString(R.string.anime4k_quality_toast, context.getString(quality.titleRes)), Toast.LENGTH_SHORT).show()
-                    }
                   }
                 }
               }
             )
           }
-        }
-      }
-      Text(text = stringResource(id = R.string.pref_audio_channels))
-      val audioChannels by audioPreferences.audioChannels.collectAsState()
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        items(AudioChannels.entries) {
-          FilterChip(
-            selected = audioChannels == it,
-            onClick = {
-              audioPreferences.audioChannels.set(it)
-              if (it == AudioChannels.ReverseStereo) {
-                MPVLib.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-              } else {
-                MPVLib.setPropertyString(AudioChannels.ReverseStereo.property, "")
-              }
-              MPVLib.setPropertyString(it.property, it.value)
-            },
-            label = { Text(text = stringResource(id = it.title)) },
-          )
         }
       }
     }
@@ -335,52 +319,22 @@ fun TimePickerDialog(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
       ) {
-        var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
-        
         // Header
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                  text = stringResource(R.string.timer_title), // "Sleep Timer"
-                  style = MaterialTheme.typography.labelMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                  text =
-                    stringResource(
-                      id =
-                        if (currentLayoutType == 1) {
-                          R.string.timer_picker_pick_time
-                        } else {
-                          R.string.timer_picker_enter_timer
-                        },
-                    ),
-                  style = MaterialTheme.typography.headlineSmall,
-                  color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            // Toggle Button
-             IconButton(
-                onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 },
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
-            Icon(
-              imageVector =
-                if (currentLayoutType ==
-                  0
-                ) {
-                  Icons.Outlined.Schedule
-                } else {
-                  Icons.Default.KeyboardAlt
-                },
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+              text = stringResource(R.string.timer_title), // "Sleep Timer"
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-          }
+            Spacer(Modifier.height(8.dp))
+            Text(
+              text = stringResource(R.string.timer_picker_enter_timer),
+              style = MaterialTheme.typography.headlineSmall,
+              color = MaterialTheme.colorScheme.onSurface
+            )
         }
 
         val state =
@@ -389,17 +343,8 @@ fun TimePickerDialog(
             (remainingTime % 3600) / 60,
             is24Hour = true,
           )
-          
-        Box(
-          contentAlignment = Alignment.Center,
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          if (currentLayoutType == 1) {
-            TimePicker(state = state)
-          } else {
-            TimeInput(state = state)
-          }
-        }
+
+        TimeInput(state = state)
         
         // Quick Presets
         Column(
@@ -462,4 +407,34 @@ fun TimePickerDialog(
       }
     }
   }
+  }
+
+
+@Composable
+fun SectionHeaderWithInfo(
+  title: String,
+  onInfoClick: () -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.Start,
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Text(
+      text = title,
+      style = MaterialTheme.typography.titleMedium,
+      color = MaterialTheme.colorScheme.primary
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+    IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
+      Icon(
+        imageVector = Icons.Outlined.Info,
+        contentDescription = "Info",
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.size(16.dp)
+      )
+    }
+  }
 }
+

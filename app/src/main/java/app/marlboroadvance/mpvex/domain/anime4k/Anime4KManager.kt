@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.domain.anime4k
 
 import android.content.Context
 
-import app.marlboroadvance.mpvex.BuildConfig
 import java.io.File
 import java.io.FileOutputStream
 
@@ -24,14 +23,14 @@ class Anime4KManager(private val context: Context) {
   }
 
   // Anime4K modes
-  enum class Mode(val titleRes: Int, val descriptionRes: Int) {
-    OFF(app.marlboroadvance.mpvex.R.string.anime4k_mode_off, app.marlboroadvance.mpvex.R.string.anime4k_mode_off_desc),
-    A(app.marlboroadvance.mpvex.R.string.anime4k_mode_a, app.marlboroadvance.mpvex.R.string.anime4k_mode_a_desc),
-    B(app.marlboroadvance.mpvex.R.string.anime4k_mode_b, app.marlboroadvance.mpvex.R.string.anime4k_mode_b_desc),
-    C(app.marlboroadvance.mpvex.R.string.anime4k_mode_c, app.marlboroadvance.mpvex.R.string.anime4k_mode_c_desc),
-    A_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_a_plus, app.marlboroadvance.mpvex.R.string.anime4k_mode_a_plus_desc),
-    B_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_b_plus, app.marlboroadvance.mpvex.R.string.anime4k_mode_b_plus_desc),
-    C_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_c_plus, app.marlboroadvance.mpvex.R.string.anime4k_mode_c_plus_desc)
+  enum class Mode(val titleRes: Int) {
+    OFF(app.marlboroadvance.mpvex.R.string.anime4k_mode_off),
+    A(app.marlboroadvance.mpvex.R.string.anime4k_mode_a),
+    B(app.marlboroadvance.mpvex.R.string.anime4k_mode_b),
+    C(app.marlboroadvance.mpvex.R.string.anime4k_mode_c),
+    A_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_a_plus),
+    B_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_b_plus),
+    C_PLUS(app.marlboroadvance.mpvex.R.string.anime4k_mode_c_plus)
   }
 
   private var shaderDir: File? = null

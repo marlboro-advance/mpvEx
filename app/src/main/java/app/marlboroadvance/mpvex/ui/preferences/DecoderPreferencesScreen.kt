@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +27,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.DecoderPreferences
@@ -46,6 +51,7 @@ object DecoderPreferencesScreen : Screen {
   override fun Content() {
     val preferences = koinInject<DecoderPreferences>()
     val backstack = LocalBackStack.current
+    val context = LocalContext.current
     var showGpuNextWarning by remember { mutableStateOf(false) }
     Scaffold(
       topBar = {
@@ -206,11 +212,23 @@ object DecoderPreferencesScreen : Screen {
                     }
                 },
                 title = { Text(stringResource(R.string.pref_anime4k_title)) },
-                summary = { 
-                  Text(
-                    stringResource(R.string.pref_anime4k_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  ) 
+                summary = {
+                  Column {
+                    Text(
+                      stringResource(R.string.pref_anime4k_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    Text(
+                      text = "github.com/bloc97/Anime4K",
+                      color = MaterialTheme.colorScheme.primary,
+                      style = MaterialTheme.typography.bodySmall,
+                      textDecoration = TextDecoration.Underline,
+                      modifier = Modifier.clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/bloc97/Anime4K"))
+                        context.startActivity(intent)
+                      }
+                    )
+                  }
                 },
               )
             }

@@ -177,61 +177,6 @@ class FileSystemBrowserViewModel(
   }
 
   /**
-   * Navigate to a specific path
-   * Similar to Fossify's openPath() method
-   */
-  fun navigateTo(path: String) {
-    Log.d(TAG, "Navigating to: $path")
-    _currentPath.value = path
-    // Reset the flag when navigating to a new directory (not back)
-    _itemsWereDeletedOrMoved.value = false
-    loadCurrentDirectory()
-  }
-
-  /**
-   * Navigate up one level in the directory hierarchy
-   * Based on Fossify's breadcrumbClicked() and back navigation logic
-   * Respects home directory - won't navigate above it
-   */
-  fun navigateUp() {
-    val current = _currentPath.value
-
-    // Already at home directory or storage roots, nowhere to go
-    if (current == STORAGE_ROOTS_MARKER || current == homeDirectory) {
-      Log.d(TAG, "Already at home directory, cannot navigate up")
-      return
-    }
-
-    val parent = File(current).parent
-
-    // Don't reset the flag when navigating back - let the refresh check if folder is empty
-
-    if (parent != null && parent != current) {
-      // Check if parent is above home directory
-      if (homeDirectory != null && !parent.startsWith(homeDirectory!!)) {
-        // Parent is above home, stop at home directory
-        Log.d(TAG, "Parent $parent is above home directory $homeDirectory, stopping at home")
-        _currentPath.value = homeDirectory!!
-        loadCurrentDirectory()
-      } else {
-        Log.d(TAG, "Navigating up from $current to $parent")
-        _currentPath.value = parent
-        loadCurrentDirectory()
-      }
-    } else {
-      // No parent - go back to storage roots view if no home directory set
-      if (homeDirectory == null) {
-        Log.d(TAG, "Navigating to storage roots from $current")
-        _currentPath.value = STORAGE_ROOTS_MARKER
-        loadCurrentDirectory()
-      } else {
-        // Home directory set, stay at current location
-        Log.d(TAG, "At home directory boundary, cannot navigate up")
-      }
-    }
-  }
-
-  /**
    * Delete folders (and their contents)
    * Based on Fossify's deleteFiles() logic with folder support
    */

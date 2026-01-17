@@ -2,7 +2,12 @@ package app.marlboroadvance.mpvex.ui.browser.dialogs
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,6 +30,7 @@ fun DeleteConfirmationDialog(
   onConfirm: () -> Unit,
   itemType: String,
   itemCount: Int,
+  itemNames: List<String> = emptyList(),
 ) {
   if (!isOpen) return
 
@@ -49,6 +55,7 @@ fun DeleteConfirmationDialog(
               containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
             ),
           shape = MaterialTheme.shapes.extraLarge,
+          modifier = Modifier.fillMaxWidth(),
         ) {
           Text(
             text = "This action cannot be undone. The selected item${if (itemCount == 1) "" else "s"} will be permanently deleted.",
@@ -57,6 +64,50 @@ fun DeleteConfirmationDialog(
             color = MaterialTheme.colorScheme.onErrorContainer,
             modifier = Modifier.padding(16.dp),
           )
+        }
+
+        if (itemNames.isNotEmpty()) {
+          Card(
+            colors =
+              CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+              ),
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Column(
+              modifier = Modifier.padding(16.dp),
+            ) {
+              val scrollState = rememberScrollState()
+
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .heightIn(max = 200.dp)
+                  .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+              ) {
+                itemNames.forEachIndexed { index, name ->
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                  ) {
+                    Text(
+                      text = "${index + 1}. ",
+                      style = MaterialTheme.typography.bodyLarge,
+                      color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                      text = name,
+                      style = MaterialTheme.typography.bodyLarge,
+                      color = MaterialTheme.colorScheme.onSurface,
+                      modifier = Modifier.weight(1f),
+                    )
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

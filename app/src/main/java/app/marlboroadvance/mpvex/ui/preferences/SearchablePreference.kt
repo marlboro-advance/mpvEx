@@ -81,15 +81,6 @@ object SearchablePreferences {
                 screen = AppearancePreferencesScreen,
             ))
 
-            // Motion/Animation preferences
-            add(SearchablePreference(
-                titleRes = R.string.pref_motion_quality_title,
-                summaryRes = R.string.pref_motion_high_quality_desc,
-                keywords = listOf("animation", "motion", "transition", "reduce motion", "performance", "120fps", "spring", "smooth"),
-                category = "Appearance",
-                screen = AppearancePreferencesScreen,
-            ))
-
             // Layout preferences
             add(SearchablePreference(
                 titleRes = R.string.pref_layout_title,
@@ -354,8 +345,8 @@ object SearchablePreferences {
                 titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
                 summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
                 keywords = listOf("thumbnail", "tap", "select", "play", "preview"),
-                category = "Gestures",
-                screen = GesturePreferencesScreen,
+                category = "Appearance",
+                screen = AppearancePreferencesScreen,
             ))
 
             // Folder preferences

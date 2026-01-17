@@ -727,6 +727,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
           else -> "video"
         },
       itemCount = selectedCount,
+      itemNames =
+        (folderSelectionManager.getSelectedItems().map { it.name } +
+          videoSelectionManager.getSelectedItems().map { it.displayName }),
     )
 
     // Rename Dialog (only for videos)

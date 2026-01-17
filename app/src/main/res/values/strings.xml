@@ -68,18 +68,6 @@
     <string name="theme_dracula">Dracula</string>
     <string name="theme_monochrome">Monochrome</string>
 
-    <!-- Motion Preferences -->
-    <string name="pref_category_animations">Animations</string>
-    <string name="pref_motion_quality_title">Animation Quality</string>
-    <string name="pref_motion_high_quality">Fluid</string>
-    <string name="pref_motion_high_quality_desc">Smooth animations with scale effects and shared element transitions</string>
-    <string name="pref_motion_minimal">Minimal</string>
-    <string name="pref_motion_minimal_desc">Fast animations with reduced effects</string>
-    <string name="pref_motion_slide">Slide</string>
-    <string name="pref_motion_slide_desc">Clean slide transitions in/out</string>
-    <string name="pref_motion_none">Instant</string>
-    <string name="pref_motion_none_desc">Immediate transitions for accessibility or performance</string>
-
     <!-- Settings Search -->
     <string name="settings_search_hint">Search settings…</string>
     <string name="settings_search_no_results">No settings found</string>
@@ -239,36 +227,29 @@
     <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>
     
     <string name="pref_advanced_features_tooltip">Enable experimental or advanced features like statistics page and Anime4K upscaling.</string>
-    <string name="pref_anime4k_title">Anime4K upscaling</string>
+    <string name="pref_anime4k_title">Anime4K upscaling (Experimental)</string>
     <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
     <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
     <string name="pref_anime4k_gpu_next_error">gpu-next is incompatible with Anime4K shaders. When Anime4K is enabled, the app will automatically use the legacy \'gpu\' backend for shader compatibility.</string>
     <string name="pref_anime4k_cannot_use_with_gpu_next">Cannot use Anime4K when gpu-next is enabled</string>
-    <string name="anime4k_mode_title">Anime4K Mode</string>
-    <string name="anime4k_quality_title">Anime4K Quality</string>
-    <string name="anime4k_mode_toast">Anime4K: Mode %1$s</string>
-    <string name="anime4k_quality_toast">Anime4K: %1$s</string>
+    <string name="anime4k_mode_title">Anime4K Presets</string>
+    <string name="anime4k_quality_title">Anime4K Variants</string>
+    <string name="anime4k_mode_toast">Anime4K: Preset %1$s</string>
+    <string name="anime4k_quality_toast">Anime4K Variant: %1$s</string>
 
-    <!-- Anime4K Qualities -->
+    <!-- Anime4K Modes (Renamed to Presets in UI) -->
+    <string name="anime4k_mode_off">Off</string>
+    <string name="anime4k_mode_a">A</string>
+    <string name="anime4k_mode_b">B</string>
+    <string name="anime4k_mode_c">C</string>
+    <string name="anime4k_mode_a_plus">A+</string>
+    <string name="anime4k_mode_b_plus">B+</string>
+    <string name="anime4k_mode_c_plus">C+</string>
+
+    <!-- Anime4K Qualities (Renamed to Mode in UI) -->
     <string name="anime4k_quality_fast">Fast</string>
     <string name="anime4k_quality_balanced">Balanced</string>
     <string name="anime4k_quality_high">High</string>
-
-    <!-- Anime4K Modes -->
-    <string name="anime4k_mode_off">Off</string>
-    <string name="anime4k_mode_off_desc">Disabled</string>
-    <string name="anime4k_mode_a">A</string>
-    <string name="anime4k_mode_a_desc">1080p optimized</string>
-    <string name="anime4k_mode_b">B</string>
-    <string name="anime4k_mode_b_desc">720p optimized</string>
-    <string name="anime4k_mode_c">C</string>
-    <string name="anime4k_mode_c_desc">480p optimized</string>
-    <string name="anime4k_mode_a_plus">A+</string>
-    <string name="anime4k_mode_a_plus_desc">Highest quality (slower)</string>
-    <string name="anime4k_mode_b_plus">B+</string>
-    <string name="anime4k_mode_b_plus_desc">High quality (slower)</string>
-    <string name="anime4k_mode_c_plus">C+</string>
-    <string name="anime4k_mode_c_plus_desc">Improved 480p (slower)</string>
 
     <string name="pref_about_title">About</string>
     <string name="pref_about_summary">Acknowledgments, licenses</string>
@@ -357,6 +338,12 @@
     <string name="player_sheets_more_title">More</string>
     <string name="player_sheets_stats_page_title">Default statistics page</string>
     <string name="player_sheets_stats_page_chip">Page %d</string>
+    <string name="player_sheets_stats_page_0_desc">Disabled. No statistics overlaid.</string>
+    <string name="player_sheets_stats_page_1_desc">General status. CPU/GPU usage, A/V sync, dropped frames, clock speed.</string>
+    <string name="player_sheets_stats_page_2_desc">Frame timings. Decoding/Rendering time, scaler information.</string>
+    <string name="player_sheets_stats_page_3_desc">Cache stats. Buffer health, demuxer cache, seek ranges.</string>
+    <string name="player_sheets_stats_page_4_desc">Active Key Bindings. List of mapped keyboard shortcuts.</string>
+    <string name="player_sheets_stats_page_5_desc">Track List. Detailed info on Video, Audio, and Subtitle tracks.</string>
     <string name="player_speed" translatable="false">%.2fx</string>
     <string name="player_gesture_seek_indicator" translatable="false">%c%s\n[%s]</string>
 
@@ -390,6 +377,12 @@
     <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
     <string name="show_splash_ovals_on_double_tap_to_seek">Show ripple when double tap seeking</string>
     <string name="show_time_on_double_tap_to_seek">Show seek time</string>
+
+    <string name="pref_audio_channels_auto_safe_desc">Default. Safe automatic selection.</string>
+    <string name="pref_audio_channels_auto_desc">Automatic selection.</string>
+    <string name="pref_audio_channels_mono_desc">Downmix to mono.</string>
+    <string name="pref_audio_channels_stereo_desc">Downmix to stereo.</string>
+    <string name="pref_audio_channels_reverse_stereo_desc">Swap left and right channels.</string>
 
     <string name="player_sheets_frame_navigation_title">Frame Navigation</string>
     <string name="player_sheets_frame_navigation_snapshot_saved" translatable="false">Saved to Pictures/mpvSnaps</string>

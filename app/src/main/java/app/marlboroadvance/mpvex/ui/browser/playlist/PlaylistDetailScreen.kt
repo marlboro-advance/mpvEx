@@ -354,10 +354,12 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       floatingActionButton = {
         if (videoItems.isNotEmpty()) {
           FloatingActionButton(
-            modifier = Modifier.animateFloatingActionButton(
-              visible = isFabVisible.value,
-              alignment = Alignment.BottomEnd,
-            ),
+            modifier = Modifier
+              .padding(bottom = 20.dp, end = 16.dp)
+              .animateFloatingActionButton(
+                visible = isFabVisible.value,
+                alignment = Alignment.BottomEnd,
+              ),
             onClick = {
               if (playlist?.isM3uPlaylist == true) {
                 // M3U playlists: Play only the first/most recent stream (no playlist navigation)
