@@ -212,7 +212,7 @@ object SettingsSearchScreen : Screen {
                     ) {
                         itemsIndexed(
                             items = searchResults,
-                            key = { _, pref -> pref.titleRes ?: pref.title ?: pref.hashCode() }
+                            key = { index, pref -> "${pref.titleRes}_${pref.category}_${pref.screen}_$index".hashCode() }
                         ) { _, preference ->
                             SearchResultItem(
                                 preference = preference,

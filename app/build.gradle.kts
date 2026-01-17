@@ -18,7 +18,7 @@ android {
 
   defaultConfig {
     applicationId = "app.marlboroadvance.mpvex"
-    minSdk = 28
+    minSdk = 26
     targetSdk = 36
     versionCode = 127
     versionName = "1.2.7"
