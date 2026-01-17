@@ -33,6 +33,7 @@ class VideoListViewModel(
 ) : BaseBrowserViewModel(application),
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
   // Using MediaFileRepository singleton directly
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
@@ -75,8 +76,11 @@ class VideoListViewModel(
   private fun loadVideos() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
+        // Get the hidden files preference
+        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
+
         // First attempt to load videos
-        val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
+        val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
 
         // Check if folder became empty after having videos
         if (previousVideoCount > 0 && videoList.isEmpty()) {
@@ -94,7 +98,7 @@ class VideoListViewModel(
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
           triggerMediaScan()
           delay(1000)
-          val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId)
+          val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
 
           // Update count after retry
           if (previousVideoCount > 0 && retryVideoList.isEmpty()) {

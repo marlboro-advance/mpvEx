@@ -345,8 +345,8 @@ object SearchablePreferences {
                 titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
                 summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
                 keywords = listOf("thumbnail", "tap", "select", "play", "preview"),
-                category = "Gestures",
-                screen = GesturePreferencesScreen,
+                category = "Appearance",
+                screen = AppearancePreferencesScreen,
             ))
 
             // Folder preferences

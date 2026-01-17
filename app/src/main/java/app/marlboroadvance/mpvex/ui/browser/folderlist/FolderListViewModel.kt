@@ -199,12 +199,13 @@ class FolderListViewModel(
         val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
         val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
         val currentTime = System.currentTimeMillis()
+        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
         val foldersWithCounts = folders.map { folder ->
           try {
             // Get all videos in this folder
             val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
-              .getVideosInFolder(getApplication(), folder.bucketId)
+              .getVideosInFolder(getApplication(), folder.bucketId, showHiddenFiles)
 
             // Count new unplayed videos
             val newCount = videos.count { video ->

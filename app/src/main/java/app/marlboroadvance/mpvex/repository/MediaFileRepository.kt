@@ -52,10 +52,12 @@ object MediaFileRepository : KoinComponent {
   }
 
   /**
-   * Clears cache for a specific folder
+   * Clears cache for a specific folder (all variants)
    */
   fun clearCacheForFolder(bucketId: String) {
-    videosCache.remove(bucketId)
+    // Clear both cached variants (with and without hidden files)
+    videosCache.remove("$bucketId-true")
+    videosCache.remove("$bucketId-false")
     Log.d(TAG, "Cleared cache for bucket: $bucketId")
   }
 
@@ -187,14 +189,18 @@ object MediaFileRepository : KoinComponent {
    * Gets all videos in a specific folder
    * OPTIMIZED: Uses batch metadata extraction for faster loading
    * @param bucketId Can be either a path or a bucket ID (path hash)
+   * @param showHiddenFiles Whether to show hidden files
    */
   suspend fun getVideosInFolder(
     context: Context,
     bucketId: String,
+    showHiddenFiles: Boolean = true,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       // Check cache first
-      videosCache[bucketId]?.let { (cached, timestamp) ->
+      // Cache key includes showHiddenFiles to ensure different results are cached separately
+      val cacheKey = "$bucketId-$showHiddenFiles"
+      videosCache[cacheKey]?.let { (cached, timestamp) ->
         if (System.currentTimeMillis() - timestamp < CACHE_VALIDITY_MS) {
           Log.d(TAG, "Returning cached videos for bucket $bucketId (${cached.size} videos)")
           return@withContext cached
@@ -214,11 +220,11 @@ object MediaFileRepository : KoinComponent {
         if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
           Log.w(TAG, "Cannot access directory: $folderPath")
           // Return cached data even if expired on error
-          return@withContext videosCache[bucketId]?.first ?: emptyList()
+          return@withContext videosCache[cacheKey]?.first ?: emptyList()
         }
 
         val videoFiles = directory.listFiles()?.filter {
-          it.isFile && StorageScanUtils.isVideoFile(it)
+          it.isFile && StorageScanUtils.isVideoFile(it) && !StorageScanUtils.shouldSkipFile(it, showHiddenFiles)
         } ?: emptyList()
 
         Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath")
@@ -252,13 +258,13 @@ object MediaFileRepository : KoinComponent {
         val result = videos.sortedBy { it.displayName.lowercase() }
 
         // Update cache
-        videosCache[bucketId] = Pair(result, System.currentTimeMillis())
+        videosCache[cacheKey] = Pair(result, System.currentTimeMillis())
 
         result
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
         // Return cached data even if expired on error
-        return@withContext videosCache[bucketId]?.first ?: emptyList()
+        return@withContext videosCache[cacheKey]?.first ?: emptyList()
       }
     }
 
@@ -268,11 +274,12 @@ object MediaFileRepository : KoinComponent {
   suspend fun getVideosForBuckets(
     context: Context,
     bucketIds: Set<String>,
+    showHiddenFiles: Boolean = true,
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val result = mutableListOf<Video>()
       for (id in bucketIds) {
-        runCatching { result += getVideosInFolder(context, id) }
+        runCatching { result += getVideosInFolder(context, id, showHiddenFiles) }
       }
       result
     }
@@ -511,9 +518,9 @@ object MediaFileRepository : KoinComponent {
 
         // Process files in current directory
         val targetFiles = if (showAllFileTypes) {
-          files.filter { it.isFile }
+          files.filter { it.isFile && !StorageScanUtils.shouldSkipFile(it, showHiddenFiles) }
         } else {
-          files.filter { it.isFile && StorageScanUtils.isVideoFile(it) }
+          files.filter { it.isFile && StorageScanUtils.isVideoFile(it) && !StorageScanUtils.shouldSkipFile(it, showHiddenFiles) }
         }
 
         val videos = getVideosFromFiles(targetFiles)

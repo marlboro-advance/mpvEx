@@ -378,6 +378,25 @@ private val SKIP_FOLDERS = setOf(
   }
 
   /**
+   * Checks if a file should be skipped during file listing
+   * @param file The file to check
+   * @param showHiddenFiles Whether to show hidden files
+   * @return true if the file should be skipped (hidden), false otherwise
+   *
+   * When showHiddenFiles = true: Shows all files including hidden ones
+   * When showHiddenFiles = false: Hides files starting with a dot (.)
+   */
+  fun shouldSkipFile(file: File, showHiddenFiles: Boolean): Boolean {
+    // If showHiddenFiles is enabled, don't skip anything
+    if (showHiddenFiles) {
+      return false
+    }
+
+    // Skip files that start with a dot (hidden files)
+    return file.name.startsWith(".")
+  }
+
+  /**
    * Recursively scans a directory for video files
    * @param directory The directory to scan
    * @param onFolderFound Callback when a folder with videos is found
