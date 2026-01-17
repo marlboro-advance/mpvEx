@@ -5,8 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +23,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +43,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.ui.theme.AppTheme
+import app.marlboroadvance.mpvex.ui.theme.LocalThemeTransitionState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 
 /**
  * A theme preview card that displays a mini preview of the app UI with the theme's colors.
@@ -73,14 +83,37 @@ fun ThemePreviewCard(
         label = "elevation"
     )
     
+    // Get theme transition state for circular reveal animation
+    val themeTransition = LocalThemeTransitionState.current
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Track component bounds in window for converting local tap to global position
+    val boundsInWindow = remember { mutableStateOf(Rect.Zero) }
+    
     Column(
         modifier = modifier
             .width(100.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
+            .onGloballyPositioned { coordinates ->
+                boundsInWindow.value = coordinates.boundsInWindow()
+            }
+            .pointerInput(Unit) {
+                detectTapGestures { localOffset ->
+                    // Don't allow theme change if animation is in progress
+                    if (themeTransition?.isAnimating == true) return@detectTapGestures
+                    
+                    // Convert to window coordinates for the animation
+                    val windowOffset = Offset(
+                        boundsInWindow.value.left + localOffset.x,
+                        boundsInWindow.value.top + localOffset.y
+                    )
+                    themeTransition?.startTransition(windowOffset)
+                    // Delay theme change to allow overlay to display first
+                    coroutineScope.launch {
+                        delay(50)
+                        onClick()
+                    }
+                }
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Theme preview card
