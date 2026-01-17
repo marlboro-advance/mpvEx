@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -58,6 +59,7 @@ data class Release(
     @SerialName("tag_name") val tagName: String,
     @SerialName("name") val name: String,
     @SerialName("body") val body: String,
+    @SerialName("published_at") val publishedAt: String,
     @SerialName("assets") val assets: List<Asset>
 )
 
@@ -77,11 +79,18 @@ class UpdateManager(
     private val client = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun checkForUpdate(): Release? {
+    suspend fun checkForUpdate(forceShow: Boolean = false): Release? {
         val release = getLatestRelease("https://api.github.com/repos/marlboro-advance/mpvEx/releases/latest")
         val currentVersion = BuildConfig.VERSION_NAME.replace("-dev", "")
         val remoteVersion = release.tagName.removePrefix("v")
-        
+        val prefs = context.getSharedPreferences("mpvEx_prefs", Context.MODE_PRIVATE)
+        val ignoredVersion = prefs.getString("ignored_version", null)
+
+        // If this version was ignored, don't show it unless forced (manual check)
+        if (!forceShow && ignoredVersion == remoteVersion) {
+            return null
+        }
+
         return if (isNewerVersion(remoteVersion, currentVersion)) {
             release
         } else {
@@ -89,13 +98,20 @@ class UpdateManager(
         }
     }
 
-    private suspend fun getLatestRelease(url: String): Release {
+    fun ignoreVersion(version: String) {
+        val prefs = context.getSharedPreferences("mpvEx_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("ignored_version", version)
+            .apply()
+    }
+
+    private suspend fun getLatestRelease(url: String): Release = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(url).build()
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
-        
+
         val responseBody = response.body?.string() ?: throw IOException("Empty body")
-        return json.decodeFromString<Release>(responseBody)
+        json.decodeFromString<Release>(responseBody)
     }
 
     private fun isNewerVersion(remote: String, current: String): Boolean {
@@ -207,11 +223,15 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         data class ReadyToInstall(val release: Release) : UpdateState()
     }
 
+    fun dismissNoUpdate() {
+        _updateState.value = UpdateState.Idle
+    }
+
     fun checkForUpdate(manual: Boolean = false) {
         viewModelScope.launch {
             _updateState.value = UpdateState.Loading
             try {
-                val release = updateManager.checkForUpdate()
+                val release = updateManager.checkForUpdate(forceShow = manual)
                 if (release != null) {
                     val existingFile = updateManager.getApkFile(release)
                      if (existingFile != null) {
@@ -265,6 +285,13 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
     
     fun dismiss() {
+        // Clean up downloaded APK when user dismisses the dialog
+        updateManager.clearCache()
+        _updateState.value = UpdateState.Idle
+    }
+
+    fun ignoreVersion(version: String) {
+        updateManager.ignoreVersion(version)
         _updateState.value = UpdateState.Idle
     }
 }
@@ -277,80 +304,61 @@ fun UpdateDialog(
     isDownloading: Boolean,
     progress: Float,
     actionLabel: String,
+    currentVersion: String,
     onDismiss: () -> Unit,
     onAction: () -> Unit,
     onIgnore: () -> Unit
 ) {
     val downloadSize = release.assets.find { it.name.endsWith(".apk") }?.size ?: 0L
-    
+    val formattedDate = formatDate(release.publishedAt)
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { 
+        icon = {
             Icon(
                 imageVector = if (actionLabel == "Install") Icons.Filled.SystemUpdate else Icons.Filled.CloudDownload,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
-            ) 
+            )
         },
-        title = { 
-            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (actionLabel == "Install") "Ready to Install" else "New Version Available",
+                    text = if (actionLabel == "Install") "Ready to Install" else "Update Available",
                     style = MaterialTheme.typography.titleLarge
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "v${release.tagName}", 
+                    text = release.tagName.removePrefix("v"),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
         },
         text = {
-            Column {
-                if (downloadSize > 0 && !isDownloading && actionLabel != "Install") {
-                    Text(
-                        text = "Size: ${formatFileSize(downloadSize)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (actionLabel != "Install") {
+                    // Show version info for update available state
+                    InfoRow(label = "Current Version", value = currentVersion)
+                    InfoRow(label = "Latest Version", value = release.tagName.removePrefix("v"))
+                    InfoRow(label = "Release Date", value = formattedDate)
+                    InfoRow(label = "Size", value = formatFileSize(downloadSize))
                 }
 
-                androidx.compose.material3.Surface(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp, 
-                        MaterialTheme.colorScheme.outlineVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Text(
-                            text = release.body,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-                
                 if (isDownloading) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                         Text(text = "Downloading...", style = MaterialTheme.typography.bodySmall)
-                         Text(text = "${progress.toInt()}%", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "Downloading...", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "${progress.toInt()}%", style = MaterialTheme.typography.bodySmall)
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { if (progress >= 0) progress / 100f else 0f },
                         modifier = Modifier.fillMaxWidth(),
@@ -363,18 +371,20 @@ fun UpdateDialog(
         confirmButton = {
             if (!isDownloading) {
                 Button(onClick = onAction) {
-                    Text(actionLabel)
+                    Text(if (actionLabel == "Install") "Install" else "Download")
                 }
             }
         },
         dismissButton = {
             if (!isDownloading) {
                 Row {
-                    TextButton(onClick = onIgnore) {
-                        Text("Skip This Version")
+                    if (actionLabel != "Install") {
+                        TextButton(onClick = onIgnore) {
+                            Text("Ignore")
+                        }
                     }
                     TextButton(onClick = onDismiss) {
-                        Text("Not Now")
+                        Text("Cancel")
                     }
                 }
             }
@@ -382,9 +392,44 @@ fun UpdateDialog(
     )
 }
 
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
 private fun formatFileSize(size: Long): String {
     if (size <= 0) return "Unknown size"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
     val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
     return String.format("%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+}
+
+private fun formatDate(dateString: String): String {
+    return try {
+        // GitHub API returns ISO 8601 format: "2024-01-15T10:30:00Z"
+        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+        inputFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val date = inputFormat.parse(dateString) ?: return dateString
+
+        val outputFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.US)
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        dateString
+    }
 }

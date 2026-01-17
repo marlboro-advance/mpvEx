@@ -55,13 +55,15 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity.Companion.collectDeviceInfo
-import app.marlboroadvance.mpvex.ui.UpdateDialog
 import app.marlboroadvance.mpvex.ui.UpdateViewModel
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
@@ -78,13 +80,19 @@ object AboutScreen : Screen {
     val clipboardManager = LocalClipboardManager.current
     val packageManager: PackageManager = context.packageManager
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-    val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName
+    val versionName = packageInfo.versionName?.substringBefore('-') ?: packageInfo.versionName ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
 
     val updateViewModel: UpdateViewModel = viewModel(context as androidx.activity.ComponentActivity)
     val updateState by updateViewModel.updateState.collectAsState()
-    val downloadProgress by updateViewModel.downloadProgress.collectAsState()
-    val isDownloading by updateViewModel.isDownloading.collectAsState()
+
+    // Show toast when no update is available after manual check
+    LaunchedEffect(updateState) {
+        if (updateState is UpdateViewModel.UpdateState.NoUpdate) {
+            Toast.makeText(context, "Already using latest version", Toast.LENGTH_SHORT).show()
+            updateViewModel.dismissNoUpdate()
+        }
+    }
 
     Scaffold(
       topBar = {
@@ -123,33 +131,6 @@ object AboutScreen : Screen {
           ),
       )
       val cornerRadius = 28.dp
-
-      // Update Dialog
-      when (val state = updateState) {
-          is UpdateViewModel.UpdateState.Available -> {
-              UpdateDialog(
-                  release = state.release,
-                  isDownloading = isDownloading,
-                  progress = downloadProgress,
-                  actionLabel = "Update",
-                  onDismiss = { updateViewModel.dismiss() },
-                  onAction = { updateViewModel.downloadUpdate(state.release) },
-                  onIgnore = { updateViewModel.dismiss() }
-              )
-          }
-          is UpdateViewModel.UpdateState.ReadyToInstall -> {
-              UpdateDialog(
-                  release = state.release,
-                  isDownloading = false,
-                  progress = 100f,
-                  actionLabel = "Install",
-                  onDismiss = { updateViewModel.dismiss() },
-                  onAction = { updateViewModel.installUpdate(state.release) },
-                  onIgnore = { updateViewModel.dismiss() }
-              )
-          }
-          else -> {}
-      }
       
       Column(
         modifier =
