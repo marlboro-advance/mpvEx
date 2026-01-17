@@ -20,9 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardAlt
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -335,52 +333,22 @@ fun TimePickerDialog(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
       ) {
-        var currentLayoutType by rememberSaveable { mutableIntStateOf(0) }
-        
         // Header
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                  text = stringResource(R.string.timer_title), // "Sleep Timer"
-                  style = MaterialTheme.typography.labelMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                  text =
-                    stringResource(
-                      id =
-                        if (currentLayoutType == 1) {
-                          R.string.timer_picker_pick_time
-                        } else {
-                          R.string.timer_picker_enter_timer
-                        },
-                    ),
-                  style = MaterialTheme.typography.headlineSmall,
-                  color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            // Toggle Button
-             IconButton(
-                onClick = { currentLayoutType = if (currentLayoutType == 0) 1 else 0 },
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
-            Icon(
-              imageVector =
-                if (currentLayoutType ==
-                  0
-                ) {
-                  Icons.Outlined.Schedule
-                } else {
-                  Icons.Default.KeyboardAlt
-                },
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+              text = stringResource(R.string.timer_title), // "Sleep Timer"
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-          }
+            Spacer(Modifier.height(8.dp))
+            Text(
+              text = stringResource(R.string.timer_picker_enter_timer),
+              style = MaterialTheme.typography.headlineSmall,
+              color = MaterialTheme.colorScheme.onSurface
+            )
         }
 
         val state =
@@ -389,16 +357,12 @@ fun TimePickerDialog(
             (remainingTime % 3600) / 60,
             is24Hour = true,
           )
-          
+
         Box(
           contentAlignment = Alignment.Center,
           modifier = Modifier.fillMaxWidth()
         ) {
-          if (currentLayoutType == 1) {
-            TimePicker(state = state)
-          } else {
-            TimeInput(state = state)
-          }
+          TimeInput(state = state)
         }
         
         // Quick Presets
