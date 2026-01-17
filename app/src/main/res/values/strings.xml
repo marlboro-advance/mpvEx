@@ -68,18 +68,6 @@
     <string name="theme_dracula">Dracula</string>
     <string name="theme_monochrome">Monochrome</string>
 
-    <!-- Motion Preferences -->
-    <string name="pref_category_animations">Animations</string>
-    <string name="pref_motion_quality_title">Animation Quality</string>
-    <string name="pref_motion_high_quality">Fluid</string>
-    <string name="pref_motion_high_quality_desc">Smooth animations with scale effects and shared element transitions</string>
-    <string name="pref_motion_minimal">Minimal</string>
-    <string name="pref_motion_minimal_desc">Fast animations with reduced effects</string>
-    <string name="pref_motion_slide">Slide</string>
-    <string name="pref_motion_slide_desc">Clean slide transitions in/out</string>
-    <string name="pref_motion_none">Instant</string>
-    <string name="pref_motion_none_desc">Immediate transitions for accessibility or performance</string>
-
     <!-- Settings Search -->
     <string name="settings_search_hint">Search settings…</string>
     <string name="settings_search_no_results">No settings found</string>
@@ -239,7 +227,7 @@
     <string name="pref_advanced_enable_recently_played_summary">Track and display recently played videos and playlists</string>
     
     <string name="pref_advanced_features_tooltip">Enable experimental or advanced features like statistics page and Anime4K upscaling.</string>
-    <string name="pref_anime4k_title">Anime4K upscaling</string>
+    <string name="pref_anime4k_title">Anime4K upscaling (Experimental)</string>
     <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
     <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
     <string name="pref_anime4k_gpu_next_error">gpu-next is incompatible with Anime4K shaders. When Anime4K is enabled, the app will automatically use the legacy \'gpu\' backend for shader compatibility.</string>
@@ -251,32 +239,17 @@
 
     <!-- Anime4K Modes (Renamed to Presets in UI) -->
     <string name="anime4k_mode_off">Off</string>
-    <string name="anime4k_mode_off_desc">Disabled</string>
     <string name="anime4k_mode_a">A</string>
-    <string name="anime4k_mode_a_desc">Optimized for 1080p anime, older 720p/SD. High perceptual quality. Reduces blur, noise, and compression artifacts. Best for most content.</string>
     <string name="anime4k_mode_b">B</string>
-    <string name="anime4k_mode_b_desc">Optimized for 720p, 1080p downscaled. Reduces ringing, aliasing, and some blur. Good for cleaner sources.</string>
     <string name="anime4k_mode_c">C</string>
-    <string name="anime4k_mode_c_desc">Optimized for 480p, wallpapers, or pristine images. Highest PSNR. Reduces noise but might amplify ringing.</string>
     <string name="anime4k_mode_a_plus">A+</string>
-    <string name="anime4k_mode_a_plus_desc">Mode A + A. Highest perceptual quality for 1080p. Reconstructs degraded lines. Warning: Can cause severe ringing or oversharpening if used incorrectly.</string>
     <string name="anime4k_mode_b_plus">B+</string>
-    <string name="anime4k_mode_b_plus_desc">Mode B + B. High perceptual quality for cleaner sources.</string>
     <string name="anime4k_mode_c_plus">C+</string>
-    <string name="anime4k_mode_c_plus_desc">Mode C + A. Slightly higher perceptual quality than Mode C.</string>
 
     <!-- Anime4K Qualities (Renamed to Mode in UI) -->
     <string name="anime4k_quality_fast">Fast</string>
-    <string name="anime4k_quality_fast_desc">Fastest performance, decent quality</string>
     <string name="anime4k_quality_balanced">Balanced</string>
-    <string name="anime4k_quality_balanced_desc">Good balance between speed and quality</string>
     <string name="anime4k_quality_high">High</string>
-    <string name="anime4k_quality_high_desc">Best quality, requires strong GPU</string>
-    
-    <string name="pref_shader_hint_title">Shaders</string>
-    <string name="pref_shader_hint_desc">Applies post-processing shaders to the video. This can improve image quality but may increase battery usage and heat.</string>
-
-
 
     <string name="pref_about_title">About</string>
     <string name="pref_about_summary">Acknowledgments, licenses</string>
