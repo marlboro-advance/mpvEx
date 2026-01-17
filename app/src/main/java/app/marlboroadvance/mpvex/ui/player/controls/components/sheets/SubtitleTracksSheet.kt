@@ -55,7 +55,7 @@ fun SubtitlesSheet(
     },
     track = { track ->
       SubtitleTrackRow(
-        title = getTrackTitle(track, tracks),
+        title = getTrackTitle(track),
         isSelected = isSubtitleSelected(track.id),
         isExternal = track.external == true,
         onToggle = { onToggleSubtitle(track.id) },
