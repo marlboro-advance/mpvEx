@@ -319,6 +319,7 @@ data class VideoListScreen(
         onConfirm = { selectionManager.deleteSelected() },
         itemType = "video",
         itemCount = selectionManager.selectedCount,
+        itemNames = selectionManager.getSelectedItems().map { it.displayName },
       )
 
       // Rename Dialog
