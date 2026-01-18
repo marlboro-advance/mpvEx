@@ -231,6 +231,8 @@ fun PlayerSheets(
       // Observe playlist updates
       val playlist by viewModel.playlistItems.collectAsState()
 
+      val playerPreferences = koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
+
       if (playlist.isNotEmpty()) {
         val playlistImmutable = playlist.toImmutableList()
         val totalCount = viewModel.getPlaylistTotalCount()
@@ -243,6 +245,7 @@ fun PlayerSheets(
           },
           totalCount = totalCount,
           isM3UPlaylist = isM3U,
+          playerPreferences = playerPreferences,
         )
       }
     }

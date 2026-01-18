@@ -66,17 +66,19 @@ fun PlayerSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
   tonalElevation: Dp = 1.dp,
+  customMaxWidth: Dp? = null,
+  surfaceColor: Color? = null,
   content: @Composable () -> Unit,
 ) {
   val scope = rememberCoroutineScope()
   val density = LocalDensity.current
   val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
-  val maxWidth =
-    if (LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE) {
-      640.dp
-    } else {
-      420.dp
-    }
+  val maxWidth = customMaxWidth ?:
+  if (LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE) {
+    640.dp
+  } else {
+    420.dp
+  }
   val maxHeight =
     if (LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT) {
       LocalConfiguration.current.screenHeightDp.dp * .65f
@@ -158,6 +160,7 @@ fun PlayerSheet(
               .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
           ),
       shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
+      color = surfaceColor ?: MaterialTheme.colorScheme.surface,
       tonalElevation = tonalElevation,
       content = {
         BackHandler(
