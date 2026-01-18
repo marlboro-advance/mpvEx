@@ -381,11 +381,17 @@ fun PlayerControls(
         ) {
           val boostCap by audioPreferences.volumeBoostCap.collectAsState()
           val displayVolumeAsPercentage by playerPreferences.displayVolumeAsPercentage.collectAsState()
+          
+          // Show if boost is allowed (boostCap > 0) OR if we are currently boosted (> 100)
+          val currentBoost = (mpvVolume ?: 100) - 100
+          val showBoost = boostCap > 0 || currentBoost > 0
+          val effBoostCap = maxOf(boostCap, currentBoost)
+          
           VolumeSlider(
             volume,
             mpvVolume = mpvVolume ?: 100,
             range = 0..viewModel.maxVolume,
-            boostRange = if (boostCap > 0) 0..audioPreferences.volumeBoostCap.get() else null,
+            boostRange = if (showBoost) 0..effBoostCap else null,
             displayAsPercentage = displayVolumeAsPercentage,
           )
         }

@@ -209,6 +209,20 @@ class PlayerViewModel(
     // Restore repeat mode and shuffle state from preferences
     _repeatMode.value = playerPreferences.repeatMode.get()
     _shuffleEnabled.value = playerPreferences.shuffleEnabled.get()
+
+    // Observe volume boost cap changes to enforce limits dynamically (in PiP)
+    viewModelScope.launch {
+      audioPreferences.volumeBoostCap.changes().collect { cap ->
+        val maxVol = 100 + cap
+        MPVLib.setPropertyString("volume-max", maxVol.toString())
+        
+        // Clamp current volume if it exceeds the new limit
+        val currentMpvVol = MPVLib.getPropertyInt("volume") ?: 100
+        if (currentMpvVol > maxVol) {
+          MPVLib.setPropertyInt("volume", maxVol)
+        }
+      }
+    }
   }
 
   // Cached values
@@ -577,14 +591,14 @@ class PlayerViewModel(
 
   fun changeVolumeBy(change: Int) {
     val mpvVolume = MPVLib.getPropertyInt("volume")
-    val boostCap = volumeBoostCap ?: audioPreferences.volumeBoostCap.get()
+    val absoluteMaxVolume = volumeBoostCap ?: (audioPreferences.volumeBoostCap.get() + 100)
 
-    if (boostCap > 0 && currentVolume.value == maxVolume) {
+    if (absoluteMaxVolume > 100 && currentVolume.value == maxVolume) {
       if (mpvVolume == 100 && change < 0) {
         changeVolumeTo(currentVolume.value + change)
       }
       val finalMPVVolume = (mpvVolume?.plus(change))?.coerceAtLeast(100) ?: 100
-      if (finalMPVVolume in 100..(boostCap + 100)) {
+      if (finalMPVVolume in 100..absoluteMaxVolume) {
         return changeMPVVolumeTo(finalMPVVolume)
       }
     }
