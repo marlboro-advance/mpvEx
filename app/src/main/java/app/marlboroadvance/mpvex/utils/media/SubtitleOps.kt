@@ -115,7 +115,7 @@ object SubtitleOps : KoinComponent {
       val subtitles = files.filter { file ->
         !file.isDirectory &&
           isSubtitleFile(file.name) &&
-          file.name.substringBeforeLast('.').equals(baseName, ignoreCase = true)
+          file.name.substringBeforeLast('.').startsWith(baseName, ignoreCase = true)
       }
 
       if (subtitles.isEmpty()) {
