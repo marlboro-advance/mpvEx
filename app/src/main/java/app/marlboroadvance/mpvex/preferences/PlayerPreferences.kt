@@ -55,6 +55,7 @@ class PlayerPreferences(
   val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 
   val playlistMode = preferenceStore.getBoolean("playlist_mode", true)
+  val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", true)
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
 

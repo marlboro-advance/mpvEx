@@ -74,8 +74,10 @@
     <string name="settings_search_title">Search</string>
 
     <!-- Player Preferences Hardcoded -->
-    <string name="pref_autoplay_title">Autoplay</string>
-    <string name="pref_autoplay_summary">Automatically enable next/previous navigation for all videos in folder</string>
+    <string name="pref_autoplay_title">Enable next/previous navigation</string>
+    <string name="pref_autoplay_summary">Show next/previous buttons for all videos in folder</string>
+    <string name="pref_autoplay_next_video_title">Autoplay next video</string>
+    <string name="pref_autoplay_next_video_summary">Automatically play next video when current ends</string>
     <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
     <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
     <string name="pref_dynamic_speed_overlay_title">Dynamic Speed Overlay</string>
