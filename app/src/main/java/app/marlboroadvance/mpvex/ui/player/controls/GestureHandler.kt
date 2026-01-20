@@ -325,9 +325,10 @@ fun GestureHandler(
                       viewModel.handleCenterDoubleTap()
                     }
                   }
-                } else if (tapCount == 0 || timeSinceLastTap >= doubleTapTimeout) {
-                  // Single tap or timed out - start new tap sequence
+                } else if (tapCount == 0 || timeSinceLastTap >= doubleTapTimeout || lastTapRegion != region) {
+                  // Single tap, timed out, or region switch - start new tap sequence
                   tapCount = 1
+                  isDoubleTapSeeking = false
                   lastTapTime = downTime
                   lastTapPosition = downPosition
                   lastTapRegion = region
@@ -344,7 +345,7 @@ fun GestureHandler(
         }
       }
       .pointerInput(areControlsLocked, multipleSpeedGesture, seekGesture, brightnessGesture, volumeGesture) {
-        if ((!seekGesture && !brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
+        if ((!seekGesture && !brightnessGesture && !volumeGesture && multipleSpeedGesture <= 0f) || areControlsLocked) return@pointerInput
 
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)

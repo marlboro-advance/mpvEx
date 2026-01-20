@@ -60,6 +60,7 @@ import `is`.xyz.mpv.MPVLib
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
+import app.marlboroadvance.mpvex.presentation.components.RepeatingIconButton
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -144,7 +145,7 @@ fun PlaybackSpeedSheet(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
       ) {
-         FilledTonalIconButton(
+         RepeatingIconButton(
            onClick = { onSpeedChange((speed - 0.05f).coerceAtLeast(0.05f)) },
            modifier = Modifier.size(40.dp)
         ) {
@@ -162,7 +163,7 @@ fun PlaybackSpeedSheet(
             modifier = Modifier.weight(1f)
           )
           
-        FilledTonalIconButton(
+        RepeatingIconButton(
            onClick = { onSpeedChange((speed + 0.05f).coerceAtMost(10f)) },
            modifier = Modifier.size(40.dp)
         ) {

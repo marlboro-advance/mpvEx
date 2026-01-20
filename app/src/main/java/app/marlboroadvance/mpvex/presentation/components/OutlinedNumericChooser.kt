@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,8 +34,8 @@ fun OutlinedNumericChooser(
   min: Int = 0,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.RemoveCircle,
-  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.AddCircle,
+  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Remove,
+  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Add,
   valueFormatter: ((Int) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
@@ -82,7 +82,7 @@ fun OutlinedNumericChooser(
       onClick = { onChange(value + step) },
       modifier = Modifier.size(48.dp)
     ) {
-      Icon(Icons.Filled.AddCircle, null)
+      Icon(increaseIcon, null)
     }
   }
 }
@@ -97,8 +97,8 @@ fun OutlinedNumericChooser(
   min: Float = 0f,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.RemoveCircle,
-  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.AddCircle,
+  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Remove,
+  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Add,
   valueFormatter: ((Float) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
@@ -147,7 +147,7 @@ fun OutlinedNumericChooser(
       onClick = { onChange(value + step) },
       modifier = Modifier.size(48.dp)
     ) {
-      Icon(Icons.Filled.AddCircle, null)
+      Icon(increaseIcon, null)
     }
   }
 }
