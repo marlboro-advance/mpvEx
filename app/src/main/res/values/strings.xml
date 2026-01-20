@@ -167,6 +167,10 @@
     <string name="pref_gesture_double_tap_right_title">Double tap (right)</string>
     <string name="pref_gesture_use_single_tap_for_center_title">Use single tap for center gesture</string>
     <string name="pref_gesture_use_single_tap_for_center_summary">Use a single tap in the center for gestures (like play/pause) instead of a double tap.</string>
+    <string name="pref_gesture_prevent_seekbar_tap_title">Prevent Seeking on Accidental Taps</string>
+    <string name="pref_gesture_prevent_seekbar_tap_summary">Video will only seek by dragging the seekbar, not by tapping it.</string>
+    <string name="pref_gesture_use_relative_seeking_title">Use Relative Seeking</string>
+    <string name="pref_gesture_use_relative_seeking_summary">Seek relative to drag start position instead of absolute finger position.</string>
 
     <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
 

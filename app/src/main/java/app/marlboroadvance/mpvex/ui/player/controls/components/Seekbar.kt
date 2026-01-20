@@ -30,9 +30,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.collectAsState
@@ -61,6 +63,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 
 @Composable
 fun SeekbarWithTimers(
@@ -84,10 +89,18 @@ fun SeekbarWithTimers(
   // Animated position for smooth transitions
   val animatedPosition = remember { Animatable(position) }
   val scope = rememberCoroutineScope()
+  var lastInteractionTime by remember { mutableLongStateOf(0L) }
 
   // Only animate position updates when user is not interacting
-  LaunchedEffect(position, isUserInteracting) {
+  LaunchedEffect(position) {
     if (!isUserInteracting && position != animatedPosition.value) {
+      // If we recently interacted (within 2s) and the position is significantly different (>1s),
+      // assume it's the old position and ignore it to prevent "back and forth" glitches.
+      val timeSinceInteraction = System.currentTimeMillis() - lastInteractionTime
+      if (timeSinceInteraction < 2000 && kotlin.math.abs(position - animatedPosition.value) > 1f) {
+        return@LaunchedEffect
+      }
+
       scope.launch {
         animatedPosition.animateTo(
           targetValue = position,
@@ -138,6 +151,7 @@ fun SeekbarWithTimers(
             },
             onSeekFinished = {
               scope.launch { animatedPosition.snapTo(userPosition) }
+              lastInteractionTime = System.currentTimeMillis()
               isUserInteracting = false
               onValueChangeFinished()
             },
@@ -160,6 +174,7 @@ fun SeekbarWithTimers(
             },
             onSeekFinished = {
               scope.launch { animatedPosition.snapTo(userPosition) }
+              lastInteractionTime = System.currentTimeMillis()
               isUserInteracting = false
               onValueChangeFinished()
             },
@@ -182,6 +197,7 @@ fun SeekbarWithTimers(
             },
             onSeekFinished = {
               scope.launch { animatedPosition.snapTo(userPosition) }
+              lastInteractionTime = System.currentTimeMillis()
               isUserInteracting = false
               onValueChangeFinished()
             },
@@ -204,6 +220,7 @@ fun SeekbarWithTimers(
             },
             onSeekFinished = {
               scope.launch { animatedPosition.snapTo(userPosition) }
+              lastInteractionTime = System.currentTimeMillis()
               isUserInteracting = false
               onValueChangeFinished()
             },
@@ -240,6 +257,10 @@ private fun SquigglySeekbar(
 ) {
   val primaryColor = MaterialTheme.colorScheme.primary
   val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+
+  val gesturePreferences = koinInject<GesturePreferences>()
+  val preventSeekbarTap by gesturePreferences.preventSeekbarTap.collectAsState()
+  val useRelativeSeeking by gesturePreferences.useRelativeSeeking.collectAsState()
 
   // Manual Interaction State Tracking
   var isPressed by remember { mutableStateOf(false) }
@@ -305,6 +326,9 @@ private fun SquigglySeekbar(
     }
   }
 
+  val currentPosition by rememberUpdatedState(position)
+  val currentDuration by rememberUpdatedState(duration)
+
   Canvas(
     modifier =
       modifier
@@ -318,15 +342,23 @@ private fun SquigglySeekbar(
                 isPressed = false
             },
             onTap = { offset ->
-                val newPosition = (offset.x / size.width) * duration
-                onSeek(newPosition.coerceIn(0f, duration))
+                if (preventSeekbarTap) return@detectTapGestures
+                val newPosition = (offset.x / size.width) * currentDuration
+                onSeek(newPosition.coerceIn(0f, currentDuration))
                 onSeekFinished()
             }
           )
         }
         .pointerInput(Unit) {
+          var dragStartValue = 0f
+          var accumulatedDragPx = 0f
+
           detectDragGestures(
-            onDragStart = { isDragged = true },
+            onDragStart = { 
+                isDragged = true
+                dragStartValue = currentPosition
+                accumulatedDragPx = 0f
+            },
             onDragEnd = { 
                 isDragged = false
                 onSeekFinished() 
@@ -335,10 +367,20 @@ private fun SquigglySeekbar(
                 isDragged = false
                 onSeekFinished() 
             },
-          ) { change, _ ->
+          ) { change, dragAmount ->
             change.consume()
-            val newPosition = (change.position.x / size.width) * duration
-            onSeek(newPosition.coerceIn(0f, duration))
+            if (useRelativeSeeking) {
+              // Relative seeking: calculate position relative to drag start
+              accumulatedDragPx += dragAmount.x
+              if (currentDuration > 0f) {
+                val newPosition = dragStartValue + (accumulatedDragPx / size.width) * currentDuration
+                onSeek(newPosition.coerceIn(0f, currentDuration))
+              }
+            } else {
+              // Absolute seeking: use current finger position
+              val newPosition = (change.position.x / size.width) * currentDuration
+              onSeek(newPosition.coerceIn(0f, currentDuration))
+            }
           }
         },
   ) {
@@ -564,14 +606,83 @@ fun StandardSeekbar(
     val interactionSource = remember { MutableInteractionSource() }
     val thumbWidth = 6.dp
 
-    Slider(
-        value = position,
-        onValueChange = onSeek,
-        onValueChangeFinished = onSeekFinished,
-        valueRange = 0f..duration.coerceAtLeast(0.1f),
-        modifier = Modifier.fillMaxWidth(),
-        interactionSource = interactionSource,
-        track = { sliderState ->
+    val gesturePreferences = koinInject<GesturePreferences>()
+    val preventSeekbarTap by gesturePreferences.preventSeekbarTap.collectAsState()
+    val useRelativeSeeking by gesturePreferences.useRelativeSeeking.collectAsState()
+
+    val currentPosition by rememberUpdatedState(position)
+    val currentDuration by rememberUpdatedState(duration)
+
+    var isDragging by remember { mutableStateOf(false) }
+    var dragStartValue by remember { mutableFloatStateOf(0f) }
+    var accumulatedDragPx by remember { mutableFloatStateOf(0f) }
+    var userPosition by remember { mutableFloatStateOf(position) }
+    var isUserInteracting by remember { mutableStateOf(false) }
+
+    // Update userPosition when not interacting
+    if (!isUserInteracting) {
+        userPosition = position
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { offset ->
+                        if (preventSeekbarTap) return@detectTapGestures
+                        val newPosition = (offset.x / size.width) * currentDuration
+                        onSeek(newPosition.coerceIn(0f, currentDuration))
+                        onSeekFinished()
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        isUserInteracting = true
+                        dragStartValue = currentPosition
+                        accumulatedDragPx = 0f
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        isUserInteracting = false
+                        onSeekFinished()
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        isUserInteracting = false
+                        onSeekFinished()
+                    },
+                ) { change, dragAmount ->
+                    change.consume()
+                    val newPosition = if (useRelativeSeeking) {
+                        // Relative seeking: calculate position relative to drag start
+                        accumulatedDragPx += dragAmount.x
+                        if (currentDuration > 0f) {
+                            dragStartValue + (accumulatedDragPx / size.width) * currentDuration
+                        } else {
+                            currentPosition
+                        }
+                    } else {
+                        // Absolute seeking: use current finger position
+                        (change.position.x / size.width) * currentDuration
+                    }
+                    userPosition = newPosition.coerceIn(0f, currentDuration)
+                    onSeek(userPosition)
+                }
+            }
+    ) {
+        Slider(
+            value = if (isUserInteracting) userPosition else position,
+            onValueChange = { /* Handled by custom gestures */ },
+            onValueChangeFinished = { /* Handled by custom gestures */ },
+            valueRange = 0f..duration.coerceAtLeast(0.1f),
+            modifier = Modifier.fillMaxWidth(),
+            interactionSource = interactionSource,
+            enabled = false, // Disable built-in interaction
+            track = { sliderState ->
             val disabledAlpha = 0.3f
             val bufferAlpha = 0.5f
 
@@ -727,7 +838,8 @@ fun StandardSeekbar(
                     .background(primaryColor, CircleShape)
             )
         }
-    )
+        )
+    }
 }
 
 

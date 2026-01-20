@@ -267,6 +267,38 @@ object GesturePreferencesScreen : Screen {
             },
           )
 
+          val preventSeekbarTap by preferences.preventSeekbarTap.collectAsState()
+          SwitchPreference(
+            value = preventSeekbarTap,
+            onValueChange = { preferences.preventSeekbarTap.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_prevent_seekbar_tap_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_prevent_seekbar_tap_summary),
+              )
+            },
+          )
+
+          val useRelativeSeeking by preferences.useRelativeSeeking.collectAsState()
+          SwitchPreference(
+            value = useRelativeSeeking,
+            onValueChange = { preferences.useRelativeSeeking.set(it) },
+            title = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_use_relative_seeking_title),
+              )
+            },
+            summary = {
+              Text(
+                text = stringResource(id = R.string.pref_gesture_use_relative_seeking_summary),
+              )
+            },
+          )
+
           val doubleTapKeyCodes =
             listOf(
               CustomKeyCodes.DoubleTapLeft,
