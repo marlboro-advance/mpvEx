@@ -102,6 +102,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 
 @Serializable
 object MainScreen : Screen {
@@ -160,6 +161,8 @@ object MainScreen : Screen {
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
+    val useFloatingNavigation by appearancePreferences.useFloatingNavigation.collectAsState()
     
     // Check storage permission status directly in MainScreen for FAB visibility
     val hasStoragePermission = remember {
@@ -310,67 +313,94 @@ object MainScreen : Screen {
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
-        // Floating Navigation Bar - styled like Pixel Player
-        AnimatedVisibility(
-          visible = !hideNavigationBar.value,
-          enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-          exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-        ) {
-          // Get system navigation bar inset for proper spacing
-          val systemNavBarInset = WindowInsets.navigationBars
-            .asPaddingValues().calculateBottomPadding()
-          
-          Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(bottom = systemNavBarInset) // Space above system nav bar
+          // Navigation Bar Logic
+          AnimatedVisibility(
+            visible = !hideNavigationBar.value,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
           ) {
-            // Floating Surface with rounded corners and shadow
-            androidx.compose.material3.Surface(
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(90.dp)
-                .padding(horizontal = 14.dp), // Horizontal padding for floating effect
-              color = androidx.compose.material3.NavigationBarDefaults.containerColor,
-              shape = RoundedCornerShape(26.dp), // Rounded corners for pill shape
-              shadowElevation = 3.dp, // Shadow for floating effect
-              tonalElevation = 2.dp
-            ) {
-              Row(
+            if (useFloatingNavigation) {
+              // Floating Navigation Bar - styled like Pixel Player
+              // Get system navigation bar inset for proper spacing
+              val systemNavBarInset = WindowInsets.navigationBars
+                .asPaddingValues().calculateBottomPadding()
+              
+              Box(
                 modifier = Modifier
-                  .fillMaxSize()
-                  .padding(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+                  .fillMaxWidth()
+                  .padding(bottom = systemNavBarInset) // Space above system nav bar
+              ) {
+                // Floating Surface with rounded corners and shadow
+                androidx.compose.material3.Surface(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .padding(horizontal = 14.dp), // Horizontal padding for floating effect
+                  color = androidx.compose.material3.NavigationBarDefaults.containerColor,
+                  shape = RoundedCornerShape(26.dp), // Rounded corners for pill shape
+                  shadowElevation = 3.dp, // Shadow for floating effect
+                  tonalElevation = 2.dp
+                ) {
+                  Row(
+                    modifier = Modifier
+                      .fillMaxSize()
+                      .padding(horizontal = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    items.forEachIndexed { index, item ->
+                      val isSelected = selectedTab == index
+                      val selectedIcon = selectedIcons[index]
+                      val unselectedIcon = unselectedIcons[index]
+                      
+                      CustomNavigationBarItem(
+                        selected = isSelected,
+                        onClick = { selectedTab = index },
+                        icon = {
+                          Icon(
+                            imageVector = unselectedIcon,
+                            contentDescription = item
+                          )
+                        },
+                        selectedIcon = {
+                          Icon(
+                            imageVector = selectedIcon,
+                            contentDescription = item
+                          )
+                        },
+                        label = { Text(item) },
+                        contentDescription = item
+                      )
+                    }
+                  }
+                }
+              }
+            } else {
+              // Standard Navigation Bar
+              NavigationBar(
+                modifier = Modifier.fillMaxWidth(),
               ) {
                 items.forEachIndexed { index, item ->
                   val isSelected = selectedTab == index
                   val selectedIcon = selectedIcons[index]
                   val unselectedIcon = unselectedIcons[index]
                   
-                  CustomNavigationBarItem(
+                  NavigationBarItem(
                     selected = isSelected,
                     onClick = { selectedTab = index },
                     icon = {
                       Icon(
-                        imageVector = unselectedIcon,
-                        contentDescription = item
-                      )
-                    },
-                    selectedIcon = {
-                      Icon(
-                        imageVector = selectedIcon,
+                        imageVector = if (isSelected) selectedIcon else unselectedIcon,
                         contentDescription = item
                       )
                     },
                     label = { Text(item) },
-                    contentDescription = item
+                    alwaysShowLabel = true
                   )
                 }
               }
             }
           }
-        }
       },
       floatingActionButton = {
         // Only show FAB when not in selection mode, not on Network tab (index 3), and permission is granted

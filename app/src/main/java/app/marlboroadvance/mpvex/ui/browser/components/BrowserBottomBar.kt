@@ -1,11 +1,21 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -17,10 +27,16 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import org.koin.compose.koinInject
 
 @Composable
 fun BrowserBottomBar(
@@ -37,21 +53,84 @@ fun BrowserBottomBar(
   showDelete: Boolean = true,
   showAddToPlaylist: Boolean = true,
 ) {
+  val appearancePreferences = koinInject<AppearancePreferences>()
+  val useFloatingNavigation by appearancePreferences.useFloatingNavigation.collectAsState()
+
+
   AnimatedVisibility(
     visible = isSelectionMode,
-    enter = slideInVertically(initialOffsetY = { it }),
-    exit = slideOutVertically(targetOffsetY = { it }),
+    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
   ) {
-    BottomAppBar(
-      modifier = modifier,
-      containerColor = MaterialTheme.colorScheme.surfaceContainer,
-      tonalElevation = 3.dp,
-    ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+    if (useFloatingNavigation) {
+      // Floating Style
+        val systemNavBarInset = WindowInsets.navigationBars
+            .asPaddingValues().calculateBottomPadding()
+
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(bottom = systemNavBarInset) // Space above system nav bar
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .padding(horizontal = 14.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(26.dp),
+                shadowElevation = 3.dp,
+                tonalElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BrowserBottomBarContent(
+                        onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
+                        showCopy, showMove, showRename, showDelete, showAddToPlaylist
+                    )
+                }
+            }
+        }
+    } else {
+      // Standard Style
+      BottomAppBar(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 3.dp,
       ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BrowserBottomBarContent(
+                onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
+                showCopy, showMove, showRename, showDelete, showAddToPlaylist
+            )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun BrowserBottomBarContent(
+    onCopyClick: () -> Unit,
+    onMoveClick: () -> Unit,
+    onRenameClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onAddToPlaylistClick: () -> Unit,
+    showCopy: Boolean,
+    showMove: Boolean,
+    showRename: Boolean,
+    showDelete: Boolean,
+    showAddToPlaylist: Boolean
+) {
         if (showCopy) {
           IconButton(onClick = onCopyClick) {
             Icon(
@@ -104,7 +183,4 @@ fun BrowserBottomBar(
             )
           }
         }
-      }
-    }
-  }
 }

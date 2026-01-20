@@ -142,6 +142,25 @@ object AppearancePreferencesScreen : Screen {
 
                     item {
                         PreferenceCard {
+                            val useFloatingNavigation by preferences.useFloatingNavigation.collectAsState()
+                            SwitchPreference(
+                                value = useFloatingNavigation,
+                                onValueChange = { preferences.useFloatingNavigation.set(it) },
+                                title = {
+                                    Text(
+                                        text = "Use Floating Navigation",
+                                    )
+                                },
+                                summary = {
+                                    Text(
+                                        text = "Use the modern floating style for navigation bars",
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
+                            )
+
+                            PreferenceDivider()
+
                             val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
                             SwitchPreference(
                                 value = unlimitedNameLines,
