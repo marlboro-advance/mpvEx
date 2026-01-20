@@ -36,8 +36,14 @@ import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
+import kotlinx.coroutines.launch
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import app.marlboroadvance.mpvex.ui.theme.LocalThemeTransitionState
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Serializable
 object AppearancePreferencesScreen : Screen {
@@ -121,9 +127,28 @@ object AppearancePreferencesScreen : Screen {
                             PreferenceDivider()
 
                             // AMOLED mode toggle
+                            val themeTransition = app.marlboroadvance.mpvex.ui.theme.LocalThemeTransitionState.current
+                            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+                            // Track bounds for animation origin
+                            var amoledSwitchBounds by androidx.compose.runtime.remember { 
+                                androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) 
+                            }
+
                             SwitchPreference(
                                 value = amoledMode,
-                                onValueChange = { preferences.amoledMode.set(it) },
+                                onValueChange = { newValue ->
+                                    if (themeTransition != null && !themeTransition.isAnimating) {
+                                        val center = amoledSwitchBounds.center
+                                        themeTransition.startTransition(center)
+                                        
+                                        coroutineScope.launch {
+                                            kotlinx.coroutines.delay(50)
+                                            preferences.amoledMode.set(newValue)
+                                        }
+                                    } else {
+                                        preferences.amoledMode.set(newValue)
+                                    }
+                                },
                                 title = { Text(text = stringResource(id = R.string.pref_appearance_amoled_mode_title)) },
                                 summary = {
                                     Text(
@@ -131,7 +156,10 @@ object AppearancePreferencesScreen : Screen {
                                         color = MaterialTheme.colorScheme.outline,
                                     )
                                 },
-                                enabled = darkMode != DarkMode.Light
+                                enabled = darkMode != DarkMode.Light,
+                                modifier = Modifier.onGloballyPositioned {
+                                    amoledSwitchBounds = it.boundsInWindow()
+                                }
                             )
                         }
                     }

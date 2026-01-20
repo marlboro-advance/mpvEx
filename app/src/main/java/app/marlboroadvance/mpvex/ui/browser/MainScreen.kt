@@ -12,7 +12,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ProvideTextStyle
@@ -62,8 +60,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -319,11 +315,12 @@ object MainScreen : Screen {
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
           ) {
-            if (useFloatingNavigation) {
-              // Floating Navigation Bar - styled like Pixel Player
               // Get system navigation bar inset for proper spacing
               val systemNavBarInset = WindowInsets.navigationBars
                 .asPaddingValues().calculateBottomPadding()
+
+              if (useFloatingNavigation) {
+                // Floating Navigation Bar - styled like Pixel Player
               
               Box(
                 modifier = Modifier
@@ -376,27 +373,48 @@ object MainScreen : Screen {
                 }
               }
             } else {
-              // Standard Navigation Bar
-              NavigationBar(
+              androidx.compose.material3.Surface(
                 modifier = Modifier.fillMaxWidth(),
+                color = androidx.compose.material3.NavigationBarDefaults.containerColor,
+                tonalElevation = androidx.compose.material3.NavigationBarDefaults.Elevation
               ) {
-                items.forEachIndexed { index, item ->
-                  val isSelected = selectedTab == index
-                  val selectedIcon = selectedIcons[index]
-                  val unselectedIcon = unselectedIcons[index]
-                  
-                  NavigationBarItem(
-                    selected = isSelected,
-                    onClick = { selectedTab = index },
-                    icon = {
-                      Icon(
-                        imageVector = if (isSelected) selectedIcon else unselectedIcon,
-                        contentDescription = item
+                Column {
+                  Row(
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .height(80.dp) // Standard height
+                      .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    items.forEachIndexed { index, item ->
+                      val isSelected = selectedTab == index
+                      val selectedIcon = selectedIcons[index]
+                      val unselectedIcon = unselectedIcons[index]
+                      
+                      CustomNavigationBarItem(
+                        selected = isSelected,
+                        onClick = { selectedTab = index },
+                        icon = {
+                          Icon(
+                            imageVector = unselectedIcon,
+                            contentDescription = item
+                          )
+                        },
+                        selectedIcon = {
+                          Icon(
+                            imageVector = selectedIcon,
+                            contentDescription = item
+                          )
+                        },
+                        label = { Text(item) },
+                        contentDescription = item,
+                        alwaysShowLabel = true
                       )
-                    },
-                    label = { Text(item) },
-                    alwaysShowLabel = true
-                  )
+                    }
+                  }
+                  // Spacer for system navigation bar inset
+                  Spacer(modifier = Modifier.height(systemNavBarInset))
                 }
               }
             }
@@ -405,8 +423,7 @@ object MainScreen : Screen {
       floatingActionButton = {
         // Only show FAB when not in selection mode, not on Network tab (index 3), and permission is granted
         // For Folders tab (0), also check storage permission directly
-        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && 
-                           (selectedTab != 0 || currentHasPermission)
+        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && (selectedTab != 0 || currentHasPermission)
         if (shouldShowFab) {
           AnimatedVisibility(
             visible = true,
