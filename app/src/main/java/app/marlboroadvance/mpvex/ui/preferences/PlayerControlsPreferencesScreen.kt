@@ -224,6 +224,33 @@ object PlayerControlsPreferencesScreen : Screen {
             }
           }
           
+          // Bottom Controls Layout Section
+          item {
+            PreferenceSectionHeader(title = "Controls Layout")
+          }
+          
+          item {
+            val bottomControlsBelowSeekbar by playerPrefs.bottomControlsBelowSeekbar.collectAsState()
+            
+            PreferenceCard {
+              SwitchPreference(
+                value = bottomControlsBelowSeekbar,
+                onValueChange = { playerPrefs.bottomControlsBelowSeekbar.set(it) },
+                title = {
+                  Text(text = "Bottom controls below seekbar")
+                },
+                summary = {
+                  Text(
+                    text = if (bottomControlsBelowSeekbar) 
+                      "Control buttons appear below the seekbar" 
+                    else 
+                      "Control buttons appear above the seekbar"
+                  )
+                },
+              )
+            }
+          }
+          
           // Appearance Section
           item {
             PreferenceSectionHeader(title = "Appearance")

@@ -277,6 +277,8 @@ fun PlayerControls(
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
 
+        val bottomControlsBelowSeekbar by playerPreferences.bottomControlsBelowSeekbar.collectAsState()
+
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
         val brightness by viewModel.currentBrightness.collectAsState()
@@ -821,7 +823,13 @@ fun PlayerControls(
                 }
               )
               .constrainAs(seekbar) {
-                bottom.linkTo(parent.bottom, if (isPortrait) 64.dp else spacing.small)
+                if (bottomControlsBelowSeekbar && !isPortrait) {
+                  // When bottom controls are below seekbar, position seekbar above them
+                  bottom.linkTo(bottomLeftControls.top, spacing.small)
+                } else {
+                  // Normal positioning at parent bottom
+                  bottom.linkTo(parent.bottom, if (isPortrait) 64.dp else spacing.small)
+                }
                 start.linkTo(parent.start, spacing.medium)
                 end.linkTo(parent.end, spacing.medium)
               },
@@ -1033,7 +1041,13 @@ fun PlayerControls(
                 }
               )
               .constrainAs(bottomRightControls) {
-                bottom.linkTo(seekbar.top, spacing.small)
+                if (bottomControlsBelowSeekbar) {
+                  // Bottom controls at very bottom - more margin for navigation bar
+                  bottom.linkTo(parent.bottom, spacing.medium)
+                } else {
+                  // Bottom controls above seekbar
+                  bottom.linkTo(seekbar.top, spacing.small)
+                }
                 if (isPortrait) {
                   start.linkTo(parent.start, spacing.medium)
                   end.linkTo(parent.end, spacing.medium)
@@ -1112,7 +1126,13 @@ fun PlayerControls(
                 }
               )
               .constrainAs(bottomLeftControls) {
-                bottom.linkTo(seekbar.top, spacing.small)
+                if (bottomControlsBelowSeekbar) {
+                  // Bottom controls at very bottom - more margin for navigation bar
+                  bottom.linkTo(parent.bottom, spacing.medium)
+                } else {
+                  // Bottom controls above seekbar
+                  bottom.linkTo(seekbar.top, spacing.small)
+                }
                 start.linkTo(parent.start, spacing.medium)
                 width = Dimension.fillToConstraints
                 end.linkTo(bottomRightControls.start, spacing.small)
