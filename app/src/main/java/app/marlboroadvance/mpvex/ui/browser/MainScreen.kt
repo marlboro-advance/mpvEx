@@ -9,6 +9,34 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +95,9 @@ import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -279,27 +310,65 @@ object MainScreen : Screen {
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
-        // Use AnimatedVisibility to smoothly animate the navigation bar
-        // Only hide navigation bar when specifically needed (video selection operations)
+        // Floating Navigation Bar - styled like Pixel Player
         AnimatedVisibility(
           visible = !hideNavigationBar.value,
-          enter = slideInVertically(initialOffsetY = { it }), // Start from below the screen
-          exit = slideOutVertically(targetOffsetY = { it }) // Slide down off screen
+          enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+          exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
-          NavigationBar {
-              items.forEachIndexed { index, item ->
-                  NavigationBarItem(
-                      icon = {
-                          Icon(
-                              if (selectedTab == index) selectedIcons[index] else unselectedIcons[index],
-                              contentDescription = item,
-                          )
-                      },
-                      label = { Text(item) },
-                      selected = selectedTab == index,
-                      onClick = { selectedTab = index },
+          // Get system navigation bar inset for proper spacing
+          val systemNavBarInset = WindowInsets.navigationBars
+            .asPaddingValues().calculateBottomPadding()
+          
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(bottom = systemNavBarInset) // Space above system nav bar
+          ) {
+            // Floating Surface with rounded corners and shadow
+            androidx.compose.material3.Surface(
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+                .padding(horizontal = 14.dp), // Horizontal padding for floating effect
+              color = androidx.compose.material3.NavigationBarDefaults.containerColor,
+              shape = RoundedCornerShape(26.dp), // Rounded corners for pill shape
+              shadowElevation = 3.dp, // Shadow for floating effect
+              tonalElevation = 2.dp
+            ) {
+              Row(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                items.forEachIndexed { index, item ->
+                  val isSelected = selectedTab == index
+                  val selectedIcon = selectedIcons[index]
+                  val unselectedIcon = unselectedIcons[index]
+                  
+                  CustomNavigationBarItem(
+                    selected = isSelected,
+                    onClick = { selectedTab = index },
+                    icon = {
+                      Icon(
+                        imageVector = unselectedIcon,
+                        contentDescription = item
+                      )
+                    },
+                    selectedIcon = {
+                      Icon(
+                        imageVector = selectedIcon,
+                        contentDescription = item
+                      )
+                    },
+                    label = { Text(item) },
+                    contentDescription = item
                   )
+                }
               }
+            }
           }
         }
       },
@@ -672,3 +741,126 @@ object MainScreen : Screen {
     )
   }
 }
+
+// Custom Navigation Bar Item from PixelPlayer
+@Composable
+private fun RowScope.CustomNavigationBarItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+    selectedIcon: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    label: @Composable (() -> Unit)? = null,
+    contentDescription: String? = null,
+    alwaysShowLabel: Boolean = true,
+    selectedIconColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    unselectedIconColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    selectedTextColor: Color = MaterialTheme.colorScheme.onSurface,
+    unselectedTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    indicatorColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
+) {
+    // Animated colors
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) selectedIconColor else unselectedIconColor,
+        animationSpec = tween(durationMillis = 150),
+        label = "iconColor"
+    )
+
+    val textColor by animateColorAsState(
+        targetValue = if (selected) selectedTextColor else unselectedTextColor,
+        animationSpec = tween(durationMillis = 150),
+        label = "textColor"
+    )
+
+    val showLabel = label != null && (alwaysShowLabel || selected)
+
+    Column(
+        modifier = modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .clickable(
+                onClick = { if (!selected) onClick() else null },
+                enabled = enabled,
+                role = Role.Tab,
+                interactionSource = interactionSource,
+                indication = null
+            )
+            .semantics {
+                 if (contentDescription != null) {
+                     this.contentDescription = contentDescription
+                 }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(64.dp, 32.dp)
+        ) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = selected,
+                enter = fadeIn(animationSpec = tween(100)) + 
+                        scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ),
+                exit = fadeOut(animationSpec = tween(100)) +
+                        scaleOut(animationSpec = tween(100, easing = EaseInQuart))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp)
+                        .background(
+                            color = indicatorColor,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                )
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp, 24.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                CompositionLocalProvider(LocalContentColor provides iconColor) {
+                    Box(
+                        modifier = Modifier.clearAndSetSemantics {
+                            if (showLabel) {
+                                // Semantics handled at top level
+                            }
+                        }
+                    ) {
+                        if (selected) selectedIcon() else icon()
+                    }
+                }
+            }
+        }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showLabel,
+            enter = fadeIn(animationSpec = tween(200, delayMillis = 50)),
+            exit = fadeOut(animationSpec = tween(100))
+        ) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                ProvideTextStyle(
+                    value = MaterialTheme.typography.labelMedium.copy(
+                        color = textColor,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+                    )
+                ) {
+                    label?.invoke()
+                }
+            }
+        }
+    }
+}
+
+private val EaseInQuart = CubicBezierEasing(0.5f, 0f, 0.75f, 0f)
