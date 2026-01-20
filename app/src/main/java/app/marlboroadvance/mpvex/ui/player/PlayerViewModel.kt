@@ -378,7 +378,19 @@ class PlayerViewModel(
     val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
 
     when {
-      id == primarySid -> MPVLib.setPropertyString("sid", "no")
+      id == primarySid -> {
+        // Unselecting primary subtitle
+        if (secondarySid > 0) {
+          // If there's a secondary subtitle, promote it to primary
+          // First clear secondary, then set primary to that value
+          val secondaryToPromote = secondarySid
+          MPVLib.setPropertyString("secondary-sid", "no")
+          MPVLib.setPropertyInt("sid", secondaryToPromote)
+        } else {
+          // No secondary, just turn off primary
+          MPVLib.setPropertyString("sid", "no")
+        }
+      }
       id == secondarySid -> MPVLib.setPropertyString("secondary-sid", "no")
       primarySid <= 0 -> MPVLib.setPropertyInt("sid", id)
       secondarySid <= 0 -> MPVLib.setPropertyInt("secondary-sid", id)
@@ -530,6 +542,36 @@ class PlayerViewModel(
     _isSeekingForwards.value = true
     seekBy(doubleTapToSeekDuration)
     if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+  }
+
+  fun leftSubSeek() {
+    if (MPVLib.getPropertyInt("sid") != null) {
+      val pos1 = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+      MPVLib.command("sub-seek", "-1")
+
+      android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        val pos2 = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+        val diff = pos2 - pos1
+        _isSeekingForwards.value = false
+        _doubleTapSeekAmount.value += diff.toInt()
+      }, 10)
+      if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+    } else leftSeek()
+  }
+
+  fun rightSubSeek() {
+    if (MPVLib.getPropertyInt("sid") != null) {
+      val pos1 = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+      MPVLib.command("sub-seek", "1")
+
+      android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        val pos2 = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+        val diff = pos2 - pos1
+        _isSeekingForwards.value = true
+        _doubleTapSeekAmount.value += diff.toInt()
+      }, 10)
+      if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
+    } else rightSeek()
   }
 
   fun updateSeekAmount(amount: Int) {
@@ -777,6 +819,7 @@ class PlayerViewModel(
   fun handleLeftDoubleTap() {
     when (gesturePreferences.leftSingleActionGesture.get()) {
       SingleActionGesture.Seek -> leftSeek()
+      SingleActionGesture.SubSeek -> leftSubSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
       SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
         MPVLib.command("keypress", CustomKeyCodes.DoubleTapLeft.keyCode)
@@ -791,7 +834,7 @@ class PlayerViewModel(
       SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
         MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
       }
-      SingleActionGesture.Seek, SingleActionGesture.None -> {}
+      SingleActionGesture.Seek, SingleActionGesture.SubSeek, SingleActionGesture.None -> {}
     }
   }
 
@@ -801,13 +844,14 @@ class PlayerViewModel(
       SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
         MPVLib.command("keypress", CustomKeyCodes.DoubleTapCenter.keyCode)
       }
-      SingleActionGesture.Seek, SingleActionGesture.None -> {}
+      SingleActionGesture.Seek, SingleActionGesture.SubSeek, SingleActionGesture.None -> {}
     }
   }
 
   fun handleRightDoubleTap() {
     when (gesturePreferences.rightSingleActionGesture.get()) {
       SingleActionGesture.Seek -> rightSeek()
+      SingleActionGesture.SubSeek -> rightSubSeek()
       SingleActionGesture.PlayPause -> pauseUnpause()
       SingleActionGesture.Custom -> viewModelScope.launch(Dispatchers.IO) {
         MPVLib.command("keypress", CustomKeyCodes.DoubleTapRight.keyCode)

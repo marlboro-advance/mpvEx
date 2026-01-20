@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.player.TrackNode
 import app.marlboroadvance.mpvex.ui.theme.spacing
+import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -36,6 +37,8 @@ fun SubtitlesSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val primarySubtitleId = MPVLib.getPropertyInt("sid")
+  
   GenericTracksSheet(
     tracks,
     onDismissRequest = onDismissRequest,
@@ -57,6 +60,7 @@ fun SubtitlesSheet(
       SubtitleTrackRow(
         title = getTrackTitle(track),
         isSelected = isSubtitleSelected(track.id),
+        isPrimary = track.id == primarySubtitleId,
         isExternal = track.external == true,
         onToggle = { onToggleSubtitle(track.id) },
         onRemove = { onRemoveSubtitle(track.id) },
@@ -70,6 +74,7 @@ fun SubtitlesSheet(
 fun SubtitleTrackRow(
   title: String,
   isSelected: Boolean,
+  isPrimary: Boolean = false,
   isExternal: Boolean,
   onToggle: () -> Unit,
   onRemove: () -> Unit,
@@ -89,7 +94,7 @@ fun SubtitleTrackRow(
       onCheckedChange = { onToggle() },
     )
     Text(
-      title,
+      text = if (isPrimary) "$title [primary]" else title,
       fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
       modifier = Modifier.weight(1f),
     )

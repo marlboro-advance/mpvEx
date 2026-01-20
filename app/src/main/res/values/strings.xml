@@ -159,6 +159,7 @@
     <string name="pref_gesture_double_tap_title">Double tap</string>
     <string name="pref_gesture_double_tap_none">None</string>
     <string name="pref_gesture_double_tap_seek">Seek</string>
+    <string name="pref_gesture_double_tap_subseek">Seek Subtitle</string>
     <string name="pref_gesture_double_tap_play">Play/Pause</string>
     <string name="pref_gesture_double_tap_custom">Custom</string>
     <string name="pref_gesture_double_tap_left_title">Double tap (left)</string>

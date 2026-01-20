@@ -31,6 +31,7 @@ enum class SingleActionGesture(
 ) {
   None(R.string.pref_gesture_double_tap_none),
   Seek(R.string.pref_gesture_double_tap_seek),
+  SubSeek(R.string.pref_gesture_double_tap_subseek),
   PlayPause(R.string.pref_gesture_double_tap_play),
   Custom(R.string.pref_gesture_double_tap_custom),
 }
