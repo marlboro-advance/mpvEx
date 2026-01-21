@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateListOf
@@ -131,6 +132,8 @@ fun GestureHandler(
   val currentBrightness by viewModel.currentBrightness.collectAsState()
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
   val haptics = LocalHapticFeedback.current
+  val viewConfiguration = LocalViewConfiguration.current
+  val touchSlop = viewConfiguration.touchSlop
   val coroutineScope = rememberCoroutineScope()
 
   // Isolated double-tap state tracking
@@ -233,7 +236,7 @@ fun GestureHandler(
               (pointer.position.y - downPosition.y) * (pointer.position.y - downPosition.y)
             )
 
-            if (distance > 10f) {
+            if (distance > touchSlop) {
               isDrag = true
               // Don't consume - let other pointer inputs handle drag gestures
             }
@@ -386,7 +389,7 @@ fun GestureHandler(
                 (down.position.y - startPosition.y) * (down.position.y - startPosition.y)
               )
               // Only trigger if still within tap threshold
-              if (distance < 10f && multipleSpeedGesture > 0f) {
+              if (distance < touchSlop && multipleSpeedGesture > 0f) {
                 longPressTriggered = true
                 isLongPressing = true
                 longPressTriggeredDuringTouch = true
@@ -422,12 +425,12 @@ fun GestureHandler(
                   val deltaY = currentPosition.y - startPosition.y
 
                   // Determine gesture type based on initial drag direction
-                  if (gestureType == null && (abs(deltaX) > 20f || abs(deltaY) > 20f)) {
+                  if (gestureType == null && (abs(deltaX) > touchSlop || abs(deltaY) > touchSlop)) {
                     // Cancel long press if drag started
                     longPressJob.cancel()
 
                     // Check if we're in long press mode with dynamic speed control
-                    if (isLongPressing && isDynamicSpeedControlActive && showDynamicSpeedOverlay && abs(deltaX) > 10f) {
+                    if (isLongPressing && isDynamicSpeedControlActive && showDynamicSpeedOverlay && abs(deltaX) > touchSlop) {
                       gestureType = "speed_control"
                     } else {
                       gestureType = if (abs(deltaX) > abs(deltaY) * 1.5f) {
@@ -716,7 +719,7 @@ fun GestureHandler(
                 val distanceChange = abs(currentDistance - initialDistance)
 
                 // Only start zoom if movement is significant (reduces accidental zooms)
-                if (distanceChange > 10f) {
+                if (distanceChange > viewConfiguration.touchSlop) {
                   if (!isZoomGestureStarted) {
                     isZoomGestureStarted = true
                     viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
