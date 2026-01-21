@@ -113,15 +113,33 @@ object PlayerPreferencesScreen : Screen {
               
               PreferenceDivider()
               
+              val autoplayNextVideo by preferences.autoplayNextVideo.collectAsState()
+              SwitchPreference(
+                value = autoplayNextVideo,
+                onValueChange = preferences.autoplayNextVideo::set,
+                title = { Text(text = "Autoplay next video") },
+                summary = {
+                  Text(
+                    text = if (autoplayNextVideo)
+                      "Automatically play next video when current ends"
+                    else
+                      "Stay on current video when it ends",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+              
+              PreferenceDivider()
+              
               val playlistMode by preferences.playlistMode.collectAsState()
               SwitchPreference(
                 value = playlistMode,
                 onValueChange = preferences.playlistMode::set,
-                title = { Text(text = "Autoplay") },
+                title = { Text(text = "Enable next/previous navigation") },
                 summary = {
                   Text(
                     text = if (playlistMode)
-                      "Automatically enable next/previous navigation for all videos in folder"
+                      "Show next/previous buttons for all videos in folder"
                     else
                       "Play videos individually (select multiple for playlist)",
                     color = MaterialTheme.colorScheme.outline,

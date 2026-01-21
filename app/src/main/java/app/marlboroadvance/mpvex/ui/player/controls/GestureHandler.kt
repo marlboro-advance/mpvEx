@@ -1,22 +1,29 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -25,18 +32,23 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.key
@@ -62,11 +74,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
 import `is`.xyz.mpv.MPVLib
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
+import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.components.LeftSideOvalShape
@@ -76,8 +85,13 @@ import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.SingleActionGesture
 import app.marlboroadvance.mpvex.ui.theme.playerRippleConfiguration
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.abs
+import kotlin.math.ln
+import kotlin.math.sqrt
 
 @Suppress("CyclomaticComplexMethod", "MultipleEmitters")
 @Composable
@@ -88,7 +102,7 @@ fun GestureHandler(
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
-  val gesturePreferences = koinInject<app.marlboroadvance.mpvex.preferences.GesturePreferences>()
+  val gesturePreferences = koinInject<GesturePreferences>()
   val panelShown by viewModel.panelShown.collectAsState()
   val allowGesturesInPanels by playerPreferences.allowGesturesInPanels.collectAsState()
   val paused by MPVLib.propBoolean["pause"].collectAsState()
@@ -140,7 +154,7 @@ fun GestureHandler(
   var lastTapRegion by remember { mutableStateOf<String?>(null) }
   var pendingSingleTapRegion by remember { mutableStateOf<String?>(null) }
   var pendingSingleTapPosition by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
-  val doubleTapTimeout = 300L
+  val doubleTapTimeout = 250L
   val multiTapContinueWindow = 650L
 
   // Multi-tap seeking state
@@ -187,17 +201,6 @@ fun GestureHandler(
     }
   }
 
-  LaunchedEffect(seekAmount) {
-    if (seekAmount != 0) {
-      delay(800)
-      isDoubleTapSeeking = false
-      viewModel.updateSeekAmount(0)
-      viewModel.updateSeekText(null)
-      delay(100)
-      viewModel.hideSeekBar()
-    }
-  }
-
   Box(
     modifier = modifier
       .fillMaxSize()
@@ -228,7 +231,7 @@ fun GestureHandler(
             val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
 
             // Check if this is a drag (not a tap)
-            val distance = kotlin.math.sqrt(
+            val distance = sqrt(
               (pointer.position.x - downPosition.x) * (pointer.position.x - downPosition.x) +
               (pointer.position.y - downPosition.y) * (pointer.position.y - downPosition.y)
             )
@@ -242,7 +245,7 @@ fun GestureHandler(
               // Pointer lifted - this is a tap if it wasn't a drag
               if (!isDrag && !wasConsumedByTapGesture) {
                 val timeSinceLastTap = downTime - lastTapTime
-                val positionChange = kotlin.math.sqrt(
+                val positionChange = sqrt(
                   (downPosition.x - lastTapPosition.x) * (downPosition.x - lastTapPosition.x) +
                   (downPosition.y - lastTapPosition.y) * (downPosition.y - lastTapPosition.y)
                 )
@@ -380,7 +383,7 @@ fun GestureHandler(
           var longPressJob = coroutineScope.launch {
             delay(longPressDelay)
             if (!longPressTriggered && !wasPlayerAlreadyPause && paused == false) {
-              val distance = kotlin.math.sqrt(
+              val distance = sqrt(
                 (down.position.x - startPosition.x) * (down.position.x - startPosition.x) +
                 (down.position.y - startPosition.y) * (down.position.y - startPosition.y)
               )
@@ -480,7 +483,7 @@ fun GestureHandler(
                         val deltaX = currentPosition.x - dynamicSpeedStartX
                         val swipeDetectionThreshold = 10.dp.toPx()
 
-                        if (!hasSwipedEnough && kotlin.math.abs(deltaX) >= swipeDetectionThreshold) {
+                        if (!hasSwipedEnough && abs(deltaX) >= swipeDetectionThreshold) {
                           hasSwipedEnough = true
                           viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed, true) }
                         }
@@ -490,13 +493,13 @@ fun GestureHandler(
                           val indexDelta = (deltaX / screenWidth) * presetsRange * 3.5f
 
                           val startIndex = speedPresets.indexOfFirst {
-                            kotlin.math.abs(it - dynamicSpeedStartValue) < 0.01f
+                            abs(it - dynamicSpeedStartValue) < 0.01f
                           }.takeIf { it >= 0 } ?: 4
 
                           val newIndex = (startIndex + indexDelta.toInt()).coerceIn(0, speedPresets.size - 1)
                           val newSpeed = speedPresets[newIndex]
 
-                          if (kotlin.math.abs(lastAppliedSpeed - newSpeed) > 0.01f) {
+                          if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             lastAppliedSpeed = newSpeed
                             MPVLib.setPropertyFloat("speed", newSpeed)
@@ -700,7 +703,7 @@ fun GestureHandler(
                 val pointer2 = pointers[1].position
 
                 // Calculate distance between two fingers
-                val currentDistance = kotlin.math.sqrt(
+                val currentDistance = sqrt(
                   ((pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
                     (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
                 ).toFloat()
@@ -724,7 +727,7 @@ fun GestureHandler(
                   if (initialDistance > 0) {
                     // Calculate zoom based on distance ratio
                     val zoomScale = currentDistance / initialDistance
-                    val zoomDelta = kotlin.math.ln(zoomScale.toDouble()).toFloat() * 1.5f
+                    val zoomDelta = ln(zoomScale.toDouble()).toFloat() * 1.5f
                     val newZoom = (zoom + zoomDelta).coerceIn(-2f, 3f)
                     viewModel.setVideoZoom(newZoom)
                   }
@@ -754,7 +757,7 @@ fun DoubleTapToSeekOvals(
   interactionSource: MutableInteractionSource,
   modifier: Modifier = Modifier,
 ) {
-  val gesturePreferences = koinInject<app.marlboroadvance.mpvex.preferences.GesturePreferences>()
+  val gesturePreferences = koinInject<GesturePreferences>()
   val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   val seekAreaFraction = doubleTapSeekAreaWidth / 100f
   
@@ -764,7 +767,7 @@ fun DoubleTapToSeekOvals(
   var scaleTarget by remember { mutableStateOf(1f) }
   val scale by animateFloatAsState(
       targetValue = scaleTarget,
-      animationSpec = androidx.compose.animation.core.tween(durationMillis = 150),
+      animationSpec = tween(durationMillis = 150),
       label = "text_scale"
   )
   
@@ -812,7 +815,7 @@ fun DoubleTapToSeekOvals(
                     Text(
                         text = "- ${abs(amount)}",
                         fontSize = 22.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         color = Color.White,
                         modifier = Modifier.scale(scale)
@@ -821,7 +824,7 @@ fun DoubleTapToSeekOvals(
                     Text(
                         text = "+ ${abs(amount)}",
                         fontSize = 22.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         color = Color.White,
                         modifier = Modifier.scale(scale)

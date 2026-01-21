@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -31,7 +32,7 @@ import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import org.koin.compose.koinInject
 import kotlin.math.pow
 import androidx.compose.ui.platform.LocalContext
@@ -67,7 +68,7 @@ fun FolderCard(
   Card(
     modifier = modifier
       .fillMaxWidth()
-      . debouncedCombinedClickable(
+      .combinedClickable(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
@@ -108,7 +109,7 @@ fun FolderCard(
             .height(thumbHeightDp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onThumbClick,
               onLongClick = onLongClick,
             ),
@@ -178,7 +179,7 @@ fun FolderCard(
               .size(64.dp)
               .clip(RoundedCornerShape(12.dp))
               .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-              .debouncedCombinedClickable(
+              .combinedClickable(
                 onClick = onThumbClick,
                 onLongClick = onLongClick,
               ),
@@ -235,15 +236,17 @@ fun FolderCard(
           } else {
             Spacer(modifier = Modifier.height(4.dp))
           }
-          Row {
+          FlowRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+          ) {
             // Render custom chip content first if provided
             var hasChip = false
           if (customChipContent != null) {
             customChipContent()
             hasChip = true
-            Spacer(modifier = Modifier.width(4.dp))
           }
-          
+
           // Hide chips at storage root level (when videoCount is 0)
             if (showTotalVideosChip && folder.videoCount > 0) {
               Text(
@@ -262,9 +265,6 @@ fun FolderCard(
             }
 
             if (showTotalSizeChip && folder.totalSize > 0) {
-              if (hasChip) {
-                Spacer(modifier = Modifier.width(4.dp))
-              }
               Text(
                 formatFileSize(folder.totalSize),
                 style = MaterialTheme.typography.labelSmall,
@@ -281,9 +281,6 @@ fun FolderCard(
             }
 
             if (showTotalDurationChip && folder.totalDuration > 0) {
-              if (hasChip) {
-                Spacer(modifier = Modifier.width(4.dp))
-              }
               Text(
                 formatDuration(folder.totalDuration),
                 style = MaterialTheme.typography.labelSmall,
@@ -300,9 +297,6 @@ fun FolderCard(
             }
 
             if (showDateModified && folder.lastModified > 0) {
-              if (hasChip) {
-                Spacer(modifier = Modifier.width(4.dp))
-              }
               Text(
                 formatDate(folder.lastModified),
                 style = MaterialTheme.typography.labelSmall,

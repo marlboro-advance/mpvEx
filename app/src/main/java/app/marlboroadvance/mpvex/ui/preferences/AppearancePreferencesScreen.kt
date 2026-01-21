@@ -38,6 +38,8 @@ import me.zhanghai.compose.preference.SliderPreference
 import me.zhanghai.compose.preference.SwitchPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Serializable
 object AppearancePreferencesScreen : Screen {
@@ -123,7 +125,9 @@ object AppearancePreferencesScreen : Screen {
                             // AMOLED mode toggle
                             SwitchPreference(
                                 value = amoledMode,
-                                onValueChange = { preferences.amoledMode.set(it) },
+                                onValueChange = { newValue ->
+                                    preferences.amoledMode.set(newValue)
+                                },
                                 title = { Text(text = stringResource(id = R.string.pref_appearance_amoled_mode_title)) },
                                 summary = {
                                     Text(

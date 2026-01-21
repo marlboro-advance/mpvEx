@@ -46,30 +46,28 @@ fun PlaylistCard(
 
   // Create a custom chip renderer for playlist type
   val customChipRenderer: @Composable () -> Unit = {
-    androidx.compose.foundation.layout.Row {
-      // Add the playlist type chip (Network or Local)
-      val chipText = if (playlist.isM3uPlaylist) "Network" else "Local"
-      
-      // Use Material Design theme colors
-      val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
-      val (chipColor, chipBgColor) = if (playlist.isM3uPlaylist) {
-        Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
-      } else {
-        Pair(materialTheme.primary, materialTheme.primaryContainer)
-      }
-        
-      androidx.compose.material3.Text(
-        text = chipText,
-        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-        modifier = Modifier
-          .background(
-            chipBgColor,
-            androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-          )
-          .padding(horizontal = 8.dp, vertical = 4.dp),
-        color = chipColor,
-      )
+    // Add the playlist type chip (Network or Local)
+    val chipText = if (playlist.isM3uPlaylist) "Network" else "Local"
+
+    // Use Material Design theme colors
+    val materialTheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val (chipColor, chipBgColor) = if (playlist.isM3uPlaylist) {
+      Pair(materialTheme.tertiary, materialTheme.tertiaryContainer)
+    } else {
+      Pair(materialTheme.primary, materialTheme.primaryContainer)
     }
+
+    androidx.compose.material3.Text(
+      text = chipText,
+      style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+      modifier = Modifier
+        .background(
+          chipBgColor,
+          androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+        )
+        .padding(horizontal = 8.dp, vertical = 4.dp),
+      color = chipColor,
+    )
   }
 
   // Use the FolderCard component with playlist-specific customizations

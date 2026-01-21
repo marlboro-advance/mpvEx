@@ -2,7 +2,7 @@ package app.marlboroadvance.mpvex.presentation.components
 
 import android.view.MotionEvent
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,22 +22,22 @@ fun RepeatingIconButton(
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
   interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-  maxDelayMillis: Long = 500,
-  minDelayMillis: Long = 50,
-  delayDecayFactor: Float = .15f,
+  maxDelayMillis: Long = 300,
+  minDelayMillis: Long = 20,
+  delayDecayFactor: Float = .25f,
   content: @Composable () -> Unit,
 ) {
   val currentClickListener by rememberUpdatedState(onClick)
   var pressed by remember { mutableStateOf(false) }
 
-  IconButton(
+  FilledTonalIconButton(
     modifier =
       modifier.pointerInteropFilter {
         pressed =
           when (it.action) {
-            MotionEvent.ACTION_DOWN -> true
-
-            else -> false
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> true
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> false
+            else -> pressed
           }
 
         true

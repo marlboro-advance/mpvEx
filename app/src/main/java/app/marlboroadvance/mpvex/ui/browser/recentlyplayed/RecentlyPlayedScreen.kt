@@ -1,10 +1,19 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -13,12 +22,34 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.animateFloatingActionButton
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -39,6 +71,7 @@ import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.MediaLayoutMode
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
@@ -47,14 +80,17 @@ import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserNavigationDrawer
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
+import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.LazyColumnScrollbar
@@ -81,6 +117,15 @@ object RecentlyPlayedScreen : Screen {
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
+    // FAB visibility for scroll-based hiding
+    val isFabVisible = remember { mutableStateOf(true) }
+    val isFabExpanded = remember { mutableStateOf(false) }
+    val showLinkDialog = remember { mutableStateOf(false) }
+
+    // Navigation drawer state
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
+    
     // Selection manager for all items (videos and playlists)
     val selectionManager =
       rememberSelectionManager(
@@ -118,39 +163,173 @@ object RecentlyPlayedScreen : Screen {
         onOperationComplete = { },
       )
 
-    // Handle back button during selection mode
-    BackHandler(enabled = selectionManager.isInSelectionMode) {
-      selectionManager.clear()
+    // Handle back button during selection mode or FAB menu expanded
+    BackHandler(enabled = selectionManager.isInSelectionMode || isFabExpanded.value) {
+      when {
+        isFabExpanded.value -> isFabExpanded.value = false
+        selectionManager.isInSelectionMode -> selectionManager.clear()
+      }
+    }
+    
+    // File picker for opening external files
+    val filePicker = rememberLauncherForActivityResult(
+      contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+      uri?.let {
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            it,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+          )
+        }
+        MediaUtils.playFile(it.toString(), context, "open_file")
+      }
     }
 
-    Scaffold(
-      topBar = {
-        BrowserTopBar(
-          title = "Recently Played",
-          isInSelectionMode = selectionManager.isInSelectionMode,
-          selectedCount = selectionManager.selectedCount,
-          totalCount = recentItems.size,
-          onBackClick = null, // No back button for recently played screen
-          onCancelSelection = { selectionManager.clear() },
-          onSortClick = null, // No sorting in recently played
-          isSingleSelection = selectionManager.isSingleSelection,
-          onInfoClick = null, // No info in recently played
-          onShareClick = null,
-          onPlayClick = null,
-          onSelectAll = { selectionManager.selectAll() },
-          onInvertSelection = { selectionManager.invertSelection() },
-          onDeselectAll = { selectionManager.clear() },
-          onDeleteClick = { deleteDialogOpen.value = true },
-        )
+    // Track scroll for FAB visibility
+    val listState = LocalLazyListState.current
+    val gridState = LocalLazyGridState.current
+    val browserPreferences = koinInject<BrowserPreferences>()
+    val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+    app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
+      listState = listState,
+      gridState = if (mediaLayoutMode == MediaLayoutMode.GRID) gridState else null,
+      isFabVisible = isFabVisible,
+      expanded = isFabExpanded.value,
+      onExpandedChange = { isFabExpanded.value = it },
+    )
+
+    BrowserNavigationDrawer(
+      drawerState = drawerState,
+      onHomeClick = {
+        // Navigate to the default home screen based on user preference
+        val folderViewMode = browserPreferences.folderViewMode.get()
+        when (folderViewMode) {
+          app.marlboroadvance.mpvex.preferences.FolderViewMode.FileManager -> {
+            backStack.add(app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen)
+          }
+          app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView -> {
+            backStack.add(app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen)
+          }
+        }
       },
+      onRecentlyPlayedClick = { /* Already on recently played screen */ },
+      onPlaylistsClick = {
+        backStack.add(app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistScreen)
+      },
+      onNetworkStreamingClick = {
+        backStack.add(app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen)
+      },
+      onSettingsClick = {
+        backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+      },
+      currentRoute = "recently_played",
+    ) {
+      Scaffold(
+        topBar = {
+          BrowserTopBar(
+            title = "Recently Played",
+            isInSelectionMode = selectionManager.isInSelectionMode,
+            selectedCount = selectionManager.selectedCount,
+            totalCount = recentItems.size,
+            onBackClick = null, // No back button for recently played screen
+            onNavigationClick = { coroutineScope.launch { drawerState.open() } },
+            onCancelSelection = { selectionManager.clear() },
+            onSortClick = null, // No sorting in recently played
+            isSingleSelection = selectionManager.isSingleSelection,
+            onInfoClick = null, // No info in recently played
+            onShareClick = null,
+            onPlayClick = null,
+            onSelectAll = { selectionManager.selectAll() },
+            onInvertSelection = { selectionManager.invertSelection() },
+            onDeselectAll = { selectionManager.clear() },
+            onDeleteClick = { deleteDialogOpen.value = true },
+          )
+        },
+      floatingActionButton = {
+        FloatingActionButtonMenu(
+          modifier = Modifier
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.systemBars),
+          expanded = isFabExpanded.value,
+          button = {
+            TooltipBox(
+              positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                if (isFabExpanded.value) {
+                  TooltipAnchorPosition.Start
+                } else {
+                  TooltipAnchorPosition.Above
+                }
+              ),
+              tooltip = { PlainTooltip { Text("Toggle menu") } },
+              state = rememberTooltipState(),
+            ) {
+              ToggleFloatingActionButton(
+                modifier = Modifier
+                  .animateFloatingActionButton(
+                    visible = !selectionManager.isInSelectionMode && isFabVisible.value,
+                    alignment = Alignment.BottomEnd,
+                  ),
+                checked = isFabExpanded.value,
+                onCheckedChange = { isFabExpanded.value = !isFabExpanded.value },
+              ) {
+                val imageVector by remember {
+                  derivedStateOf {
+                    if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+                  }
+                }
+                Icon(
+                  painter = rememberVectorPainter(imageVector),
+                  contentDescription = null,
+                  modifier = Modifier.animateIcon({ checkedProgress }),
+                )
+              }
+            }
+          },
+        ) {
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              filePicker.launch(arrayOf("video/*"))
+            },
+            icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+            text = { Text(text = "Open File") },
+          )
+          
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              val firstItem = recentItems.firstOrNull()
+              when (firstItem) {
+                is RecentlyPlayedItem.VideoItem -> {
+                  MediaUtils.playFile(firstItem.video, context, "recently_played")
+                }
+                is RecentlyPlayedItem.PlaylistItem -> {
+                  backStack.add(app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen(firstItem.playlist.id))
+                }
+                null -> {}
+              }
+            },
+            icon = { Icon(Icons.Filled.History, contentDescription = null) },
+            text = { Text(text = "Recently Played") },
+          )
+          
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              showLinkDialog.value = true
+            },
+            icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+            text = { Text(text = "Open Link") },
+          )
+        }
+      }
     ) { padding ->
       when {
         !enableRecentlyPlayed -> {
           Box(
             modifier = Modifier
               .fillMaxSize()
-              .padding(padding)
-              .padding(bottom = 80.dp), // Account for bottom navigation bar
+              .padding(padding),
             contentAlignment = Alignment.Center,
           ) {
             EmptyState(
@@ -179,8 +358,7 @@ object RecentlyPlayedScreen : Screen {
           Box(
             modifier = Modifier
               .fillMaxSize()
-              .padding(padding)
-              .padding(bottom = 80.dp), // Account for bottom navigation bar
+              .padding(padding),
             contentAlignment = Alignment.Center,
           ) {
             EmptyState(
@@ -206,6 +384,7 @@ object RecentlyPlayedScreen : Screen {
               backStack.add(PlaylistDetailScreen(playlistItem.playlist.id))
             },
             modifier = Modifier.padding(padding),
+            isInSelectionMode = selectionManager.isInSelectionMode,
           )
         }
       }
@@ -265,6 +444,14 @@ object RecentlyPlayedScreen : Screen {
           },
         )
       }
+      
+      // Link dialog
+      PlayLinkSheet(
+        isOpen = showLinkDialog.value,
+        onDismiss = { showLinkDialog.value = false },
+        onPlayLink = { url -> MediaUtils.playFile(url, context, "play_link") },
+      )
+    }
     }
   }
 }
@@ -277,6 +464,7 @@ private fun RecentItemsContent(
   onVideoClick: (Video) -> Unit,
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
+  isInSelectionMode: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
@@ -351,13 +539,16 @@ private fun RecentItemsContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = Modifier.padding(bottom = 80.dp),
       ) {
         LazyVerticalGrid(
           columns = GridCells.Fixed(videoGridColumns),
           state = gridState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+          contentPadding = PaddingValues(
+            start = 8.dp,
+            end = 8.dp,
+            bottom = if (isInSelectionMode) 88.dp else 0.dp
+          ),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -454,12 +645,15 @@ private fun RecentItemsContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = Modifier.padding(bottom = 80.dp),
       ) {
         LazyColumn(
           state = listState,
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+          contentPadding = PaddingValues(
+            start = 8.dp,
+            end = 8.dp,
+            bottom = if (isInSelectionMode) 88.dp else 0.dp
+          ),
         ) {
           items(
             count = recentItems.size,

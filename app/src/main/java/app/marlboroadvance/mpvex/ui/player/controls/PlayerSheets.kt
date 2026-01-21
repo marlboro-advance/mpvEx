@@ -27,6 +27,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import org.koin.compose.koinInject
 import androidx.compose.runtime.collectAsState as composeCollectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @Composable
 fun PlayerSheets(
@@ -75,22 +78,40 @@ fun PlayerSheets(
           if (it == null) return@rememberLauncherForActivityResult
           onAddSubtitle(it)
         }
+
+      var showFilePicker by remember { mutableStateOf(false) }
+
+      if (showFilePicker) {
+          app.marlboroadvance.mpvex.ui.browser.dialogs.FilePickerDialog(
+              isOpen = true,
+              onDismiss = { showFilePicker = false },
+              onFileSelected = { path ->
+                  showFilePicker = false
+                   onAddSubtitle(Uri.parse("file://$path"))
+              },
+              onSystemPickerRequest = {
+                  showFilePicker = false
+                  subtitlesPicker.launch(
+                    arrayOf(
+                      "text/plain",
+                      "text/srt",
+                      "text/vtt",
+                      "application/x-subrip",
+                      "application/x-subtitle",
+                      "text/x-ssa",
+                      "*/*",
+                    ),
+                  )
+              }
+          )
+      }
+
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
         isSubtitleSelected = isSubtitleSelected,
         onAddSubtitle = {
-          subtitlesPicker.launch(
-            arrayOf(
-              "text/plain",
-              "text/srt",
-              "text/vtt",
-              "application/x-subrip",
-              "application/x-subtitle",
-              "text/x-ssa",
-              "*/*", // Fallback for systems that don't recognize subtitle MIME types
-            ),
-          )
+             showFilePicker = true
         },
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },

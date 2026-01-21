@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import org.koin.compose.koinInject
 
 @Composable
@@ -47,7 +47,7 @@ fun NetworkFolderCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .debouncedCombinedClickable(
+        .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),
@@ -69,7 +69,7 @@ fun NetworkFolderCard(
             .size(64.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onClick,
               onLongClick = onLongClick,
             ),

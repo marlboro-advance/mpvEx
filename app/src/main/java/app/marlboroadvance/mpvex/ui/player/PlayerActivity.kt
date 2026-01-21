@@ -1449,7 +1449,10 @@ class PlayerActivity :
           playlistIndex < playlist.size - 1
         }
 
-        if (hasNextItem) {
+        // Check if autoplay next video is enabled
+        val autoplayEnabled = playerPreferences.autoplayNextVideo.get()
+
+        if (hasNextItem && autoplayEnabled) {
           // Play next item in playlist
           playNext()
         } else if (viewModel.shouldRepeatPlaylist()) {
@@ -1466,9 +1469,10 @@ class PlayerActivity :
             loadPlaylistItem(0)
           }
         } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
-          // No repeat, end of playlist: close if setting is enabled
+          // No autoplay or no next item, end of playlist: close if setting is enabled
           finishAndRemoveTask()
         }
+        // If autoplay is off and closeAfterReachingEndOfVideo is off, just stay on current video
       } else {
         // Single video playback (no playlist)
         if (playerPreferences.closeAfterReachingEndOfVideo.get()) {

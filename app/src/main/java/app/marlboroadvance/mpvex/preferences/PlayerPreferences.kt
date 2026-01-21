@@ -55,11 +55,15 @@ class PlayerPreferences(
   val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 
   val playlistMode = preferenceStore.getBoolean("playlist_mode", true)
+  val playlistViewMode = preferenceStore.getBoolean("playlist_view_mode_list", true) // true = list, false = grid
 
   val useWavySeekbar = preferenceStore.getBoolean("use_wavy_seekbar", true)
 
   val repeatMode = preferenceStore.getEnum("repeat_mode", RepeatMode.OFF)
   val shuffleEnabled = preferenceStore.getBoolean("shuffle_enabled", false)
+
+  // New: autoplay next video when current file ends
+  val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", false)
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
 }

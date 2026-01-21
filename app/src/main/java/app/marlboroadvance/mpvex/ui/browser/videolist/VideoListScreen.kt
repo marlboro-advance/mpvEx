@@ -3,10 +3,15 @@ package app.marlboroadvance.mpvex.ui.browser.videolist
 import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
-import androidx. compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,7 +38,12 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.animateFloatingActionButton
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
@@ -85,7 +95,6 @@ import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper
-import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -230,7 +239,73 @@ data class VideoListScreen(
           onDeselectAll = { selectionManager.clear() },
         )
       },
-      bottomBar = {
+      floatingActionButton = {
+        if (sortedVideosWithInfo.isNotEmpty()) {
+          TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip { Text("Play recently played or first video") } },
+            state = rememberTooltipState(),
+          ) {
+            FloatingActionButton(
+              modifier = Modifier
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(bottom = 16.dp, end = 16.dp)
+                .animateFloatingActionButton(
+                  visible = !selectionManager.isInSelectionMode && isFabVisible.value,
+                  alignment = Alignment.BottomEnd,
+                ),
+              onClick = {
+                coroutineScope.launch {
+                  val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
+                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
+                  val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
+                    File(it.filePath).parent == folderPath
+                  }
+
+                  if (lastPlayedInFolder != null) {
+                    MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                  } else {
+                    MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
+                  }
+                }
+              },
+            ) {
+              Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video")
+            }
+          }
+        }
+      }
+    ) { padding ->
+      val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
+      
+      Box(modifier = Modifier.fillMaxSize()) {
+        VideoListContent(
+          folderId = bucketId,
+          videosWithInfo = sortedVideosWithInfo,
+          isLoading = isLoading && videos.isEmpty(),
+          isRefreshing = isRefreshing,
+          recentlyPlayedFilePath = recentlyPlayedFilePath,
+          videosWereDeletedOrMoved = videosWereDeletedOrMoved,
+          autoScrollToLastPlayed = autoScrollToLastPlayed,
+          onRefresh = { viewModel.refresh() },
+          selectionManager = selectionManager,
+          onVideoClick = { video ->
+            if (selectionManager.isInSelectionMode) {
+              selectionManager.toggle(video)
+            } else {
+              // Always use MediaUtils.playFile which lets PlayerActivity auto-generate playlist
+              // This avoids TransactionTooLargeException from passing large playlists
+              // PlayerActivity will auto-generate playlist from folder if playlistMode is enabled
+              MediaUtils.playFile(video, context, "video_list")
+            }
+          },
+          onVideoLongClick = { video -> selectionManager.toggle(video) },
+          isFabVisible = isFabVisible,
+          modifier = Modifier.padding(padding),
+          isInSelectionMode = selectionManager.isInSelectionMode,
+        )
+        
+        // Floating Material 3 Button Group overlay
         BrowserBottomBar(
           isSelectionMode = selectionManager.isInSelectionMode,
           onCopyClick = {
@@ -245,64 +320,9 @@ data class VideoListScreen(
           onDeleteClick = { deleteDialogOpen.value = true },
           onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
           showRename = selectionManager.isSingleSelection,
+          modifier = Modifier.align(Alignment.BottomCenter)
         )
-      },
-      floatingActionButton = {
-        if (sortedVideosWithInfo.isNotEmpty()) {
-          FloatingActionButton(
-            modifier = Modifier
-              .padding(bottom = 20.dp, end = 16.dp)
-              .animateFloatingActionButton(
-                visible = isFabVisible.value && !selectionManager.isInSelectionMode,
-                alignment = Alignment.BottomEnd,
-              ),
-            onClick = {
-              coroutineScope.launch {
-                val folderPath = sortedVideosWithInfo.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
-                val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
-                val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
-                  File(it.filePath).parent == folderPath
-                }
-
-                if (lastPlayedInFolder != null) {
-                  MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
-                } else {
-                  MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
-                }
-              }
-            },
-          ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video", modifier = Modifier.size(32.dp))
-          }
-        }
       }
-    ) { padding ->
-      val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
-      
-      VideoListContent(
-        folderId = bucketId,
-        videosWithInfo = sortedVideosWithInfo,
-        isLoading = isLoading && videos.isEmpty(),
-        isRefreshing = isRefreshing,
-        recentlyPlayedFilePath = recentlyPlayedFilePath,
-        videosWereDeletedOrMoved = videosWereDeletedOrMoved,
-        autoScrollToLastPlayed = autoScrollToLastPlayed,
-        onRefresh = { viewModel.refresh() },
-        selectionManager = selectionManager,
-        onVideoClick = { video ->
-          if (selectionManager.isInSelectionMode) {
-            selectionManager.toggle(video)
-          } else {
-            // Always use MediaUtils.playFile which lets PlayerActivity auto-generate playlist
-            // This avoids TransactionTooLargeException from passing large playlists
-            // PlayerActivity will auto-generate playlist from folder if playlistMode is enabled
-            MediaUtils.playFile(video, context, "video_list")
-          }
-        },
-        onVideoLongClick = { video -> selectionManager.toggle(video) },
-        isFabVisible = isFabVisible,
-        modifier = Modifier.padding(padding),
-      )
 
       // Sort Dialog
       VideoSortDialog(
@@ -458,6 +478,7 @@ private fun VideoListContent(
   onVideoLongClick: (Video) -> Unit,
   isFabVisible: androidx.compose.runtime.MutableState<Boolean>,
   modifier: Modifier = Modifier,
+  isInSelectionMode: Boolean = false,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val gesturePreferences = koinInject<GesturePreferences>()
@@ -616,7 +637,11 @@ private fun VideoListContent(
               columns = GridCells.Fixed(columns),
               state = gridState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+                bottom = if (isInSelectionMode) 88.dp else 0.dp
+              ),
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -659,7 +684,11 @@ private fun VideoListContent(
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+                bottom = if (isInSelectionMode) 88.dp else 0.dp
+              ),
             ) {
               items(
                 count = videosWithInfo.size,

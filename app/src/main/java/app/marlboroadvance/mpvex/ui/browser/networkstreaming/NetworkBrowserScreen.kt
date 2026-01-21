@@ -96,8 +96,6 @@ data class NetworkBrowserScreen(
           onBackClick = { backstack.removeLastOrNull() },
           onCancelSelection = {},
           onSortClick = null,
-          onSettingsClick = { backstack.add(PreferencesScreen) },
-          // Search functionality disabled for production
           onSearchClick = null,
           onDeleteClick = null,
           onRenameClick = null,

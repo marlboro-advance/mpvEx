@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,7 +46,7 @@ import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
@@ -92,7 +93,7 @@ fun VideoCard(
       .then(
         if (isGridMode) Modifier.fillMaxWidth() else Modifier.fillMaxWidth()
       )
-      . debouncedCombinedClickable(
+      .combinedClickable(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
@@ -158,7 +159,7 @@ fun VideoCard(
             .aspectRatio(aspect)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onThumbClick,
               onLongClick = onLongClick,
             ),
@@ -274,7 +275,10 @@ fun VideoCard(
         )
         if (gridColumns == 1) {
           Spacer(modifier = Modifier.height(4.dp))
-          Row {
+          FlowRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+          ) {
             if (showSubtitleIndicator) {
               if (video.hasEmbeddedSubtitles) {
                 Text(
@@ -288,7 +292,6 @@ fun VideoCard(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                   color = MaterialTheme.colorScheme.onSurface,
                 )
-                Spacer(modifier = Modifier.width(4.dp))
               }
             }
             if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
@@ -305,9 +308,6 @@ fun VideoCard(
               )
             }
             if (showResolutionChip && video.resolution != "--") {
-              if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
-                Spacer(modifier = Modifier.width(4.dp))
-              }
               val displayResolution = if (showFramerateInResolution) {
                 video.resolution
               } else {
@@ -392,7 +392,7 @@ fun VideoCard(
               .aspectRatio(aspect)
               .clip(RoundedCornerShape(12.dp))
               .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-              .debouncedCombinedClickable(
+              .combinedClickable(
                 onClick = onThumbClick,
                 onLongClick = onLongClick,
               ),
@@ -512,7 +512,10 @@ fun VideoCard(
             overflow = TextOverflow.Ellipsis,
           )
           Spacer(modifier = Modifier.height(4.dp))
-          Row {
+          FlowRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+          ) {
             if (showSubtitleIndicator) {
               if (video.hasEmbeddedSubtitles) {
                 Text(
@@ -526,7 +529,6 @@ fun VideoCard(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                   color = MaterialTheme.colorScheme.onSurface,
                 )
-                Spacer(modifier = Modifier.width(4.dp))
               }
             }
             if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
@@ -544,10 +546,6 @@ fun VideoCard(
               )
             }
             if (showResolutionChip && video.resolution != "--") {
-              if (showSizeChip && video.sizeFormatted != "0 B" && video.sizeFormatted != "--") {
-                Spacer(modifier = Modifier.width(4.dp))
-              }
-
               // Extract base resolution without FPS for display
               val displayResolution = if (showFramerateInResolution) {
                 video.resolution

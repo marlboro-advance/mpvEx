@@ -7,8 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +33,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -71,6 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 
 @Serializable
 object MainScreen : Screen {
@@ -129,7 +127,7 @@ object MainScreen : Screen {
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Check storage permission status directly in MainScreen for FAB visibility
     val hasStoragePermission = remember {
       if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -261,7 +259,7 @@ object MainScreen : Screen {
     }
 
     // Define items for the navigation bar
-    val items = listOf("Folders", "Recent", "Playlist", "Network")
+    //val items = listOf("Folders", "Recent", "Playlist", "Network")
     val selectedIcons = listOf(
         Icons.Filled.Folder, 
         Icons.Filled.History,
@@ -275,128 +273,9 @@ object MainScreen : Screen {
         Icons.Outlined.Wifi
     )
 
-    // Use Scaffold only for bottom bar, let nested screens handle their own top bars and padding
+    // Scaffold without FAB - each screen handles its own FAB
     Scaffold(
       modifier = Modifier.fillMaxSize(),
-      bottomBar = {
-        // Use AnimatedVisibility to smoothly animate the navigation bar
-        // Only hide navigation bar when specifically needed (video selection operations)
-        AnimatedVisibility(
-          visible = !hideNavigationBar.value,
-          enter = slideInVertically(initialOffsetY = { it }), // Start from below the screen
-          exit = slideOutVertically(targetOffsetY = { it }) // Slide down off screen
-        ) {
-          NavigationBar {
-              items.forEachIndexed { index, item ->
-                  NavigationBarItem(
-                      icon = {
-                          Icon(
-                              if (selectedTab == index) selectedIcons[index] else unselectedIcons[index],
-                              contentDescription = item,
-                          )
-                      },
-                      label = { Text(item) },
-                      selected = selectedTab == index,
-                      onClick = { selectedTab = index },
-                  )
-              }
-          }
-        }
-      },
-      floatingActionButton = {
-        // Only show FAB when not in selection mode, not on Network tab (index 3), and permission is granted
-        // For Folders tab (0), also check storage permission directly
-        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && 
-                           (selectedTab != 0 || currentHasPermission)
-        if (shouldShowFab) {
-          AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut()
-          ) {
-            // Show different FAB content based on selected tab
-            when (selectedTab) {
-              // Folders tab (0)
-              0 -> {
-                MediaActionFab(
-                  listState = currentListState,
-                  gridState = currentGridState, // Add grid state
-                  hasRecentlyPlayed = true,
-                  enableRecentlyPlayed = true,
-                  onOpenFile = { 
-                    // Launch file picker to select a file
-                    filePicker.launch(arrayOf("*/*"))
-                  },
-                  onPlayRecentlyPlayed = {
-                    coroutineScope.launch {
-                      val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
-                      if (lastPlayedEntity != null) {
-                        // Just play the single video
-                        MediaUtils.playFile(
-                          lastPlayedEntity.filePath,
-                          context,
-                          "recently_played_button",
-                        )
-                      }
-                    }
-                  },
-                  onPlayLink = { showLinkDialog.value = true },
-                  expanded = fabMenuExpanded,
-                  onExpandedChange = { fabMenuExpanded = it },
-                  modifier = Modifier,
-                )
-              }
-              
-              // Recent tab (1)
-              1 -> {
-                MediaActionFab(
-                  listState = currentListState,
-                  gridState = currentGridState, // Add grid state
-                  hasRecentlyPlayed = true,
-                  enableRecentlyPlayed = true,
-                  onOpenFile = { 
-                    // Launch file picker to select a file
-                    filePicker.launch(arrayOf("*/*"))
-                  },
-                  onPlayRecentlyPlayed = {
-                    coroutineScope.launch {
-                      val lastPlayedEntity = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
-                      if (lastPlayedEntity != null) {
-                        // Just play the single video
-                        MediaUtils.playFile(
-                          lastPlayedEntity.filePath,
-                          context,
-                          "recently_played_button",
-                        )
-                      }
-                    }
-                  },
-                  onPlayLink = { showLinkDialog.value = true },
-                  expanded = fabMenuExpanded,
-                  onExpandedChange = { fabMenuExpanded = it },
-                  modifier = Modifier,
-                )
-              }
-              
-              // Playlist tab (2)
-              2 -> {
-                PlaylistActionFab(
-                  listState = currentListState,
-                  gridState = currentGridState, // Add grid state
-                  onCreatePlaylist = { showCreatePlaylistDialog.value = true },
-                  onAddM3UPlaylist = { showM3UPlaylistDialog.value = true },
-                  expanded = fabMenuExpanded,
-                  onExpandedChange = { fabMenuExpanded = it },
-                  modifier = Modifier,
-                )
-              }
-              
-              // Network tab (3) - No FAB for this tab
-              else -> { /* No FAB for Network tab */ }
-            }
-          }
-        }
-      },
     ) { paddingValues ->
       // Each screen handles its own bottom padding for the navigation bar
       Box(modifier = Modifier.fillMaxSize()) {
