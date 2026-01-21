@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -111,7 +112,10 @@ fun NetworkVideoCard(
           overflow = TextOverflow.Ellipsis,
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Row {
+        FlowRow(
+          horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+          verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+        ) {
           if (showSizeChip && file.size > 0) {
             Text(
               formatFileSize(file.size),
@@ -127,9 +131,6 @@ fun NetworkVideoCard(
             )
           }
           if (file.lastModified > 0) {
-            if (showSizeChip && file.size > 0) {
-              Spacer(modifier = Modifier.width(8.dp))
-            }
             Text(
               formatDate(file.lastModified),
               style = MaterialTheme.typography.labelSmall,

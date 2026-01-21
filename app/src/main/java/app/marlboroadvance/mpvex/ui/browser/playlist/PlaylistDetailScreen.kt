@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,13 +37,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -72,6 +81,7 @@ import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import java.io.File
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import my.nanihadesuka.compose.LazyColumnScrollbar
@@ -82,7 +92,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.animateFloatingActionButton
 import app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 
 /**
  * Playlist detail screen showing videos in a playlist.
@@ -353,64 +362,37 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       },
       floatingActionButton = {
         if (videoItems.isNotEmpty()) {
-          FloatingActionButton(
-            modifier = Modifier
-              .padding(bottom = 20.dp, end = 16.dp)
-              .animateFloatingActionButton(
-                visible = isFabVisible.value,
-                alignment = Alignment.BottomEnd,
-              ),
-            onClick = {
-              if (playlist?.isM3uPlaylist == true) {
-                // M3U playlists: Play only the first/most recent stream (no playlist navigation)
-                val mostRecentlyPlayedItem = videoItems
-                  .filter { it.playlistItem.lastPlayedAt > 0 }
-                  .maxByOrNull { it.playlistItem.lastPlayedAt }
-
-                val itemToPlay = mostRecentlyPlayedItem ?: videoItems.firstOrNull()
-
-                if (itemToPlay != null) {
-                  coroutineScope.launch {
-                    viewModel.updatePlayHistory(itemToPlay.video.path)
-                  }
-
-                  // Play single stream URL without playlist
-                  MediaUtils.playFile(itemToPlay.video, context, "m3u_playlist")
-                }
-              } else {
-                // Regular playlists: Play with full playlist navigation
-                val mostRecentlyPlayedItem = videoItems
-                  .filter { it.playlistItem.lastPlayedAt > 0 }
-                  .maxByOrNull { it.playlistItem.lastPlayedAt }
-
-                val startIndex = if (mostRecentlyPlayedItem != null) {
-                  videoItems.indexOfFirst { it.playlistItem.id == mostRecentlyPlayedItem.playlistItem.id }
-                } else {
-                  0
-                }
-
-                if (videos.isNotEmpty() && startIndex >= 0) {
-                  coroutineScope.launch {
-                    viewModel.updatePlayHistory(videos[startIndex].path)
-                  }
-                }
-
-                val videoUris = videos.map { it.uri }
-                if (videoUris.isNotEmpty() && startIndex >= 0) {
-                  val intent = Intent(context, PlayerActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = videoUris[startIndex]
-                    putExtra("playlist_index", startIndex)
-                    putExtra("launch_source", "playlist")
-                    putExtra("playlist_id", playlistId)
-                    putExtra("title", videos[startIndex].displayName)
-                  }
-                  context.startActivity(intent)
-                }
-              }
-            }
+          TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip { Text("Play recently played or first video") } },
+            state = rememberTooltipState(),
           ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Play playlist", modifier = Modifier.size(32.dp))
+            FloatingActionButton(
+              modifier = Modifier
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(bottom = 16.dp, end = 16.dp)
+                .animateFloatingActionButton(
+                  visible = !selectionManager.isInSelectionMode && isFabVisible.value,
+                  alignment = Alignment.BottomEnd,
+                ),
+              onClick = {
+                coroutineScope.launch {
+                  val folderPath = videoItems.firstOrNull()?.video?.path?.let { File(it).parent } ?: ""
+                  val recentlyPlayedVideos = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
+                  val lastPlayedInFolder = recentlyPlayedVideos.firstOrNull {
+                    File(it.filePath).parent == folderPath
+                  }
+
+                  if (lastPlayedInFolder != null) {
+                    MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                  } else {
+                    MediaUtils.playFile(videoItems.first().video, context, "first_video_button")
+                  }
+                }
+              },
+            ) {
+              Icon(Icons.Filled.PlayArrow, contentDescription = "Play recently played or first video")
+            }
           }
         }
       },

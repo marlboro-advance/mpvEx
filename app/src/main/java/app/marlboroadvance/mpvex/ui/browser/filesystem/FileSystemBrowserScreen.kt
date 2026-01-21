@@ -9,8 +9,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,23 +30,41 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.animateFloatingActionButton
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +80,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -72,6 +97,7 @@ import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefresh
 import app.marlboroadvance.mpvex.ui.browser.cards.FolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.VideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserBottomBar
+import app.marlboroadvance.mpvex.ui.browser.components.BrowserNavigationDrawer
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.AddToPlaylistDialog
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
@@ -132,7 +158,7 @@ data class FileSystemDirectoryScreen(
  * File System Browser screen - browses directories and shows both folders and videos
  * @param path The directory path to browse, or null for storage roots
  */
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FileSystemBrowserScreen(path: String? = null) {
   val context = LocalContext.current
@@ -184,12 +210,19 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
   val renameDialogOpen = rememberSaveable { mutableStateOf(false) }
   val addToPlaylistDialogOpen = rememberSaveable { mutableStateOf(false) }
+  
+  // FAB visibility for scroll-based hiding
+  val isFabVisible = remember { mutableStateOf(true) }
+  val isFabExpanded = remember { mutableStateOf(false) }
   var searchQuery by rememberSaveable { mutableStateOf("") }
   var isSearching by rememberSaveable { mutableStateOf(false) }
   var searchResults by remember { mutableStateOf<List<FileSystemItem>>(emptyList()) }
   var isSearchLoading by remember { mutableStateOf(false) }
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusRequester = remember { FocusRequester() }
+  
+  // Navigation drawer state (only for root screen)
+  val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
   // Copy/Move state
   val folderPickerOpen = rememberSaveable { mutableStateOf(false) }
@@ -349,9 +382,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  // Predictive back: Handle selection mode or search mode
-  BackHandler(enabled = isInSelectionMode || isSearching) {
+  // Predictive back: Handle selection mode, search mode, or FAB menu expanded
+  BackHandler(enabled = isInSelectionMode || isSearching || isFabExpanded.value) {
     when {
+      isFabExpanded.value -> isFabExpanded.value = false
       isInSelectionMode -> {
         folderSelectionManager.clear()
         videoSelectionManager.clear()
@@ -363,7 +397,18 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  Scaffold(
+  // Track scroll for FAB visibility
+  app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
+    listState = listState,
+    gridState = if (mediaLayoutMode == MediaLayoutMode.GRID) gridState else null,
+    isFabVisible = isFabVisible,
+    expanded = isFabExpanded.value,
+    onExpandedChange = { isFabExpanded.value = it },
+  )
+
+  // Wrap in BrowserNavigationDrawer only if at root
+  val content: @Composable () -> Unit = {
+    Scaffold(
     topBar = {
       if (isSearching) {
         // Search mode - show search bar instead of top bar
@@ -433,12 +478,17 @@ fun FileSystemBrowserScreen(path: String? = null) {
             } else {
               { backstack.removeLastOrNull() }
             },
+          onNavigationClick =
+            if (isAtRoot) {
+              { coroutineScope.launch { drawerState.open() } }
+            } else {
+              null
+            },
           onCancelSelection = {
             folderSelectionManager.clear()
             videoSelectionManager.clear()
           },
           onSortClick = { sortDialogOpen.value = true },
-          onSettingsClick = { backstack.add(PreferencesScreen) },
           onSearchClick = {
             isSearching = !isSearching
           },
@@ -569,34 +619,87 @@ fun FileSystemBrowserScreen(path: String? = null) {
       )
       }
     },
-    bottomBar = {
-      // Use a consistent condition for showing the bottom bar to avoid flicker
-      // This should match the condition in the LaunchedEffect that updates MainScreen
-      val shouldShowBottomBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
-      
-      BrowserBottomBar(
-        isSelectionMode = shouldShowBottomBar,
-        onCopyClick = {
-          operationType.value = CopyPasteOps.OperationType.Copy
-          folderPickerOpen.value = true
-        },
-        onMoveClick = {
-          operationType.value = CopyPasteOps.OperationType.Move
-          folderPickerOpen.value = true
-        },
-        onRenameClick = { renameDialogOpen.value = true },
-        onDeleteClick = { deleteDialogOpen.value = true },
-        onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-        showRename = videoSelectionManager.isSingleSelection,
-      )
-    },
     floatingActionButton = {
-      // FAB moved to MainScreen
+      if (isAtRoot) {
+        FloatingActionButtonMenu(
+          modifier = Modifier
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.systemBars),
+          expanded = isFabExpanded.value,
+          button = {
+            TooltipBox(
+              positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                if (isFabExpanded.value) {
+                  TooltipAnchorPosition.Start
+                } else {
+                  TooltipAnchorPosition.Above
+                }
+              ),
+              tooltip = { PlainTooltip { Text("Toggle menu") } },
+              state = rememberTooltipState(),
+            ) {
+              ToggleFloatingActionButton(
+                modifier = Modifier
+                  .animateFloatingActionButton(
+                    visible = !isInSelectionMode && isFabVisible.value,
+                    alignment = Alignment.BottomEnd,
+                  ),
+                checked = isFabExpanded.value,
+                onCheckedChange = { isFabExpanded.value = !isFabExpanded.value },
+              ) {
+                val imageVector by remember {
+                  derivedStateOf {
+                    if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
+                  }
+                }
+                Icon(
+                  painter = rememberVectorPainter(imageVector),
+                  contentDescription = null,
+                  modifier = Modifier.animateIcon({ checkedProgress }),
+                )
+              }
+            }
+          },
+        ) {
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              filePicker.launch(arrayOf("video/*"))
+            },
+            icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+            text = { Text(text = "Open File") },
+          )
+          
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              coroutineScope.launch {
+                val recentlyPlayedVideos = app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
+                val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                if (lastPlayed != null) {
+                  MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
+                }
+              }
+            },
+            icon = { Icon(Icons.Filled.History, contentDescription = null) },
+            text = { Text(text = "Recently Played") },
+          )
+          
+          FloatingActionButtonMenuItem(
+            onClick = {
+              isFabExpanded.value = false
+              showLinkDialog.value = true
+            },
+            icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+            text = { Text(text = "Open Link") },
+          )
+        }
+      }
     },
   ) { padding ->
-    when (permissionState.status) {
-      PermissionStatus.Granted -> {
-        if (isSearching) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      when (permissionState.status) {
+        PermissionStatus.Granted -> {
+          if (isSearching) {
           // Show search results
           FileSystemSearchContent(
             listState = listState,
@@ -685,6 +788,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           folderSelectionManager = folderSelectionManager,
           videoSelectionManager = videoSelectionManager,
           modifier = Modifier.padding(padding),
+          isInSelectionMode = isInSelectionMode,
         )
         }
       }
@@ -696,6 +800,26 @@ fun FileSystemBrowserScreen(path: String? = null) {
         )
       }
     }
+    
+    // Floating Material 3 Button Group overlay
+    val shouldShowBottomBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
+    BrowserBottomBar(
+      isSelectionMode = shouldShowBottomBar,
+      onCopyClick = {
+        operationType.value = CopyPasteOps.OperationType.Copy
+        folderPickerOpen.value = true
+      },
+      onMoveClick = {
+        operationType.value = CopyPasteOps.OperationType.Move
+        folderPickerOpen.value = true
+      },
+      onRenameClick = { renameDialogOpen.value = true },
+      onDeleteClick = { deleteDialogOpen.value = true },
+      onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+      showRename = videoSelectionManager.isSingleSelection,
+      modifier = Modifier.align(Alignment.BottomCenter)
+    )
+  }
 
     // Dialogs
     PlayLinkSheet(
@@ -811,6 +935,31 @@ fun FileSystemBrowserScreen(path: String? = null) {
       },
     )
   }
+  }
+  
+  // If at root screen, wrap with navigation drawer
+  if (isAtRoot) {
+    BrowserNavigationDrawer(
+      drawerState = drawerState,
+      onHomeClick = { /* Already on home screen */ },
+      onRecentlyPlayedClick = {
+        backstack.add(app.marlboroadvance.mpvex.ui.browser.recentlyplayed.RecentlyPlayedScreen)
+      },
+      onPlaylistsClick = {
+        backstack.add(app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistScreen)
+      },
+      onNetworkStreamingClick = {
+        backstack.add(app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen)
+      },
+      onSettingsClick = {
+        backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+      },
+      currentRoute = "home",
+      content = content
+    )
+  } else {
+    content()
+  }
 }
 
 /**
@@ -895,6 +1044,7 @@ private fun FileSystemBrowserContent(
   folderSelectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<FileSystemItem.Folder, String>,
   videoSelectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<app.marlboroadvance.mpvex.domain.media.model.Video, Long>,
   modifier: Modifier = Modifier,
+  isInSelectionMode: Boolean = false,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
@@ -1019,13 +1169,16 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
-            modifier = Modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
           ) {
             LazyVerticalGrid(
             columns = GridCells.Fixed(if (folders.isNotEmpty()) folderGridColumns else videoGridColumns),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+            contentPadding = PaddingValues(
+              start = 8.dp,
+              end = 8.dp,
+              bottom = if (isInSelectionMode) 88.dp else 0.dp
+            ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -1106,12 +1259,15 @@ private fun FileSystemBrowserContent(
               thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
               thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
-            modifier = Modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
           ) {
             LazyColumn(
               state = listState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(start = 8.dp, end = 8.dp),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+                bottom = if (isInSelectionMode) 88.dp else 0.dp
+              ),
             ) {
               // Breadcrumb navigation (if not at root)
               if (!isAtRoot && breadcrumbs.isNotEmpty()) {
@@ -1433,9 +1589,7 @@ private fun FileSystemSearchContent(
     
     searchQuery.isBlank() -> {
       Box(
-        modifier = modifier
-          .fillMaxSize()
-          .padding(bottom = 80.dp),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
@@ -1448,9 +1602,7 @@ private fun FileSystemSearchContent(
     
     searchResults.isEmpty() -> {
       Box(
-        modifier = modifier
-          .fillMaxSize()
-          .padding(bottom = 80.dp),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
       ) {
         EmptyState(
@@ -1485,7 +1637,7 @@ private fun FileSystemSearchContent(
           thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
           thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
         ),
-        modifier = modifier.padding(bottom = if (isAtRoot) 80.dp else 0.dp),
+        modifier = modifier,
       ) {
         LazyColumn(
           state = listState,

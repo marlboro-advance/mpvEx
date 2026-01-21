@@ -1,8 +1,5 @@
 package app.marlboroadvance.mpvex.ui.preferences.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -22,20 +19,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,9 +32,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.marlboroadvance.mpvex.ui.theme.AppTheme
-import app.marlboroadvance.mpvex.ui.theme.LocalThemeTransitionState
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 
 /**
@@ -65,53 +51,18 @@ fun ThemePreviewCard(
     // Use the current MaterialTheme primary for selection to ensure visibility
     val selectionColor = MaterialTheme.colorScheme.primary
     
-    val borderWidth by animateDpAsState(
-        targetValue = if (isSelected) 3.dp else 1.dp,
-        animationSpec = tween(durationMillis = 200),
-        label = "border"
-    )
-    
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) selectionColor else Color.Transparent,
-        animationSpec = tween(durationMillis = 200),
-        label = "borderColor"
-    )
-    
-    val elevation by animateDpAsState(
-        targetValue = if (isSelected) 8.dp else 2.dp,
-        animationSpec = tween(durationMillis = 200),
-        label = "elevation"
-    )
-    
-    // Get theme transition state for circular reveal animation
-    val themeTransition = LocalThemeTransitionState.current
-    val coroutineScope = rememberCoroutineScope()
-    
-    // Track component bounds in window for converting local tap to global position
-    val boundsInWindow = remember { mutableStateOf(Rect.Zero) }
-    
+    val borderWidth = if (isSelected) 3.dp else 1.dp
+
+    val borderColor = if (isSelected) selectionColor else Color.Transparent
+
+    val elevation = if (isSelected) 8.dp else 2.dp
+
     Column(
         modifier = modifier
             .width(100.dp)
-            .onGloballyPositioned { coordinates ->
-                boundsInWindow.value = coordinates.boundsInWindow()
-            }
             .pointerInput(Unit) {
-                detectTapGestures { localOffset ->
-                    // Don't allow theme change if animation is in progress
-                    if (themeTransition?.isAnimating == true) return@detectTapGestures
-                    
-                    // Convert to window coordinates for the animation
-                    val windowOffset = Offset(
-                        boundsInWindow.value.left + localOffset.x,
-                        boundsInWindow.value.top + localOffset.y
-                    )
-                    themeTransition?.startTransition(windowOffset)
-                    // Delay theme change to allow overlay to display first
-                    coroutineScope.launch {
-                        delay(50)
-                        onClick()
-                    }
+                detectTapGestures {
+                    onClick()
                 }
             },
         horizontalAlignment = Alignment.CenterHorizontally,
