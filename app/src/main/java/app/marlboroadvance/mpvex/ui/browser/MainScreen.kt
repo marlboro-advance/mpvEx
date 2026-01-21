@@ -9,6 +9,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +41,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -67,10 +72,14 @@ import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
 import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 
 @Serializable
 object MainScreen : Screen {
@@ -129,6 +138,8 @@ object MainScreen : Screen {
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
+    val useFloatingNavigation by appearancePreferences.useFloatingNavigation.collectAsState()
     
     // Check storage permission status directly in MainScreen for FAB visibility
     val hasStoragePermission = remember {
@@ -279,35 +290,62 @@ object MainScreen : Screen {
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
-        // Use AnimatedVisibility to smoothly animate the navigation bar
-        // Only hide navigation bar when specifically needed (video selection operations)
-        AnimatedVisibility(
-          visible = !hideNavigationBar.value,
-          enter = slideInVertically(initialOffsetY = { it }), // Start from below the screen
-          exit = slideOutVertically(targetOffsetY = { it }) // Slide down off screen
-        ) {
-          NavigationBar {
-              items.forEachIndexed { index, item ->
-                  NavigationBarItem(
-                      icon = {
-                          Icon(
-                              if (selectedTab == index) selectedIcons[index] else unselectedIcons[index],
-                              contentDescription = item,
+          AnimatedVisibility(
+            visible = !hideNavigationBar.value,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+          ) {
+              val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+              
+              if (useFloatingNavigation) {
+                  androidx.compose.material3.Surface(
+                      modifier = Modifier
+                          .fillMaxWidth()
+                          .padding(start = 14.dp, end = 14.dp, bottom = systemNavBarInset + 8.dp),
+                      color = androidx.compose.material3.NavigationBarDefaults.containerColor,
+                      shape = RoundedCornerShape(26.dp),
+                      shadowElevation = 3.dp,
+                      tonalElevation = 2.dp
+                  ) {
+                      NavigationBar(
+                          containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                          tonalElevation = 0.dp,
+                          windowInsets = WindowInsets(0.dp)
+                      ) {
+                          items.forEachIndexed { index, item ->
+                              NavigationBarItem(
+                                  selected = selectedTab == index,
+                                  onClick = { selectedTab = index },
+                                  icon = { Icon(unselectedIcons[index], contentDescription = item) },
+                                  label = { Text(item) },
+                                  alwaysShowLabel = true
+                              )
+                          }
+                      }
+                  }
+              } else {
+                  NavigationBar(
+                      containerColor = androidx.compose.material3.NavigationBarDefaults.containerColor,
+                      tonalElevation = androidx.compose.material3.NavigationBarDefaults.Elevation,
+                      windowInsets = WindowInsets.navigationBars
+                  ) {
+                      items.forEachIndexed { index, item ->
+                          NavigationBarItem(
+                              selected = selectedTab == index,
+                              onClick = { selectedTab = index },
+                              icon = { Icon(unselectedIcons[index], contentDescription = item) },
+                              label = { Text(item) },
+                              alwaysShowLabel = true
                           )
-                      },
-                      label = { Text(item) },
-                      selected = selectedTab == index,
-                      onClick = { selectedTab = index },
-                  )
+                      }
+                  }
               }
           }
-        }
       },
       floatingActionButton = {
         // Only show FAB when not in selection mode, not on Network tab (index 3), and permission is granted
         // For Folders tab (0), also check storage permission directly
-        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && 
-                           (selectedTab != 0 || currentHasPermission)
+        val shouldShowFab = !isInSelectionMode.value && selectedTab != 3 && (selectedTab != 0 || currentHasPermission)
         if (shouldShowFab) {
           AnimatedVisibility(
             visible = true,

@@ -30,6 +30,7 @@ class AppearancePreferences(
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val showNetworkThumbnails = preferenceStore.getBoolean("show_network_thumbnails", false)
   val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Wavy)
+  val useFloatingNavigation = preferenceStore.getBoolean("use_floating_navigation", true)
 
   val topLeftControls =
     preferenceStore.getString(
