@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -115,6 +116,8 @@ import kotlin.math.abs
 
 @Suppress("CompositionLocalAllowlist")
 val LocalPlayerButtonsClickEvent = staticCompositionLocalOf { {} }
+
+fun <T> playerControlsInstantAnimationSpec(): FiniteAnimationSpec<T> = snap()
 
 fun <T> playerControlsExitAnimationSpec(): FiniteAnimationSpec<T> =
   tween(
@@ -231,7 +234,7 @@ fun PlayerControls(
 
   val transparentOverlay by animateFloatAsState(
     if (controlsShown && !areControlsLocked) .8f else 0f,
-    animationSpec = playerControlsExitAnimationSpec(),
+    animationSpec = if (playerPreferences.reduceMotion.collectAsState().value) playerControlsInstantAnimationSpec() else playerControlsExitAnimationSpec(),
     label = "controls_transparent_overlay",
   )
 
@@ -328,7 +331,7 @@ fun PlayerControls(
                 if (swapVolumeAndBrightness) -it else it
               } + fadeIn(playerControlsEnterAnimationSpec())
             } else {
-              fadeIn(playerControlsEnterAnimationSpec())
+              fadeIn(playerControlsInstantAnimationSpec())
             },
           exit =
             if (!reduceMotion) {
@@ -336,7 +339,7 @@ fun PlayerControls(
                 if (swapVolumeAndBrightness) -it else it
               } + fadeOut(playerControlsExitAnimationSpec())
             } else {
-              fadeOut(playerControlsExitAnimationSpec())
+              fadeOut(playerControlsInstantAnimationSpec())
             },
           modifier =
             Modifier.constrainAs(brightnessSlider) {
@@ -358,7 +361,7 @@ fun PlayerControls(
                 if (swapVolumeAndBrightness) it else -it
               } + fadeIn(playerControlsEnterAnimationSpec())
             } else {
-              fadeIn(playerControlsEnterAnimationSpec())
+              fadeIn(playerControlsInstantAnimationSpec())
             },
           exit =
             if (!reduceMotion) {
@@ -366,7 +369,7 @@ fun PlayerControls(
                 if (swapVolumeAndBrightness) it else -it
               } + fadeOut(playerControlsExitAnimationSpec())
             } else {
-              fadeOut(playerControlsExitAnimationSpec())
+              fadeOut(playerControlsInstantAnimationSpec())
             },
           modifier =
             Modifier.constrainAs(volumeSlider) {
@@ -414,8 +417,8 @@ fun PlayerControls(
 
         AnimatedVisibility(
           currentPlayerUpdate !is PlayerUpdates.None,
-          enter = fadeIn(playerControlsEnterAnimationSpec()),
-          exit = fadeOut(playerControlsExitAnimationSpec()),
+          enter = if (reduceMotion) fadeIn(playerControlsInstantAnimationSpec()) else fadeIn(playerControlsEnterAnimationSpec()),
+          exit = if (reduceMotion) fadeOut(playerControlsInstantAnimationSpec()) else fadeOut(playerControlsExitAnimationSpec()),
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
@@ -511,8 +514,8 @@ fun PlayerControls(
 
         AnimatedVisibility(
           visible = controlsShown && areControlsLocked,
-          enter = fadeIn(),
-          exit = fadeOut(),
+          enter = if (reduceMotion) fadeIn(playerControlsInstantAnimationSpec()) else fadeIn(),
+          exit = if (reduceMotion) fadeOut(playerControlsInstantAnimationSpec()) else fadeOut(),
           modifier =
             Modifier
               .then(
@@ -538,8 +541,8 @@ fun PlayerControls(
         AnimatedVisibility(
           visible =
             (controlsShown && !areControlsLocked || gestureSeekAmount != null) || pausedForCache == true,
-          enter = fadeIn(playerControlsEnterAnimationSpec()),
-          exit = fadeOut(playerControlsExitAnimationSpec()),
+          enter = if (reduceMotion) fadeIn(playerControlsInstantAnimationSpec()) else fadeIn(playerControlsEnterAnimationSpec()),
+          exit = if (reduceMotion) fadeOut(playerControlsInstantAnimationSpec()) else fadeOut(playerControlsExitAnimationSpec()),
           modifier =
             Modifier.constrainAs(playerPauseButton) {
               end.linkTo(parent.absoluteRight)
@@ -798,14 +801,14 @@ fun PlayerControls(
               slideInVertically(playerControlsEnterAnimationSpec()) { it } +
                 fadeIn(playerControlsEnterAnimationSpec())
             } else {
-              fadeIn(playerControlsEnterAnimationSpec())
+              fadeIn(playerControlsInstantAnimationSpec())
             },
           exit =
             if (!reduceMotion) {
               slideOutVertically(playerControlsExitAnimationSpec()) { it } +
                 fadeOut(playerControlsExitAnimationSpec())
             } else {
-              fadeOut(playerControlsExitAnimationSpec())
+              fadeOut(playerControlsInstantAnimationSpec())
             },
           modifier =
             Modifier

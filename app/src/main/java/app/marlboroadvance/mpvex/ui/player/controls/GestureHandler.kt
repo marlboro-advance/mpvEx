@@ -1,6 +1,7 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -762,13 +763,20 @@ fun DoubleTapToSeekOvals(
   val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
   val seekAreaFraction = doubleTapSeekAreaWidth / 100f
   
-  val alpha by animateFloatAsState(if (amount == 0) 0f else 0.2f, label = "double_tap_animation_alpha")
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val reduceMotion by playerPreferences.reduceMotion.collectAsState()
+
+  val alpha by animateFloatAsState(
+    if (amount == 0) 0f else 0.2f,
+    animationSpec = if (reduceMotion) snap() else tween(durationMillis = 300),
+    label = "double_tap_animation_alpha"
+  )
 
   // Scale animation for text
   var scaleTarget by remember { mutableStateOf(1f) }
   val scale by animateFloatAsState(
       targetValue = scaleTarget,
-      animationSpec = androidx.compose.animation.core.tween(durationMillis = 150),
+      animationSpec = if (reduceMotion) snap() else androidx.compose.animation.core.tween(durationMillis = 150),
       label = "text_scale"
   )
   
