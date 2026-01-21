@@ -7,14 +7,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
@@ -22,13 +19,10 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -55,7 +49,7 @@ fun BrowserBottomBar(
 ) {
   val appearancePreferences = koinInject<AppearancePreferences>()
   val useFloatingNavigation by appearancePreferences.useFloatingNavigation.collectAsState()
-
+  val systemNavBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
   AnimatedVisibility(
     visible = isSelectionMode,
@@ -63,41 +57,27 @@ fun BrowserBottomBar(
     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
   ) {
     if (useFloatingNavigation) {
-      // Floating Style
-        val systemNavBarInset = WindowInsets.navigationBars
-            .asPaddingValues().calculateBottomPadding()
-
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(bottom = systemNavBarInset) // Space above system nav bar
+      androidx.compose.material3.Surface(
+        modifier = modifier
+          .fillMaxWidth()
+          .padding(start = 14.dp, end = 14.dp, bottom = systemNavBarInset + 8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(26.dp),
+        shadowElevation = 3.dp,
+        tonalElevation = 2.dp
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp)
-                    .padding(horizontal = 14.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(26.dp),
-                shadowElevation = 3.dp,
-                tonalElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BrowserBottomBarContent(
-                        onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
-                        showCopy, showMove, showRename, showDelete, showAddToPlaylist
-                    )
-                }
-            }
+          BrowserBottomBarContent(
+            onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
+            showCopy, showMove, showRename, showDelete, showAddToPlaylist
+          )
         }
+      }
     } else {
-      // Standard Style
       BottomAppBar(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -108,10 +88,10 @@ fun BrowserBottomBar(
           horizontalArrangement = Arrangement.SpaceEvenly,
           verticalAlignment = Alignment.CenterVertically,
         ) {
-            BrowserBottomBarContent(
-                onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
-                showCopy, showMove, showRename, showDelete, showAddToPlaylist
-            )
+          BrowserBottomBarContent(
+            onCopyClick, onMoveClick, onRenameClick, onDeleteClick, onAddToPlaylistClick,
+            showCopy, showMove, showRename, showDelete, showAddToPlaylist
+          )
         }
       }
     }
