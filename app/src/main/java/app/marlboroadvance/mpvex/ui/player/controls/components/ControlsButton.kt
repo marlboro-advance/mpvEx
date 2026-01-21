@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui.player.controls.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -28,7 +29,6 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
 import org.koin.compose.koinInject
 
 @Suppress("ModifierClickableOrder")
@@ -51,8 +51,7 @@ fun ControlsButton(
     modifier =
       modifier
         .clip(CircleShape)
-        .debouncedCombinedClickable(
-          debounceTime = 300L,
+        .combinedClickable(
           onClick = {
             clickEvent()
             onClick()

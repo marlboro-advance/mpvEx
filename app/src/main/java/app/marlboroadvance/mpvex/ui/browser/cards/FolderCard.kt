@@ -31,7 +31,7 @@ import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import org.koin.compose.koinInject
 import kotlin.math.pow
 import androidx.compose.ui.platform.LocalContext
@@ -67,7 +67,7 @@ fun FolderCard(
   Card(
     modifier = modifier
       .fillMaxWidth()
-      . debouncedCombinedClickable(
+      .combinedClickable(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
@@ -108,7 +108,7 @@ fun FolderCard(
             .height(thumbHeightDp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onThumbClick,
               onLongClick = onLongClick,
             ),
@@ -178,7 +178,7 @@ fun FolderCard(
               .size(64.dp)
               .clip(RoundedCornerShape(12.dp))
               .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-              .debouncedCombinedClickable(
+              .combinedClickable(
                 onClick = onThumbClick,
                 onLongClick = onLongClick,
               ),

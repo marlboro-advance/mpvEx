@@ -45,7 +45,7 @@ import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
@@ -92,7 +92,7 @@ fun VideoCard(
       .then(
         if (isGridMode) Modifier.fillMaxWidth() else Modifier.fillMaxWidth()
       )
-      . debouncedCombinedClickable(
+      .combinedClickable(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
@@ -158,7 +158,7 @@ fun VideoCard(
             .aspectRatio(aspect)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onThumbClick,
               onLongClick = onLongClick,
             ),
@@ -392,7 +392,7 @@ fun VideoCard(
               .aspectRatio(aspect)
               .clip(RoundedCornerShape(12.dp))
               .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-              .debouncedCombinedClickable(
+              .combinedClickable(
                 onClick = onThumbClick,
                 onLongClick = onLongClick,
               ),

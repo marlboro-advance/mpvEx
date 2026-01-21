@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import org.koin.compose.koinInject
 
 /**
@@ -56,7 +56,7 @@ fun M3UVideoCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .debouncedCombinedClickable(
+        .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),
@@ -83,7 +83,7 @@ fun M3UVideoCard(
             .size(thumbSizeDp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onClick,
               onLongClick = onLongClick,
             ),

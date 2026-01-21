@@ -31,7 +31,7 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
-import app.marlboroadvance.mpvex.ui.utils.debouncedCombinedClickable
+import androidx.compose.foundation.combinedClickable
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,7 +58,7 @@ fun NetworkVideoCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .debouncedCombinedClickable(
+        .combinedClickable(
           onClick = onClick,
           onLongClick = onLongClick,
         ),
@@ -85,7 +85,7 @@ fun NetworkVideoCard(
             .size(thumbSizeDp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .debouncedCombinedClickable(
+            .combinedClickable(
               onClick = onClick,
               onLongClick = onLongClick,
             ),
