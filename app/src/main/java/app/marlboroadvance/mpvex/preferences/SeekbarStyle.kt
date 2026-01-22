@@ -5,4 +5,5 @@ enum class SeekbarStyle {
     Wavy,
     Simple,
     Circular,
+    Thick,
 }

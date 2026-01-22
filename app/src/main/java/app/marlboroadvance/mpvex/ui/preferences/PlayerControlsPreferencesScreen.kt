@@ -1,6 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
 // import androidx.compose.material.icons.outlined.VideoLabel // No longer needed here
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,17 +10,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -194,32 +201,55 @@ object PlayerControlsPreferencesScreen : Screen {
             val seekbarStyle by appearancePrefs.seekbarStyle.collectAsState()
             
             PreferenceCard {
-              SeekbarStyle.entries.forEachIndexed { index, style ->
-                ListItem(
-                  headlineContent = {
-                    Text(text = style.name)
-                  },
-                  supportingContent = {
-                    SeekbarPreview(
-                      style = style,
-                      modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    )
-                  },
-                  trailingContent = {
-                    RadioButton(
-                      selected = seekbarStyle == style,
-                      onClick = null
-                    )
-                  },
-                  colors = androidx.compose.material3.ListItemDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                  ),
-                  modifier = Modifier
-                    .clickable { appearancePrefs.seekbarStyle.set(style) }
-                )
-                if (index < SeekbarStyle.entries.size - 1) {
-                  PreferenceDivider()
+              Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
+                // First row: Standard and Wavy
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                  SeekbarStyleBentoItem(
+                    style = SeekbarStyle.Standard,
+                    isSelected = seekbarStyle == SeekbarStyle.Standard,
+                    onClick = { appearancePrefs.seekbarStyle.set(SeekbarStyle.Standard) },
+                    modifier = Modifier.weight(1f)
+                  )
+                  SeekbarStyleBentoItem(
+                    style = SeekbarStyle.Wavy,
+                    isSelected = seekbarStyle == SeekbarStyle.Wavy,
+                    onClick = { appearancePrefs.seekbarStyle.set(SeekbarStyle.Wavy) },
+                    modifier = Modifier.weight(1f)
+                  )
                 }
+                
+                // Second row: Circular and Simple
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                  SeekbarStyleBentoItem(
+                    style = SeekbarStyle.Circular,
+                    isSelected = seekbarStyle == SeekbarStyle.Circular,
+                    onClick = { appearancePrefs.seekbarStyle.set(SeekbarStyle.Circular) },
+                    modifier = Modifier.weight(1f)
+                  )
+                  SeekbarStyleBentoItem(
+                    style = SeekbarStyle.Simple,
+                    isSelected = seekbarStyle == SeekbarStyle.Simple,
+                    onClick = { appearancePrefs.seekbarStyle.set(SeekbarStyle.Simple) },
+                    modifier = Modifier.weight(1f)
+                  )
+                }
+                
+                // Third row: Thick (full width)
+                SeekbarStyleBentoItem(
+                  style = SeekbarStyle.Thick,
+                  isSelected = seekbarStyle == SeekbarStyle.Thick,
+                  onClick = { appearancePrefs.seekbarStyle.set(SeekbarStyle.Thick) },
+                  modifier = Modifier.fillMaxWidth()
+                )
               }
             }
           }
@@ -398,6 +428,83 @@ object PlayerControlsPreferencesScreen : Screen {
             onClick = null, 
             badgeIcon = null,
             badgeColor = null
+          )
+        }
+      }
+    }
+  }
+  
+  /**
+   * Bento Grid item for seekbar style selection.
+   * Shows seekbar preview with label, darker background when selected,
+   * and checkmark indicator.
+   */
+  @Composable
+  private fun SeekbarStyleBentoItem(
+    style: SeekbarStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+  ) {
+    val backgroundColor = if (isSelected) {
+      MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+      MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    }
+    
+    val borderColor = if (isSelected) {
+      MaterialTheme.colorScheme.primary
+    } else {
+      MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    }
+    
+    androidx.compose.foundation.layout.Box(
+      modifier = modifier
+        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+        .background(backgroundColor)
+        .border(
+          width = if (isSelected) 2.dp else 1.dp,
+          color = borderColor,
+          shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        )
+        .clickable(onClick = onClick)
+        .padding(12.dp)
+    ) {
+      Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        // Seekbar preview
+        SeekbarPreview(
+          style = style,
+          modifier = Modifier.fillMaxWidth(),
+          onClick = onClick
+        )
+        
+        // Style name with optional checkmark
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.Center,
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          if (isSelected) {
+            Icon(
+              imageVector = androidx.compose.material.icons.Icons.Default.Check,
+              contentDescription = "Selected",
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(16.dp)
+            )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(4.dp))
+          }
+          Text(
+            text = style.name,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isSelected) {
+              MaterialTheme.colorScheme.primary
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
           )
         }
       }
