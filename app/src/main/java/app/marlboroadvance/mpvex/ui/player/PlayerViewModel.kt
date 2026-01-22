@@ -460,6 +460,18 @@ class PlayerViewModel(
       host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
     }
     _controlsShown.value = false
+    _seekBarShown.value = false
+  }
+
+  fun autoHideControls() {
+    if (playerPreferences.showSystemStatusBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+    }
+    if (playerPreferences. showSystemNavigationBar.get()) {
+      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    }
+    _controlsShown.value = false
+    _seekBarShown.value = true
   }
 
   fun showSeekBar() {

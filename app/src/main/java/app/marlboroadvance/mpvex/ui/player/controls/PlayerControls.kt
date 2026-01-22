@@ -858,10 +858,12 @@ fun PlayerControls(
               isSeeking = true
               resetControlsTimestamp = System.currentTimeMillis()
               viewModel.seekTo(it.toInt())
+              viewModel.autoHideControls()
             },
             onValueChangeFinished = {
               isSeeking = false
               resetControlsTimestamp = System.currentTimeMillis()
+              viewModel.showControls()
             },
             timersInverted = Pair(false, invertDuration),
             durationTimerOnCLick = {

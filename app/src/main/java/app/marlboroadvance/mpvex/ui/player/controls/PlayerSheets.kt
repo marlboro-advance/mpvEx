@@ -79,14 +79,22 @@ fun PlayerSheets(
           onAddSubtitle(it)
         }
 
+      val subtitlesPreferences = koinInject<app.marlboroadvance.mpvex.preferences.SubtitlesPreferences>()
+      val savedPickerPath = subtitlesPreferences.pickerPath.get()
+
       var showFilePicker by remember { mutableStateOf(false) }
 
       if (showFilePicker) {
           app.marlboroadvance.mpvex.ui.browser.dialogs.FilePickerDialog(
               isOpen = true,
+              currentPath = savedPickerPath ?: android.os.Environment.getExternalStorageDirectory().absolutePath,
               onDismiss = { showFilePicker = false },
               onFileSelected = { path ->
                   showFilePicker = false
+                  val parent = java.io.File(path).parent
+                  if (parent != null) {
+                      subtitlesPreferences.pickerPath.set(parent)
+                  }
                    onAddSubtitle(Uri.parse("file://$path"))
               },
               onSystemPickerRequest = {
