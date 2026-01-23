@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -122,147 +123,160 @@ fun FilePickerDialog(
     }
   }
 
-  AlertDialog(
+  androidx.compose.ui.window.Dialog(
     onDismissRequest = onDismiss,
     properties = DialogProperties(usePlatformDefaultWidth = false),
-    title = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  text = "Select Subtitle",
-                  style = MaterialTheme.typography.headlineMedium,
-                  fontWeight = FontWeight.Bold,
-                )
-                Text(
-                  text = selectedPath ?: "Select a storage location",
-                  style = MaterialTheme.typography.bodyMedium,
-                  fontWeight = FontWeight.Medium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  maxLines = 1,
-                  overflow = TextOverflow.Ellipsis,
-                  modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+  ) {
+      Surface(
+          modifier = modifier.fillMaxWidth(0.50f),
+          shape = MaterialTheme.shapes.extraLarge,
+          color = MaterialTheme.colorScheme.surface,
+          tonalElevation = 6.dp,
+      ) {
+          Column(
+              modifier = Modifier.padding(24.dp),
+              verticalArrangement = Arrangement.spacedBy(16.dp)
+          ) {
+              // Title Section
+              Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                          text = "Select Subtitle",
+                          style = MaterialTheme.typography.headlineMedium,
+                          fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                          text = selectedPath ?: "Select a storage location",
+                          style = MaterialTheme.typography.bodyMedium,
+                          fontWeight = FontWeight.Medium,
+                          color = MaterialTheme.colorScheme.onSurfaceVariant,
+                          maxLines = 1,
+                          overflow = TextOverflow.Ellipsis,
+                          modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
 
-            // Navigation Buttons in Title
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                 if (selectedPath != null) {
-                    FilledTonalIconButton(
-                      onClick = {
-                        val parent = currentDir?.parent
-                        selectedPath = parent
-                      },
-                      modifier = Modifier.size(40.dp),
-                      colors = IconButtonDefaults.filledTonalIconButtonColors(
-                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    // Navigation Buttons in Title
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                         if (selectedPath != null) {
+                            FilledTonalIconButton(
+                              onClick = {
+                                val parent = currentDir?.parent
+                                selectedPath = parent
+                              },
+                              modifier = Modifier.size(40.dp),
+                              colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                              )
+                            ) {
+                              Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(24.dp))
+                            }
+                          }
+
+                          FilledTonalIconButton(
+                            onClick = {
+                              selectedPath = Environment.getExternalStorageDirectory().absolutePath
+                            },
+                            modifier = Modifier.size(40.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                              )
+                          ) {
+                            Icon(Icons.Default.Home, "Home", modifier = Modifier.size(24.dp))
+                          }
+
+                          FilledTonalIconButton(
+                            onClick = onSystemPickerRequest,
+                            modifier = Modifier.size(40.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                          ) {
+                            Icon(Icons.Default.DriveFolderUpload, "System Picker", modifier = Modifier.size(24.dp))
+                          }
+                    }
+                }
+              }
+
+              // Content Section
+              Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+              ) {
+                // Folder/Volume/File list
+                LazyColumn(
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .height(400.dp),
+                  verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                  if (showStorageRoot) {
+                    // Show storage volumes
+                    items(storageVolumes) { volume ->
+                      val volumePath = StorageScanUtils.getVolumePath(volume)
+                      if (volumePath != null) {
+                        StorageVolumeItem(
+                          context = context,
+                          volume = volume,
+                          volumePath = volumePath,
+                          onClick = { selectedPath = volumePath },
+                        )
+                      }
+                    }
+                    if (storageVolumes.isEmpty()) {
+                      item {
+                         Text("No storage devices found", modifier = Modifier.padding(16.dp))
+                      }
+                    }
+                  } else {
+                    // Show folders
+                    items(folders) { folder ->
+                      FolderItem(
+                        folder = folder,
+                        onClick = { selectedPath = folder.absolutePath },
                       )
-                    ) {
-                      Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(24.dp))
+                    }
+                    // Show files
+                    items(files) { file ->
+                        FileItem(
+                            file = file,
+                            onClick = { onFileSelected(file.absolutePath) }
+                        )
+                    }
+                    if (folders.isEmpty() && files.isEmpty()) {
+                      item {
+                         Text("No folders or supported files", modifier = Modifier.padding(16.dp))
+                      }
                     }
                   }
+                }
+              }
 
-                  FilledTonalIconButton(
-                    onClick = {
-                      selectedPath = Environment.getExternalStorageDirectory().absolutePath
-                    },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                      )
+              // Footer Section (Analyze padding here)
+              Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.End
+              ) {
+                  TextButton(
+                    onClick = onDismiss,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    // Reduced padding for the button itself if needed, or rely on Row padding
                   ) {
-                    Icon(Icons.Default.Home, "Home", modifier = Modifier.size(24.dp))
+                    Text("Cancel", fontWeight = FontWeight.Medium)
                   }
-
-                  FilledTonalIconButton(
-                    onClick = onSystemPickerRequest,
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    )
-                  ) {
-                    Icon(Icons.Default.DriveFolderUpload, "System Picker", modifier = Modifier.size(24.dp))
-                  }
-            }
-        }
-      }
-    },
-    text = {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        // Folder/Volume/File list
-        LazyColumn(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .height(400.dp), // Reverted to reasonable height
-          verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          if (showStorageRoot) {
-            // Show storage volumes
-            items(storageVolumes) { volume ->
-              val volumePath = StorageScanUtils.getVolumePath(volume)
-              if (volumePath != null) {
-                StorageVolumeItem(
-                  context = context,
-                  volume = volume,
-                  volumePath = volumePath,
-                  onClick = { selectedPath = volumePath },
-                )
               }
-            }
-            if (storageVolumes.isEmpty()) {
-              item {
-                 Text("No storage devices found", modifier = Modifier.padding(16.dp))
-              }
-            }
-          } else {
-            // Show folders
-            items(folders) { folder ->
-              FolderItem(
-                folder = folder,
-                onClick = { selectedPath = folder.absolutePath },
-              )
-            }
-            // Show files
-            items(files) { file ->
-                FileItem(
-                    file = file,
-                    onClick = { onFileSelected(file.absolutePath) }
-                )
-            }
-            if (folders.isEmpty() && files.isEmpty()) {
-              item {
-                 Text("No folders or supported files", modifier = Modifier.padding(16.dp))
-              }
-            }
           }
-        }
       }
-    },
-    confirmButton = {}, // No explicit confirm button needed for file selection, simple click is enough
-    dismissButton = {
-      TextButton(
-        onClick = onDismiss,
-        shape = MaterialTheme.shapes.extraLarge,
-      ) {
-        Text("Cancel", fontWeight = FontWeight.Medium)
-      }
-    },
-    containerColor = MaterialTheme.colorScheme.surface,
-    tonalElevation = 6.dp,
-    shape = MaterialTheme.shapes.extraLarge,
-    modifier = modifier.fillMaxWidth(0.50f),
-  )
+  }
 }
 
 @Composable
