@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -156,6 +157,7 @@ object FolderListScreen : Screen {
     val foldersWithNewCount by viewModel.foldersWithNewCount.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val scanStatus by viewModel.scanStatus.collectAsState()
     val hasCompletedInitialLoad by viewModel.hasCompletedInitialLoad.collectAsState()
     val foldersWereDeleted by viewModel.foldersWereDeleted.collectAsState()
     val backstack = LocalBackStack.current
@@ -600,6 +602,7 @@ object FolderListScreen : Screen {
             FolderListContent(
               folders = filteredFolders,
               foldersWithNewCount = foldersWithNewCount,
+              scanStatus = scanStatus,
               listState = listState,
               gridState = gridState,
               isRefreshing = isRefreshing,
@@ -664,6 +667,7 @@ object FolderListScreen : Screen {
 private fun FolderListContent(
   folders: List<VideoFolder>,
   foldersWithNewCount: List<FolderWithNewCount>,
+  scanStatus: String?,
   listState: LazyListState,
   gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
   isRefreshing: MutableState<Boolean>,
@@ -729,7 +733,7 @@ private fun FolderListContent(
           LoadingState(
             icon = Icons.Filled.Folder,
             title = "Scanning for videos...",
-            message = "Please wait while we search your device",
+            message = scanStatus ?: "Please wait while we search your device",
           )
         } else if (showEmpty) {
           EmptyState(
@@ -834,6 +838,15 @@ private fun FolderListContent(
             }
           }
         }
+      }
+      
+      // Show background enrichment progress if list is visible but still processing
+      if (scanStatus != null && !showLoading) {
+         androidx.compose.material3.LinearProgressIndicator(
+             modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter),
+             color = MaterialTheme.colorScheme.secondary,
+             trackColor = MaterialTheme.colorScheme.surfaceVariant
+         )
       }
     }
   }
