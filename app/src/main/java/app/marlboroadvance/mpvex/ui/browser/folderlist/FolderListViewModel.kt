@@ -13,6 +13,7 @@ import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,6 +57,18 @@ class FolderListViewModel(
 
   // Track previous folder count to detect if all folders were deleted
   private var previousFolderCount = 0
+
+  /*
+   * TRACKING LOADING STATE
+   */
+  private val _scanStatus = MutableStateFlow<String?>(null)
+  val scanStatus: StateFlow<String?> = _scanStatus.asStateFlow()
+
+  private val _isEnriching = MutableStateFlow(false)
+  val isEnriching: StateFlow<Boolean> = _isEnriching.asStateFlow()
+
+  // Track the current scan job to prevent concurrent scans
+  private var currentScanJob: Job? = null
 
   companion object {
     private const val TAG = "FolderListViewModel"
@@ -250,40 +263,134 @@ class FolderListViewModel(
     calculateNewVideoCounts(_videoFolders.value)
   }
 
+
+
   /**
    * Scans the filesystem recursively to find all folders containing videos.
    * Uses optimized parallel scanning with complete metadata (including duration)
    * to provide fast, non-flickering results.
    */
   private fun loadVideoFolders() {
-    viewModelScope.launch(Dispatchers.IO) {
+    // Cancel any previous scan to prevent concurrent execution
+    currentScanJob?.cancel()
+    
+    currentScanJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         // Show loading state if no folders yet
-        if (_allVideoFolders.value.isEmpty()) {
+        val hasExistingData = _allVideoFolders.value.isNotEmpty()
+        
+        if (!hasExistingData) {
           _isLoading.value = true
+          _scanStatus.value = "Scanning storage..."
         }
+
+        // Capture current state for comparison
+        val currentFoldersMap = _allVideoFolders.value.associateBy { it.bucketId }
 
         val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
-        // Use optimized scan with complete metadata (no flickering)
-        // Fast parallel scanning + batch duration extraction = 5-10x faster than old method
-        val videoFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
-          .getAllVideoFolders(
+        // PHASE 1: Fast Parallel Scan
+        val fastFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
+          .getAllVideoFoldersFast(
             context = getApplication(),
             showHiddenFiles = showHiddenFiles,
+            onProgress = { count ->
+              // Only show progress if we don't have existing data (silent refresh)
+              if (!hasExistingData) {
+                _scanStatus.value = "Found $count folders..."
+              }
+            }
           )
 
-        Log.d(TAG, "Scan completed: found ${videoFolders.size} folders with complete metadata")
-        _allVideoFolders.value = videoFolders
+        Log.d(TAG, "Fast scan completed: found ${fastFolders.size} folders")
 
-        // Mark as completed after folders are set
-        _hasCompletedInitialLoad.value = true
+        // EDGE CASE: Empty result when we had data (permissions revoked?)
+        if (fastFolders.isEmpty() && hasExistingData) {
+             Log.w(TAG, "Scan returned empty when we had data - possible permission issue")
+             // Keep existing data, don't clear
+             _isLoading.value = false
+             _scanStatus.value = null
+             return@launch
+        }
+
+        // MERGE STRATEGY:
+        var needsEnrichment = false
+        
+        val mergedFolders = fastFolders.map { fastFolder ->
+             val cached = currentFoldersMap[fastFolder.bucketId]
+             // Check if cached data is valid, matches
+             val cachedIsEnriched = cached != null && (
+                 cached.videoCount == 0 || // Empty folders don't need duration
+                 cached.totalDuration > 0   // Has been enriched
+             )
+             
+             if (cached != null && 
+                 cached.videoCount == fastFolder.videoCount && 
+                 cached.lastModified == fastFolder.lastModified &&
+                 cached.videoCount >= 0 && 
+                 fastFolder.videoCount >= 0 &&
+                 cachedIsEnriched) {
+                 cached
+             } else {
+                 needsEnrichment = true
+                 fastFolder
+             }
+        }
+
+        // Immediate update with MERGED data
+        if (mergedFolders.isNotEmpty()) {
+            _allVideoFolders.value = mergedFolders
+             _isLoading.value = false 
+             _hasCompletedInitialLoad.value = true
+        } else {
+             // Legitimate empty result (no videos on device)
+             _allVideoFolders.value = emptyList()
+             _isLoading.value = false
+             _hasCompletedInitialLoad.value = true
+             _scanStatus.value = null
+             return@launch
+        }
+
+        // OPTIMIZATION: Skip enrichment if data is up-to-date
+        if (!needsEnrichment) {
+             Log.d(TAG, "Data up to date, skipping enrichment")
+             _scanStatus.value = null
+             return@launch
+        }
+
+        // PHASE 2: Background Enrichment
+        _isEnriching.value = true
+        _scanStatus.value = "Processing metadata..."
+        
+        val enrichedFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
+          .enrichVideoFolders(
+            context = getApplication(),
+            folders = mergedFolders,
+            onProgress = { processed, total ->
+               _scanStatus.value = "Processing metadata $processed/$total"
+            }
+          )
+
+        Log.d(TAG, "Enrichment completed")
+        _allVideoFolders.value = enrichedFolders
+
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        // Job was cancelled (new scan started), this is expected
+        Log.d(TAG, "Scan cancelled (new scan started)")
+        throw e // Re-throw to properly cancel the coroutine
       } catch (e: Exception) {
         Log.e(TAG, "Error loading video folders", e)
-        _allVideoFolders.value = emptyList()
+        // EDGE CASE: Preserve existing data on error if we have it
+        if (_allVideoFolders.value.isEmpty()) {
+             _allVideoFolders.value = emptyList()
+        }
+        // If we have merged data from Phase 1, it's already in _allVideoFolders
+        // So we don't overwrite it here
         _hasCompletedInitialLoad.value = true
       } finally {
         _isLoading.value = false
+        _isEnriching.value = false
+        _scanStatus.value = null
       }
     }
   }
