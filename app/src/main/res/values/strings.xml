@@ -67,6 +67,11 @@
     <string name="theme_slate">Slate</string>
     <string name="theme_dracula">Dracula</string>
     <string name="theme_monochrome">Monochrome</string>
+    <string name="theme_catppuccin">Catppuccin</string>
+    <string name="theme_gruvbox">Gruvbox</string>
+    <string name="theme_tokyo_night">Tokyo Night</string>
+    <string name="theme_kanagawa">Kanagawa</string>
+    <string name="theme_rose_pine">Rosé Pine</string>
 
     <!-- Settings Search -->
     <string name="settings_search_hint">Search settings…</string>
