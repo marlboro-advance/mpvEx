@@ -33,6 +33,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.ListItemDefaults.verticalAlignment
 import org.koin.compose.koinInject
 import kotlin.math.pow
 import androidx.compose.ui.platform.LocalContext
@@ -82,7 +83,7 @@ fun FolderCard(
           .background(
             if (isSelected) MaterialTheme.colorScheme.tertiary. copy(alpha = 0.3f) else Color.Transparent,
           )
-          .padding(8.dp),
+          .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
@@ -170,7 +171,7 @@ fun FolderCard(
             .background(
               if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f) else Color.Transparent,
             )
-            .padding(16.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Box(

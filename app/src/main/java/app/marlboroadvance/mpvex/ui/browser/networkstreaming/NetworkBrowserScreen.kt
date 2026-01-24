@@ -97,6 +97,9 @@ data class NetworkBrowserScreen(
           onCancelSelection = {},
           onSortClick = null,
           onSearchClick = null,
+          onSettingsClick = {
+            backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+          },
           onDeleteClick = null,
           onRenameClick = null,
           isSingleSelection = false,
@@ -159,7 +162,9 @@ private fun NetworkBrowserContent(
   when {
     isLoading -> {
       Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+          .fillMaxSize()
+          .padding(bottom = 80.dp), // Account for bottom navigation bar
         contentAlignment = Alignment.Center,
       ) {
         CircularProgressIndicator(
@@ -223,18 +228,24 @@ private fun NetworkBrowserContent(
         listState = networkListState,
         modifier = modifier.fillMaxSize(),
       ) {
-        LazyColumnScrollbar(
-          state = networkListState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = navigationBarHeight)
         ) {
-          LazyColumn(
+          LazyColumnScrollbar(
             state = networkListState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
           ) {
+            LazyColumn(
+              state = networkListState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(8.dp),
+            ) {
             // Folders section
             if (folders.isNotEmpty()) {
               item {
@@ -287,4 +298,5 @@ private fun NetworkBrowserContent(
       }
     }
   }
+}
 }
