@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -72,8 +73,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlaylistActionSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -140,8 +139,8 @@ object PlaylistScreen : Screen {
     )
 
     // Use the shared LazyListState from CompositionLocal instead of creating a new one
-    val listState = LocalLazyListState.current
-    val gridState = LocalLazyGridState.current
+    val listState = LazyListState()
+    val gridState = LazyGridState()
     val isRefreshing = remember { mutableStateOf(false) }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }

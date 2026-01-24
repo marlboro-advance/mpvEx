@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -85,7 +85,7 @@ object NetworkStreamingScreen : Screen {
     val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
 
     // LazyList state for scroll tracking
-    val listState = rememberLazyListState()
+    val listState = LazyListState()
 
     // Track scroll direction to show/hide FAB
     var previousFirstVisibleItemIndex by remember { mutableIntStateOf(0) }

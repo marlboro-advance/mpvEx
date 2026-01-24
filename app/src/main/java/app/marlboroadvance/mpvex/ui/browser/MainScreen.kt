@@ -18,10 +18,10 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -126,16 +126,10 @@ object MainScreen : Screen {
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    // Create separate list and grid states for each tab to track scroll position
-    val foldersListState = rememberLazyListState()
-    val foldersGridState = rememberLazyGridState()
-    val recentListState = rememberLazyListState()
-    val recentGridState = rememberLazyGridState()
-    val playlistListState = rememberLazyListState()
-    val playlistGridState = rememberLazyGridState()
-    val networkListState = rememberLazyListState()
-    val networkGridState = rememberLazyGridState()
-    
+    // Create shared LazyListState and LazyGridState for folder navigation
+    val lazyListState = rememberLazyListState()
+    val lazyGridState = rememberLazyGridState()
+
     // Shared state (across the app)
     val isInSelectionMode = remember { mutableStateOf(isInSelectionModeShared) }
     val hideNavigationBar = remember { mutableStateOf(shouldHideNavigationBar) }
@@ -213,7 +207,7 @@ object MainScreen : Screen {
               onClick = { selectedTab = 1 }
             )
             NavigationBarItem(
-              icon = { Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists") },
+              icon = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Playlists") },
               label = { Text("Playlists") },
               selected = selectedTab == 2,
               onClick = { selectedTab = 2 }
@@ -293,42 +287,16 @@ object MainScreen : Screen {
           },
           label = "tab_animation"
         ) { targetTab ->
-          when (targetTab) {
-            0 -> {
-              CompositionLocalProvider(
-                LocalLazyListState provides foldersListState,
-                LocalLazyGridState provides foldersGridState,
-                LocalNavigationBarHeight provides fabBottomPadding
-              ) {
-                FolderListScreen.Content()
-              }
-            }
-            1 -> {
-              CompositionLocalProvider(
-                LocalLazyListState provides recentListState,
-                LocalLazyGridState provides recentGridState,
-                LocalNavigationBarHeight provides fabBottomPadding
-              ) {
-                RecentlyPlayedScreen.Content()
-              }
-            }
-            2 -> {
-              CompositionLocalProvider(
-                LocalLazyListState provides playlistListState,
-                LocalLazyGridState provides playlistGridState,
-                LocalNavigationBarHeight provides fabBottomPadding
-              ) {
-                PlaylistScreen.Content()
-              }
-            }
-            3 -> {
-              CompositionLocalProvider(
-                LocalLazyListState provides networkListState,
-                LocalLazyGridState provides networkGridState,
-                LocalNavigationBarHeight provides fabBottomPadding
-              ) {
-                NetworkStreamingScreen.Content()
-              }
+          CompositionLocalProvider(
+            LocalNavigationBarHeight provides fabBottomPadding,
+            LocalLazyListState provides lazyListState,
+            LocalLazyGridState provides lazyGridState
+          ) {
+            when (targetTab) {
+              0 -> FolderListScreen.Content()
+              1 -> RecentlyPlayedScreen.Content()
+              2 -> PlaylistScreen.Content()
+              3 -> NetworkStreamingScreen.Content()
             }
           }
         }

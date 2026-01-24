@@ -776,7 +776,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             if (isSearching) {
               // Show search results
               FileSystemSearchContent(
-                listState = listState,
+                listState = LazyListState(),
                 searchQuery = searchQuery,
                 searchResults = searchResults,
                 isLoading = isSearchLoading,

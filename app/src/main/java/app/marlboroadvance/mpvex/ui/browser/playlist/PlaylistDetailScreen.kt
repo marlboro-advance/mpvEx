@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
@@ -155,7 +155,7 @@ data class PlaylistDetailScreen(val playlistId: Int) : Screen {
       )
 
     // UI State
-    val listState = rememberLazyListState()
+    val listState = LazyListState()
     val isFabVisible = remember { mutableStateOf(true) }
     val deleteDialogOpen = rememberSaveable { mutableStateOf(false) }
     var showUrlDialog by rememberSaveable { mutableStateOf(false) }

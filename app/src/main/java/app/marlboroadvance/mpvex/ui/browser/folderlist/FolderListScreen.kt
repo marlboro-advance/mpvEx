@@ -599,7 +599,7 @@ private fun SearchContent(
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
 ) {
-  val searchListState = LocalLazyListState.current
+  val searchListState = LazyListState()
 
   Box(modifier = Modifier.fillMaxSize()) {
     when {

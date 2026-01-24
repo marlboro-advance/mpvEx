@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -73,8 +75,6 @@ import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistDetailScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import kotlinx.coroutines.launch
@@ -172,8 +172,8 @@ object RecentlyPlayedScreen : Screen {
     }
 
     // Track scroll for FAB visibility
-    val listState = LocalLazyListState.current
-    val gridState = LocalLazyGridState.current
+    val listState = LazyListState()
+    val gridState = LazyGridState()
     val browserPreferences = koinInject<BrowserPreferences>()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
@@ -436,8 +436,8 @@ private fun RecentItemsContent(
 
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
 
-  val listState = LocalLazyListState.current
-  val gridState = LocalLazyGridState.current
+  val listState = LazyListState()
+  val gridState = LazyGridState()
   val coroutineScope = rememberCoroutineScope()
   val isRefreshing = remember { mutableStateOf(false) }
 
@@ -478,7 +478,7 @@ private fun RecentItemsContent(
   val hasEnoughItems = recentItems.size > 20
 
   val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+    targetValue = if (!hasEnoughItems) 0f else 1f,
     animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
     label = "scrollbarAlpha",
   )
