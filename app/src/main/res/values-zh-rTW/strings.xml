@@ -232,7 +232,7 @@
     <string name="pref_anime4k_title">Anime4K 升頻（實驗性）</string>
     <string name="pref_anime4k_summary">啟用 Anime4K 升頻濾鏡</string>
     <string name="pref_anime4k_incompatibility">Anime4K 不相容</string>
-    <string name="pref_anime4k_gpu_next_error">gpu-next 與 Anime4K 著色器不相容。啟用 Anime4K 時，應用程式將自動使用舊版 'gpu' 後端以確保著色器相容性。</string>
+    <string name="pref_anime4k_gpu_next_error">gpu next 與 Anime4K 著色器不相容。啟用 Anime4K 時，應用程式將自動使用舊版 'gpu' 後端以確保著色器相容性。</string>
     <string name="pref_anime4k_cannot_use_with_gpu_next">啟用 gpu-next 時無法使用 Anime4K</string>
     <string name="anime4k_mode_title">Anime4K 預設</string>
     <string name="anime4k_quality_title">Anime4K 變體</string>
