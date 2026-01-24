@@ -7,8 +7,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -50,52 +52,57 @@ fun LoadingState(
     label = "icon_alpha",
   )
 
-  Column(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .padding(48.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center,
+  Box(
+    modifier = modifier.fillMaxSize(),
+    contentAlignment = Alignment.Center
   ) {
-    // Icon with Surface (same style as EmptyState)
-    Surface(
-      modifier =
-        Modifier
-          .size(96.dp)
-          .alpha(alpha),
-      shape = RoundedCornerShape(28.dp),
-      color = MaterialTheme.colorScheme.surfaceContainerHighest,
-      tonalElevation = 0.dp,
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 48.dp)
+        .padding(bottom = 80.dp), // Account for bottom navigation bar
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
     ) {
-      Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier.padding(24.dp),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      // Icon with Surface (same style as EmptyState)
+      Surface(
+        modifier =
+          Modifier
+            .size(96.dp)
+            .alpha(alpha),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        tonalElevation = 0.dp,
+      ) {
+        Icon(
+          imageVector = icon,
+          contentDescription = null,
+          modifier = Modifier.padding(24.dp),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+
+      Spacer(modifier = Modifier.height(24.dp))
+
+      // Title
+      Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+
+      Spacer(modifier = Modifier.height(8.dp))
+
+      // Message
+      Text(
+        text = message,
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
       )
     }
-
-    Spacer(modifier = Modifier.height(24.dp))
-
-    // Title
-    Text(
-      text = title,
-      style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.SemiBold,
-      textAlign = TextAlign.Center,
-      color = MaterialTheme.colorScheme.onSurface,
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Message
-    Text(
-      text = message,
-      style = MaterialTheme.typography.bodyMedium,
-      textAlign = TextAlign.Center,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      lineHeight = MaterialTheme.typography.bodyMedium.lineHeight,
-    )
   }
 }

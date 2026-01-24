@@ -14,6 +14,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -81,130 +82,137 @@ fun PermissionDeniedState(
     label = "icon_scale",
   )
 
-  Surface(
-    modifier = modifier.fillMaxSize(),
-    color = MaterialTheme.colorScheme.background,
+  Box(
+    modifier = modifier
+      .fillMaxSize()
+      .padding(top = 40.dp, bottom = 100.dp) // Added top padding for icon, reduced bottom padding
   ) {
-    Column(
-      modifier =
-        Modifier
-          .fillMaxSize()
-          .padding(24.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Center,
+    Surface(
+      modifier = Modifier.fillMaxSize(),
+      color = MaterialTheme.colorScheme.background,
     ) {
-      Spacer(modifier = Modifier.weight(0.5f))
-
-      // Animated Icon with Surface
-      Surface(
+      Column(
         modifier =
           Modifier
-            .size(120.dp)
-            .scale(scale),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        tonalElevation = 3.dp,
+            .fillMaxSize()
+            .padding(32.dp) // Increased padding to prevent icon cutoff
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
       ) {
-        Icon(
-          imageVector = Icons.Outlined.Warning,
-          contentDescription = null,
+
+        // Animated Icon with Surface
+        Surface(
           modifier =
             Modifier
-              .padding(28.dp)
-              .fillMaxSize(),
-          tint = MaterialTheme.colorScheme.onErrorContainer,
-        )
-      }
-
-      Spacer(modifier = Modifier.height(32.dp))
-
-      // Title
-      Text(
-        text = "Storage Access Required",
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-
-      Spacer(modifier = Modifier.height(16.dp))
-
-      // Description Card
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-          CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-          ),
-        shape = RoundedCornerShape(20.dp),
-      ) {
-        Column(
-          modifier = Modifier.padding(20.dp),
-          verticalArrangement = Arrangement.spacedBy(12.dp),
+              .size(152.dp) // Increased size to compensate for padding (120dp + 32dp padding)
+              .padding(16.dp) // Added padding around the icon to prevent cutoff
+              .scale(scale),
+          shape = RoundedCornerShape(32.dp),
+          color = MaterialTheme.colorScheme.errorContainer,
+          tonalElevation = 3.dp,
         ) {
-          Text(
-            text = "mpvEx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
+          Icon(
+            imageVector = Icons.Outlined.Warning,
+            contentDescription = null,
+            modifier =
+              Modifier
+                .padding(28.dp)
+                .fillMaxSize(),
+            tint = MaterialTheme.colorScheme.onErrorContainer,
           )
         }
-      }
 
-      Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-      // Allow Access Button
-      FilledTonalButton(
-        onClick = {
-          // Open All Files Access settings for Android 11+
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-              val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-              intent.data = Uri.parse("package:${context.packageName}")
-              context.startActivity(intent)
-            } catch (_: Exception) {
-              // Fallback to general All Files Access settings
-              val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-              context.startActivity(intent)
-            }
-          } else {
-            // For older Android versions, use the regular permission request
-            onRequestPermission()
+        // Title
+        Text(
+          text = "Storage Access Required",
+          style = MaterialTheme.typography.headlineMedium,
+          fontWeight = FontWeight.Bold,
+          textAlign = TextAlign.Center,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Description Card
+        Card(
+          modifier = Modifier.fillMaxWidth(),
+          colors =
+            CardDefaults.cardColors(
+              containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+          shape = RoundedCornerShape(20.dp),
+        ) {
+          Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Text(
+              text = "mpvEx requires \"All file access\" permission to discover media and subtitles on your device due to a change in security policy in Android 11 and later versions.",
+              style = MaterialTheme.typography.bodyLarge,
+              color = MaterialTheme.colorScheme.onSurface,
+              textAlign = TextAlign.Center,
+            )
           }
-        },
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-      ) {
-        Text(
-          text = "ALLOW ACCESS",
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.SemiBold,
-        )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Allow Access Button
+        FilledTonalButton(
+          onClick = {
+            // Open All Files Access settings for Android 11+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+              try {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:${context.packageName}")
+                context.startActivity(intent)
+              } catch (_: Exception) {
+                // Fallback to general All Files Access settings
+                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                context.startActivity(intent)
+              }
+            } else {
+              // For older Android versions, use the regular permission request
+              onRequestPermission()
+            }
+          },
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .height(56.dp),
+          shape = RoundedCornerShape(16.dp),
+        ) {
+          Text(
+            text = "ALLOW ACCESS",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+          )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Why do I see this? link
+        TextButton(
+          onClick = { showExplanationDialog = true },
+        ) {
+          Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            text = "Why do I see this?",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+          )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
       }
-
-      Spacer(modifier = Modifier.height(12.dp))
-
-      // Why do I see this? link
-      TextButton(
-        onClick = { showExplanationDialog = true },
-      ) {
-        Icon(
-          imageVector = Icons.Outlined.Info,
-          contentDescription = null,
-          modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-          text = "Why do I see this?",
-          style = MaterialTheme.typography.bodyMedium,
-          fontWeight = FontWeight.Medium,
-        )
-      }
-
-      Spacer(modifier = Modifier.weight(1f))
     }
   }
 

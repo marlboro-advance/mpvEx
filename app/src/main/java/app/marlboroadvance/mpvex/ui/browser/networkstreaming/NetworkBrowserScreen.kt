@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -97,6 +97,9 @@ data class NetworkBrowserScreen(
           onCancelSelection = {},
           onSortClick = null,
           onSearchClick = null,
+          onSettingsClick = {
+            backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+          },
           onDeleteClick = null,
           onRenameClick = null,
           isSingleSelection = false,
@@ -159,7 +162,9 @@ private fun NetworkBrowserContent(
   when {
     isLoading -> {
       Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+          .fillMaxSize()
+          .padding(bottom = 80.dp), // Account for bottom navigation bar
         contentAlignment = Alignment.Center,
       ) {
         CircularProgressIndicator(
@@ -198,7 +203,7 @@ private fun NetworkBrowserContent(
     else -> {
       val folders = files.filter { it.isDirectory }
       val videos = files.filter { !it.isDirectory && it.mimeType?.startsWith("video/") == true }
-      val networkListState = rememberLazyListState()
+      val networkListState = LazyListState()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {
@@ -223,18 +228,24 @@ private fun NetworkBrowserContent(
         listState = networkListState,
         modifier = modifier.fillMaxSize(),
       ) {
-        LazyColumnScrollbar(
-          state = networkListState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = navigationBarHeight)
         ) {
-          LazyColumn(
+          LazyColumnScrollbar(
             state = networkListState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+            ),
           ) {
+            LazyColumn(
+              state = networkListState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(8.dp),
+            ) {
             // Folders section
             if (folders.isNotEmpty()) {
               item {
@@ -287,4 +298,5 @@ private fun NetworkBrowserContent(
       }
     }
   }
+}
 }

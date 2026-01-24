@@ -111,7 +111,7 @@ fun VideoCard(
               Color. Transparent
             },
           )
-          .padding(8.dp),
+          .padding(12.dp),
         horizontalAlignment = if (gridColumns == 1) Alignment.Start else Alignment.CenterHorizontally,
       ) {
         val thumbnailRepository = koinInject<ThumbnailRepository>()

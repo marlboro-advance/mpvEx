@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -31,12 +31,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.LaunchedEffect
@@ -56,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.domain.network.NetworkConnection
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserNavigationDrawer
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.cards.NetworkConnectionCard
 import app.marlboroadvance.mpvex.ui.browser.dialogs.AddConnectionSheet
@@ -85,16 +82,15 @@ object NetworkStreamingScreen : Screen {
     val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
     var showAddSheet by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
+    val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
 
     // LazyList state for scroll tracking
-    val listState = rememberLazyListState()
+    val listState = LazyListState()
 
     // Track scroll direction to show/hide FAB
     var previousFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
     var previousFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
-
-    // Navigation drawer state
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     
     val isFabVisible by remember {
@@ -118,33 +114,7 @@ object NetworkStreamingScreen : Screen {
       }
     }
 
-    BrowserNavigationDrawer(
-      drawerState = drawerState,
-      onHomeClick = {
-        // Navigate to the default home screen based on user preference
-        val folderViewMode = browserPreferences.folderViewMode.get()
-        when (folderViewMode) {
-          FolderViewMode.FileManager -> {
-            backstack.add(app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen)
-          }
-          FolderViewMode.AlbumView -> {
-            backstack.add(app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen)
-          }
-        }
-      },
-      onRecentlyPlayedClick = {
-        backstack.add(app.marlboroadvance.mpvex.ui.browser.recentlyplayed.RecentlyPlayedScreen)
-      },
-      onPlaylistsClick = {
-        backstack.add(app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistScreen)
-      },
-      onNetworkStreamingClick = { /* Already on network streaming screen */ },
-      onSettingsClick = {
-        backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
-      },
-      currentRoute = "network_streaming",
-    ) {
-      Scaffold(
+    Scaffold(
         topBar = {
           BrowserTopBar(
             title = "Network",
@@ -152,11 +122,13 @@ object NetworkStreamingScreen : Screen {
             selectedCount = 0,
             totalCount = 0,
             onBackClick = null, // No back button for network screen (root tab)
-            onNavigationClick = { coroutineScope.launch { drawerState.open() } },
             onCancelSelection = { },
           onSortClick = null,
           // Search functionality disabled for production
           onSearchClick = null,
+          onSettingsClick = {
+            backstack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+          },
           onDeleteClick = null,
           onRenameClick = null,
           isSingleSelection = false,
@@ -169,11 +141,13 @@ object NetworkStreamingScreen : Screen {
         )
       },
       floatingActionButton = {
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
         if (isFabVisible) {
           ExtendedFloatingActionButton(
             onClick = { showAddSheet = true },
             icon = { Icon(Icons.Filled.Add, contentDescription = null) },
             text = { Text("Add Connection") },
+            modifier = Modifier.padding(bottom = navigationBarHeight)
           )
         }
       },
@@ -301,7 +275,6 @@ object NetworkStreamingScreen : Screen {
           },
         )
       }
-    }
     }
   }
 }

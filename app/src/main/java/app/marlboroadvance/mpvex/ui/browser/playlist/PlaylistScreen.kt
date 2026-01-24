@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +29,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -41,7 +42,6 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.animateFloatingActionButton
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,14 +68,11 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefreshBox
 import app.marlboroadvance.mpvex.ui.browser.cards.PlaylistCard
-import app.marlboroadvance.mpvex.ui.browser.components.BrowserNavigationDrawer
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlaylistActionSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -142,16 +139,13 @@ object PlaylistScreen : Screen {
     )
 
     // Use the shared LazyListState from CompositionLocal instead of creating a new one
-    val listState = LocalLazyListState.current
-    val gridState = LocalLazyGridState.current
+    val listState = LazyListState()
+    val gridState = LazyGridState()
     val isRefreshing = remember { mutableStateOf(false) }
     var showRenameDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     // Playlist action sheet state
     var showPlaylistActionSheet by remember { mutableStateOf(false) }
-
-    // Navigation drawer state
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     // FAB visibility for scroll-based hiding
     val isFabVisible = remember { mutableStateOf(true) }
@@ -178,33 +172,7 @@ object PlaylistScreen : Screen {
       onExpandedChange = {},
     )
 
-    BrowserNavigationDrawer(
-      drawerState = drawerState,
-      onHomeClick = {
-        // Navigate to the default home screen based on user preference
-        val folderViewMode = browserPreferences.folderViewMode.get()
-        when (folderViewMode) {
-          app.marlboroadvance.mpvex.preferences.FolderViewMode.FileManager -> {
-            backStack.add(app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen)
-          }
-          app.marlboroadvance.mpvex.preferences.FolderViewMode.AlbumView -> {
-            backStack.add(app.marlboroadvance.mpvex.ui.browser.folderlist.FolderListScreen)
-          }
-        }
-      },
-      onRecentlyPlayedClick = {
-        backStack.add(app.marlboroadvance.mpvex.ui.browser.recentlyplayed.RecentlyPlayedScreen)
-      },
-      onPlaylistsClick = { /* Already on playlist screen */ },
-      onNetworkStreamingClick = {
-        backStack.add(app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScreen)
-      },
-      onSettingsClick = {
-        backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
-      },
-      currentRoute = "playlists",
-    ) {
-      Scaffold(
+    Scaffold(
         topBar = {
           if (isSearching) {
             // Search mode - show search bar
@@ -256,10 +224,12 @@ object PlaylistScreen : Screen {
               selectedCount = selectionManager.selectedCount,
               totalCount = playlistsWithCount.size,
               onBackClick = null,
-              onNavigationClick = { scope.launch { drawerState.open() } },
               onCancelSelection = { selectionManager.clear() },
               isSingleSelection = selectionManager.isSingleSelection,
               onSearchClick = { isSearching = true },
+              onSettingsClick = {
+                backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+              },
               onRenameClick = if (selectionManager.isSingleSelection) {
                 { showRenameDialog = true }
               } else null,
@@ -271,28 +241,14 @@ object PlaylistScreen : Screen {
           }
         },
         floatingActionButton = {
-          TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-              TooltipAnchorPosition.Above
-            ),
-            tooltip = { PlainTooltip { Text("Playlist actions") } },
-            state = rememberTooltipState(),
-          ) {
-            androidx.compose.material3.FloatingActionButton(
-              modifier = Modifier
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(bottom = 16.dp, end = 16.dp)
-                .animateFloatingActionButton(
-                  visible = !selectionManager.isInSelectionMode && isFabVisible.value,
-                  alignment = androidx.compose.ui.Alignment.BottomEnd,
-                ),
+          val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+          if (!selectionManager.isInSelectionMode && isFabVisible.value) {
+            ExtendedFloatingActionButton(
               onClick = { showPlaylistActionSheet = true },
-            ) {
-              Icon(
-                Icons.Filled.Add,
-                contentDescription = "Playlist actions"
-              )
-            }
+              icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+              text = { Text("Create Playlist") },
+              modifier = Modifier.padding(bottom = navigationBarHeight)
+            )
           }
         }
       ) { paddingValues ->
@@ -469,75 +425,87 @@ object PlaylistScreen : Screen {
     ) {
       if (isGridMode) {
         // Grid layout
-        LazyVerticalGridScrollbar(
-          state = gridState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = navigationBarHeight)
         ) {
-          LazyVerticalGrid(
-            columns = GridCells.Fixed(folderGridColumns),
+          LazyVerticalGridScrollbar(
             state = gridState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-              start = 8.dp,
-              end = 8.dp,
-              bottom = if (isInSelectionMode) 88.dp else 0.dp
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            items(
-              count = playlistsWithCount.size,
-              key = { playlistsWithCount[it].playlist.id },
-            ) { index ->
-              val playlistWithCount = playlistsWithCount[index]
-              PlaylistCard(
-                playlist = playlistWithCount.playlist,
-                itemCount = playlistWithCount.itemCount,
-                isSelected = selectionManager.isSelected(playlistWithCount),
-                onClick = { onPlaylistClick(playlistWithCount) },
-                onLongClick = { onPlaylistLongClick(playlistWithCount) },
-                onThumbClick = { onPlaylistClick(playlistWithCount) },
-                isGridMode = true,
-              )
+            LazyVerticalGrid(
+              columns = GridCells.Fixed(folderGridColumns),
+              state = gridState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+              ),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              items(
+                count = playlistsWithCount.size,
+                key = { playlistsWithCount[it].playlist.id },
+              ) { index ->
+                val playlistWithCount = playlistsWithCount[index]
+                PlaylistCard(
+                  playlist = playlistWithCount.playlist,
+                  itemCount = playlistWithCount.itemCount,
+                  isSelected = selectionManager.isSelected(playlistWithCount),
+                  onClick = { onPlaylistClick(playlistWithCount) },
+                  onLongClick = { onPlaylistLongClick(playlistWithCount) },
+                  onThumbClick = { onPlaylistClick(playlistWithCount) },
+                  isGridMode = true,
+                )
+              }
             }
           }
         }
       } else {
         // List layout
-        LazyColumnScrollbar(
-          state = listState,
-          settings = ScrollbarSettings(
-            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-          ),
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = navigationBarHeight)
         ) {
-          LazyColumn(
+          LazyColumnScrollbar(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-              start = 8.dp,
-              end = 8.dp,
-              bottom = if (isInSelectionMode) 88.dp else 0.dp
+            settings = ScrollbarSettings(
+              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
             ),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
           ) {
-            items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
-              PlaylistCard(
-                playlist = playlistWithCount.playlist,
-                itemCount = playlistWithCount.itemCount,
-                isSelected = selectionManager.isSelected(playlistWithCount),
-                onClick = { onPlaylistClick(playlistWithCount) },
-                onLongClick = { onPlaylistLongClick(playlistWithCount) },
-                onThumbClick = { onPlaylistClick(playlistWithCount) },
-                isGridMode = false,
-              )
+            LazyColumn(
+              state = listState,
+              modifier = Modifier.fillMaxSize(),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+              ),
+              verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+              items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
+                PlaylistCard(
+                  playlist = playlistWithCount.playlist,
+                  itemCount = playlistWithCount.itemCount,
+                  isSelected = selectionManager.isSelected(playlistWithCount),
+                  onClick = { onPlaylistClick(playlistWithCount) },
+                  onLongClick = { onPlaylistLongClick(playlistWithCount) },
+                  onThumbClick = { onPlaylistClick(playlistWithCount) },
+                  isGridMode = false,
+                )
+              }
             }
           }
         }
       }
     }
   }
-}
+

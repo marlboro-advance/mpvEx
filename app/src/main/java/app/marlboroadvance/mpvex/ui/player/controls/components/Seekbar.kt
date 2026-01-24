@@ -50,8 +50,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import app.marlboroadvance.mpvex.preferences.SeekbarStyle
@@ -197,6 +199,25 @@ fun SeekbarWithTimers(
             isScrubbing = isUserInteracting,
             useWavySeekbar = false,
             seekbarStyle = SeekbarStyle.Simple, 
+            onSeek = { newPosition ->
+              if (!isUserInteracting) isUserInteracting = true
+              userPosition = newPosition
+              onValueChange(newPosition)
+            },
+            onSeekFinished = {
+              scope.launch { animatedPosition.snapTo(userPosition) }
+              isUserInteracting = false
+              onValueChangeFinished()
+            },
+          )
+        }
+        SeekbarStyle.Thick -> {
+          StandardSeekbar(
+            position = if (isUserInteracting) userPosition else animatedPosition.value,
+            duration = duration,
+            readAheadValue = readAheadValue,
+            chapters = chapters,
+            seekbarStyle = SeekbarStyle.Thick,
             onSeek = { newPosition ->
               if (!isUserInteracting) isUserInteracting = true
               userPosition = newPosition
@@ -553,16 +574,26 @@ fun VideoTimer(
 
 @Composable
 fun StandardSeekbar(
-  position: Float,
-  duration: Float,
-  readAheadValue: Float,
-  chapters: ImmutableList<Segment>,
-  onSeek: (Float) -> Unit,
-  onSeekFinished: () -> Unit,
+    position: Float,
+    duration: Float,
+    readAheadValue: Float,
+    chapters: ImmutableList<Segment>,
+    isPaused: Boolean = false,
+    isScrubbing: Boolean = false,
+    useWavySeekbar: Boolean = false,
+    seekbarStyle: SeekbarStyle = SeekbarStyle.Standard,
+    onSeek: (Float) -> Unit,
+    onSeekFinished: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val interactionSource = remember { MutableInteractionSource() }
+    
+    val isThick = seekbarStyle == SeekbarStyle.Thick
+    val trackHeightDp = if (isThick) 16.dp else 8.dp
     val thumbWidth = 6.dp
+    val thumbHeight = if (isThick) 16.dp else 24.dp
+    val thumbShape = if (isThick) RoundedCornerShape(thumbWidth / 2) else CircleShape
 
     Slider(
         value = position,
@@ -576,160 +607,124 @@ fun StandardSeekbar(
             val bufferAlpha = 0.5f
 
             Canvas(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .height(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeightDp),
             ) {
-              val min = sliderState.valueRange.start
-              val max = sliderState.valueRange.endInclusive
-              val range = (max - min).takeIf { it > 0f } ?: 1f
+                val min = sliderState.valueRange.start
+                val max = sliderState.valueRange.endInclusive
+                val range = (max - min).takeIf { it > 0f } ?: 1f
 
-              val playedFraction = ((sliderState.value - min) / range).coerceIn(0f, 1f)
-              val readAheadFraction = ((readAheadValue - min) / range).coerceIn(0f, 1f)
+                val playedFraction = ((sliderState.value - min) / range).coerceIn(0f, 1f)
+                val readAheadFraction = ((readAheadValue - min) / range).coerceIn(0f, 1f)
 
-              val playedPx = size.width * playedFraction
-              val readAheadPx = size.width * readAheadFraction
-              val trackHeight = size.height
-              val outerRadius = trackHeight / 2f
-              val innerRadius = 2.dp.toPx()
-              
-              // We want flat gaps around the thumb.
-              val thumbTrackGapSize = 14.dp.toPx()
-              val gapHalf = thumbTrackGapSize / 2f
-              
-              // Define gaps based on chapters + the current thumb position
-              // Chapter gaps are always flat. Thumb gap is flat.
-              // Ends of the bar (0 and size.width) are rounded.
+                val playedPx = size.width * playedFraction
+                val readAheadPx = size.width * readAheadFraction
+                val trackHeight = size.height
+                
+                // Radius for the outer ends of the seekbar
+                val outerRadius = trackHeight / 2f
+                
+                // MODIFIED: For Thick style, inner corners now match the outer rounding
+                val innerRadius = if (isThick) outerRadius else 2.dp.toPx()
+                
+                val thumbTrackGapSize = 14.dp.toPx()
+                val gapHalf = thumbTrackGapSize / 2f
+                val chapterGapHalf = 1.dp.toPx()
+                
+                val thumbGapStart = (playedPx - gapHalf).coerceIn(0f, size.width)
+                val thumbGapEnd = (playedPx + gapHalf).coerceIn(0f, size.width)
+                
+                val chapterGaps = chapters
+                    .map { (it.start / duration).coerceIn(0f, 1f) * size.width }
+                    .filter { it > 0f && it < size.width }
+                    .map { x -> (x - chapterGapHalf) to (x + chapterGapHalf) }
+                
+                fun drawSegment(startX: Float, endX: Float, color: Color) {
+                    if (endX - startX < 0.5f) return
+                    
+                    val path = Path()
+                    val isOuterLeft = startX <= 0.5f
+                    val isInnerLeft = kotlin.math.abs(startX - thumbGapEnd) < 0.5f
+                    
+                    val cornerRadiusLeft = when {
+                        isOuterLeft -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
+                        isInnerLeft -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
+                        else -> androidx.compose.ui.geometry.CornerRadius.Zero
+                    }
 
-              val chapterGapHalf = 1.dp.toPx()
-              
-              // Collect all non-drawable zones (gaps)
-              // 1. Thumb gap
-              val thumbGapStart = (playedPx - gapHalf).coerceIn(0f, size.width)
-              val thumbGapEnd = (playedPx + gapHalf).coerceIn(0f, size.width)
-              
-              // 2. Chapter gaps
-              val chapterGaps = chapters
-                .map { (it.start / duration).coerceIn(0f, 1f) * size.width }
-                .filter { it > 0f && it < size.width }
-                .map { x -> (x - chapterGapHalf) to (x + chapterGapHalf) }
-              
-              // Helper to draw a segment with selective rounding
-              fun drawSegment(startX: Float, endX: Float, color: Color) {
-                  if (endX - startX < 0.5f) return
-                  
-                  val path = Path()
-                  
-                  // Determine rounding for LEFT side of this segment
-                  val isOuterLeft = startX <= 0.5f
-                  val isInnerLeft = kotlin.math.abs(startX - thumbGapEnd) < 0.5f
-                  
-                  val cornerRadiusLeft = when {
-                      isOuterLeft -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
-                      isInnerLeft -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
-                      else -> androidx.compose.ui.geometry.CornerRadius.Zero
-                  }
+                    val isOuterRight = endX >= size.width - 0.5f
+                    val isInnerRight = kotlin.math.abs(endX - thumbGapStart) < 0.5f
 
-                  // Determine rounding for RIGHT side of this segment
-                  val isOuterRight = endX >= size.width - 0.5f
-                  val isInnerRight = kotlin.math.abs(endX - thumbGapStart) < 0.5f
-
-                  val cornerRadiusRight = when {
-                      isOuterRight -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
-                      isInnerRight -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
-                      else -> androidx.compose.ui.geometry.CornerRadius.Zero
-                  }
-                  
-                  path.addRoundRect(
-                      androidx.compose.ui.geometry.RoundRect(
-                          left = startX,
-                          top = 0f,
-                          right = endX,
-                          bottom = trackHeight,
-                          topLeftCornerRadius = cornerRadiusLeft,
-                          bottomLeftCornerRadius = cornerRadiusLeft,
-                          topRightCornerRadius = cornerRadiusRight,
-                          bottomRightCornerRadius = cornerRadiusRight
-                      )
-                  )
-                  drawPath(path, color)
-              }
-              
-              // Draw Logic:
-              // We effectively have a list of content ranges for each layer (Background, Buffer, Played).
-              // We need to subtract the 'gaps' from these ranges.
-              
-              // Combined list of gaps to exclude from DRAWING
-              // For the background/buffer, we exclude chapter gaps AND the thumb gap.
-              // For the played part, we only draw up to the thumb gap start, excluding chapter gaps.
-              fun drawRangeWithGaps(
-                  rangeStart: Float, 
-                  rangeEnd: Float, 
-                  gaps: List<Pair<Float, Float>>, 
-                  color: Color
-              ) {
-                  if (rangeEnd <= rangeStart) return
-                  
-                  // Filter and sort gaps that intersect the range
-                  val relevantGaps = gaps
-                      .filter { (gStart, gEnd) -> gEnd > rangeStart && gStart < rangeEnd }
-                      .sortedBy { it.first }
-                  
-                  var currentPos = rangeStart
-                  
-                  for ((gStart, gEnd) in relevantGaps) {
-                      // Draw from currentPos to start of gap
-                      val segmentEnd = gStart.coerceAtMost(rangeEnd)
-                      if (segmentEnd > currentPos) {
-                          drawSegment(currentPos, segmentEnd, color)
-                      }
-                      currentPos = gEnd.coerceAtLeast(currentPos)
-                  }
-                  
-                  // Draw remaining tail
-                  if (currentPos < rangeEnd) {
-                      drawSegment(currentPos, rangeEnd, color)
-                  }
-              }
-              
-              val allGaps = (chapterGaps + (thumbGapStart to thumbGapEnd)).sortedBy { it.first }
-              
-              // 1. Unplayed Background (draw whole width, masking played area is optional but cleaner to just draw 'unplayed' parts)
-              // Actually, standard sliders usually draw the background color across the whole unplayed duration.
-              // But we have a 'played' color on top. 
-              // To handle transparency correctly, we should avoid overlapping if the colors have alpha.
-              // Assuming background and buffer might overlap.
-              
-              // Background: From thumbGapEnd to Width
-              drawRangeWithGaps(thumbGapEnd, size.width, chapterGaps, primaryColor.copy(alpha = disabledAlpha))
-              // Also Background: From 0 to thumbGapStart? Usually played color covers this. 
-              // If played color is transparent, we might need background underneath. 
-              // Assuming played color is opaque or intended to be standalone.
-              // If we want the track to be present "behind" the thumb gap? No, image shows a clean cut.
-              
-              // 2. Buffer: From thumbGapEnd to readAheadPx
-              if (readAheadPx > thumbGapEnd) {
-                  drawRangeWithGaps(thumbGapEnd, readAheadPx, chapterGaps, primaryColor.copy(alpha = bufferAlpha))
-              }
-              
-              // 3. Played: From 0 to thumbGapStart
-              if (thumbGapStart > 0) {
-                  drawRangeWithGaps(0f, thumbGapStart, chapterGaps, primaryColor)
-              }
+                    val cornerRadiusRight = when {
+                        isOuterRight -> androidx.compose.ui.geometry.CornerRadius(outerRadius)
+                        isInnerRight -> androidx.compose.ui.geometry.CornerRadius(innerRadius)
+                        else -> androidx.compose.ui.geometry.CornerRadius.Zero
+                    }
+                    
+                    path.addRoundRect(
+                        androidx.compose.ui.geometry.RoundRect(
+                            left = startX,
+                            top = 0f,
+                            right = endX,
+                            bottom = trackHeight,
+                            topLeftCornerRadius = cornerRadiusLeft,
+                            bottomLeftCornerRadius = cornerRadiusLeft,
+                            topRightCornerRadius = cornerRadiusRight,
+                            bottomRightCornerRadius = cornerRadiusRight
+                        )
+                    )
+                    drawPath(path, color)
+                }
+                
+                fun drawRangeWithGaps(
+                    rangeStart: Float, 
+                    rangeEnd: Float, 
+                    gaps: List<Pair<Float, Float>>, 
+                    color: Color
+                ) {
+                    if (rangeEnd <= rangeStart) return
+                    val relevantGaps = gaps
+                        .filter { (gStart, gEnd) -> gEnd > rangeStart && gStart < rangeEnd }
+                        .sortedBy { it.first }
+                    
+                    var currentPos = rangeStart
+                    for ((gStart, gEnd) in relevantGaps) {
+                        val segmentEnd = gStart.coerceAtMost(rangeEnd)
+                        if (segmentEnd > currentPos) {
+                            drawSegment(currentPos, segmentEnd, color)
+                        }
+                        currentPos = gEnd.coerceAtLeast(currentPos)
+                    }
+                    if (currentPos < rangeEnd) {
+                        drawSegment(currentPos, rangeEnd, color)
+                    }
+                }
+                
+                // 1. Unplayed Background
+                drawRangeWithGaps(thumbGapEnd, size.width, chapterGaps, primaryColor.copy(alpha = disabledAlpha))
+                
+                // 2. Buffer
+                if (readAheadPx > thumbGapEnd) {
+                    drawRangeWithGaps(thumbGapEnd, readAheadPx, chapterGaps, primaryColor.copy(alpha = bufferAlpha))
+                }
+                
+                // 3. Played
+                if (thumbGapStart > 0) {
+                    drawRangeWithGaps(0f, thumbGapStart, chapterGaps, primaryColor)
+                }
             }
         },
         thumb = {
             Box(
                 modifier = Modifier
                     .width(thumbWidth)
-                    .height(24.dp)
-                    .background(primaryColor, CircleShape)
+                    .height(thumbHeight)
+                    .background(primaryColor, thumbShape)
             )
         }
     )
 }
-
 
 @Preview
 @Composable
@@ -752,6 +747,7 @@ private fun PreviewSeekBar() {
 fun SeekbarPreview(
   style: SeekbarStyle,
   modifier: Modifier = Modifier,
+  onClick: (() -> Unit)? = null,
 ) {
   val infiniteTransition = rememberInfiniteTransition(label = "seekbar_preview")
   val progress by infiniteTransition.animateFloat(
@@ -766,63 +762,103 @@ fun SeekbarPreview(
   val duration = 100f
   val position = progress * duration
 
+  // Dummy chapters for preview to visualize chapter separation
+  val dummyChapters = persistentListOf(
+    Segment(name = "Chapter 1", start = 0f),
+    Segment(name = "Chapter 2", start = duration * 0.35f),
+    Segment(name = "Chapter 3", start = duration * 0.65f),
+  )
+  
   Box(
-    modifier = modifier.height(32.dp),
+    modifier = modifier
+      .height(32.dp),
     contentAlignment = Alignment.Center
   ) {
-      when (style) {
-        SeekbarStyle.Standard -> {
-          StandardSeekbar(
-            position = position,
-            duration = duration,
-            readAheadValue = position,
-            chapters = persistentListOf(),
-            onSeek = {},
-            onSeekFinished = {},
-          )
-        }
-        SeekbarStyle.Wavy -> {
-          SquigglySeekbar(
-            position = position,
-            duration = duration,
-            readAheadValue = position,
-            chapters = persistentListOf(),
-            isPaused = false,
-            isScrubbing = false,
-            useWavySeekbar = true,
-            seekbarStyle = SeekbarStyle.Wavy,
-            onSeek = {},
-            onSeekFinished = {},
-          )
-        }
-        SeekbarStyle.Circular -> {
-          SquigglySeekbar(
-            position = position,
-            duration = duration,
-            readAheadValue = position,
-            chapters = persistentListOf(),
-            isPaused = false,
-            isScrubbing = false,
-            useWavySeekbar = true,
-            seekbarStyle = SeekbarStyle.Circular,
-            onSeek = {},
-            onSeekFinished = {},
-          )
-        }
-        SeekbarStyle.Simple -> {
-             SquigglySeekbar(
-            position = position,
-            duration = duration,
-            readAheadValue = position,
-            chapters = persistentListOf(),
-            isPaused = false,
-            isScrubbing = false,
-            useWavySeekbar = false,
-            seekbarStyle = SeekbarStyle.Simple,
-            onSeek = {},
-            onSeekFinished = {},
-          )
-        }
+    // Seekbar content
+    when (style) {
+      SeekbarStyle.Standard -> {
+        StandardSeekbar(
+          position = position,
+          duration = duration,
+          readAheadValue = position,
+          chapters = dummyChapters,
+          isPaused = false,
+          isScrubbing = false,
+          useWavySeekbar = true,
+          seekbarStyle = SeekbarStyle.Standard,
+          onSeek = {},
+          onSeekFinished = {},
+        )
       }
+      SeekbarStyle.Wavy -> {
+        SquigglySeekbar(
+          position = position,
+          duration = duration,
+          readAheadValue = position,
+          chapters = dummyChapters,
+          isPaused = false,
+          isScrubbing = false,
+          useWavySeekbar = true,
+          seekbarStyle = SeekbarStyle.Wavy,
+          onSeek = {},
+          onSeekFinished = {},
+        )
+      }
+      SeekbarStyle.Circular -> {
+        SquigglySeekbar(
+          position = position,
+          duration = duration,
+          readAheadValue = position,
+          chapters = dummyChapters,
+          isPaused = false,
+          isScrubbing = false,
+          useWavySeekbar = true,
+          seekbarStyle = SeekbarStyle.Circular,
+          onSeek = {},
+          onSeekFinished = {},
+        )
+      }
+      SeekbarStyle.Simple -> {
+           SquigglySeekbar(
+          position = position,
+          duration = duration,
+          readAheadValue = position,
+          chapters = dummyChapters,
+          isPaused = false,
+          isScrubbing = false,
+          useWavySeekbar = false,
+          seekbarStyle = SeekbarStyle.Simple,
+          onSeek = {},
+          onSeekFinished = {},
+        )
+      }
+      SeekbarStyle.Thick -> {
+        StandardSeekbar(
+          position = position,
+          duration = duration,
+          readAheadValue = position,
+          chapters = dummyChapters,
+          isPaused = false,
+          isScrubbing = false,
+          useWavySeekbar = true,
+          seekbarStyle = SeekbarStyle.Thick,
+          onSeek = {},
+          onSeekFinished = {},
+        )
+      }
+    }
+    
+    // Invisible overlay that intercepts all touch events and triggers onClick
+    if (onClick != null) {
+      Box(
+        modifier = Modifier
+          .matchParentSize()
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null, // No ripple on overlay itself
+            onClick = onClick
+          )
+      )
+    }
   }
 }
