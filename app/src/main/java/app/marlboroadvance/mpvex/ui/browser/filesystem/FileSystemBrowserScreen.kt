@@ -67,6 +67,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -748,7 +749,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             if (isSearching) {
               // Show search results
               FileSystemSearchContent(
-                listState = LazyListState(),
+                listState = listState, // Use the main listState for FAB tracking
                 searchQuery = searchQuery,
                 searchResults = searchResults,
                 isLoading = isSearchLoading,
@@ -756,6 +757,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 showSubtitleIndicator = showSubtitleIndicator,
                 isAtRoot = isAtRoot,
                 navigationBarHeight = navigationBarHeight,
+                isFabVisible = isFabVisible, // Pass FAB visibility state
                 onVideoClick = { video ->
                   MediaUtils.playFile(video, context, "search")
                 },
@@ -1466,6 +1468,7 @@ private fun FileSystemSearchContent(
   showSubtitleIndicator: Boolean,
   isAtRoot: Boolean,
   navigationBarHeight: Dp,
+  isFabVisible: androidx.compose.runtime.MutableState<Boolean>, // Add FAB visibility state
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
@@ -1473,6 +1476,33 @@ private fun FileSystemSearchContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+
+  // Track scroll for FAB visibility in search mode with proper scroll direction detection
+  val previousIndex = remember { mutableIntStateOf(0) }
+  val previousOffset = remember { mutableIntStateOf(0) }
+  
+  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+    val currentIndex = listState.firstVisibleItemIndex
+    val currentOffset = listState.firstVisibleItemScrollOffset
+    
+    // Show FAB when at the top
+    if (currentIndex == 0 && currentOffset == 0) {
+      isFabVisible.value = true
+    } else {
+      // Calculate if scrolling down or up
+      val isScrollingDown = if (currentIndex != previousIndex.value) {
+        currentIndex > previousIndex.value
+      } else {
+        currentOffset > previousOffset.value
+      }
+      
+      // Hide when scrolling down, show when scrolling up
+      isFabVisible.value = !isScrollingDown
+    }
+    
+    previousIndex.value = currentIndex
+    previousOffset.value = currentOffset
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     when {
