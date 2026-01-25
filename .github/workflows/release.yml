@@ -176,11 +176,9 @@ jobs:
             ### F-Droid Version
             
             The F-Droid variant (`mpvEx-fdroid-${{ env.VERSION_TAG }}.apk`) is specifically built for F-Droid compatibility:
-            - ❌ No automatic update feature
-            - ❌ No install packages permission
-            - ✅ ARM64-v8a architecture only
-            - ✅ Same package name as standard version
-            - ✅ Version suffix: `-fdroid`
+            - Removed automatic update feature
+            - Removed install packages permission
+            - ARM64-v8a architecture only
           files: |
             mpvEx-universal-${{ env.VERSION_TAG }}.apk
             mpvEx-arm64-v8a-${{ env.VERSION_TAG }}.apk

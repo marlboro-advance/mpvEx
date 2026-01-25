@@ -341,9 +341,9 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(brightnessSlider) {
               if (swapVolumeAndBrightness) {
-                start.linkTo(parent.start, spacing.extraLarge)
+                start.linkTo(parent.start, if (isPortrait) spacing.medium else spacing.extraLarge)
               } else {
-                end.linkTo(parent.end, spacing.extraLarge)
+                end.linkTo(parent.end, if (isPortrait) spacing.medium else spacing.extraLarge)
               }
               top.linkTo(parent.top, spacing.larger)
               bottom.linkTo(parent.bottom, spacing.larger)
@@ -371,9 +371,9 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(volumeSlider) {
               if (swapVolumeAndBrightness) {
-                end.linkTo(parent.end, spacing.extraLarge)
+                end.linkTo(parent.end, if (isPortrait) spacing.medium else spacing.extraLarge)
               } else {
-                start.linkTo(parent.start, spacing.extraLarge)
+                start.linkTo(parent.start, if (isPortrait) spacing.medium else spacing.extraLarge)
               }
               top.linkTo(parent.top, spacing.larger)
               bottom.linkTo(parent.bottom, spacing.larger)
