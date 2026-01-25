@@ -173,339 +173,344 @@ object PlaylistScreen : Screen {
     )
 
     Scaffold(
-        topBar = {
-          if (isSearching) {
-            // Search mode - show search bar
-            SearchBar(
-              inputField = {
-                SearchBarDefaults.InputField(
-                  query = searchQuery,
-                  onQueryChange = { searchQuery = it },
-                  onSearch = { },
-                  expanded = false,
-                  onExpandedChange = { },
-                  placeholder = { Text("Search playlists...") },
-                  leadingIcon = {
+      topBar = {
+        if (isSearching) {
+          // Search mode - show search bar
+          SearchBar(
+            inputField = {
+              SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { },
+                expanded = false,
+                onExpandedChange = { },
+                placeholder = { Text("Search playlists...") },
+                leadingIcon = {
+                  Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                  )
+                },
+                trailingIcon = {
+                  IconButton(
+                    onClick = {
+                      isSearching = false
+                      searchQuery = ""
+                    },
+                  ) {
                     Icon(
-                      imageVector = Icons.Filled.Search,
-                      contentDescription = "Search",
+                      imageVector = Icons.Filled.Close,
+                      contentDescription = "Cancel",
                     )
-                  },
-                  trailingIcon = {
-                    IconButton(
-                      onClick = {
-                        isSearching = false
-                        searchQuery = ""
-                      },
-                    ) {
-                      Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Cancel",
-                      )
-                    }
-                  },
-                  modifier = Modifier.focusRequester(focusRequester),
-                )
-              },
-              expanded = false,
-              onExpandedChange = { },
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-              shape = RoundedCornerShape(28.dp),
-              tonalElevation = 6.dp,
-            ) {
-              // Empty content for SearchBar
-            }
-          } else {
-            BrowserTopBar(
-              title = "Playlists",
-              isInSelectionMode = selectionManager.isInSelectionMode,
-              selectedCount = selectionManager.selectedCount,
-              totalCount = playlistsWithCount.size,
-              onBackClick = null,
-              onCancelSelection = { selectionManager.clear() },
-              isSingleSelection = selectionManager.isSingleSelection,
-              onSearchClick = { isSearching = true },
-              onSettingsClick = {
-                backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
-              },
-              onRenameClick = if (selectionManager.isSingleSelection) {
-                { showRenameDialog = true }
-              } else null,
-              onDeleteClick = { showDeleteDialog = true },
-              onSelectAll = { selectionManager.selectAll() },
-              onInvertSelection = { selectionManager.invertSelection() },
-              onDeselectAll = { selectionManager.clear() },
-            )
-          }
-        },
-        floatingActionButton = {
-          val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
-          if (!selectionManager.isInSelectionMode && isFabVisible.value) {
-            ExtendedFloatingActionButton(
-              onClick = { showPlaylistActionSheet = true },
-              icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-              text = { Text("Create Playlist") },
-              modifier = Modifier.padding(bottom = navigationBarHeight)
-            )
-          }
-        }
-      ) { paddingValues ->
-        if (isSearching && filteredPlaylists.isEmpty() && searchQuery.isNotBlank()) {
-          // Show "no results" for search
-          Box(
-            modifier = Modifier
-              .fillMaxSize()
-              .padding(paddingValues),
-            contentAlignment = Alignment.Center,
-          ) {
-            EmptyState(
-              icon = Icons.Filled.Search,
-              title = "No playlists found",
-              message = "Try a different search term",
-            )
-          }
-        } else if (playlistsWithCount.isEmpty() && hasCompletedInitialLoad) {
-          Box(
-            modifier = Modifier
-              .fillMaxSize()
-              .padding(paddingValues),
-            contentAlignment = Alignment.Center,
-          ) {
-            Column(
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-              EmptyState(
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                title = "No playlists yet",
-                message = "Create a playlist or add one from an m3u URL",
-              )
-            }
-          }
-        } else {
-          PlaylistListContent(
-            playlistsWithCount = filteredPlaylists,
-            listState = listState,
-            gridState = gridState,
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refresh() },
-            selectionManager = selectionManager,
-            onPlaylistClick = { playlistWithCount ->
-              if (selectionManager.isInSelectionMode) {
-                selectionManager.toggle(playlistWithCount)
-              } else {
-                backStack.add(PlaylistDetailScreen(playlistWithCount.playlist.id))
-              }
-            },
-            onPlaylistLongClick = { playlistWithCount ->
-              selectionManager.toggle(playlistWithCount)
-            },
-            modifier = Modifier.padding(paddingValues),
-            isInSelectionMode = selectionManager.isInSelectionMode,
-          )
-        }
-      }
-
-      // Create playlist and M3U playlist dialogs moved to MainScreen
-
-      // Playlist action sheets
-      PlaylistActionSheet(
-        isOpen = showPlaylistActionSheet,
-        onDismiss = { showPlaylistActionSheet = false },
-        repository = repository,
-        context = context,
-      )
-
-      if (showRenameDialog && selectionManager.isSingleSelection) {
-        val selectedPlaylist = selectionManager.getSelectedItems().firstOrNull()
-        if (selectedPlaylist != null) {
-          var playlistName by remember { mutableStateOf(selectedPlaylist.playlist.name) }
-          androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename Playlist") },
-            text = {
-              androidx.compose.material3.OutlinedTextField(
-                value = playlistName,
-                onValueChange = { playlistName = it },
-                label = { Text("Playlist Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-              )
-            },
-            confirmButton = {
-              androidx.compose.material3.TextButton(
-                onClick = {
-                  if (playlistName.isNotBlank()) {
-                    scope.launch {
-                      repository.updatePlaylist(selectedPlaylist.playlist.copy(name = playlistName.trim()))
-                      showRenameDialog = false
-                      selectionManager.clear()
-                    }
                   }
                 },
-                enabled = playlistName.isNotBlank(),
-              ) {
-                Text("Rename")
-              }
+                modifier = Modifier.focusRequester(focusRequester),
+              )
             },
-            dismissButton = {
-              androidx.compose.material3.TextButton(
-                onClick = { showRenameDialog = false },
-              ) {
-                Text("Cancel")
-              }
+            expanded = false,
+            onExpandedChange = { },
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+          ) {
+            // Empty content for SearchBar
+          }
+        } else {
+          BrowserTopBar(
+            title = "Playlists",
+            isInSelectionMode = selectionManager.isInSelectionMode,
+            selectedCount = selectionManager.selectedCount,
+            totalCount = playlistsWithCount.size,
+            onBackClick = null,
+            onCancelSelection = { selectionManager.clear() },
+            isSingleSelection = selectionManager.isSingleSelection,
+            onSearchClick = { isSearching = true },
+            onSettingsClick = {
+              backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
             },
+            onRenameClick = if (selectionManager.isSingleSelection) {
+              { showRenameDialog = true }
+            } else null,
+            onDeleteClick = { showDeleteDialog = true },
+            onSelectAll = { selectionManager.selectAll() },
+            onInvertSelection = { selectionManager.invertSelection() },
+            onDeselectAll = { selectionManager.clear() },
+          )
+        }
+      },
+      floatingActionButton = {
+        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+        if (!selectionManager.isInSelectionMode && isFabVisible.value) {
+          ExtendedFloatingActionButton(
+            onClick = { showPlaylistActionSheet = true },
+            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+            text = { Text("Create Playlist") },
+            modifier = Modifier.padding(bottom = navigationBarHeight)
           )
         }
       }
-
-      if (showDeleteDialog) {
-        DeleteConfirmationDialog(
-          isOpen = true,
-          onDismiss = { showDeleteDialog = false },
-          onConfirm = {
-            selectionManager.deleteSelected()
-            showDeleteDialog = false
-          },
-          itemCount = selectionManager.selectedCount,
-          itemType = "playlist",
-          itemNames = selectionManager.getSelectedItems().map { it.playlist.name },
-        )
-      }
-    }
-  }
-
-  @Composable
-  private fun PlaylistListContent(
-    playlistsWithCount: List<PlaylistWithCount>,
-    listState: LazyListState,
-    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
-    isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
-    onRefresh: suspend () -> Unit,
-    selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<PlaylistWithCount, Int>,
-    onPlaylistClick: (PlaylistWithCount) -> Unit,
-    onPlaylistLongClick: (PlaylistWithCount) -> Unit,
-    modifier: Modifier = Modifier,
-    isInSelectionMode: Boolean = false,
-  ) {
-    val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
-    val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-    val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-
-    val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
-
-    // Check if at top of list to hide scrollbar during pull-to-refresh
-    val isAtTop by remember {
-      derivedStateOf {
-        if (isGridMode) {
-          gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
-        } else {
-          listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-        }
-      }
-    }
-
-    // Only show scrollbar if list has more than 20 items
-    val hasEnoughItems = playlistsWithCount.size > 20
-
-    // Animate scrollbar alpha
-    val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
-      targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
-      animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
-      label = "scrollbarAlpha",
-    )
-
-    PullRefreshBox(
-      isRefreshing = isRefreshing,
-      onRefresh = onRefresh,
-      listState = listState,
-      modifier = modifier.fillMaxSize(),
-    ) {
-      if (isGridMode) {
-        // Grid layout
-        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+    ) { paddingValues ->
+      if (isSearching && filteredPlaylists.isEmpty() && searchQuery.isNotBlank()) {
+        // Show "no results" for search
         Box(
           modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = navigationBarHeight)
+            .padding(paddingValues),
+          contentAlignment = Alignment.Center,
         ) {
-          LazyVerticalGridScrollbar(
-            state = gridState,
-            settings = ScrollbarSettings(
-              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-            ),
+          EmptyState(
+            icon = Icons.Filled.Search,
+            title = "No playlists found",
+            message = "Try a different search term",
+          )
+        }
+      } else if (playlistsWithCount.isEmpty() && hasCompletedInitialLoad) {
+        Box(
+          modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+          contentAlignment = Alignment.Center,
+        ) {
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
           ) {
-            LazyVerticalGrid(
-              columns = GridCells.Fixed(folderGridColumns),
-              state = gridState,
-              modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(
-                start = 8.dp,
-                end = 8.dp,
-              ),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-              verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-              items(
-                count = playlistsWithCount.size,
-                key = { playlistsWithCount[it].playlist.id },
-              ) { index ->
-                val playlistWithCount = playlistsWithCount[index]
-                PlaylistCard(
-                  playlist = playlistWithCount.playlist,
-                  itemCount = playlistWithCount.itemCount,
-                  isSelected = selectionManager.isSelected(playlistWithCount),
-                  onClick = { onPlaylistClick(playlistWithCount) },
-                  onLongClick = { onPlaylistLongClick(playlistWithCount) },
-                  onThumbClick = { onPlaylistClick(playlistWithCount) },
-                  isGridMode = true,
-                )
-              }
-            }
+            EmptyState(
+              icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+              title = "No playlists yet",
+              message = "Create a playlist or add one from an m3u URL",
+            )
           }
         }
       } else {
-        // List layout
-        val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = navigationBarHeight)
-        ) {
-          LazyColumnScrollbar(
-            state = listState,
-            settings = ScrollbarSettings(
-              thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
-              thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
-            ),
-          ) {
-            LazyColumn(
-              state = listState,
-              modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(
-                start = 8.dp,
-                end = 8.dp,
-              ),
-              verticalArrangement = Arrangement.spacedBy(0.dp),
+        PlaylistListContent(
+          playlistsWithCount = filteredPlaylists,
+          listState = listState,
+          gridState = gridState,
+          isRefreshing = isRefreshing,
+          onRefresh = { viewModel.refresh() },
+          selectionManager = selectionManager,
+          onPlaylistClick = { playlistWithCount ->
+            if (selectionManager.isInSelectionMode) {
+              selectionManager.toggle(playlistWithCount)
+            } else {
+              backStack.add(PlaylistDetailScreen(playlistWithCount.playlist.id))
+            }
+          },
+          onPlaylistLongClick = { playlistWithCount ->
+            selectionManager.toggle(playlistWithCount)
+          },
+          modifier = Modifier.padding(paddingValues),
+          isInSelectionMode = selectionManager.isInSelectionMode,
+        )
+      }
+    }
+
+    // Create playlist and M3U playlist dialogs moved to MainScreen
+
+    // Playlist action sheets
+    PlaylistActionSheet(
+      isOpen = showPlaylistActionSheet,
+      onDismiss = { showPlaylistActionSheet = false },
+      repository = repository,
+      context = context,
+    )
+
+    if (showRenameDialog && selectionManager.isSingleSelection) {
+      val selectedPlaylist = selectionManager.getSelectedItems().firstOrNull()
+      if (selectedPlaylist != null) {
+        var playlistName by remember { mutableStateOf(selectedPlaylist.playlist.name) }
+        androidx.compose.material3.AlertDialog(
+          onDismissRequest = { showRenameDialog = false },
+          title = { Text("Rename Playlist") },
+          text = {
+            androidx.compose.material3.OutlinedTextField(
+              value = playlistName,
+              onValueChange = { playlistName = it },
+              label = { Text("Playlist Name") },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+            )
+          },
+          confirmButton = {
+            androidx.compose.material3.TextButton(
+              onClick = {
+                if (playlistName.isNotBlank()) {
+                  scope.launch {
+                    repository.updatePlaylist(selectedPlaylist.playlist.copy(name = playlistName.trim()))
+                    showRenameDialog = false
+                    selectionManager.clear()
+                  }
+                }
+              },
+              enabled = playlistName.isNotBlank(),
             ) {
-              items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
-                PlaylistCard(
-                  playlist = playlistWithCount.playlist,
-                  itemCount = playlistWithCount.itemCount,
-                  isSelected = selectionManager.isSelected(playlistWithCount),
-                  onClick = { onPlaylistClick(playlistWithCount) },
-                  onLongClick = { onPlaylistLongClick(playlistWithCount) },
-                  onThumbClick = { onPlaylistClick(playlistWithCount) },
-                  isGridMode = false,
-                )
-              }
+              Text("Rename")
+            }
+          },
+          dismissButton = {
+            androidx.compose.material3.TextButton(
+              onClick = { showRenameDialog = false },
+            ) {
+              Text("Cancel")
+            }
+          },
+        )
+      }
+    }
+
+    if (showDeleteDialog) {
+      DeleteConfirmationDialog(
+        isOpen = true,
+        onDismiss = { showDeleteDialog = false },
+        onConfirm = {
+          selectionManager.deleteSelected()
+          showDeleteDialog = false
+        },
+        itemCount = selectionManager.selectedCount,
+        itemType = "playlist",
+        itemNames = selectionManager.getSelectedItems().map { it.playlist.name },
+      )
+    }
+  }
+}
+
+@Composable
+private fun PlaylistListContent(
+  playlistsWithCount: List<PlaylistWithCount>,
+  listState: LazyListState,
+  gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+  isRefreshing: androidx.compose.runtime.MutableState<Boolean>,
+  onRefresh: suspend () -> Unit,
+  selectionManager: app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager<PlaylistWithCount, Int>,
+  onPlaylistClick: (PlaylistWithCount) -> Unit,
+  onPlaylistLongClick: (PlaylistWithCount) -> Unit,
+  modifier: Modifier = Modifier,
+  isInSelectionMode: Boolean = false,
+) {
+  val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
+  val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
+
+  val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
+
+  // Check if at top of list to hide scrollbar during pull-to-refresh
+  val isAtTop by remember {
+    derivedStateOf {
+      if (isGridMode) {
+        gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+      } else {
+        listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+      }
+    }
+  }
+
+  // Only show scrollbar if list has more than 20 items
+  val hasEnoughItems = playlistsWithCount.size > 20
+
+  // Animate scrollbar alpha
+  val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
+    targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
+    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+    label = "scrollbarAlpha",
+  )
+
+  PullRefreshBox(
+    isRefreshing = isRefreshing,
+    onRefresh = onRefresh,
+    listState = listState,
+    modifier = modifier.fillMaxSize(),
+  ) {
+    if (isGridMode) {
+      // Grid layout
+      val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(bottom = navigationBarHeight)
+      ) {
+        LazyVerticalGridScrollbar(
+          state = gridState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+          ),
+        ) {
+          LazyVerticalGrid(
+            columns = GridCells.Fixed(folderGridColumns),
+            state = gridState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+              start = 8.dp,
+              end = 8.dp,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            items(
+              count = playlistsWithCount.size,
+              key = { playlistsWithCount[it].playlist.id },
+            ) { index ->
+              val playlistWithCount = playlistsWithCount[index]
+              PlaylistCard(
+                playlist = playlistWithCount.playlist,
+                itemCount = playlistWithCount.itemCount,
+                isSelected = selectionManager.isSelected(playlistWithCount),
+                onClick = { onPlaylistClick(playlistWithCount) },
+                onLongClick = { onPlaylistLongClick(playlistWithCount) },
+                onThumbClick = { onPlaylistClick(playlistWithCount) },
+                isGridMode = true,
+              )
+            }
+          }
+        }
+      }
+    } else {
+      // List layout
+      val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(bottom = navigationBarHeight)
+      ) {
+        LazyColumnScrollbar(
+          state = listState,
+          settings = ScrollbarSettings(
+            thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f * scrollbarAlpha),
+            thumbSelectedColor = MaterialTheme.colorScheme.primary.copy(alpha = scrollbarAlpha),
+          ),
+        ) {
+          LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+              start = 8.dp,
+              end = 8.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+          ) {
+            items(playlistsWithCount, key = { it.playlist.id }) { playlistWithCount ->
+              PlaylistCard(
+                playlist = playlistWithCount.playlist,
+                itemCount = playlistWithCount.itemCount,
+                isSelected = selectionManager.isSelected(playlistWithCount),
+                onClick = { onPlaylistClick(playlistWithCount) },
+                onLongClick = { onPlaylistLongClick(playlistWithCount) },
+                onThumbClick = { onPlaylistClick(playlistWithCount) },
+                isGridMode = false,
+              )
             }
           }
         }
       }
     }
   }
+}
 

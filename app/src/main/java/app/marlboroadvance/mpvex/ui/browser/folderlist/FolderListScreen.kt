@@ -144,6 +144,9 @@ object FolderListScreen : Screen {
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
 
     // ViewModels and preferences
     val viewModel: FolderListViewModel = viewModel(
@@ -165,7 +168,12 @@ object FolderListScreen : Screen {
 
     // Preferences
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-    val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+    
+    val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+    val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+    val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
+    
+
     val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
@@ -1027,24 +1035,37 @@ private fun FolderSortDialog(
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
-      currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait,
+      onValueChange = { 
+          if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it) 
+          else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = 2f..5f,
+      steps = 2,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Video Grid Columns",
-      currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait,
+      onValueChange = { 
+          if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+          else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = 1f..5f,
+      steps = 3,
     )
   } else null
 

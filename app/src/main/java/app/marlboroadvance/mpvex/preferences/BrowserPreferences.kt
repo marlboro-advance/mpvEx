@@ -1,5 +1,7 @@
 package app.marlboroadvance.mpvex.preferences
 
+import android.content.Context
+import android.content.res.Configuration
 import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 
@@ -8,6 +10,7 @@ import app.marlboroadvance.mpvex.preferences.preference.getEnum
  */
 class BrowserPreferences(
   preferenceStore: PreferenceStore,
+  context: Context,
 ) {
   // Folder sorting preferences
   val folderSortType = preferenceStore.getEnum("folder_sort_type", FolderSortType.Title)
@@ -19,9 +22,21 @@ class BrowserPreferences(
 
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
 
+  // Tablet detection
+  private val isTablet = context.resources.configuration.smallestScreenWidthDp >= 600
 
-  val folderGridColumns = preferenceStore.getInt("folder_grid_columns", 3)
-  val videoGridColumns = preferenceStore.getInt("video_grid_columns", 2)
+  // Grid columns preferences
+  // Default values:
+  // Phone: Portrait -> Folder=3, Video=2 | Landscape -> Folder=5, Video=4
+  // Tablet: Portrait -> Folder=4, Video=4 | Landscape -> Folder=5, Video=4
+
+  val folderGridColumnsPortrait = preferenceStore.getInt("folder_grid_columns_portrait", if (isTablet) 4 else 3)
+  val folderGridColumnsLandscape = preferenceStore.getInt("folder_grid_columns_landscape", 5)
+
+  val videoGridColumnsPortrait = preferenceStore.getInt("video_grid_columns_portrait", if (isTablet) 4 else 2)
+  val videoGridColumnsLandscape = preferenceStore.getInt("video_grid_columns_landscape", 4)
+
+
 
   // Visibility preferences for video card chips
   val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", true)

@@ -83,7 +83,7 @@ fun VideoCard(
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
-  
+
   // Use override parameters if provided, otherwise use preferences
   val showSizeChip = overrideShowSizeChip ?: showSizeChipPref
   val showResolutionChip = overrideShowResolutionChip ?: showResolutionChipPref
@@ -112,7 +112,7 @@ fun VideoCard(
             },
           )
           .padding(12.dp),
-        horizontalAlignment = if (gridColumns == 1) Alignment.Start else Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start,
       ) {
         val thumbnailRepository = koinInject<ThumbnailRepository>()
         val thumbWidthDp = 160.dp
@@ -267,11 +267,7 @@ fun VideoCard(
           color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
           maxLines = maxLines,
           overflow = TextOverflow. Ellipsis,
-          textAlign = if (useFolderNameStyle) {
-            TextAlign.Center
-          } else {
-            if (gridColumns == 1) TextAlign.Start else TextAlign.Center
-          },
+          textAlign = TextAlign.Start,
         )
         if (gridColumns == 1) {
           Spacer(modifier = Modifier.height(4.dp))

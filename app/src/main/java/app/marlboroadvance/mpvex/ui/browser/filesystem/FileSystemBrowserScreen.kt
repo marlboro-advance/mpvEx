@@ -183,8 +183,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val playlistMode by playerPreferences.playlistMode.collectAsState()
   val itemsWereDeletedOrMoved by viewModel.itemsWereDeletedOrMoved.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
+
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
 
   // Check if there are folders mixed with videos AND we're in grid mode
@@ -195,7 +202,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   // Use standalone local states instead of CompositionLocal to avoid scroll issues with predictive back gesture
   val listState = remember { LazyListState() }
   val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
-  
+
   // UI state
   val isRefreshing = remember { mutableStateOf(false) }
   val showLinkDialog = remember { mutableStateOf(false) }
@@ -207,7 +214,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   // FAB visibility for scroll-based hiding
   val isFabVisible = remember { mutableStateOf(true) }
   val isFabExpanded = remember { mutableStateOf(false) }
-  
+
   // Search state
   var searchQuery by rememberSaveable { mutableStateOf("") }
   var isSearching by rememberSaveable { mutableStateOf(false) }
@@ -215,7 +222,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   var isSearchLoading by remember { mutableStateOf(false) }
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusRequester = remember { FocusRequester() }
-  
+
   // Get navigation bar height from MainScreen
   val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
 
@@ -266,7 +273,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   // Update bottom bar visibility with optimized animation sequencing
   LaunchedEffect(isInSelectionMode, videoSelectionManager.isInSelectionMode, isMixedSelection) {
     val shouldShowFloatingBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
-    
+
     if (shouldShowFloatingBar) {
       // Entering selection mode: Hide bottom navigation immediately, then show floating bar
       showBottomNavigation = false
@@ -285,9 +292,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
   // Combined MainScreen updates for better performance and responsiveness
   LaunchedEffect(
-    showBottomNavigation, 
-    isInSelectionMode, 
-    isMixedSelection, 
+    showBottomNavigation,
+    isInSelectionMode,
+    isMixedSelection,
     videoSelectionManager.isInSelectionMode,
     permissionState.status
   ) {
@@ -371,7 +378,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           val results = if (isAtRoot) {
             // At storage roots - search across all storage volumes AND their parent directories
             val allResults = mutableListOf<FileSystemItem>()
-            
+
             // Get unique parent directories from storage volumes
             val parentDirectories = items.filterIsInstance<FileSystemItem.Folder>()
               .map { it.path }
@@ -381,7 +388,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 parentPath
               }
               .distinct()
-            
+
             // Search in parent directories (like /storage/emulated/0) directly
             parentDirectories.forEach { parentPath ->
               try {
@@ -393,7 +400,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 Log.e("FileSystemBrowserScreen", "Error searching parent directory $parentPath", e)
               }
             }
-            
+
             // Also search in the storage volume folders themselves (existing behavior)
             items.filterIsInstance<FileSystemItem.Folder>().forEach { storageVolume ->
               try {
@@ -405,7 +412,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 Log.e("FileSystemBrowserScreen", "Error searching volume ${storageVolume.path}", e)
               }
             }
-            
+
             // Remove duplicates based on file path
             val uniqueResults = allResults.distinctBy { item ->
               when (item) {
@@ -413,7 +420,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 is FileSystemItem.Folder -> item.path
               }
             }
-            
+
             Log.d("FileSystemBrowserScreen", "Total search results after deduplication: ${uniqueResults.size}")
             uniqueResults
           } else if (currentPath != null) {
@@ -1008,7 +1015,7 @@ suspend fun searchRecursively(
   query: String,
 ): List<FileSystemItem> {
   val results = mutableListOf<FileSystemItem>()
-  
+
   try {
     Log.d("FileSystemBrowserScreen", "Scanning directory: $directoryPath for query: $query")
     // Scan the current directory
@@ -1042,7 +1049,7 @@ suspend fun searchRecursively(
         }
       }
     }
-    
+
     Log.d("FileSystemBrowserScreen", "Returning ${results.size} results from $directoryPath")
   } catch (e: Exception) {
     Log.e("FileSystemBrowserScreen", "Error searching directory $directoryPath", e)
@@ -1338,7 +1345,7 @@ private fun FileSystemBrowserContent(
                 )
               }
             }
-            
+
             // Scrollbar with bottom padding to avoid overlap with navigation
             Box(
               modifier = Modifier
@@ -1434,7 +1441,7 @@ private fun FileSystemBrowserContent(
                 )
               }
             }
-            
+
             // Scrollbar with bottom padding to avoid overlap with navigation
             Box(
               modifier = Modifier
@@ -1480,11 +1487,11 @@ private fun FileSystemSearchContent(
   // Track scroll for FAB visibility in search mode with proper scroll direction detection
   val previousIndex = remember { mutableIntStateOf(0) }
   val previousOffset = remember { mutableIntStateOf(0) }
-  
+
   LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
     val currentIndex = listState.firstVisibleItemIndex
     val currentOffset = listState.firstVisibleItemScrollOffset
-    
+
     // Show FAB when at the top
     if (currentIndex == 0 && currentOffset == 0) {
       isFabVisible.value = true
@@ -1495,11 +1502,11 @@ private fun FileSystemSearchContent(
       } else {
         currentOffset > previousOffset.value
       }
-      
+
       // Hide when scrolling down, show when scrolling up
       isFabVisible.value = !isScrollingDown
     }
-    
+
     previousIndex.value = currentIndex
     previousOffset.value = currentOffset
   }
@@ -1561,7 +1568,7 @@ private fun FileSystemSearchContent(
             // Separate folders and videos for proper ordering and deduplicate
             val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
             val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
-            
+
             // Folders first
             items(
               items = folders,
@@ -1587,7 +1594,7 @@ private fun FileSystemSearchContent(
                 isGridMode = false,
               )
             }
-            
+
             // Videos second
             items(
               items = videos,
@@ -1609,7 +1616,7 @@ private fun FileSystemSearchContent(
               )
             }
           }
-          
+
           // Scrollbar with bottom padding to avoid overlap with navigation
           Box(
             modifier = Modifier
@@ -1654,24 +1661,37 @@ fun FileSystemSortDialog(
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
-      currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait,
+      onValueChange = {
+        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
+        else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = 2f..5f,
+      steps = 2,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Video Grid Columns",
-      currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait,
+      onValueChange = {
+        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+        else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = 1f..5f,
+      steps = 3,
     )
   } else null
 

@@ -296,7 +296,7 @@ data class VideoListScreen(
       }
     ) { padding ->
       val autoScrollToLastPlayed by browserPreferences.autoScrollToLastPlayed.collectAsState()
-      
+
       Box(modifier = Modifier.fillMaxSize()) {
         VideoListContent(
           folderId = bucketId,
@@ -323,7 +323,7 @@ data class VideoListScreen(
           modifier = Modifier.padding(padding),
           showFloatingBottomBar = showFloatingBottomBar,
         )
-        
+
         // Floating Material 3 Button Group overlay with animation
         AnimatedVisibility(
           visible = showFloatingBottomBar,
@@ -515,7 +515,11 @@ private fun VideoListContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
@@ -572,51 +576,51 @@ private fun VideoListContent(
       val rememberedListOffset = rememberSaveable { mutableIntStateOf(0) }
       val rememberedGridIndex = rememberSaveable { mutableIntStateOf(0) }
       val rememberedGridOffset = rememberSaveable { mutableIntStateOf(0) }
-      
+
       val initialListIndex = if (rememberedListIndex.intValue > 0) {
-          rememberedListIndex.intValue
+        rememberedListIndex.intValue
       } else if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          var foundIndex = 0
-          for (i in videosWithInfo.indices) {
-              if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
-                  foundIndex = i
-                  break
-              }
+        var foundIndex = 0
+        for (i in videosWithInfo.indices) {
+          if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
+            foundIndex = i
+            break
           }
-          foundIndex
+        }
+        foundIndex
       } else 0
-      
+
       val initialGridIndex = if (rememberedGridIndex.intValue > 0) {
-          rememberedGridIndex.intValue
+        rememberedGridIndex.intValue
       } else if (autoScrollToLastPlayed && recentlyPlayedFilePath != null && videosWithInfo.isNotEmpty()) {
-          var foundIndex = 0
-          for (i in videosWithInfo.indices) {
-              if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
-                  foundIndex = i
-                  break
-              }
+        var foundIndex = 0
+        for (i in videosWithInfo.indices) {
+          if (videosWithInfo[i].video.path == recentlyPlayedFilePath) {
+            foundIndex = i
+            break
           }
-          foundIndex
+        }
+        foundIndex
       } else 0
-      
+
       val listState = rememberLazyListState(
-          initialFirstVisibleItemIndex = initialListIndex,
-          initialFirstVisibleItemScrollOffset = rememberedListOffset.intValue
+        initialFirstVisibleItemIndex = initialListIndex,
+        initialFirstVisibleItemScrollOffset = rememberedListOffset.intValue
       )
-      
+
       val gridState = rememberLazyGridState(
-          initialFirstVisibleItemIndex = initialGridIndex,
-          initialFirstVisibleItemScrollOffset = rememberedGridOffset.intValue
+        initialFirstVisibleItemIndex = initialGridIndex,
+        initialFirstVisibleItemScrollOffset = rememberedGridOffset.intValue
       )
-      
+
       LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-          rememberedListIndex.intValue = listState.firstVisibleItemIndex
-          rememberedListOffset.intValue = listState.firstVisibleItemScrollOffset
+        rememberedListIndex.intValue = listState.firstVisibleItemIndex
+        rememberedListOffset.intValue = listState.firstVisibleItemScrollOffset
       }
-      
+
       LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset) {
-          rememberedGridIndex.intValue = gridState.firstVisibleItemIndex
-          rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
+        rememberedGridIndex.intValue = gridState.firstVisibleItemIndex
+        rememberedGridOffset.intValue = gridState.firstVisibleItemScrollOffset
       }
 
       FabScrollHelper.trackScrollForFabVisibility(
@@ -626,7 +630,7 @@ private fun VideoListContent(
         expanded = false,
         onExpandedChange = {},
       )
-      
+
       val coroutineScope = rememberCoroutineScope()
 
       val isAtTop by remember {
@@ -681,38 +685,38 @@ private fun VideoListContent(
                   end = 8.dp,
                   bottom = if (showFloatingBottomBar) 88.dp else 16.dp
                 ),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-              verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-            items(
-              count = videosWithInfo.size,
-              key = { index -> "${videosWithInfo[index].video.id}_${videosWithInfo[index].video.path}" },
-            ) { index ->
-              val videoWithInfo = videosWithInfo[index]
-              val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+              ) {
+                items(
+                  count = videosWithInfo.size,
+                  key = { index -> "${videosWithInfo[index].video.id}_${videosWithInfo[index].video.path}" },
+                ) { index ->
+                  val videoWithInfo = videosWithInfo[index]
+                  val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-              VideoCard(
-                video = videoWithInfo.video,
-                progressPercentage = videoWithInfo.progressPercentage,
-                isRecentlyPlayed = isRecentlyPlayed,
-                isSelected = selectionManager.isSelected(videoWithInfo.video),
-                isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
-                onClick = { onVideoClick(videoWithInfo.video) },
-                onLongClick = { onVideoLongClick(videoWithInfo.video) },
-                onThumbClick = if (tapThumbnailToSelect) {
-                  { onVideoLongClick(videoWithInfo.video) }
-                } else {
-                  { onVideoClick(videoWithInfo.video) }
-                },
-                isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
-                gridColumns = videoGridColumns,
-                showSubtitleIndicator = showSubtitleIndicator,
-                allowThumbnailGeneration = false,
-              )
-            }
+                  VideoCard(
+                    video = videoWithInfo.video,
+                    progressPercentage = videoWithInfo.progressPercentage,
+                    isRecentlyPlayed = isRecentlyPlayed,
+                    isSelected = selectionManager.isSelected(videoWithInfo.video),
+                    isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                    onClick = { onVideoClick(videoWithInfo.video) },
+                    onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                    onThumbClick = if (tapThumbnailToSelect) {
+                      { onVideoLongClick(videoWithInfo.video) }
+                    } else {
+                      { onVideoClick(videoWithInfo.video) }
+                    },
+                    isGridMode = mediaLayoutMode == MediaLayoutMode.GRID,
+                    gridColumns = videoGridColumns,
+                    showSubtitleIndicator = showSubtitleIndicator,
+                    allowThumbnailGeneration = false,
+                  )
+                }
+              }
             }
           }
-        }
         } else {
           Box(
             modifier = Modifier
@@ -734,40 +738,40 @@ private fun VideoListContent(
                   end = 8.dp,
                   bottom = if (showFloatingBottomBar) 88.dp else 16.dp
                 ),
-            ) {
-              items(
-                count = videosWithInfo.size,
-                key = { index -> "${videosWithInfo[index].video.id}_${videosWithInfo[index].video.path}" },
-              ) { index ->
-                val videoWithInfo = videosWithInfo[index]
-                val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+              ) {
+                items(
+                  count = videosWithInfo.size,
+                  key = { index -> "${videosWithInfo[index].video.id}_${videosWithInfo[index].video.path}" },
+                ) { index ->
+                  val videoWithInfo = videosWithInfo[index]
+                  val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
 
-                VideoCard(
-                  video = videoWithInfo.video,
-                  progressPercentage = videoWithInfo.progressPercentage,
-                  isRecentlyPlayed = isRecentlyPlayed,
-                  isSelected = selectionManager.isSelected(videoWithInfo.video),
-                  isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
-                  onClick = { onVideoClick(videoWithInfo.video) },
-                  onLongClick = { onVideoLongClick(videoWithInfo.video) },
-                  onThumbClick = if (tapThumbnailToSelect) {
-                    { onVideoLongClick(videoWithInfo.video) }
-                  } else {
-                    { onVideoClick(videoWithInfo.video) }
-                  },
-                  isGridMode = false,
-                  showSubtitleIndicator = showSubtitleIndicator,
-                  allowThumbnailGeneration = false,
-                )
+                  VideoCard(
+                    video = videoWithInfo.video,
+                    progressPercentage = videoWithInfo.progressPercentage,
+                    isRecentlyPlayed = isRecentlyPlayed,
+                    isSelected = selectionManager.isSelected(videoWithInfo.video),
+                    isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                    onClick = { onVideoClick(videoWithInfo.video) },
+                    onLongClick = { onVideoLongClick(videoWithInfo.video) },
+                    onThumbClick = if (tapThumbnailToSelect) {
+                      { onVideoLongClick(videoWithInfo.video) }
+                    } else {
+                      { onVideoClick(videoWithInfo.video) }
+                    },
+                    isGridMode = false,
+                    showSubtitleIndicator = showSubtitleIndicator,
+                    allowThumbnailGeneration = false,
+                  )
+                }
               }
             }
           }
         }
-        }
-      }
       }
     }
   }
+}
 
 @Composable
 private fun VideoSortDialog(
@@ -779,8 +783,14 @@ private fun VideoSortDialog(
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
@@ -794,19 +804,27 @@ private fun VideoSortDialog(
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Folder Grid Columns",
-      currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait,
+      onValueChange = {
+        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
+        else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = 2f..5f,
+      steps = 2,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
-      currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
+      currentValue = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait,
+      onValueChange = {
+        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+        else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = 1f..5f,
+      steps = 3,
     )
   } else null
 

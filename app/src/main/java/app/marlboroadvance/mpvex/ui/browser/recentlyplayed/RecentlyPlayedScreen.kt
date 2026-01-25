@@ -108,9 +108,9 @@ object RecentlyPlayedScreen : Screen {
     val isFabVisible = remember { mutableStateOf(true) }
     val isFabExpanded = remember { mutableStateOf(false) }
     val showLinkDialog = remember { mutableStateOf(false) }
-    
+
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Selection manager for all items (videos and playlists)
     val selectionManager =
       rememberSelectionManager(
@@ -155,7 +155,7 @@ object RecentlyPlayedScreen : Screen {
         selectionManager.isInSelectionMode -> selectionManager.clear()
       }
     }
-    
+
     // File picker for opening external files
     val filePicker = rememberLauncherForActivityResult(
       contract = ActivityResultContracts.OpenDocument(),
@@ -185,28 +185,28 @@ object RecentlyPlayedScreen : Screen {
     )
 
     Scaffold(
-        topBar = {
-          BrowserTopBar(
-            title = "Recently Played",
-            isInSelectionMode = selectionManager.isInSelectionMode,
-            selectedCount = selectionManager.selectedCount,
-            totalCount = recentItems.size,
-            onBackClick = null, // No back button for recently played screen
-            onCancelSelection = { selectionManager.clear() },
-            onSortClick = null, // No sorting in recently played
-            onSettingsClick = {
-              backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
-            },
-            isSingleSelection = selectionManager.isSingleSelection,
-            onInfoClick = null, // No info in recently played
-            onShareClick = null,
-            onPlayClick = null,
-            onSelectAll = { selectionManager.selectAll() },
-            onInvertSelection = { selectionManager.invertSelection() },
-            onDeselectAll = { selectionManager.clear() },
-            onDeleteClick = { deleteDialogOpen.value = true },
-          )
-        },
+      topBar = {
+        BrowserTopBar(
+          title = "Recently Played",
+          isInSelectionMode = selectionManager.isInSelectionMode,
+          selectedCount = selectionManager.selectedCount,
+          totalCount = recentItems.size,
+          onBackClick = null, // No back button for recently played screen
+          onCancelSelection = { selectionManager.clear() },
+          onSortClick = null, // No sorting in recently played
+          onSettingsClick = {
+            backStack.add(app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen)
+          },
+          isSingleSelection = selectionManager.isSingleSelection,
+          onInfoClick = null, // No info in recently played
+          onShareClick = null,
+          onPlayClick = null,
+          onSelectAll = { selectionManager.selectAll() },
+          onInvertSelection = { selectionManager.invertSelection() },
+          onDeselectAll = { selectionManager.clear() },
+          onDeleteClick = { deleteDialogOpen.value = true },
+        )
+      },
       floatingActionButton = {
         FloatingActionButtonMenu(
           modifier = Modifier
@@ -404,7 +404,7 @@ object RecentlyPlayedScreen : Screen {
           },
         )
       }
-      
+
       // Link dialog
       PlayLinkSheet(
         isOpen = showLinkDialog.value,
@@ -435,8 +435,16 @@ private fun RecentItemsContent(
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
+
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
 
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
 

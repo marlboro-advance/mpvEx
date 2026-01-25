@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -86,28 +87,14 @@ fun FolderCard(
           .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-        val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
-        val horizontalPadding = 32.dp
-        val spacing = 8.dp
-
-        val thumbWidthDp = if (folderGridColumns > 1) {
-          // (screen - padding - total spacing) / columns
-          val totalSpacing = spacing * (folderGridColumns - 1)
-          ((screenWidthDp - horizontalPadding - totalSpacing) / folderGridColumns).coerceAtLeast(120.dp)
-        } else {
-          // single column fallback
-          160.dp
-        }
-        val aspect = 16f / 9f
-        val thumbHeightDp = thumbWidthDp / aspect
+        val aspect = 16f / 10f
 
         val context = LocalContext.current
-        
+
         Box(
           modifier = Modifier
-            .width(thumbWidthDp)
-            .height(thumbHeightDp)
+            .fillMaxWidth()
+            .aspectRatio(aspect)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(
@@ -205,7 +192,7 @@ fun FolderCard(
                   .padding(horizontal = 6.dp, vertical = 2.dp),
             ) {
               Text(
-              	text = newVideoCount.toString(),
+                text = newVideoCount.toString(),
                 style = MaterialTheme.typography.labelSmall.copy(
                   fontWeight = FontWeight.Bold,
                 ),
@@ -243,12 +230,12 @@ fun FolderCard(
           ) {
             // Render custom chip content first if provided
             var hasChip = false
-          if (customChipContent != null) {
-            customChipContent()
-            hasChip = true
-          }
+            if (customChipContent != null) {
+              customChipContent()
+              hasChip = true
+            }
 
-          // Hide chips at storage root level (when videoCount is 0)
+            // Hide chips at storage root level (when videoCount is 0)
             if (showTotalVideosChip && folder.videoCount > 0) {
               Text(
                 if (folder.videoCount == 1) "1 Video" else "${folder.videoCount} Videos",
