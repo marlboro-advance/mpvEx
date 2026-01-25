@@ -21,19 +21,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.setValue
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.repository.NetworkRepository
 import app.marlboroadvance.mpvex.ui.UpdateDialog
@@ -44,12 +45,10 @@ import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalContext
-import app.marlboroadvance.mpvex.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
@@ -152,11 +151,17 @@ class MainActivity : ComponentActivity() {
     val typedBackstack = backstack as NavBackStack<Screen>
 
     val context = LocalContext.current
-    val updateViewModel: UpdateViewModel = viewModel(context as ComponentActivity)
-    val updateState by updateViewModel.updateState.collectAsState()
-    val isDownloading by updateViewModel.isDownloading.collectAsState()
-    val downloadProgress by updateViewModel.downloadProgress.collectAsState()
     val currentVersion = BuildConfig.VERSION_NAME.replace("-dev", "")
+
+    // Conditionally initialize update feature based on build config
+    val updateViewModel: UpdateViewModel? = if (BuildConfig.ENABLE_UPDATE_FEATURE) {
+      viewModel(context as ComponentActivity)
+    } else {
+      null
+    }
+    val updateState by (updateViewModel?.updateState ?: MutableStateFlow(UpdateViewModel.UpdateState.Idle)).collectAsState()
+    val isDownloading by (updateViewModel?.isDownloading ?: MutableStateFlow(false)).collectAsState()
+    val downloadProgress by (updateViewModel?.downloadProgress ?: MutableStateFlow(0f)).collectAsState()
 
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
@@ -205,35 +210,37 @@ class MainActivity : ComponentActivity() {
         },
       )
 
-      // Display Update Dialog when appropriate
-      when (updateState) {
-        is UpdateViewModel.UpdateState.Available -> {
-          val release = (updateState as UpdateViewModel.UpdateState.Available).release
-          UpdateDialog(
-            release = release,
-            isDownloading = isDownloading,
-            progress = downloadProgress,
-            actionLabel = if (isDownloading) "Downloading..." else "Download",
-            currentVersion = currentVersion,
-            onDismiss = { updateViewModel.dismiss() },
-            onAction = { updateViewModel.downloadUpdate(release) },
-            onIgnore = { updateViewModel.ignoreVersion(release.tagName.removePrefix("v")) }
-          )
+      // Display Update Dialog when appropriate (only if update feature is enabled)
+      if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {
+        when (updateState) {
+          is UpdateViewModel.UpdateState.Available -> {
+            val release = (updateState as UpdateViewModel.UpdateState.Available).release
+            UpdateDialog(
+              release = release,
+              isDownloading = isDownloading,
+              progress = downloadProgress,
+              actionLabel = if (isDownloading) "Downloading..." else "Download",
+              currentVersion = currentVersion,
+              onDismiss = { updateViewModel.dismiss() },
+              onAction = { updateViewModel.downloadUpdate(release) },
+              onIgnore = { updateViewModel.ignoreVersion(release.tagName.removePrefix("v")) }
+            )
+          }
+          is UpdateViewModel.UpdateState.ReadyToInstall -> {
+            val release = (updateState as UpdateViewModel.UpdateState.ReadyToInstall).release
+            UpdateDialog(
+              release = release,
+              isDownloading = isDownloading,
+              progress = downloadProgress,
+              actionLabel = "Install",
+              currentVersion = currentVersion,
+              onDismiss = { updateViewModel.dismiss() },
+              onAction = { updateViewModel.installUpdate(release) },
+              onIgnore = { updateViewModel.ignoreVersion(release.tagName.removePrefix("v")) }
+            )
+          }
+          else -> {}
         }
-        is UpdateViewModel.UpdateState.ReadyToInstall -> {
-          val release = (updateState as UpdateViewModel.UpdateState.ReadyToInstall).release
-          UpdateDialog(
-            release = release,
-            isDownloading = isDownloading,
-            progress = downloadProgress,
-            actionLabel = "Install",
-            currentVersion = currentVersion,
-            onDismiss = { updateViewModel.dismiss() },
-            onAction = { updateViewModel.installUpdate(release) },
-            onIgnore = { updateViewModel.ignoreVersion(release.tagName.removePrefix("v")) }
-          )
-        }
-        else -> {}
       }
     }
   }

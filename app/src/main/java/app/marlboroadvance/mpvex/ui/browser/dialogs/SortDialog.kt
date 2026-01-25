@@ -63,6 +63,8 @@ fun SortDialog(
   folderGridColumnSelector: GridColumnSelector? = null,
   videoGridColumnSelector: GridColumnSelector? = null,
   showSortOptions: Boolean = true,
+  enableViewModeOptions: Boolean = true,
+  enableLayoutModeOptions: Boolean = true,
 ) {
   if (!isOpen) return
 
@@ -113,6 +115,7 @@ fun SortDialog(
             if (viewModeSelector != null) {
               ViewModeSelectorComponent(
                 viewModeSelector = viewModeSelector,
+                enabled = enableViewModeOptions,
                 modifier = Modifier.weight(1f),
               )
             }
@@ -120,6 +123,7 @@ fun SortDialog(
             if (layoutModeSelector != null) {
               ViewModeSelectorComponent(
                 viewModeSelector = layoutModeSelector,
+                enabled = enableLayoutModeOptions,
                 modifier = Modifier.weight(1f),
               )
             }
@@ -297,6 +301,7 @@ private fun SortOrderSelector(
 @Composable
 private fun ViewModeSelectorComponent(
   viewModeSelector: ViewModeSelector,
+  enabled: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val options = listOf(viewModeSelector.firstOptionLabel, viewModeSelector.secondOptionLabel)
@@ -311,7 +316,11 @@ private fun ViewModeSelectorComponent(
       text = viewModeSelector.label,
       style = MaterialTheme.typography.titleMedium,
       fontWeight = FontWeight.Medium,
-      color = MaterialTheme.colorScheme.onSurface,
+      color = if (enabled) {
+        MaterialTheme.colorScheme.onSurface
+      } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+      },
     )
 
     Row(
@@ -328,7 +337,11 @@ private fun ViewModeSelectorComponent(
           verticalArrangement = Arrangement.spacedBy(6.dp),
           modifier = Modifier
             .clip(shape)
-            .clickable { viewModeSelector.onViewModeChange(index == 0) }
+            .clickable(enabled = enabled) { 
+              if (enabled) {
+                viewModeSelector.onViewModeChange(index == 0)
+              }
+            }
             .padding(8.dp),
         ) {
           Box(
@@ -336,10 +349,12 @@ private fun ViewModeSelectorComponent(
               .size(44.dp)
               .clip(shape)
               .background(
-                color = if (selected) {
+                color = if (selected && enabled) {
                   MaterialTheme.colorScheme.primaryContainer
-                } else {
+                } else if (enabled) {
                   MaterialTheme.colorScheme.surfaceContainerHighest
+                } else {
+                  MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.38f)
                 },
               ),
             contentAlignment = Alignment.Center,
@@ -347,10 +362,12 @@ private fun ViewModeSelectorComponent(
             Icon(
               imageVector = icons[index],
               contentDescription = label,
-              tint = if (selected) {
+              tint = if (selected && enabled) {
                 MaterialTheme.colorScheme.onPrimaryContainer
-              } else {
+              } else if (enabled) {
                 MaterialTheme.colorScheme.onSurfaceVariant
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
               },
               modifier = Modifier.size(20.dp),
             )
@@ -359,11 +376,13 @@ private fun ViewModeSelectorComponent(
           Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-            color = if (selected) {
+            fontWeight = if (selected && enabled) FontWeight.Medium else FontWeight.Normal,
+            color = if (selected && enabled) {
               MaterialTheme.colorScheme.primary
-            } else {
+            } else if (enabled) {
               MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             },
           )
         }

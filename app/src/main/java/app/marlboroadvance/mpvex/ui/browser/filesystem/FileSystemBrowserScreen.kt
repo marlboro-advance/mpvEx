@@ -920,6 +920,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
     FileSystemSortDialog(
       isOpen = sortDialogOpen.value,
       onDismiss = { sortDialogOpen.value = false },
+      isAtRoot = isAtRoot,
     )
 
     DeleteConfirmationDialog(
@@ -1633,6 +1634,7 @@ private fun FileSystemSearchContent(
 fun FileSystemSortDialog(
   isOpen: Boolean,
   onDismiss: () -> Unit,
+  isAtRoot: Boolean = true,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<app.marlboroadvance.mpvex.preferences.AppearancePreferences>()
@@ -1739,6 +1741,8 @@ fun FileSystemSortDialog(
     ),
     folderGridColumnSelector = folderGridColumnSelector,
     videoGridColumnSelector = videoGridColumnSelector,
+    enableViewModeOptions = isAtRoot,
+    enableLayoutModeOptions = true,
     visibilityToggles = listOf(
       VisibilityToggle(
         label = "Video Thumbnails",

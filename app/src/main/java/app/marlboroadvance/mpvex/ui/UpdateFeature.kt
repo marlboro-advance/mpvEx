@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +82,11 @@ class UpdateManager(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun checkForUpdate(forceShow: Boolean = false): Release? {
+        // Return null immediately if update feature is disabled (F-Droid flavor)
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return null
+        }
+        
         val release = getLatestRelease("https://api.github.com/repos/marlboro-advance/mpvEx/releases/latest")
         val currentVersion = BuildConfig.VERSION_NAME.replace("-dev", "")
         val remoteVersion = release.tagName.removePrefix("v")
@@ -100,6 +106,11 @@ class UpdateManager(
     }
 
     fun ignoreVersion(version: String) {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
         val prefs = context.getSharedPreferences("mpvEx_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putString("ignored_version", version)
@@ -129,6 +140,11 @@ class UpdateManager(
     }
 
     fun downloadUpdate(release: Release): Flow<Float> {
+        // Return completed flow immediately if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return flowOf(100f)
+        }
+        
         val asset = selectBestApkAsset(release.assets)
             ?: throw Exception("No compatible APK asset found")
         
@@ -214,12 +230,22 @@ class UpdateManager(
     }.flowOn(Dispatchers.IO)
     
     fun getApkFile(release: Release): File? {
+        // Return null if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return null
+        }
+        
         val asset = selectBestApkAsset(release.assets) ?: return null
         val file = File(context.externalCacheDir, asset.name)
         return if (file.exists()) file else null
     }
 
     fun clearCache() {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
          context.externalCacheDir?.listFiles()?.forEach { 
              if (it.name.endsWith(".apk")) it.delete()
          }
@@ -242,10 +268,17 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
 
     private val prefs = application.getSharedPreferences("mpvEx_prefs", Context.MODE_PRIVATE)
-    private val _isAutoUpdateEnabled = MutableStateFlow(prefs.getBoolean("auto_update", false))
+    private val _isAutoUpdateEnabled = MutableStateFlow(
+        if (BuildConfig.ENABLE_UPDATE_FEATURE) prefs.getBoolean("auto_update", false) else false
+    )
     val isAutoUpdateEnabled: StateFlow<Boolean> = _isAutoUpdateEnabled.asStateFlow()
 
     fun toggleAutoUpdate(enabled: Boolean) {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
         prefs.edit().putBoolean("auto_update", enabled).apply()
         _isAutoUpdateEnabled.value = enabled
         if (enabled) {
@@ -254,7 +287,8 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     init {
-        if (isAutoUpdateEnabled.value) {
+        // Only initialize auto-update if feature is enabled
+        if (BuildConfig.ENABLE_UPDATE_FEATURE && isAutoUpdateEnabled.value) {
             checkForUpdate(manual = false)
         }
     }
@@ -273,6 +307,11 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun checkForUpdate(manual: Boolean = false) {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
         viewModelScope.launch {
             _updateState.value = UpdateState.Loading
             try {
@@ -297,6 +336,11 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun downloadUpdate(release: Release) {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
         viewModelScope.launch {
             _isDownloading.value = true
             try {
@@ -314,6 +358,11 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun installUpdate(release: Release) {
+        // No-op if update feature is disabled
+        if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+            return
+        }
+        
         val file = updateManager.getApkFile(release) ?: return
         val context = getApplication<Application>()
         val uri = FileProvider.getUriForFile(

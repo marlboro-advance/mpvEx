@@ -30,6 +30,27 @@ android {
     buildConfigField("String", "GIT_SHA", "\"${getCommitSha()}\"")
     buildConfigField("int", "GIT_COUNT", getCommitCount())
   }
+
+  flavorDimensions += "distribution"
+  productFlavors {
+    create("standard") {
+      dimension = "distribution"
+      // Standard flavor includes all features
+      buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
+    }
+    
+    create("fdroid") {
+      dimension = "distribution"
+      // F-Droid flavor: same package name, different version suffix
+      versionNameSuffix = "-fdroid"
+      // F-Droid flavor excludes update feature
+      buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      // F-Droid only needs ARM64-v8a
+      ndk {
+        abiFilters += "arm64-v8a"
+      }
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = false
