@@ -39,16 +39,38 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleStandardPreview
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: app/build/outputs/apk/standard/preview
-          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE }}
-          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "35.0.0"
+      - name: Sign APKs
+        run: |
+          set -e
+          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
+          
+          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
+          
+          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "No unsigned preview APK files found"
+            ls -lah "$PREVIEW_DIR"
+            rm release.keystore
+            exit 1
+          fi
+          
+          find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | while read -r apk; do
+            signed_apk="${apk/-unsigned/}"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks release.keystore \
+              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --out "$signed_apk" \
+              "$apk"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
+            rm "$apk"
+          done
+          
+          rm release.keystore
+          ls -lh "$PREVIEW_DIR"/app-standard-*-preview.apk
 
       - name: Copy build artifacts
         id: set_commit
