@@ -14,8 +14,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -47,8 +45,6 @@ import app.marlboroadvance.mpvex.ui.browser.networkstreaming.NetworkStreamingScr
 import app.marlboroadvance.mpvex.ui.browser.playlist.PlaylistScreen
 import app.marlboroadvance.mpvex.ui.browser.recentlyplayed.RecentlyPlayedScreen
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionManager
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 
@@ -125,10 +121,6 @@ object MainScreen : Screen {
 
     val context = LocalContext.current
     val density = LocalDensity.current
-
-    // Create shared LazyListState and LazyGridState for folder navigation
-    val lazyListState = rememberLazyListState()
-    val lazyGridState = rememberLazyGridState()
 
     // Shared state (across the app)
     val isInSelectionMode = remember { mutableStateOf(isInSelectionModeShared) }
@@ -288,9 +280,7 @@ object MainScreen : Screen {
           label = "tab_animation"
         ) { targetTab ->
           CompositionLocalProvider(
-            LocalNavigationBarHeight provides fabBottomPadding,
-            LocalLazyListState provides lazyListState,
-            LocalLazyGridState provides lazyGridState
+            LocalNavigationBarHeight provides fabBottomPadding
           ) {
             when (targetTab) {
               0 -> FolderListScreen.Content()

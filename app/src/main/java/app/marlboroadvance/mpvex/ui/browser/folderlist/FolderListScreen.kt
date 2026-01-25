@@ -105,8 +105,6 @@ import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.LoadingState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -173,9 +171,9 @@ object FolderListScreen : Screen {
     val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
-    // UI state
-    val listState = LocalLazyListState.current
-    val gridState = LocalLazyGridState.current
+    // UI state - use standalone states to avoid scroll issues with predictive back gesture
+    val listState = remember { LazyListState() }
+    val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
     val navigationBarHeight = LocalNavigationBarHeight.current
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
@@ -292,10 +290,9 @@ object FolderListScreen : Screen {
       }
     }
 
-    // Back handler
-    androidx.activity.compose.BackHandler(
-      enabled = selectionManager.isInSelectionMode || isSearching || isFabExpanded.value
-    ) {
+    // Optimized back handler for immediate response
+    val shouldHandleBack = selectionManager.isInSelectionMode || isSearching || isFabExpanded.value
+    androidx.activity.compose.BackHandler(enabled = shouldHandleBack) {
       when {
         isFabExpanded.value -> isFabExpanded.value = false
         selectionManager.isInSelectionMode -> selectionManager.clear()
