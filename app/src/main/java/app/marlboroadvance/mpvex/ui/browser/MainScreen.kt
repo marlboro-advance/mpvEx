@@ -223,7 +223,7 @@ object MainScreen : Screen {
           transitionSpec = {
             // Material 3 Expressive slide-in-fade animation (like Google Phone app)
             val slideDistance = with(density) { 48.dp.roundToPx() }
-            val animationDuration = 100
+            val animationDuration = 250
             
             if (targetState > initialState) {
               // Moving forward: slide in from right with fade

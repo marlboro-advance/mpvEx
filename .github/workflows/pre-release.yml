@@ -29,7 +29,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build preview APKs
-        run: ./gradlew assemblePreview --stacktrace
+        run: ./gradlew assembleStandardPreview --stacktrace
 
       - name: Get tag name
         if: startsWith(github.ref, 'refs/tags/')
@@ -37,7 +37,7 @@ jobs:
 
       - name: Verify build output
         run: |
-          PREVIEW_DIR="app/build/outputs/apk/preview"
+          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
           if [ ! -d "$PREVIEW_DIR" ]; then
             echo "Preview directory does not exist!"
             find app/build/outputs -name "*.apk" -type f
@@ -48,30 +48,35 @@ jobs:
       - name: Sign APKs
         run: |
           set -e
-          PREVIEW_DIR="app/build/outputs/apk/preview"
+          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
           
           echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
           
-          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-*-preview.apk" -type f | wc -l)
+          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | wc -l)
           if [ "$APK_COUNT" -eq 0 ]; then
-            echo "No preview APK files found"
+            echo "No unsigned preview APK files found"
             ls -lah "$PREVIEW_DIR"
             rm release.keystore
             exit 1
           fi
           
-          find "$PREVIEW_DIR" -name "app-*-preview.apk" -type f | while read -r apk; do
+          find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | while read -r apk; do
+            signed_apk="${apk/-unsigned/}"
+          
             $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
               --ks release.keystore \
               --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
               --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
               --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --out "$signed_apk" \
               "$apk"
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$apk"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
+            rm "$apk"
           done
           
           rm release.keystore
-          ls -lh "$PREVIEW_DIR"/app-*-preview.apk
+          ls -lh "$PREVIEW_DIR"/app-standard-*-preview.apk
 
       - name: Copy built artifacts
         run: |
@@ -80,7 +85,7 @@ jobs:
           declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
 
           for abi in "${apks[@]}"; do
-            src="app/build/outputs/apk/preview/app-${abi}-preview.apk"
+            src="app/build/outputs/apk/standard/preview/app-standard-${abi}-preview.apk"
             dest="preview/mpvEx-preview-${abi}-${{ env.VERSION_TAG }}.apk"
             if [ -f "$src" ]; then
               cp "$src" "$dest"
