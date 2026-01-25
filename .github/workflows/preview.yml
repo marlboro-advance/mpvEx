@@ -37,12 +37,12 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assemblePreview
+        run: ./gradlew assembleStandardPreview
 
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
         with:
-          releaseDirectory: app/build/outputs/apk/preview
+          releaseDirectory: app/build/outputs/apk/standard/preview
           signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE }}
           alias: ${{ secrets.SIGNING_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
@@ -65,7 +65,7 @@ jobs:
           declare -a file_sizes=()
           
           for arch in "${apks[@]}"; do
-            src="app/build/outputs/apk/preview/app-${arch}-preview-signed.apk"
+            src="app/build/outputs/apk/standard/preview/app-standard-${arch}-preview-signed.apk"
             dest="output/mpvEx-preview-r${commit_count}-${arch}.apk"
             cp "$src" "$dest"
           
