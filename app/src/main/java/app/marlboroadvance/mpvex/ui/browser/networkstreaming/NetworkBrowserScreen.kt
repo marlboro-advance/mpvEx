@@ -244,7 +244,12 @@ private fun NetworkBrowserContent(
             LazyColumn(
               state = networkListState,
               modifier = Modifier.fillMaxSize(),
-              contentPadding = PaddingValues(8.dp),
+              contentPadding = PaddingValues(
+                start = 8.dp,
+                end = 8.dp,
+                top = 8.dp,
+                bottom = navigationBarHeight
+              ),
             ) {
             // Folders section
             if (folders.isNotEmpty()) {

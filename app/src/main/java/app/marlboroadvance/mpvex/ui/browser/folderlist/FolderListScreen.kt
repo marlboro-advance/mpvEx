@@ -59,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -105,8 +106,6 @@ import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.LoadingState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
@@ -173,9 +172,9 @@ object FolderListScreen : Screen {
     val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
-    // UI state
-    val listState = LocalLazyListState.current
-    val gridState = LocalLazyGridState.current
+    // UI state - use standalone states to avoid scroll issues with predictive back gesture
+    val listState = remember { LazyListState() }
+    val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
     val navigationBarHeight = LocalNavigationBarHeight.current
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
@@ -292,10 +291,9 @@ object FolderListScreen : Screen {
       }
     }
 
-    // Back handler
-    androidx.activity.compose.BackHandler(
-      enabled = selectionManager.isInSelectionMode || isSearching || isFabExpanded.value
-    ) {
+    // Optimized back handler for immediate response
+    val shouldHandleBack = selectionManager.isInSelectionMode || isSearching || isFabExpanded.value
+    androidx.activity.compose.BackHandler(enabled = shouldHandleBack) {
       when {
         isFabExpanded.value -> isFabExpanded.value = false
         selectionManager.isInSelectionMode -> selectionManager.clear()
@@ -519,6 +517,8 @@ object FolderListScreen : Screen {
                 onVideoClick = { video ->
                   MediaUtils.playFile(video, context, "search")
                 },
+                listState = listState, // Pass the main listState for FAB tracking
+                isFabVisible = isFabVisible, // Pass FAB visibility state
               )
             } else {
               FolderListContent(
@@ -598,8 +598,35 @@ private fun SearchContent(
   showSubtitleIndicator: Boolean,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
+  listState: LazyListState, // Accept the main listState
+  isFabVisible: androidx.compose.runtime.MutableState<Boolean>, // Accept FAB visibility state
 ) {
-  val searchListState = LazyListState()
+  // Track scroll for FAB visibility in search mode with proper scroll direction detection
+  val previousIndex = remember { mutableIntStateOf(0) }
+  val previousOffset = remember { mutableIntStateOf(0) }
+  
+  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+    val currentIndex = listState.firstVisibleItemIndex
+    val currentOffset = listState.firstVisibleItemScrollOffset
+    
+    // Show FAB when at the top
+    if (currentIndex == 0 && currentOffset == 0) {
+      isFabVisible.value = true
+    } else {
+      // Calculate if scrolling down or up
+      val isScrollingDown = if (currentIndex != previousIndex.value) {
+        currentIndex > previousIndex.value
+      } else {
+        currentOffset > previousOffset.value
+      }
+      
+      // Hide when scrolling down, show when scrolling up
+      isFabVisible.value = !isScrollingDown
+    }
+    
+    previousIndex.value = currentIndex
+    previousOffset.value = currentOffset
+  }
 
   Box(modifier = Modifier.fillMaxSize()) {
     when {
@@ -644,7 +671,7 @@ private fun SearchContent(
         Box(modifier = Modifier.fillMaxSize()) {
           // Content extends full height for transparency
           LazyColumn(
-            state = searchListState,
+            state = listState, // Use the passed listState
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
               start = 8.dp,
@@ -712,7 +739,7 @@ private fun SearchContent(
               .padding(bottom = navigationBarHeight)
           ) {
             LazyColumnScrollbar(
-              state = searchListState,
+              state = listState, // Use the passed listState
               settings = ScrollbarSettings(
                 thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                 thumbSelectedColor = MaterialTheme.colorScheme.primary,

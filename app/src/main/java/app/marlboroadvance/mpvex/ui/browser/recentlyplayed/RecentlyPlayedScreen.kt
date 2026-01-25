@@ -171,9 +171,9 @@ object RecentlyPlayedScreen : Screen {
       }
     }
 
-    // Track scroll for FAB visibility
-    val listState = LazyListState()
-    val gridState = LazyGridState()
+    // Track scroll for FAB visibility - create states here to pass to content
+    val listState = remember { LazyListState() }
+    val gridState = remember { LazyGridState() }
     val browserPreferences = koinInject<BrowserPreferences>()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
     app.marlboroadvance.mpvex.ui.browser.fab.FabScrollHelper.trackScrollForFabVisibility(
@@ -343,6 +343,8 @@ object RecentlyPlayedScreen : Screen {
             },
             modifier = Modifier.padding(padding),
             isInSelectionMode = selectionManager.isInSelectionMode,
+            listState = listState,
+            gridState = gridState,
           )
         }
       }
@@ -422,6 +424,8 @@ private fun RecentItemsContent(
   onPlaylistClick: suspend (RecentlyPlayedItem.PlaylistItem) -> Unit,
   modifier: Modifier = Modifier,
   isInSelectionMode: Boolean = false,
+  listState: LazyListState,
+  gridState: LazyGridState,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
@@ -436,8 +440,6 @@ private fun RecentItemsContent(
 
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
 
-  val listState = LazyListState()
-  val gridState = LazyGridState()
   val coroutineScope = rememberCoroutineScope()
   val isRefreshing = remember { mutableStateOf(false) }
 

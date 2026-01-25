@@ -67,6 +67,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,14 +108,13 @@ import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.browser.states.PermissionDeniedState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.media.CopyPasteOps
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -192,9 +192,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
     items.any { it is FileSystemItem.VideoFile } &&
     mediaLayoutMode == MediaLayoutMode.GRID
 
-  // Use shared states from CompositionLocal
-  val listState = LocalLazyListState.current
-  val gridState = LocalLazyGridState.current
+  // Use standalone local states instead of CompositionLocal to avoid scroll issues with predictive back gesture
+  val listState = remember { LazyListState() }
+  val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
   
   // UI state
   val isRefreshing = remember { mutableStateOf(false) }
@@ -229,8 +229,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
   var showFloatingBottomBar by remember { mutableStateOf(false) }
   var showBottomNavigation by remember { mutableStateOf(true) }
 
-  // Animation duration for the slide animations
-  val animationDuration = 300
+  // Animation duration for responsive slide animations
+  val animationDuration = 200
 
   // Selection managers - separate for folders and videos
   val folders = items.filterIsInstance<FileSystemItem.Folder>()
@@ -263,7 +263,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val totalCount = folders.size + videos.size
   val isMixedSelection = folderSelectionManager.isInSelectionMode && videoSelectionManager.isInSelectionMode
 
-  // Update bottom bar visibility with proper animation sequencing
+  // Update bottom bar visibility with optimized animation sequencing
   LaunchedEffect(isInSelectionMode, videoSelectionManager.isInSelectionMode, isMixedSelection) {
     val shouldShowFloatingBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
     
@@ -272,28 +272,42 @@ fun FileSystemBrowserScreen(path: String? = null) {
       showBottomNavigation = false
       showFloatingBottomBar = true
     } else {
-      // Exiting selection mode: Hide floating bar first, then show bottom navigation after animation
+      // Exiting selection mode: Hide floating bar and show bottom navigation immediately for better responsiveness
       showFloatingBottomBar = false
-      // Wait for the slide-out animation to complete before showing bottom navigation
-      delay(animationDuration.toLong())
       showBottomNavigation = true
     }
   }
 
-  // Update MainScreen about bottom bar visibility to hide/show bottom navigation
-  LaunchedEffect(showBottomNavigation) {
+  // Permissions
+  val permissionState = PermissionUtils.handleStoragePermission(
+    onPermissionGranted = { viewModel.refresh() },
+  )
+
+  // Combined MainScreen updates for better performance and responsiveness
+  LaunchedEffect(
+    showBottomNavigation, 
+    isInSelectionMode, 
+    isMixedSelection, 
+    videoSelectionManager.isInSelectionMode,
+    permissionState.status
+  ) {
     if (isAtRoot) {
       try {
         val mainScreenObj = app.marlboroadvance.mpvex.ui.browser.MainScreen
-        // Control bottom navigation visibility
+        val onlyVideosSelected = videoSelectionManager.isInSelectionMode && !folderSelectionManager.isInSelectionMode
+
+        // Update all MainScreen states in one call to reduce overhead
         mainScreenObj.updateBottomBarVisibility(showBottomNavigation)
-        
-        Log.d(
-          "FileSystemBrowserScreen",
-          "Updated MainScreen bottom bar visibility: $showBottomNavigation"
+        mainScreenObj.updateSelectionState(
+          isInSelectionMode = isInSelectionMode,
+          isOnlyVideosSelected = onlyVideosSelected,
+          selectionManager = if (onlyVideosSelected) videoSelectionManager else null
+        )
+        mainScreenObj.updatePermissionState(
+          isDenied = permissionState.status is PermissionStatus.Denied
         )
       } catch (e: Exception) {
-        Log.e("FileSystemBrowserScreen", "Failed to update MainScreen bottom bar visibility", e)
+        Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
       }
     }
   }
@@ -306,52 +320,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
           val mainScreenObj = app.marlboroadvance.mpvex.ui.browser.MainScreen
           // Restore bottom navigation when leaving the screen
           mainScreenObj.updateBottomBarVisibility(true)
-          
-          Log.d(
-            "FileSystemBrowserScreen",
-            "Restored MainScreen bottom bar visibility on dispose"
-          )
         } catch (e: Exception) {
           Log.e("FileSystemBrowserScreen", "Failed to restore MainScreen bottom bar visibility", e)
         }
       }
-    }
-  }
-
-  // Update MainScreen when selection status changes
-  LaunchedEffect(isInSelectionMode, isMixedSelection, videoSelectionManager.isInSelectionMode) {
-    if (isAtRoot) {
-      try {
-        val mainScreenObj = app.marlboroadvance.mpvex.ui.browser.MainScreen
-        val onlyVideosSelected = videoSelectionManager.isInSelectionMode && !folderSelectionManager.isInSelectionMode
-
-        mainScreenObj.updateSelectionState(
-          isInSelectionMode = isInSelectionMode,
-          isOnlyVideosSelected = onlyVideosSelected,
-          selectionManager = if (onlyVideosSelected) videoSelectionManager else null
-        )
-
-        Log.d(
-          "FileSystemBrowserScreen",
-          "Updated MainScreen state: selection=$isInSelectionMode, onlyVideos=$onlyVideosSelected"
-        )
-      } catch (e: Exception) {
-        Log.e("FileSystemBrowserScreen", "Failed to update MainScreen state", e)
-      }
-    }
-  }
-
-  // Permissions
-  val permissionState = PermissionUtils.handleStoragePermission(
-    onPermissionGranted = { viewModel.refresh() },
-  )
-
-  // Update MainScreen about permission state to control FAB visibility
-  LaunchedEffect(permissionState.status) {
-    if (isAtRoot) {
-      app.marlboroadvance.mpvex.ui.browser.MainScreen.updatePermissionState(
-        isDenied = permissionState.status is PermissionStatus.Denied
-      )
     }
   }
 
@@ -466,8 +438,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
   }
 
-  // Predictive back: Handle selection mode, search mode, or FAB menu expanded
-  BackHandler(enabled = isInSelectionMode || isSearching || isFabExpanded.value) {
+  // Optimized predictive back handler for immediate response
+  val shouldHandleBack = isInSelectionMode || isSearching || isFabExpanded.value
+  BackHandler(enabled = shouldHandleBack) {
     when {
       isFabExpanded.value -> isFabExpanded.value = false
       isInSelectionMode -> {
@@ -776,7 +749,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
             if (isSearching) {
               // Show search results
               FileSystemSearchContent(
-                listState = LazyListState(),
+                listState = listState, // Use the main listState for FAB tracking
                 searchQuery = searchQuery,
                 searchResults = searchResults,
                 isLoading = isSearchLoading,
@@ -784,6 +757,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 showSubtitleIndicator = showSubtitleIndicator,
                 isAtRoot = isAtRoot,
                 navigationBarHeight = navigationBarHeight,
+                isFabVisible = isFabVisible, // Pass FAB visibility state
                 onVideoClick = { video ->
                   MediaUtils.playFile(video, context, "search")
                 },
@@ -1270,7 +1244,7 @@ private fun FileSystemBrowserContent(
       // Animate scrollbar alpha
       val scrollbarAlpha by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (isAtTop || !hasEnoughItems) 0f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 200),
         label = "scrollbarAlpha",
       )
 
@@ -1494,6 +1468,7 @@ private fun FileSystemSearchContent(
   showSubtitleIndicator: Boolean,
   isAtRoot: Boolean,
   navigationBarHeight: Dp,
+  isFabVisible: androidx.compose.runtime.MutableState<Boolean>, // Add FAB visibility state
   onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
   modifier: Modifier = Modifier,
@@ -1501,6 +1476,33 @@ private fun FileSystemSearchContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
+
+  // Track scroll for FAB visibility in search mode with proper scroll direction detection
+  val previousIndex = remember { mutableIntStateOf(0) }
+  val previousOffset = remember { mutableIntStateOf(0) }
+  
+  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+    val currentIndex = listState.firstVisibleItemIndex
+    val currentOffset = listState.firstVisibleItemScrollOffset
+    
+    // Show FAB when at the top
+    if (currentIndex == 0 && currentOffset == 0) {
+      isFabVisible.value = true
+    } else {
+      // Calculate if scrolling down or up
+      val isScrollingDown = if (currentIndex != previousIndex.value) {
+        currentIndex > previousIndex.value
+      } else {
+        currentOffset > previousOffset.value
+      }
+      
+      // Hide when scrolling down, show when scrolling up
+      isFabVisible.value = !isScrollingDown
+    }
+    
+    previousIndex.value = currentIndex
+    previousOffset.value = currentOffset
+  }
 
   Box(modifier = modifier.fillMaxSize()) {
     when {

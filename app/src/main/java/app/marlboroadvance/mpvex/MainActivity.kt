@@ -15,8 +15,6 @@ import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -40,8 +38,6 @@ import app.marlboroadvance.mpvex.repository.NetworkRepository
 import app.marlboroadvance.mpvex.ui.UpdateDialog
 import app.marlboroadvance.mpvex.ui.UpdateViewModel
 import app.marlboroadvance.mpvex.ui.browser.MainScreen
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyGridState
-import app.marlboroadvance.mpvex.ui.compose.LocalLazyListState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
@@ -143,10 +139,6 @@ class MainActivity : ComponentActivity() {
   fun Navigator() {
     val backstack = rememberNavBackStack(MainScreen)
 
-    // Create shared LazyListState and LazyGridState that will be used by all screens
-    val lazyListState = rememberLazyListState()
-    val lazyGridState = rememberLazyGridState()
-
     @Suppress("UNCHECKED_CAST")
     val typedBackstack = backstack as NavBackStack<Screen>
 
@@ -165,9 +157,7 @@ class MainActivity : ComponentActivity() {
 
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
-      LocalBackStack provides typedBackstack,
-      LocalLazyListState provides lazyListState,
-      LocalLazyGridState provides lazyGridState
+      LocalBackStack provides typedBackstack
     ) {
       NavDisplay(
         backStack = typedBackstack,
