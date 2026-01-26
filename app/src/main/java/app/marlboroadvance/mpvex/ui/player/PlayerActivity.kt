@@ -1231,7 +1231,7 @@ class PlayerActivity :
         return try {
           java.net.URLDecoder.decode(lastSegment, "UTF-8")
             .substringBefore("?") // Remove query parameters
-            .substringBefore("#") // Remove fragments
+            .substringBefore("#") // Remove fragments (only for network streams)
             .takeIf { it.isNotBlank() } ?: uri.host ?: "Network Stream"
         } catch (e: Exception) {
           lastSegment
@@ -1244,8 +1244,15 @@ class PlayerActivity :
       return uri.host ?: "Network Stream"
     }
 
-    // For file:// and content:// URIs
-    return uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Unknown Video"
+    // For file:// and content:// URIs - preserve # characters as they're part of the filename
+    val lastSegment = uri.lastPathSegment?.substringAfterLast("/") ?: uri.path ?: "Unknown Video"
+    
+    // For local files, only decode URL encoding but preserve # characters
+    return try {
+      java.net.URLDecoder.decode(lastSegment, "UTF-8")
+    } catch (e: Exception) {
+      lastSegment
+    }
   }
 
   /**

@@ -79,7 +79,8 @@ android {
     create("preview") {
       initWith(getByName("release"))
 
-      signingConfig = signingConfigs["debug"]
+      // Explicitly disable signing to produce unsigned APKs for CI
+      signingConfig = null
       applicationIdSuffix = ".preview"
       versionNameSuffix = "-${getCommitCount()}"
     }

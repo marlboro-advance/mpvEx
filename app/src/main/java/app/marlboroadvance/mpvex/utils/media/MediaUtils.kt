@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.utils.media
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.marlboroadvance.mpvex.BuildConfig
@@ -70,8 +71,20 @@ object MediaUtils {
 
         is String -> {
           if (source.isBlank()) return
-          val parsedUri = source.toUri()
-          parsedUri.scheme?.let { parsedUri } ?: "file://$source".toUri()
+          // Handle file paths with # characters properly
+          if (source.startsWith("/") || source.startsWith("file://")) {
+            // It's a local file path - create URI safely
+            val filePath = if (source.startsWith("file://")) {
+              source.removePrefix("file://")
+            } else {
+              source
+            }
+            Uri.fromFile(java.io.File(filePath))
+          } else {
+            // It's likely a network URI - parse normally
+            val parsedUri = source.toUri()
+            parsedUri.scheme?.let { parsedUri } ?: "file://$source".toUri()
+          }
         }
 
         is android.net.Uri -> source
