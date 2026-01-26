@@ -103,7 +103,7 @@ private fun ZoomVideoSheet(
     ) {
         androidx.compose.material3.FilledTonalIconButton(
             onClick = {
-                val newZoom = (zoom - 0.1f).coerceAtLeast(-2f)
+                val newZoom = (zoom - 0.01f).coerceAtLeast(-2f)
                 onZoomChange(newZoom)
             },
             modifier = Modifier.size(40.dp)
@@ -130,7 +130,7 @@ private fun ZoomVideoSheet(
 
         androidx.compose.material3.FilledTonalIconButton(
             onClick = {
-                val newZoom = (zoom + 0.1f).coerceAtMost(3f)
+                val newZoom = (zoom + 0.01f).coerceAtMost(3f)
                 onZoomChange(newZoom)
             },
             modifier = Modifier.size(40.dp)
