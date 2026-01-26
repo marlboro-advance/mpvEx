@@ -239,6 +239,34 @@ object PlayerPreferencesScreen : Screen {
               
               PreferenceDivider()
               
+              val horizontalSwipeToSeek by preferences.horizontalSwipeToSeek.collectAsState()
+              SwitchPreference(
+                value = horizontalSwipeToSeek,
+                onValueChange = preferences.horizontalSwipeToSeek::set,
+                title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_to_seek)) },
+              )
+              
+              PreferenceDivider()
+              
+              val horizontalSwipeSensitivity by preferences.horizontalSwipeSensitivity.collectAsState()
+              SliderPreference(
+                value = horizontalSwipeSensitivity,
+                onValueChange = { preferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
+                title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_sensitivity)) },
+                valueRange = 0.020f..0.1f,
+                summary = {
+                  val sensitivityPercent = (horizontalSwipeSensitivity * 1000).toInt()
+                  Text(
+                    "Current: ${sensitivityPercent}/100 (${if (sensitivityPercent < 30) "Low" else if (sensitivityPercent < 55) "Medium" else "High"})",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                onSliderValueChange = { preferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
+                sliderValue = horizontalSwipeSensitivity,
+              )
+              
+              PreferenceDivider()
+              
               val holdForMultipleSpeed by preferences.holdForMultipleSpeed.collectAsState()
               SliderPreference(
                 value = holdForMultipleSpeed,

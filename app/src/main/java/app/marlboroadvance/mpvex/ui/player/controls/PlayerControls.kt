@@ -462,6 +462,11 @@ fun PlayerControls(
               TextPlayerUpdate("Zoom: $zoomPercentage%")
             }
 
+            is PlayerUpdates.HorizontalSeek -> {
+              val seekUpdate = currentPlayerUpdate as PlayerUpdates.HorizontalSeek
+              TextPlayerUpdate("${seekUpdate.currentTime} [ ${seekUpdate.seekDelta} ]")
+            }
+
             is PlayerUpdates.RepeatMode -> {
               val mode = (currentPlayerUpdate as PlayerUpdates.RepeatMode).mode
               val text = when (mode) {

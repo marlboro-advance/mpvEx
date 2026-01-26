@@ -109,6 +109,8 @@ fun GestureHandler(
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
+  val horizontalSwipeToSeek by playerPreferences.horizontalSwipeToSeek.collectAsState()
+  val horizontalSwipeSensitivity by playerPreferences.horizontalSwipeSensitivity.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
   var isDynamicSpeedControlActive by remember { mutableStateOf(false) }
   var dynamicSpeedStartX by remember { mutableStateOf(0f) }
@@ -664,6 +666,122 @@ fun GestureHandler(
               break
             }
           } while (event.changes.any { it.pressed })
+        }
+      }
+      .pointerInput(horizontalSwipeToSeek, areControlsLocked, gesturePreferences) {
+        if (!horizontalSwipeToSeek || areControlsLocked) return@pointerInput
+
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          val startPosition = down.position
+          val startTime = System.currentTimeMillis()
+          
+          var gestureType: String? = null
+          var hasStartedSeeking = false
+          var initialVideoPosition = 0f
+          // Use the sensitivity preference instead of hardcoded value
+          val seekSensitivity = horizontalSwipeSensitivity
+          
+          do {
+            val event = awaitPointerEvent()
+            val pointerCount = event.changes.count { it.pressed }
+
+            if (pointerCount == 1) {
+              event.changes.forEach { change ->
+                if (change.pressed) {
+                  val currentPosition = change.position
+                  val deltaX = currentPosition.x - startPosition.x
+                  val deltaY = currentPosition.y - startPosition.y
+                  val timeSinceStart = System.currentTimeMillis() - startTime
+
+                  // Only activate if this is clearly a horizontal gesture
+                  // and not conflicting with other gestures
+                  if (gestureType == null && 
+                      abs(deltaX) > 30f && 
+                      abs(deltaX) > abs(deltaY) * 2f && // Must be strongly horizontal
+                      timeSinceStart > 100L && // Avoid conflicts with double-tap
+                      !isLongPressing && // Don't conflict with long press
+                      !isDynamicSpeedControlActive && // Don't conflict with speed control
+                      panelShown == Panels.None) { // Only when no panels are shown
+                    
+                    gestureType = "horizontal_seek"
+                    hasStartedSeeking = true
+                    initialVideoPosition = position?.toFloat() ?: 0f
+                    
+                    // Show seekbar and start seeking mode (same as seekbar scrubbing)
+                    viewModel.showSeekBar()
+                    change.consume()
+                  }
+
+                  if (gestureType == "horizontal_seek" && hasStartedSeeking) {
+                    // Calculate seek amount based on horizontal movement
+                    val seekAmount = deltaX * seekSensitivity
+                    val targetPosition = (initialVideoPosition + seekAmount).coerceAtLeast(0f)
+                    val maxDuration = duration?.toFloat() ?: 0f
+                    val clampedPosition = targetPosition.coerceAtMost(maxDuration)
+                    
+                    // Use the same seeking mechanism as seekbar scrubbing
+                    // This will update the seekbar position and provide live preview
+                    viewModel.seekTo(clampedPosition.toInt())
+                    
+                    // Format and display time position updates
+                    val currentPos = clampedPosition.toInt()
+                    val seekDelta = (clampedPosition - initialVideoPosition).toInt()
+                    
+                    // Smart time formatting function - no hour if 0, always 00 format
+                    fun formatTime(seconds: Int): String {
+                      val absSeconds = kotlin.math.abs(seconds)
+                      val hours = absSeconds / 3600
+                      val minutes = (absSeconds % 3600) / 60
+                      val secs = absSeconds % 60
+                      
+                      return if (hours > 0) {
+                        String.format("%d:%02d:%02d", hours, minutes, secs)
+                      } else {
+                        String.format("%02d:%02d", minutes, secs)
+                      }
+                    }
+                    
+                    // Format current position
+                    val currentTimeStr = formatTime(currentPos)
+                    
+                    // Format seek delta with +/- prefix
+                    val deltaStr = if (seekDelta >= 0) {
+                      "+${formatTime(seekDelta)}"
+                    } else {
+                      "-${formatTime(-seekDelta)}"
+                    }
+                    
+                    // Use PlayerUpdates system like zoom updates
+                    viewModel.playerUpdate.update { 
+                      PlayerUpdates.HorizontalSeek(currentTimeStr, deltaStr)
+                    }
+                    
+                    change.consume()
+                  }
+                }
+              }
+            } else if (pointerCount > 1) {
+              // Multi-finger detected, cancel horizontal seek
+              if (hasStartedSeeking) {
+                hasStartedSeeking = false
+                // Clean up seeking state without showing controls
+                viewModel.playerUpdate.update { PlayerUpdates.None }
+                viewModel.hideSeekBar()
+              }
+              break
+            }
+          } while (event.changes.any { it.pressed })
+
+          // Apply the final seek when gesture ends
+          if (hasStartedSeeking) {
+            // Clear the horizontal seek update and hide seekbar after a short delay
+            coroutineScope.launch {
+              delay(300)
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+              viewModel.hideSeekBar()
+            }
+          }
         }
       },
   )

@@ -140,6 +140,10 @@
     <string name="pref_player_gestures_brightness">Brightness gestures</string>
     <string name="pref_player_gestures_volume">Volume gestures</string>
     <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
+    <string name="pref_player_gestures_horizontal_swipe_to_seek">Horizontal swipe to seek</string>
+    <string name="pref_player_gestures_horizontal_swipe_to_seek_summary">Swipe left/right to seek backward/forward</string>
+    <string name="pref_player_gestures_horizontal_swipe_sensitivity">Horizontal swipe sensitivity</string>
+    <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">Adjust how much distance is covered per swipe</string>
     <string name="pref_player_gestures_hold_for_multiple_speed">Hold for multi - x speed</string>
 
     <string name="pref_player_controls">Controls</string>

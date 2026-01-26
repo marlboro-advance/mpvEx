@@ -222,6 +222,19 @@ class PlayerViewModel(
         }
       }
     }
+
+    // Monitor duration changes to automatically enable precise seeking for short videos
+    viewModelScope.launch {
+      MPVLib.propInt["duration"].collect { duration ->
+        val videoDuration = duration ?: 0
+        // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120
+        
+        // Update hr-seek settings dynamically
+        MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
+        MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+      }
+    }
   }
 
   // Cached values
@@ -505,7 +518,10 @@ class PlayerViewModel(
       // Cancel pending relative seek before absolute seek
       seekCoalesceJob?.cancel()
       pendingSeekOffset = 0
-      val seekMode = if (playerPreferences.usePreciseSeeking.get()) "absolute+exact" else "absolute+keyframes"
+      
+      // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+      val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
+      val seekMode = if (shouldUsePreciseSeeking) "absolute+exact" else "absolute+keyframes"
       MPVLib.command("seek", position.toString(), seekMode)
     }
   }
@@ -519,7 +535,10 @@ class PlayerViewModel(
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
         if (toApply != 0) {
-          val seekMode = if (playerPreferences.usePreciseSeeking.get()) "relative+exact" else "relative+keyframes"
+          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+          val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
+          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
+          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
           MPVLib.command("seek", toApply.toString(), seekMode)
         }
       }
@@ -547,6 +566,10 @@ class PlayerViewModel(
 
   fun updateSeekText(text: String?) {
     _seekText.value = text
+  }
+
+  fun updateIsSeekingForwards(isForwards: Boolean) {
+    _isSeekingForwards.value = isForwards
   }
 
   private fun seekToWithText(
