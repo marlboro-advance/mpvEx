@@ -13,12 +13,9 @@ class PlayerPreferences(
   val invertDuration = preferenceStore.getBoolean("invert_duration")
   val holdForMultipleSpeed = preferenceStore.getFloat("hold_for_multiple_speed", 2f)
   val showDynamicSpeedOverlay = preferenceStore.getBoolean("show_dynamic_speed_overlay", true)
-  val horizontalSeekGesture = preferenceStore.getBoolean("horizontal_seek_gesture", true)
-  val showSeekBarWhenSeeking = preferenceStore.getBoolean("show_seekbar_when_seeking")
   val showDoubleTapOvals = preferenceStore.getBoolean("show_double_tap_ovals", true)
   val showSeekTimeWhileSeeking = preferenceStore.getBoolean("show_seek_time_while_seeking", true)
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
-  val seekSensitivity = preferenceStore.getFloat("seek_sensitivity", 0.15f)
 
   val brightnessGesture = preferenceStore.getBoolean("gestures_brightness", true)
   val volumeGesture = preferenceStore.getBoolean("volume_brightness", true)

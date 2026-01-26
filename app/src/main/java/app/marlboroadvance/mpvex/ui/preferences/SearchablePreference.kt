@@ -181,18 +181,6 @@ object SearchablePreferences {
                 screen = PlayerPreferencesScreen,
             ))
             add(SearchablePreference(
-                titleRes = R.string.pref_player_gestures_seek,
-                keywords = listOf("seek", "horizontal", "swipe", "gesture", "time"),
-                category = "Player",
-                screen = PlayerPreferencesScreen,
-            ))
-            add(SearchablePreference(
-                titleRes = R.string.pref_player_show_seekbar_when_seeking,
-                keywords = listOf("seekbar", "seek", "progress", "timeline", "show"),
-                category = "Player",
-                screen = PlayerPreferencesScreen,
-            ))
-            add(SearchablePreference(
                 titleRes = R.string.show_splash_ovals_on_double_tap_to_seek,
                 keywords = listOf("oval", "circle", "double tap", "seek", "visual", "feedback"),
                 category = "Player",
@@ -207,12 +195,6 @@ object SearchablePreferences {
             add(SearchablePreference(
                 titleRes = R.string.pref_player_use_precise_seeking,
                 keywords = listOf("precise", "seek", "keyframes", "accurate", "navigation"),
-                category = "Player",
-                screen = PlayerPreferencesScreen,
-            ))
-            add(SearchablePreference(
-                titleRes = R.string.pref_player_seek_sensitivity,
-                keywords = listOf("sensitivity", "seek", "swipe", "speed", "amount"),
                 category = "Player",
                 screen = PlayerPreferencesScreen,
             ))

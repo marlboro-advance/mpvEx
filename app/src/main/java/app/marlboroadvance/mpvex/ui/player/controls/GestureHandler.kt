@@ -108,9 +108,6 @@ fun GestureHandler(
   val brightnessGesture = playerPreferences.brightnessGesture.get()
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
-  val seekGesture by playerPreferences.horizontalSeekGesture.collectAsState()
-  val showSeekbarWhenSeeking by playerPreferences.showSeekBarWhenSeeking.collectAsState()
-  val seekSensitivity by playerPreferences.seekSensitivity.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
   var isDynamicSpeedControlActive by remember { mutableStateOf(false) }
@@ -325,8 +322,8 @@ fun GestureHandler(
           } while (event.changes.any { it.pressed })
         }
       }
-      .pointerInput(areControlsLocked, multipleSpeedGesture, seekGesture, brightnessGesture, volumeGesture) {
-        if ((!seekGesture && !brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
+      .pointerInput(areControlsLocked, multipleSpeedGesture, brightnessGesture, volumeGesture) {
+        if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
 
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)
@@ -334,11 +331,6 @@ fun GestureHandler(
 
           // Reset long press tracking at the start of each gesture
           longPressTriggeredDuringTouch = false
-
-          // State for horizontal seeking
-          var startingPosition = position ?: 0
-          var startingX = startPosition.x
-          var wasPlayerAlreadyPause = false
 
           // State for vertical gestures (volume/brightness)
           var startingY = 0f
@@ -361,7 +353,7 @@ fun GestureHandler(
           val longPressDelay = 500L
           var longPressJob = coroutineScope.launch {
             delay(longPressDelay)
-            if (!longPressTriggered && !wasPlayerAlreadyPause && paused == false) {
+            if (!longPressTriggered && paused == false) {
               val distance = sqrt(
                 (down.position.x - startPosition.x) * (down.position.x - startPosition.x) +
                 (down.position.y - startPosition.y) * (down.position.y - startPosition.y)
@@ -426,14 +418,6 @@ fun GestureHandler(
                         dynamicSpeedStartX = currentPosition.x
                         dynamicSpeedStartValue = MPVLib.getPropertyFloat("speed") ?: multipleSpeedGesture
                       }
-                      "horizontal" -> {
-                        if (seekGesture && !isLongPressing) {
-                          startingPosition = position ?: 0
-                          startingX = startPosition.x
-                          wasPlayerAlreadyPause = paused ?: false
-                          viewModel.pause()
-                        }
-                      }
                       "vertical" -> {
                         if ((brightnessGesture || volumeGesture) && !isLongPressing) {
                           startingY = 0f
@@ -485,32 +469,6 @@ fun GestureHandler(
                             viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed, true) }
                           }
                         }
-                      }
-                    }
-                    "horizontal" -> {
-                      if (seekGesture && !isLongPressing) {
-                        val dragAmount = currentPosition.x - startPosition.x
-                        if ((position ?: 0) <= 0f && dragAmount < 0) return@forEach
-                        if ((position ?: 0) >= (duration ?: 0) && dragAmount > 0) return@forEach
-
-                        calculateNewHorizontalGestureValue(
-                          startingPosition,
-                          startingX,
-                          currentPosition.x,
-                          seekSensitivity,
-                        ).let {
-                          viewModel.gestureSeekAmount.update { _ ->
-                            Pair(
-                              startingPosition,
-                              (it - startingPosition)
-                                .coerceIn(0 - startingPosition, ((duration ?: 0) - startingPosition)),
-                            )
-                          }
-                          viewModel.seekTo(it)
-                        }
-
-                        if (showSeekbarWhenSeeking) viewModel.showSeekBar()
-                        change.consume()
                       }
                     }
                     "vertical" -> {
@@ -606,13 +564,6 @@ fun GestureHandler(
               longPressJob.cancel()
               if (gestureType != null) {
                 when (gestureType) {
-                  "horizontal" -> {
-                    if (seekGesture) {
-                      viewModel.gestureSeekAmount.update { null }
-                      viewModel.hideSeekBar()
-                      if (!wasPlayerAlreadyPause) viewModel.unpause()
-                    }
-                  }
                   "vertical" -> {
                     if (brightnessGesture || volumeGesture) {
                       startingY = 0f
@@ -640,13 +591,6 @@ fun GestureHandler(
           }
 
           when (gestureType) {
-            "horizontal" -> {
-              if (seekGesture) {
-                viewModel.gestureSeekAmount.update { null }
-                viewModel.hideSeekBar()
-                if (!wasPlayerAlreadyPause) viewModel.unpause()
-              }
-            }
             "vertical" -> {
               if (brightnessGesture || volumeGesture) {
                 startingY = 0f
@@ -825,14 +769,6 @@ fun calculateNewVerticalGestureValue(originalValue: Int, startingY: Float, newY:
 
 fun calculateNewVerticalGestureValue(originalValue: Float, startingY: Float, newY: Float, sensitivity: Float): Float {
   return originalValue + ((startingY - newY) * sensitivity)
-}
-
-fun calculateNewHorizontalGestureValue(originalValue: Int, startingX: Float, newX: Float, sensitivity: Float): Int {
-  return originalValue + ((newX - startingX) * sensitivity).toInt()
-}
-
-fun calculateNewHorizontalGestureValue(originalValue: Float, startingX: Float, newX: Float, sensitivity: Float): Float {
-  return originalValue + ((newX - startingX) * sensitivity)
 }
 
 @Composable

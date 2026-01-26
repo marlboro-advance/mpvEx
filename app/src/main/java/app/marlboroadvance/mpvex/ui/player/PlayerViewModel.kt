@@ -156,7 +156,6 @@ class PlayerViewModel(
   val panelShown = MutableStateFlow(Panels.None)
 
   // Seek state
-  val gestureSeekAmount = MutableStateFlow<Pair<Int, Int>?>(null)
   private val _seekText = MutableStateFlow<String?>(null)
   val seekText: StateFlow<String?> = _seekText.asStateFlow()
 
@@ -532,7 +531,6 @@ class PlayerViewModel(
     }
     _isSeekingForwards.value = false
     seekBy(-doubleTapToSeekDuration)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
   fun rightSeek() {
@@ -541,7 +539,6 @@ class PlayerViewModel(
     }
     _isSeekingForwards.value = true
     seekBy(doubleTapToSeekDuration)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
   fun updateSeekAmount(amount: Int) {
@@ -561,7 +558,6 @@ class PlayerViewModel(
     _doubleTapSeekAmount.value = seekValue - currentPos
     _seekText.value = text
     seekTo(seekValue)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
   private fun seekByWithText(
@@ -577,7 +573,6 @@ class PlayerViewModel(
     _seekText.value = text
     _isSeekingForwards.value = value > 0
     seekBy(value)
-    if (playerPreferences.showSeekBarWhenSeeking.get()) showSeekBar()
   }
 
   // ==================== Brightness & Volume ====================

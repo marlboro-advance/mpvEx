@@ -179,24 +179,6 @@ object PlayerPreferencesScreen : Screen {
           
           item {
             PreferenceCard {
-              val horizontalSeekGesture by preferences.horizontalSeekGesture.collectAsState()
-              SwitchPreference(
-                value = horizontalSeekGesture,
-                onValueChange = preferences.horizontalSeekGesture::set,
-                title = { Text(stringResource(R.string.pref_player_gestures_seek)) },
-              )
-              
-              PreferenceDivider()
-              
-              val showSeekbarWhenSeeking by preferences.showSeekBarWhenSeeking.collectAsState()
-              SwitchPreference(
-                value = showSeekbarWhenSeeking,
-                onValueChange = preferences.showSeekBarWhenSeeking::set,
-                title = { Text(stringResource(R.string.pref_player_show_seekbar_when_seeking)) },
-              )
-              
-              PreferenceDivider()
-              
               val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
               SwitchPreference(
                 value = showDoubleTapOvals,
@@ -220,24 +202,6 @@ object PlayerPreferencesScreen : Screen {
                 value = usePreciseSeeking,
                 onValueChange = preferences.usePreciseSeeking::set,
                 title = { Text(stringResource(R.string.pref_player_use_precise_seeking)) },
-              )
-
-              PreferenceDivider()
-
-              val seekSensitivity by preferences.seekSensitivity.collectAsState()
-              SliderPreference(
-                value = seekSensitivity,
-                onValueChange = { preferences.seekSensitivity.set(it.toFixed(2)) },
-                title = { Text(stringResource(R.string.pref_player_seek_sensitivity)) },
-                valueRange = 0.01f..0.3f,
-                summary = {
-                  Text(
-                    "%.2f".format(seekSensitivity),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { preferences.seekSensitivity.set(it.toFixed(2)) },
-                sliderValue = seekSensitivity,
               )
             }
           }
