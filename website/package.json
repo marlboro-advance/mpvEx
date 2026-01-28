@@ -1,0 +1,76 @@
+{
+  "name": "mpvex-web",
+  "version": "0.1.0",
+  "description": "Advanced mpv-based video player for Android with powerful features, seamless playback, and open-source freedom.",
+  "private": true,
+  "author": {
+    "name": "marlboro-advance",
+    "url": "https://github.com/marlboro-advance"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "mpv",
+    "android",
+    "video-player",
+    "nextjs",
+    "react",
+    "typescript",
+    "tailwindcss"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev",
+    "build": "next build",
+    "start": "next start",
+    "start:prod": "next start --port 3000",
+    "analyze": "npx next experimental-analyze",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:unsafe": "biome check --write --unsafe .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "organize-imports": "biome check --write --no-errors-on-unmatched .",
+    "type-check": "tsc --noEmit",
+    "test:type": "tsc --noEmit --pretty",
+    "clean": "rm -rf .next 2>nul || echo Cleaned .next directory",
+    "clean:cache": "rm -rf .next 2>nul && rm -rf node_modules/.cache 2>nul || echo Cleaned cache",
+    "clean:all": "rm -rf .next 2>nul && rm -rf node_modules 2>nul || echo Cleaned all",
+    "reinstall": "pnpm clean:all && pnpm install",
+    "validate": "pnpm check && pnpm type-check",
+    "pre-commit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md,mdx}": [
+      "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+    ]
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "1.2.4",
+    "@vercel/analytics": "1.6.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "4.1.0",
+    "framer-motion": "^12.29.2",
+    "geist": "^1.5.1",
+    "lucide-react": "^0.563.0",
+    "next": "16.1.5",
+    "next-themes": "^0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "lint-staged": "^16.2.7",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}
