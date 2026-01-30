@@ -25,6 +25,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.theme.spacing
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.widthIn
 
 @Composable
 fun PlayerUpdate(
@@ -55,13 +58,20 @@ fun PlayerUpdate(
   }
 }
 
+
 @Composable
 fun TextPlayerUpdate(
   text: String,
   modifier: Modifier = Modifier,
 ) {
   PlayerUpdate(modifier) {
-    Text(text)
+    Text(
+      text = text,
+      fontFamily = FontFamily.Monospace,
+      fontWeight = FontWeight.Bold,
+      textAlign = TextAlign.Center,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
   }
 }
 
