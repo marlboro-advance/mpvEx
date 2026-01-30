@@ -212,6 +212,7 @@ fun CompactSpeedIndicator(
       imageVector = Icons.Filled.FastForward,
       contentDescription = null,
       modifier = Modifier.size(16.dp),
+      tint = MaterialTheme.colorScheme.onSurface 
     )
     Text(
       text = "${currentSpeed.format()}x",
@@ -219,6 +220,7 @@ fun CompactSpeedIndicator(
       fontWeight = FontWeight.Bold,
       style = MaterialTheme.typography.bodyLarge,
       modifier = Modifier.padding(start = 4.dp),
+      color = MaterialTheme.colorScheme.onSurface // Explicitly set color
     )
   }
 }

@@ -325,7 +325,7 @@ fun GestureHandler(
         }
       }
       .pointerInput(areControlsLocked, multipleSpeedGesture, brightnessGesture, volumeGesture) {
-        if ((!brightnessGesture && !volumeGesture) || areControlsLocked) return@pointerInput
+        if ((!brightnessGesture && !volumeGesture && multipleSpeedGesture <= 0f) || areControlsLocked) return@pointerInput
 
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)

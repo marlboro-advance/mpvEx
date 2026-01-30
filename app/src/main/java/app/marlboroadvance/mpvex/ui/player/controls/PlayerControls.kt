@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -416,7 +417,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
-              linkTo(parent.top, parent.bottom, bias = 0.2f)
+              top.linkTo(parent.top, 64.dp)
             },
         ) {
           when (currentPlayerUpdate) {
@@ -459,12 +460,18 @@ fun PlayerControls(
 
             is PlayerUpdates.VideoZoom -> {
               val zoomPercentage = (videoZoom * 100).toInt()
-              TextPlayerUpdate("Zoom: $zoomPercentage%")
+              TextPlayerUpdate(
+                text = String.format("Zoom:%3d%%", zoomPercentage), 
+                modifier = Modifier.width(160.dp),
+              )
             }
 
             is PlayerUpdates.HorizontalSeek -> {
               val seekUpdate = currentPlayerUpdate as PlayerUpdates.HorizontalSeek
-              TextPlayerUpdate("${seekUpdate.currentTime} [ ${seekUpdate.seekDelta} ]")
+              TextPlayerUpdate(
+                text = "${seekUpdate.currentTime} [${seekUpdate.seekDelta}]",
+                modifier = Modifier.width(220.dp),
+              )
             }
 
             is PlayerUpdates.RepeatMode -> {

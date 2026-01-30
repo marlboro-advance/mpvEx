@@ -277,7 +277,8 @@ class MPVView(
     val borderSize = subtitlesPreferences.borderSize.get().toString()
     val borderStyle = subtitlesPreferences.borderStyle.get().value
     val shadowOffset = subtitlesPreferences.shadowOffset.get().toString()
-    val subPos = subtitlesPreferences.subPos.get().toString()
+    val subPosInt = subtitlesPreferences.subPos.get()
+    val subPos = subPosInt.toString()
     val subScale = subtitlesPreferences.subScale.get().toString()
 
     MPVLib.setOptionString("sub-font-size", fontSize)
@@ -293,6 +294,8 @@ class MPVView(
     MPVLib.setOptionString("sub-scale", subScale)
     MPVLib.setOptionString("sub-pos", subPos)
     
+    val secondarySubPos = if (subPosInt >= 50) "5" else "95"
+
     MPVLib.setOptionString("secondary-sub-font-size", fontSize)
     MPVLib.setOptionString("secondary-sub-bold", bold)
     MPVLib.setOptionString("secondary-sub-italic", italic)
@@ -304,7 +307,7 @@ class MPVView(
     MPVLib.setOptionString("secondary-sub-border-style", borderStyle)
     MPVLib.setOptionString("secondary-sub-shadow-offset", shadowOffset)
     MPVLib.setOptionString("secondary-sub-scale", subScale)
-    MPVLib.setOptionString("secondary-sub-pos", subPos)
+    MPVLib.setOptionString("secondary-sub-pos", secondarySubPos)
 
     val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
     MPVLib.setOptionString("sub-scale-by-window", scaleByWindow)

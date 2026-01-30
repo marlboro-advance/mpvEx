@@ -40,15 +40,8 @@ fun AudioDelayPanel(
   modifier: Modifier = Modifier,
 ) {
   val preferences = koinInject<AudioPreferences>()
-
-  ConstraintLayout(
-    modifier =
-      modifier
-        .fillMaxSize()
-        .padding(MaterialTheme.spacing.medium),
-  ) {
-    val delayControlCard = createRef()
-
+  
+  DraggablePanel(modifier = modifier) {
     val delay by MPVLib.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
 
@@ -62,13 +55,28 @@ fun AudioDelayPanel(
       onReset = { MPVLib.setPropertyDouble("audio-delay", 0.0) },
       title = { AudioDelayCardTitle(onClose = onDismissRequest) },
       delayType = DelayType.Audio,
-      modifier =
-        Modifier.constrainAs(delayControlCard) {
-          top.linkTo(parent.top)
-          end.linkTo(parent.end)
-        },
     )
   }
+}
+
+// Ensure the AudioDelayPanel also uses the content version as DraggablePanel wraps it
+@Composable
+fun DelayCard(
+    delay: Float,
+    onDelayChange: (Float) -> Unit,
+    onApply: () -> Unit,
+    onReset: () -> Unit,
+    title: @Composable () -> Unit,
+    delayType: DelayType,
+) {
+    DelayCardContent(
+        delay = delay,
+        onDelayChange = onDelayChange,
+        onApply = onApply,
+        onReset = onReset,
+        title = title,
+        delayType = delayType
+    )
 }
 
 @Composable
