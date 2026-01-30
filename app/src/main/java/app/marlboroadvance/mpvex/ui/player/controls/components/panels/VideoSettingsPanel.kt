@@ -34,37 +34,7 @@ fun VideoSettingsPanel(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  ConstraintLayout(
-    modifier =
-      modifier
-        .fillMaxSize()
-        .padding(MaterialTheme.spacing.medium),
-  ) {
-    val settingsCard = createRef()
-
-    Card(
-      modifier =
-        Modifier
-          .constrainAs(settingsCard) {
-            top.linkTo(parent.top)
-            end.linkTo(parent.end)
-          }
-          .widthIn(max = CARDS_MAX_WIDTH),
-      colors = panelCardsColors(),
-      shape = MaterialTheme.shapes.large,
-      border = androidx.compose.foundation.BorderStroke(
-        1.dp,
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-      ),
-      elevation = androidx.compose.material3.CardDefaults.cardElevation(
-        defaultElevation = 0.dp,
-        pressedElevation = 0.dp,
-        focusedElevation = 0.dp,
-        hoveredElevation = 0.dp,
-        draggedElevation = 0.dp,
-        disabledElevation = 0.dp,
-      ),
-    ) {
+  DraggablePanel(modifier = modifier) {
       Column(
         Modifier
           .verticalScroll(rememberScrollState())
@@ -89,6 +59,5 @@ fun VideoSettingsPanel(
         VideoSettingsFiltersCard()
         VideoSettingsDebandCard()
       }
-    }
   }
 }
