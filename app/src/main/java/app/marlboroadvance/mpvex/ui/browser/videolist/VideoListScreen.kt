@@ -787,6 +787,7 @@ private fun VideoSortDialog(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
@@ -902,6 +903,11 @@ private fun VideoSortDialog(
           label = "Framerate",
           checked = showFramerateInResolution,
           onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Date",
+          checked = showDateChip,
+          onCheckedChange = { browserPreferences.showDateChip.set(it) },
         ),
       ),
     folderGridColumnSelector = folderGridColumnSelector,

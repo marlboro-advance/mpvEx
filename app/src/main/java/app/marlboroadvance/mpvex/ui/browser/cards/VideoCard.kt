@@ -80,6 +80,7 @@ fun VideoCard(
   val showResolutionChipPref by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
@@ -346,6 +347,20 @@ fun VideoCard(
                    color = MaterialTheme.colorScheme.onSurface,
                  )
             }
+            
+            if (showDateChip && video.dateAdded > 0) {
+              Text(
+                formatDate(video.dateAdded),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                  .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(8.dp),
+                  )
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+            }
           }
         }
       }
@@ -608,9 +623,29 @@ fun VideoCard(
                 color = MaterialTheme.colorScheme.onSurface,
               )
             }
+            
+            if (showDateChip && video.dateAdded > 0) {
+              Text(
+                formatDate(video.dateAdded),
+                style = MaterialTheme.typography.labelSmall,
+                modifier =
+                  Modifier
+                    .background(
+                      MaterialTheme.colorScheme.surfaceContainerHigh,
+                      RoundedCornerShape(8.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+            }
           }
         }
       }
     }
   }
+}
+
+private fun formatDate(timestampSeconds: Long): String {
+  val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+  return sdf.format(java.util.Date(timestampSeconds * 1000))
 }
