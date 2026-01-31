@@ -1126,7 +1126,7 @@ private fun FolderSortDialog(
         onCheckedChange = { browserPreferences.showTotalVideosChip.set(it) },
       ),
       VisibilityToggle(
-        label = "Total Duration",
+        label = "Duration",
         checked = showTotalDurationChip,
         onCheckedChange = { browserPreferences.showTotalDurationChip.set(it) },
       ),

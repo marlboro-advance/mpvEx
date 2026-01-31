@@ -142,6 +142,23 @@ fun FolderCard(
               )
             }
           }
+          
+          if (showTotalDurationChip && folder.totalDuration > 0) {
+            Box(
+              modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.Black.copy(alpha = 0.65f))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+              Text(
+                text = formatDuration(folder.totalDuration),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+              )
+            }
+          }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -209,6 +226,23 @@ fun FolderCard(
                 style = MaterialTheme.typography.labelSmall.copy(
                   fontWeight = FontWeight.Bold,
                 ),
+                color = Color.White,
+              )
+            }
+          }
+
+          if (showTotalDurationChip && folder.totalDuration > 0) {
+            Box(
+              modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.Black.copy(alpha = 0.65f))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+              Text(
+                text = formatDuration(folder.totalDuration),
+                style = MaterialTheme.typography.labelSmall,
                 color = Color.White,
               )
             }
@@ -281,21 +315,7 @@ fun FolderCard(
               hasChip = true
             }
 
-            if (showTotalDurationChip && folder.totalDuration > 0) {
-              Text(
-                formatDuration(folder.totalDuration),
-                style = MaterialTheme.typography.labelSmall,
-                modifier =
-                  Modifier
-                    .background(
-                      MaterialTheme.colorScheme.surfaceContainerHigh,
-                      RoundedCornerShape(8.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                color = MaterialTheme.colorScheme.onSurface,
-              )
-              hasChip = true
-            }
+
 
             if (showDateModified && folder.lastModified > 0) {
               Text(
