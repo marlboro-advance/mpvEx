@@ -219,6 +219,12 @@ class PlayerActivity :
    */
   private lateinit var pipHelper: MPVPipHelper
 
+  /**
+   * Helper for managing Adaptive Refresh Rate (ARR).
+   * Matches display refresh rate to video frame rate for power savings on Android 15+.
+   */
+  private val arrHelper by lazy { AdaptiveRefreshRateHelper(this) }
+
   private var isReady = false // Single flag: true when video loaded and ready
   private var isUserFinishing = false
   private var noisyReceiverRegistered = false
@@ -617,6 +623,9 @@ class PlayerActivity :
       // Now safe to destroy MPV as internal threads have had time to shut down
       MPVLib.destroy()
       mpvInitialized = false
+
+      // Reset Adaptive Refresh Rate settings
+      arrHelper.resetToDefault(player)
     }.onFailure { e ->
       Log.e(TAG, "Error cleaning up MPV", e)
     }
@@ -1702,6 +1711,9 @@ class PlayerActivity :
     )
     updateMediaSessionPlaybackState(isPlaying = true)
 
+    // Apply Adaptive Refresh Rate if enabled (Android 15+)
+    applyAdaptiveRefreshRate()
+
     // Asynchronously fetch better filename from HTTP headers for network streams
     fetchNetworkStreamTitle()
   }
@@ -1841,6 +1853,36 @@ class PlayerActivity :
         Log.e(TAG, "Error fetching network stream title", e)
       }
     }
+  }
+
+  /**
+   * Applies Adaptive Refresh Rate settings based on video frame rate.
+   * This matches the display refresh rate to the video's native frame rate (e.g., 24fps for movies)
+   * to reduce power consumption on Android 15+ devices with ARR support.
+   */
+  private fun applyAdaptiveRefreshRate() {
+    if (!playerPreferences.adaptiveRefreshRate.get()) {
+      Log.d(TAG, "Adaptive Refresh Rate disabled in preferences")
+      return
+    }
+
+    if (!AdaptiveRefreshRateHelper.isApiLevelSupported()) {
+      Log.d(TAG, "Adaptive Refresh Rate not supported on this Android version")
+      return
+    }
+
+    // Get video frame rate from MPV
+    val fps = MPVLib.getPropertyDouble("container-fps")
+      ?: MPVLib.getPropertyDouble("estimated-vf-fps")
+      ?: run {
+        Log.d(TAG, "Could not determine video frame rate for ARR")
+        return
+      }
+
+    Log.d(TAG, "Applying Adaptive Refresh Rate: ${fps}fps")
+    
+    // Apply video frame rate to the surface
+    arrHelper.applyVideoFrameRate(player, fps.toFloat())
   }
 
   /**

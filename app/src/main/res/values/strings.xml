@@ -382,6 +382,8 @@
     <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
     <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>
     <string name="pref_player_display_reduce_player_animation">Reduce player animation</string>
+    <string name="pref_player_display_adaptive_refresh_rate">Adaptive Refresh Rate</string>
+    <string name="pref_player_display_adaptive_refresh_rate_summary">Match display refresh rate to video frame rate for power savings</string>
     <string name="pref_player_display_hide_player_control_time">Hide player control time</string>
     <string name="show_splash_ovals_on_double_tap_to_seek">Show ripple when double tap seeking</string>
     <string name="show_time_on_double_tap_to_seek">Show seek time</string>
