@@ -15,7 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
@@ -173,8 +175,8 @@ object FolderListScreen : Screen {
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
     // UI state - use standalone states to avoid scroll issues with predictive back gesture
-    val listState = remember { LazyListState() }
-    val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val navigationBarHeight = LocalNavigationBarHeight.current
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
