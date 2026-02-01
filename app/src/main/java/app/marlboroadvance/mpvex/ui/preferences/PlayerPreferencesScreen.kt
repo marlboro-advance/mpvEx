@@ -371,6 +371,24 @@ object PlayerPreferencesScreen : Screen {
                 onValueChange = preferences.reduceMotion::set,
                 title = { Text(stringResource(R.string.pref_player_display_reduce_player_animation)) },
               )
+              
+              // Adaptive Refresh Rate - only show on Android 15+
+              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                PreferenceDivider()
+                
+                val adaptiveRefreshRate by preferences.adaptiveRefreshRate.collectAsState()
+                SwitchPreference(
+                  value = adaptiveRefreshRate,
+                  onValueChange = preferences.adaptiveRefreshRate::set,
+                  title = { Text("Adaptive Refresh Rate") },
+                  summary = {
+                    Text(
+                      text = "Match display refresh rate to video frame rate for power savings",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
             }
           }
         }

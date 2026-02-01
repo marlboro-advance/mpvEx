@@ -65,4 +65,7 @@ class PlayerPreferences(
   val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", false)
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
+
+  // Adaptive Refresh Rate: Match display refresh rate to video frame rate (Android 15+)
+  val adaptiveRefreshRate = preferenceStore.getBoolean("adaptive_refresh_rate", true)
 }
