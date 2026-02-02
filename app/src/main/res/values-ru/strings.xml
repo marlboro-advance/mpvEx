@@ -1,0 +1,422 @@
+<resources>
+    <string name="generic_reset">Сброс</string>
+    <string name="generic_share">Поделиться</string>
+    <string name="generic_confirm">Подтвердить</string>
+    <string name="generic_cancel">Отмена</string>
+    <string name="generic_ok">ОК</string>
+    <string name="generic_unit_ms">мс</string>
+    <string name="generic_disabled">Отключено</string>
+
+    <string name="pref_preferences">Настройки</string>
+
+    <string name="pref_appearance_title">Внешний вид</string>
+    <string name="pref_appearance_summary">Темная тема, Material You</string>
+    <string name="pref_appearance_category_theme">Тема</string>
+    <string name="pref_appearance_darkmode_system">Системная</string>
+    <string name="pref_appearance_darkmode_light">Светлая</string>
+    <string name="pref_appearance_darkmode_dark">Темная</string>
+    <string name="pref_appearance_amoled_mode_title">Режим AMOLED Black</string>
+    <string name="pref_appearance_amoled_mode_summary">Использовать чистый черный фон для темных тем</string>
+    <string name="pref_appearance_material_you_summary">Включить динамические цвета</string>
+    <string name="pref_appearance_material_you_summary_disabled">Доступно только для Android 12 и новее.</string>
+    <string name="pref_appearance_unlimited_name_lines_title">Показывать полные имена</string>
+    <string name="pref_appearance_unlimited_name_lines_summary">Показывать полные имена папок и видео без сокращений</string>
+    <string name="pref_appearance_hide_player_buttons_background_title">Скрыть фон кнопок плеера</string>
+    <string name="pref_appearance_hide_player_buttons_background_summary">Скрыть подложку всех кнопок управления плеером</string>
+    <string name="pref_appearance_category_file_browser">Файловый менеджер</string>
+    <string name="pref_appearance_show_hidden_files_title">Показывать скрытые файлы</string>
+    <string name="pref_appearance_show_hidden_files_summary">Показывать скрытые папки, начинающиеся с точки (.), включая папки android, data, system и файлы .nomedia</string>
+    <string name="pref_appearance_show_unplayed_old_video_label_title">Метка для новых непросмотренных видео</string>
+    <string name="pref_appearance_show_unplayed_old_video_label_summary">Отображать метку «NEW» на видео, добавленных за определенное время и ни разу не просмотренных</string>
+    <string name="pref_appearance_unplayed_old_video_days_title">Порог дней для метки нового видео</string>
+    <string name="pref_appearance_unplayed_old_video_days_summary">Видео, добавленные за последние %d дн. без истории просмотра, будут отмечены как новые</string>
+    <string name="pref_appearance_show_network_thumbnails_title">Показывать сетевые эскизы (Экспериментально)</string>
+    <string name="pref_appearance_show_network_thumbnails_summary">Создавать эскизы для сетевых потоков (Может увеличить расход трафика в мобильных сетях)</string>
+    <string name="pref_appearance_theme_picker_label">Тема приложения</string>
+    <string name="pref_appearance_auto_scroll_title">Автопрокрутка к последнему</string>
+    <string name="pref_appearance_auto_scroll_summary">Автоматически прокручивать к последнему воспроизведенному видео при открытии списков</string>
+
+    <!-- Theme names -->
+    <string name="theme_default">По умолчанию</string>
+    <string name="theme_dynamic">Динамическая</string>
+    <string name="theme_cotton_candy">Сахарная вата</string>
+    <string name="theme_green_apple">Зеленое яблоко</string>
+    <string name="theme_lavender">Лаванда</string>
+    <string name="theme_midnight">Полночь</string>
+    <string name="theme_mocha">Мокко</string>
+    <string name="theme_strawberry">Клубника</string>
+    <string name="theme_yin_yang">Инь-Ян</string>
+    <string name="theme_sapphire">Сапфир</string>
+    <string name="theme_sunset">Закат</string>
+    <string name="theme_ocean">Океан</string>
+    <string name="theme_forest">Лес</string>
+    <string name="theme_rose_gold">Розовое золото</string>
+    <string name="theme_violet">Фиолетовый</string>
+    <string name="theme_amber">Янтарь</string>
+    <string name="theme_coral">Коралл</string>
+    <string name="theme_slate">Грифель</string>
+    <string name="theme_monochrome">Монохром</string>
+
+    <!-- Settings Search -->
+    <string name="settings_search_hint">Поиск настроек…</string>
+    <string name="settings_search_no_results">Настройки не найдены</string>
+    <string name="settings_search_title">Поиск</string>
+
+    <!-- Player Preferences Hardcoded -->
+    <string name="pref_autoplay_title">Включить навигацию вперед/назад</string>
+    <string name="pref_autoplay_summary">Показывать кнопки «следующее/предыдущее» для всех видео в папке</string>
+    <string name="pref_autoplay_next_video_title">Автовоспроизведение следующего видео</string>
+    <string name="pref_autoplay_next_video_summary">Автоматически запускать следующее видео по окончании текущего</string>
+    <string name="pref_auto_pip_title">Автоматический режим Картинка-в-картинке</string>
+    <string name="pref_auto_pip_summary">Автоматически переходить в режим PiP при нажатии кнопок «Домой» или «Назад»</string>
+    <string name="pref_dynamic_speed_overlay_title">Динамический оверлей скорости</string>
+    <string name="pref_dynamic_speed_overlay_summary">Показывать расширенный оверлей управления скоростью при долгом нажатии и свайпе</string>
+    <string name="pref_show_navigation_bar_title">Показывать панель навигации с элементами управления</string>
+
+    <!-- Gesture Preferences Hardcoded -->
+    <string name="pref_double_tap_seek_area_width_title">Ширина зоны перемотки двойным касанием</string>
+    <string name="pref_double_tap_seek_area_width_summary">Текущая: %d%%</string>
+
+    <!-- Advanced Preferences Hardcoded -->
+    <string name="pref_export_settings_title">Экспорт настроек</string>
+    <string name="pref_export_settings_summary">Экспортировать настройки в XML-файл</string>
+    <string name="pref_import_settings_title">Импорт настроек</string>
+    <string name="pref_import_settings_summary">Импортировать настройки из XML-файла</string>
+    <string name="pref_enable_lua_scripts_title">Включить Lua-скрипты</string>
+    <string name="pref_enable_lua_scripts_summary">Загружать Lua-скрипты из папки конфигурации</string>
+    <string name="pref_manage_lua_scripts_title">Управление Lua-скриптами</string>
+    <string name="pref_manage_lua_scripts_summary">Управление включенными Lua-скриптами</string>
+    <string name="pref_clear_config_cache_title">Очистить кэш конфигурации</string>
+    <string name="pref_clear_config_cache_summary">Очистить кэшированные настройки mpv.conf</string>
+    <string name="pref_clear_thumbnail_cache_title">Очистить кэш эскизов</string>
+    <string name="pref_clear_thumbnail_cache_summary">Удалить все кэшированные эскизы видео (будут созданы заново при просмотре папок)</string>
+
+    <string name="pref_layout_title">Макет плеера</string>
+    <string name="pref_layout_summary">Настройка расположения кнопок плеера</string>
+    <string name="pref_layout_reset_default">Сбросить по умолчанию</string>
+    <string name="pref_layout_top_right_controls">Элементы справа сверху</string>
+    <string name="pref_layout_bottom_right_controls">Элементы справа снизу</string>
+    <string name="pref_layout_bottom_left_controls">Элементы слева снизу</string>
+    <string name="pref_layout_portrait_bottom_controls">Элементы снизу (портрет)</string>
+    <string name="pref_layout_preview">Предпросмотр</string>
+    <string name="pref_layout_reset_title">Сбросить макет?</string>
+    <string name="pref_layout_reset_summary">Все пользовательские настройки кнопок плеера будут сброшены к позициям по умолчанию.</string>
+
+    <string name="pref_player">Плеер</string>
+    <string name="pref_player_summary">Ориентация, жесты и управление</string>
+    <string name="pref_player_orientation">Ориентация</string>
+    <string name="pref_player_orientation_free">Свободная</string>
+    <string name="pref_player_orientation_video">Как у видео</string>
+    <string name="pref_player_orientation_portrait">Портретная</string>
+    <string name="pref_player_orientation_reverse_portrait">Перевернутая портретная</string>
+    <string name="pref_player_orientation_sensor_portrait">Портретная (датчик)</string>
+    <string name="pref_player_orientation_landscape">Альбомная</string>
+    <string name="pref_player_orientation_reverse_landscape">Перевернутая альбомная</string>
+    <string name="pref_player_orientation_sensor_landscape">Альбомная (датчик)</string>
+    <string name="pref_player_save_position_on_quit">Сохранять позицию при выходе</string>
+    <string name="pref_player_double_tap_seek_duration">Длительность перемотки двойным тапом</string>
+    <string name="pref_player_seeking_title">Перемотка</string>
+    <string name="pref_player_close_after_eof">Закрывать после окончания воспроизведения</string>
+    <string name="pref_player_remember_brightness">Запоминать яркость экрана</string>
+
+    <string name="pref_player_gestures">Жесты</string>
+    <string name="pref_player_gestures_brightness">Жесты яркости</string>
+    <string name="pref_player_gestures_volume">Жесты громкости</string>
+    <string name="pref_player_gestures_pinch_to_zoom">Щипок для масштабирования</string>
+    <string name="pref_player_gestures_horizontal_swipe_to_seek">Горизонтальный свайп для перемотки</string>
+    <string name="pref_player_gestures_horizontal_swipe_to_seek_summary">Свайп влево/вправо для перемотки назад/вперед</string>
+    <string name="pref_player_gestures_horizontal_swipe_sensitivity">Чувствительность гор. свайпа</string>
+    <string name="pref_player_gestures_horizontal_swipe_sensitivity_summary">Настройка расстояния, покрываемого одним свайпом</string>
+    <string name="pref_player_gestures_hold_for_multiple_speed">Удержание для ускорения (x-крат.)</string>
+
+    <string name="pref_player_controls">Управление</string>
+    <string name="pref_player_controls_allow_gestures_in_panels">Разрешить жесты на панелях</string>
+    <string name="pref_player_controls_display_volume_as_percentage">Показывать громкость в процентах</string>
+    <string name="pref_player_controls_show_loading_circle">Показывать индикатор загрузки</string>
+    <string name="pref_player_display_show_status_bar">Показывать строку состояния системы с элементами управления</string>
+    
+    <string name="pref_player_display">Экран</string>
+    <string name="pref_player_display_panel_opacity">Непрозрачность панели</string>
+
+    <string name="pref_gesture">Жесты</string>
+    <string name="pref_gesture_summary">Двойное касание, медиа-кнопки</string>
+    <string name="pref_gesture_double_tap_title">Двойное касание</string>
+    <string name="pref_gesture_double_tap_none">Нет</string>
+    <string name="pref_gesture_double_tap_seek">Перемотка</string>
+    <string name="pref_gesture_double_tap_play">Воспр./Пауза</string>
+    <string name="pref_gesture_double_tap_custom">Пользовательское</string>
+    <string name="pref_gesture_double_tap_left_title">Двойное касание (слева)</string>
+    <string name="pref_gesture_double_tap_center_title">Двойное касание (центр)</string>
+    <string name="pref_gesture_single_tap_center_title">Одиночное касание (центр)</string>
+    <string name="pref_gesture_double_tap_right_title">Двойное касание (справа)</string>
+    <string name="pref_gesture_use_single_tap_for_center_title">Использовать одиночное касание для жеста в центре</string>
+    <string name="pref_gesture_use_single_tap_for_center_summary">Использовать одно касание в центре для действий (например, паузы) вместо двойного.</string>
+
+    <string name="pref_gesture_double_tap_custom_info">Вы можете привязать свои действия к этим жестам в input.conf, используя следующие коды клавиш:\n\nСлева: MBTN_LEFT_DBL\nЦентр: MBTN_MID_DBL\nСправа: MBTN_RIGHT_DBL</string>
+
+    <string name="pref_gesture_media_title">Медиа-кнопки</string>
+    <string name="pref_gesture_media_previous">Предыдущее</string>
+    <string name="pref_gesture_media_play">Воспр./Пауза</string>
+    <string name="pref_gesture_media_next">Следующее</string>
+    <string name="pref_gesture_media_custom_info">Вы можете привязать свои действия к медиа-кнопкам в input.conf, используя следующие коды:\n\nНазад: PREV\nВоспр./Пауза: PLAYPAUSE\nВперед: NEXT</string>
+
+    <string name="pref_gesture_view_title">Просмотр</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_title">Выбор касанием эскиза</string>
+    <string name="pref_gesture_tap_thumbnail_to_select_summary">Если включено, нажатие на эскиз включает режим выбора. Если выключено, нажатие запускает видео.</string>
+
+    <string name="pref_decoder">Декодер</string>
+    <string name="pref_decoder_summary">Аппаратное декодирование, формат пикселей, дебандинг</string>
+    <string name="pref_decoder_try_hw_dec_title">Пробовать аппаратное декодирование</string>
+    <string name="pref_decoder_gpu_next_title">Использовать gpu-next</string>
+    <string name="pref_decoder_gpu_next_summary">Новый бэкенд рендеринга</string>
+    <string name="pref_decoder_gpu_next_enable_title">Включить gpu-next?</string>
+    <string name="pref_decoder_gpu_next_warning">Включение gpu-next может вызвать появление фиолетового экрана во время воспроизведения на некоторых устройствах.</string>
+    <string name="pref_decoder_gpu_next_purple_screen_fix">Если вы видите фиолетовый экран, попробуйте отключить opengl-pbo в Расширенных настройках (mpv.conf):</string>
+    <string name="pref_decoder_gpu_next_enable_anyway">Все равно включить</string>
+    <string name="pref_decoder_debanding_title">Дебандинг</string>
+    <string name="pref_decoder_yuv420p_title">Использовать формат пикселей YUV420P</string>
+    <string name="pref_decoder_yuv420p_summary">Может исправить черный экран на некоторых кодеках, а также улучшить производительность за счет качества</string>
+
+    <string name="pref_subtitles">Субтитры</string>
+    <string name="pref_subtitles_summary">Предпочитаемые языки, шрифты</string>
+    <string name="pref_preferred_languages">Предпочитаемые языки</string>
+    <string name="pref_subtitles_fonts_dir">Папка со шрифтами</string>
+    <string name="pref_subtitles_autoload_title">Автозагрузка субтитров</string>
+    <string name="pref_subtitles_autoload_summary">Автоматически загружать внешние субтитры с тем же именем.</string>
+
+    <string name="pref_audio">Аудио</string>
+    <string name="pref_audio_summary">Предпочитаемые языки, каналы, коррекция тона</string>
+    <string name="pref_audio_pitch_correction_title">Включить коррекцию тона</string>
+    <string name="pref_audio_pitch_correction_summary">Предотвращает изменение высоты звука (писк или бас) при изменении скорости воспроизведения</string>
+    <string name="pref_audio_volume_normalization_title">Нормализация громкости</string>
+    <string name="pref_audio_volume_normalization_summary">Автоматически регулировать громкость звука для поддержания постоянного уровня</string>
+    <string name="pref_audio_channels">Аудиоканалы</string>
+    <string name="pref_audio_channels_auto">Авто</string>
+    <string name="pref_audio_channels_auto_safe">Авто (безопасно)</string>
+    <string name="pref_audio_channels_mono">Моно</string>
+    <string name="pref_audio_channels_stereo">Стерео</string>
+    <string name="pref_audio_channels_stereo_reversed">Реверс стерео</string>
+    <string name="pref_audio_preferred_language">Язык(и) аудио по умолчанию для видео с несколькими дорожками. Используйте 2-х или 3-х буквенные коды. Несколько значений разделяются запятой.</string>
+    <string name="pref_audio_volume_boost_cap">Лимит усиления громкости</string>
+
+    <string name="pref_advanced">Расширенные</string>
+    <string name="pref_advanced_summary">Расположение конфигурации, mpv.conf</string>
+    <string name="pref_advanced_mpv_conf_storage_location">Выбрать место хранения конфигурации</string>
+    <string name="pref_advanced_mpv_conf">Редактировать mpv.conf</string>
+    <string name="pref_advanced_input_conf">Редактировать input.conf</string>
+    <string name="pref_advanced_dump_logs_title">Дамп логов</string>
+    <string name="pref_advanced_dump_logs_summary">Сохранить и скопировать логи для отправки разработчикам</string>
+    <string name="pref_advanced_verbose_logging_title">Подробное логирование</string>
+    <string name="pref_advanced_verbose_logging_summary">Помогает в отладке, но может снизить производительность</string>
+    <string name="pref_advanced_clear_playback_history">Очистить историю воспроизведения</string>
+    <string name="pref_advanced_clear_playback_history_confirm_title">Вы уверены, что хотите очистить историю воспроизведения?</string>
+    <string name="pref_advanced_clear_playback_history_confirm_subtitle">Это удалит все сохраненные позиции, выбранные субтитры и аудиодорожки, а также их задержки и настройки скорости</string>
+    <string name="pref_advanced_cleared_playback_history">История воспроизведения очищена</string>
+    <string name="pref_advanced_clear_fonts_cache">Очистить кэш шрифтов</string>
+    <string name="pref_advanced_cleared_fonts_cache">Кэш шрифтов очищен</string>
+    <string name="pref_advanced_enable_recently_played_title">Недавно воспроизведенные</string>
+    <string name="pref_advanced_enable_recently_played_summary">Отслеживать и показывать список недавно просмотренных видео и плейлистов</string>
+    
+    <string name="pref_advanced_features_tooltip">Включить экспериментальные или расширенные функции, такие как страница статистики и апскейлинг Anime4K.</string>
+    <string name="pref_anime4k_title">Апскейлинг Anime4K (Экспериментально)</string>
+    <string name="pref_anime4k_summary">Включить фильтр апскейлинга Anime4K</string>
+    <string name="pref_anime4k_incompatibility">Несовместимость Anime4K</string>
+    <string name="pref_anime4k_gpu_next_error">gpu-next несовместим с шейдерами Anime4K. Когда включен Anime4K, приложение автоматически будет использовать старый бэкенд «gpu» для совместимости.</string>
+    <string name="pref_anime4k_cannot_use_with_gpu_next">Нельзя использовать Anime4K, когда включен gpu-next</string>
+    <string name="anime4k_mode_title">Пресеты Anime4K</string>
+    <string name="anime4k_quality_title">Варианты Anime4K</string>
+    <string name="anime4k_mode_toast">Anime4K: Пресет %1$s</string>
+    <string name="anime4k_quality_toast">Вариант Anime4K: %1$s</string>
+
+    <!-- Anime4K Modes (Renamed to Presets in UI) -->
+    <string name="anime4k_mode_off">Выкл.</string>
+
+    <!-- Anime4K Qualities (Renamed to Mode in UI) -->
+    <string name="anime4k_quality_fast">Быстро</string>
+    <string name="anime4k_quality_balanced">Баланс</string>
+    <string name="anime4k_quality_high">Качество</string>
+
+    <string name="pref_about_title">О приложении</string>
+    <string name="pref_about_summary">Благодарности, лицензии</string>
+    <string name="pref_about_oss_libraries">Библиотеки</string>
+    <string name="pref_about_donate_title">Поддержать</string>
+    <string name="pref_about_donate_kofi_summary">Поддержать разработчика на Ko-fi</string>
+    <string name="pref_about_donate_paypal_summary">Поддержать разработчика через PayPal</string>
+
+    <string name="player_sheets_add_ext_sub">Добавить внешние субтитры</string>
+    <string name="player_sheets_add_ext_audio">Добавить внешние аудиодорожки</string>
+    <string name="player_sheets_tracks_off">Выкл.</string>
+    <string name="player_sheets_subtitles_settings_title">Настройки субтитров</string>
+    <string name="player_sheets_subtitles_color_text">Текст</string>
+    <string name="player_sheets_subtitles_color_border">Граница</string>
+    <string name="player_sheets_subtitles_color_background">Фон</string>
+    <string name="player_sheets_subtitles_border_style">Стиль границы</string>
+    <string name="player_sheets_subtitles_border_style_outline_and_shadow">Контур и тень</string>
+    <string name="player_sheets_subtitles_border_style_opaque_box">Непрозрачный блок</string>
+    <string name="player_sheets_subtitles_shadow_offset">Смещение тени</string>
+    <string name="player_sheets_sub_color_red">Красный</string>
+    <string name="player_sheets_sub_color_green">Зеленый</string>
+    <string name="player_sheets_sub_color_blue">Синий</string>
+    <string name="player_sheets_sub_color_alpha">Альфа (Прозрачность)</string>
+    <string name="player_sheets_sub_override_ass">Переопределить стили ASS/SSA</string>
+    <string name="player_sheets_sub_override_ass_subtitle">Принудительно переопределить форматирование субтитров ASS/SSA</string>
+    <string name="player_sheets_sub_scale_by_window">Масштабировать по окну</string>
+    <string name="player_sheets_sub_scale_by_window_summary">Масштабировать субтитры по размеру окна и использовать поля видео</string>
+    <string name="player_sheets_sub_scale">Масштаб</string>
+    <string name="player_sheets_sub_position">Позиция</string>
+    <string name="player_sheets_sub_typography_card_title">Типографика</string>
+    <string name="player_sheets_sub_typography_font">Шрифт</string>
+    <string name="player_sheets_sub_typography_font_size">Размер шрифта</string>
+    <string name="player_sheets_sub_typography_border_size">Размер границы</string>
+    <string name="player_sheets_sub_colors_card_title">Цвета</string>
+    <string name="player_sheets_sub_misc_card_title">Разное</string>
+    <string name="player_sheets_sub_delay_card_title">Задержка субтитров</string>
+    <string name="player_sheets_sub_delay_card_delay">Задержка</string>
+    <string name="player_sheets_sub_delay_card_speed">Скорость</string>
+    <string name="player_sheets_sub_delay_subtitle_type_primary">Основные</string>
+    <string name="player_sheets_sub_delay_subtitle_type_secondary">Вторичные</string>
+    <string name="player_sheets_sub_delay_subtitle_type_primary_and_secondary">Оба</string>
+    <string name="player_sheets_sub_delay_subtitle_voice_heard">Услышан голос</string>
+    <string name="player_sheets_sub_delay_subtitle_text_seen">Виден текст</string>
+    <string name="player_sheets_delay_set_as_default">Установить по умолчанию</string>
+    <string name="player_sheets_audio_delay_card_title">Задержка аудио</string>
+    <string name="player_sheets_sub_delay_audio_sound_heard">Услышан звук</string>
+    <string name="player_sheets_sub_delay_sound_sound_spotted">Замечен звук</string>
+
+    <string name="player_sheets_video_settings_title">Настройки видео</string>
+    <string name="player_sheets_deband_title">Дебандинг</string>
+    <string name="player_sheets_deband_none">Нет</string>
+    <string name="player_sheets_deband_iterations">Итерации</string>
+    <string name="player_sheets_deband_threshold">Порог</string>
+    <string name="player_sheets_deband_range">Диапазон</string>
+    <string name="player_sheets_deband_grain">Зерно</string>
+    <string name="player_sheets_filters_title">Фильтры</string>
+    <string name="player_sheets_filters_brightness">Яркость</string>
+    <string name="player_sheets_filters_contrast">Контраст</string>
+    <string name="player_sheets_filters_gamma">Гамма</string>
+    <string name="player_sheets_filters_Saturation">Насыщенность</string>
+    <string name="player_sheets_filters_hue">Оттенок</string>
+    <string name="player_sheets_filters_sharpness">Резкость</string>
+    <string name="player_sheets_filters_warning">Некоторые фильтры могут не работать на вашем видеодрайвере</string>
+
+    <string name="player_sheets_speed_slider_label">Скорость</string>
+    <string name="player_sheets_speed_make_default">Сделать скоростью по умолчанию</string>
+
+    <string name="numeric_chooser_value_too_big">Значение слишком велико</string>
+    <string name="numeric_chooser_value_too_small">Значение слишком мало</string>
+
+    <string name="player_sheets_more_title">Еще</string>
+    <string name="player_sheets_stats_page_title">Статистика по умолчанию</string>
+    <string name="player_sheets_stats_page_chip">Страница %d</string>
+    <string name="player_sheets_stats_page_0_desc">Отключено. Статистика не отображается.</string>
+    <string name="player_sheets_stats_page_1_desc">Общий статус. Загрузка CPU/GPU, синхронизация A/V, пропущенные кадры, частота.</string>
+    <string name="player_sheets_stats_page_2_desc">Тайминги кадров. Время декодирования/рендеринга, информация о масштабировании.</string>
+    <string name="player_sheets_stats_page_3_desc">Статистика кэша. Состояние буфера, кэш демультиплексора, диапазоны перемотки.</string>
+    <string name="player_sheets_stats_page_4_desc">Активные привязки клавиш. Список назначенных горячих клавиш.</string>
+    <string name="player_sheets_stats_page_5_desc">Список дорожек. Подробная информация о видео, аудио и субтитрах.</string>
+
+    <string name="player_aspect_fit">Вписать в экран</string>
+    <string name="player_aspect_crop">Обрезать</string>
+    <string name="player_aspect_stretch">Растянуть</string>
+
+    <string name="crash_screen_title">Ой</string>
+    <string name="crash_screen_subtitle">Похоже, в %s произошла непредвиденная ошибка. Пожалуйста, поделитесь логами сбоя в GitHub issue.</string>
+    <string name="crash_screen_logs_title">Логи сбоя:</string>
+    <string name="crash_screen_share">Поделиться логами</string>
+    <string name="crash_screen_restart">Перезапустить приложение</string>
+    <string name="crash_screen_fix_crash">Исправить сбой (Удалить БД)</string>
+    <string name="crash_screen_database_deleted">База данных успешно удалена. Пожалуйста, перезапустите приложение.</string>
+    <string name="crash_screen_database_hint">Похоже, сбой связан с базой данных. Попробуйте удалить базу данных, чтобы исправить это.</string>
+
+    <string name="timer_picker_enter_timer">Введите время</string>
+    <string name="timer_picker_pick_time">Выберите время</string>
+    <string name="timer_title">Таймер сна</string>
+    <string name="timer_remaining">Осталось: %s</string>
+
+    <string name="toast_sleep_timer_ended">Таймер сна истек</string>
+
+    <string name="swap_the_volume_and_brightness_slider">Поменять местами ползунки громкости и яркости</string>
+    <string name="pref_player_display_reduce_player_animation">Уменьшить анимацию плеера</string>
+    <string name="pref_player_display_hide_player_control_time">Скрыть время на панели управления</string>
+    <string name="show_splash_ovals_on_double_tap_to_seek">Показывать рябь при перемотке двойным тапом</string>
+    <string name="show_time_on_double_tap_to_seek">Показывать время перемотки</string>
+
+    <string name="pref_audio_channels_auto_safe_desc">По умолчанию. Безопасный автоматический выбор.</string>
+    <string name="pref_audio_channels_auto_desc">Автоматический выбор.</string>
+    <string name="pref_audio_channels_mono_desc">Микширование в моно.</string>
+    <string name="pref_audio_channels_stereo_desc">Микширование в стерео.</string>
+    <string name="pref_audio_channels_reverse_stereo_desc">Поменять местами левый и правый каналы.</string>
+
+    <string name="player_sheets_frame_navigation_title">Покадровая навигация</string>
+    <string name="player_sheets_frame_navigation_include_subtitles">Включить субтитры в снимок</string>
+
+    <string name="player_sheets_zoom_slider_label">Зум видео</string>
+
+    <plurals name="seconds">
+        <item quantity="one">%1$d секунда</item>
+        <item quantity="few">%1$d секунды</item>
+        <item quantity="many">%1$d секунд</item>
+        <item quantity="other">%1$d секунды</item>
+    </plurals>
+
+    <!-- Background Playback -->
+    <string name="background_playback_title">Фоновое воспроизведение</string>
+    <string name="deselect_all">Снять выбор</string>
+    <string name="select_all">Выбрать все</string>
+    <string name="invert_selection">Инвертировать выбор</string>
+    <string name="selected_items">Выбрано: %1$d / %2$d</string>
+    <string name="selection_options">Опции выбора</string>
+    <string name="back">Назад</string>
+    <string name="sort">Сортировка</string>
+    <string name="settings">Настройки</string>
+    <string name="rename">Переименовать</string>
+    <string name="info">Инфо</string>
+    <string name="delete">Удалить</string>
+    <string name="got_it">Понятно</string>
+    <string name="general">Общие</string>
+    <string name="not_set_video_default">Не задано (как в видео)</string>
+    <string name="enter_language_codes">Введите коды языков через запятую (напр. eng,jpn,rus)</string>
+    <string name="not_set_system_fonts">Не задано (системные шрифты)</string>
+    <string name="fonts_loaded">Загружено шрифтов: %1$d</string>
+    <string name="reload_fonts">Перезагрузить шрифты</string>
+    <string name="clear_font_directory">Очистить папку шрифтов</string>
+    <string name="reset_to_default_font">Сбросить шрифт по умолчанию</string>
+    <string name="set_as_default">Установить по умолчанию</string>
+
+    <!-- Notification strings -->
+    <string name="notification_channel_name">Воспроизведение медиа</string>
+    <string name="notification_channel_description">Управление воспроизведением медиа</string>
+    <string name="notification_playing">Воспроизведение</string>
+
+    <!-- Media Info Activity -->
+
+    <string name="pref_player_use_precise_seeking">Использовать точную перемотку</string>
+
+    <!-- Folders Preferences -->
+    <string name="pref_folders_title">Папки</string>
+    <string name="pref_folders_summary">Управление черным списком папок</string>
+    <string name="pref_folders_empty_title">Нет папок в черном списке</string>
+    <string name="pref_folders_empty_message">Нажмите кнопку ниже, чтобы добавить папки, которые вы хотите скрыть из списка</string>
+    <string name="pref_folders_add_folder">Добавить папку в черный список</string>
+    <string name="pref_folders_select_folders">Выберите папку(и)</string>
+    <string name="pref_folders_loading">Загрузка папок…</string>
+    <string name="pref_folders_no_folders">Папки не найдены</string>
+    <string name="pref_folders_clear_all">Очистить весь черный список</string>
+    <string name="pref_folders_clear_all_confirm_title">Очистить черный список папок?</string>
+    <string name="pref_folders_clear_all_confirm_message">Это удалит все папки из черного списка. Вы сможете добавить их обратно позже.</string>
+    <string name="pref_folders_blacklist">Черный список</string>
+    <string name="pref_folders_blacklisted">Папка(и) в черном списке</string>
+
+    <!-- M3U Playlist Strings -->
+    <string name="playlist_add_m3u_title">Добавить плейлист M3U</string>
+    <string name="playlist_add_m3u_description">Введите URL-адрес файла плейлиста M3U</string>
+    <string name="playlist_url_label">URL плейлиста</string>
+    <string name="playlist_url_hint">Поддерживаются форматы .m3u и .m3u8</string>
+    <string name="playlist_add_success">Плейлист M3U успешно добавлен</string>
+    <string name="playlist_add_error">Не удалось добавить плейлист M3U: %s</string>
+    <string name="playlist_create_empty">Создать пустой плейлист</string>
+    <string name="playlist_add_from_url">Добавить по URL (M3U/M3U8)</string>
+    <string name="playlist_refresh_m3u">Обновить плейлист M3U</string>
+    <string name="playlist_refresh_success">Плейлист успешно обновлен</string>
+    <string name="playlist_refresh_error">Не удалось обновить плейлист: %s</string>
+</resources>
