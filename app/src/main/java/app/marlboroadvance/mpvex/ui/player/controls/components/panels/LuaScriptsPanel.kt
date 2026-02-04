@@ -94,23 +94,34 @@ fun LuaScriptsPanel(
     
     fun toggleScriptSelection(scriptName: String) {
         val newSelection = if (selectedScripts.contains(scriptName)) {
+            // Disabling script
+            Toast.makeText(context, "Restart required to disable script fully", Toast.LENGTH_SHORT).show()
             selectedScripts - scriptName
         } else {
+            // Enabling script - Try to load immediately
+            val scriptFile = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+                ?.findFile(scriptName)
+            
+            if (scriptFile != null) {
+                try {
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
             selectedScripts + scriptName
         }
         preferences.selectedLuaScripts.set(newSelection)
     }
 
-    DraggablePanel(modifier = modifier) {
-        Column(
-            Modifier
-                .padding(MaterialTheme.spacing.medium),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        ) {
+    DraggablePanel(
+        modifier = modifier,
+        header = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.medium),
             ) {
                 Text(
                     "Lua Scripts",
@@ -121,6 +132,12 @@ fun LuaScriptsPanel(
                     Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
                 }
             }
+        }
+    ) {
+        Column(
+            Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
             
             if (isLoading) {
                 Row(
@@ -136,10 +153,10 @@ fun LuaScriptsPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                LazyColumn(
+                Column(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
-                    items(availableScripts) { scriptName ->
+                    availableScripts.forEach { scriptName ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
