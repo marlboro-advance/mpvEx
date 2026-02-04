@@ -170,6 +170,7 @@ fun PlayerSheets(
         onStartTimer = onStartSleepTimer,
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
+        onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
       )
     }
 
