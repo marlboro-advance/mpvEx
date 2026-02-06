@@ -41,9 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import android.content.res.Configuration
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import java.io.File
 
@@ -133,12 +135,16 @@ fun FilePickerDialog(
     }
   }
 
+  val configuration = LocalConfiguration.current
+  val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+  val dialogWidthFraction = if (isPortrait) 0.90f else 0.50f
+
   androidx.compose.ui.window.Dialog(
     onDismissRequest = onDismiss,
     properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
       Surface(
-          modifier = modifier.fillMaxWidth(0.50f),
+          modifier = modifier.fillMaxWidth(dialogWidthFraction),
           shape = MaterialTheme.shapes.extraLarge,
           color = MaterialTheme.colorScheme.surface,
           tonalElevation = 6.dp,

@@ -1053,8 +1053,8 @@ private fun FolderSortDialog(
         if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
         else browserPreferences.folderGridColumnsPortrait.set(it)
       },
-      valueRange = 2f..5f,
-      steps = 2,
+      valueRange = if (isLandscape) 3f..5f else 2f..4f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 
@@ -1066,8 +1066,8 @@ private fun FolderSortDialog(
         if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
         else browserPreferences.videoGridColumnsPortrait.set(it)
       },
-      valueRange = 1f..5f,
-      steps = 3,
+      valueRange = if (isLandscape) 3f..5f else 1f..3f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 

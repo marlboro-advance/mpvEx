@@ -10,6 +10,7 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
+import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,8 @@ class VideoListViewModel(
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
+  private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
+  private val metadataCache: app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository by inject()
   // Using MediaFileRepository singleton directly
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
@@ -79,8 +82,21 @@ class VideoListViewModel(
         // Get the hidden files preference
         val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
-        // First attempt to load videos
-        val videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
+        // First attempt to load videos (basic info from MediaStore)
+        var videoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
+
+        // Enrich with metadata only if chips are enabled
+        if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
+          Log.d(tag, "Metadata chips enabled, enriching ${videoList.size} videos")
+          videoList = MetadataRetrieval.enrichVideosIfNeeded(
+            context = getApplication(),
+            videos = videoList,
+            browserPreferences = browserPreferences,
+            metadataCache = metadataCache
+          )
+        } else {
+          Log.d(tag, "Metadata chips disabled, skipping metadata extraction")
+        }
 
         // Check if folder became empty after having videos
         if (previousVideoCount > 0 && videoList.isEmpty()) {
@@ -98,7 +114,17 @@ class VideoListViewModel(
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
           triggerMediaScan()
           delay(1000)
-          val retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
+          var retryVideoList = MediaFileRepository.getVideosInFolder(getApplication(), bucketId, showHiddenFiles)
+
+          // Enrich retry list if needed
+          if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences)) {
+            retryVideoList = MetadataRetrieval.enrichVideosIfNeeded(
+              context = getApplication(),
+              videos = retryVideoList,
+              browserPreferences = browserPreferences,
+              metadataCache = metadataCache
+            )
+          }
 
           // Update count after retry
           if (previousVideoCount > 0 && retryVideoList.isEmpty()) {

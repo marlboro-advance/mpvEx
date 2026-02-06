@@ -55,6 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Offset
 import app.marlboroadvance.mpvex.presentation.components.PlayerSheet
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.spacing
@@ -521,41 +528,46 @@ fun PlaylistTrackListItem(
           overflow = TextOverflow.Ellipsis,
         )
 
-        // Duration and resolution chips
-        if (item.duration.isNotEmpty() || item.resolution.isNotEmpty()) {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-          ) {
-            if (item.duration.isNotEmpty()) {
-              Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = RoundedCornerShape(4.dp),
-              ) {
-                Text(
-                  text = item.duration,
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                  ),
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
+        // Duration and resolution chips - always show with loading state if empty
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          // Duration chip
+          if (item.duration.isNotEmpty()) {
+            Surface(
+              color = MaterialTheme.colorScheme.surfaceContainerHighest,
+              shape = RoundedCornerShape(4.dp),
+            ) {
+              Text(
+                text = item.duration,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontSize = 10.sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
             }
-            if (item.resolution.isNotEmpty()) {
-              Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = RoundedCornerShape(4.dp),
-              ) {
-                Text(
-                  text = item.resolution,
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                  ),
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
+          } else {
+            LoadingChip(width = 40.dp)
+          }
+          
+          // Resolution chip
+          if (item.resolution.isNotEmpty()) {
+            Surface(
+              color = MaterialTheme.colorScheme.surfaceContainerHighest,
+              shape = RoundedCornerShape(4.dp),
+            ) {
+              Text(
+                text = item.resolution,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontSize = 10.sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
             }
+          } else {
+            LoadingChip(width = 60.dp)
           }
         }
       }
@@ -711,6 +723,15 @@ fun PlaylistTrackGridItem(
               color = Color.White,
             )
           }
+        } else {
+          // Loading duration badge
+          Box(
+            modifier = Modifier
+              .align(Alignment.BottomEnd)
+              .padding(6.dp)
+          ) {
+            LoadingChip(width = 40.dp, height = 18.dp, isDark = true)
+          }
         }
 
         // Playing indicator overlay
@@ -757,6 +778,7 @@ fun PlaylistTrackGridItem(
           horizontalArrangement = Arrangement.spacedBy(6.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
+          // Resolution chip
           if (item.resolution.isNotEmpty()) {
             Surface(
               color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -771,6 +793,8 @@ fun PlaylistTrackGridItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
+          } else {
+            LoadingChip(width = 60.dp)
           }
 
           if (item.isPlaying) {
@@ -793,4 +817,54 @@ fun PlaylistTrackGridItem(
       }
     }
   }
+}
+
+
+@Composable
+fun LoadingChip(
+  width: androidx.compose.ui.unit.Dp,
+  height: androidx.compose.ui.unit.Dp = 18.dp,
+  isDark: Boolean = false,
+  modifier: Modifier = Modifier,
+) {
+  val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+  val shimmerTranslate = infiniteTransition.animateFloat(
+    initialValue = 0f,
+    targetValue = 1000f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(durationMillis = 1200, easing = LinearEasing),
+      repeatMode = RepeatMode.Restart
+    ),
+    label = "shimmer"
+  )
+
+  val baseColor = if (isDark) {
+    Color.White.copy(alpha = 0.1f)
+  } else {
+    MaterialTheme.colorScheme.surfaceContainerHighest
+  }
+  
+  val shimmerColor = if (isDark) {
+    Color.White.copy(alpha = 0.2f)
+  } else {
+    MaterialTheme.colorScheme.surfaceContainerHigh
+  }
+
+  Box(
+    modifier = modifier
+      .width(width)
+      .height(height)
+      .clip(RoundedCornerShape(4.dp))
+      .background(
+        brush = Brush.linearGradient(
+          colors = listOf(
+            baseColor,
+            shimmerColor,
+            baseColor,
+          ),
+          start = Offset(shimmerTranslate.value - 200f, 0f),
+          end = Offset(shimmerTranslate.value, 0f)
+        )
+      )
+  )
 }
