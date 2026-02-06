@@ -97,11 +97,11 @@ fun CurrentChapter(
         )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
-          fontWeight = FontWeight.ExtraBold,
+          fontWeight = FontWeight.Bold,
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = MaterialTheme.colorScheme.onSurface,
+          color = MaterialTheme.colorScheme.primary,
         )
         currentChapter.name.let {
           Text(
@@ -118,7 +118,7 @@ fun CurrentChapter(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
           )
         }
