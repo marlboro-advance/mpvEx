@@ -60,6 +60,7 @@ fun FolderCard(
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
 
@@ -142,6 +143,23 @@ fun FolderCard(
               )
             }
           }
+          
+          if (showTotalDurationChip && folder.totalDuration > 0) {
+            Box(
+              modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.Black.copy(alpha = 0.65f))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+              Text(
+                text = formatDuration(folder.totalDuration),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+              )
+            }
+          }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -213,6 +231,8 @@ fun FolderCard(
               )
             }
           }
+
+
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(
@@ -297,7 +317,9 @@ fun FolderCard(
               hasChip = true
             }
 
-            if (showDateModified && folder.lastModified > 0) {
+
+
+            if (showDateChip && folder.lastModified > 0) {
               Text(
                 formatDate(folder.lastModified),
                 style = MaterialTheme.typography.labelSmall,
