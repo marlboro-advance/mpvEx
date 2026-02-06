@@ -34,27 +34,32 @@ fun VideoSettingsPanel(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  DraggablePanel(modifier = modifier) {
+  DraggablePanel(
+    modifier = modifier,
+    header = {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = MaterialTheme.spacing.medium)
+          .padding(top = MaterialTheme.spacing.small),
+      ) {
+        Text(
+          stringResource(R.string.player_sheets_video_settings_title),
+          style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onDismissRequest) {
+          Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
+        }
+      }
+    }
+  ) {
       Column(
-        Modifier
-          .verticalScroll(rememberScrollState())
-          .padding(MaterialTheme.spacing.medium),
+        Modifier.padding(MaterialTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
       ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween,
-          modifier = Modifier.fillMaxWidth(),
-        ) {
-          Text(
-            stringResource(R.string.player_sheets_video_settings_title),
-            style = MaterialTheme.typography.titleLarge,
-          )
-          Spacer(Modifier.weight(1f))
-          IconButton(onClick = onDismissRequest) {
-            Icon(Icons.Default.Close, null, modifier = Modifier.size(32.dp))
-          }
-        }
         VideoSettingsFilterPresetsCard()
         VideoSettingsFiltersCard()
         VideoSettingsDebandCard()

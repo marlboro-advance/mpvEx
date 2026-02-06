@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import app.marlboroadvance.mpvex.ui.player.controls.panelCardsColors
@@ -33,9 +35,17 @@ import androidx.compose.ui.unit.dp
 
 import kotlin.math.roundToInt
 
+/**
+ * A draggable panel with an optional fixed header and scrollable content.
+ * 
+ * @param modifier Modifier for the panel
+ * @param header Optional composable for the fixed header that stays constant during scroll
+ * @param content The scrollable content of the panel
+ */
 @Composable
 fun DraggablePanel(
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -86,7 +96,17 @@ fun DraggablePanel(
                          )
                  )
                 
-                content()
+                // Fixed header (if provided) - stays constant
+                if (header != null) {
+                    header()
+                }
+                
+                // Scrollable content
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    content()
+                }
             }
         }
     }

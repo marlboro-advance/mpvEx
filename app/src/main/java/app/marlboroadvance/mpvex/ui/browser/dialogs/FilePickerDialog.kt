@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,7 @@ fun FilePickerDialog(
   currentPath: String = Environment.getExternalStorageDirectory().absolutePath,
   onDismiss: () -> Unit,
   onFileSelected: (String) -> Unit,
+  onPathChanged: ((String?) -> Unit)? = null,
   onSystemPickerRequest: () -> Unit,
   allowedExtensions: List<String> = listOf(
     // Common & modern
@@ -93,13 +95,21 @@ fun FilePickerDialog(
   
   // If there's only one storage volume, start there directly
   // Otherwise, start at storage root view to show all volumes
-  var selectedPath by remember(isOpen, storageVolumes) {
-    val initialPath = if (storageVolumes.size == 1) {
+  // Respect currentPath if it's valid and exists
+  var selectedPath by remember(isOpen, currentPath, storageVolumes) {
+    val initialPath = if (currentPath.isNotEmpty() && File(currentPath).exists()) {
+      currentPath
+    } else if (storageVolumes.size == 1) {
       StorageScanUtils.getVolumePath(storageVolumes.first())
     } else {
       null // Show storage root with all volumes
     }
     mutableStateOf(initialPath)
+  }
+
+  // Notify parent when path changes for state persistence
+  LaunchedEffect(selectedPath) {
+    onPathChanged?.invoke(selectedPath)
   }
 
   // Determine what to show based on selectedPath

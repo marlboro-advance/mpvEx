@@ -515,7 +515,11 @@ private fun VideoListContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
@@ -779,14 +783,23 @@ private fun VideoSortDialog(
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
@@ -794,19 +807,27 @@ private fun VideoSortDialog(
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Folder Grid Columns",
+      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      onValueChange = {
+        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
+        else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = 2f..5f,
+      steps = 2,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
+      label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      onValueChange = {
+        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+        else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = 1f..5f,
+      steps = 3,
     )
   } else null
 
@@ -902,6 +923,11 @@ private fun VideoSortDialog(
           label = "Framerate",
           checked = showFramerateInResolution,
           onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Date",
+          checked = showDateChip,
+          onCheckedChange = { browserPreferences.showDateChip.set(it) },
         ),
       ),
     folderGridColumnSelector = folderGridColumnSelector,
