@@ -392,7 +392,11 @@ object PlaylistScreen : Screen {
   ) {
     val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-    val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+    val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
 
     val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
 

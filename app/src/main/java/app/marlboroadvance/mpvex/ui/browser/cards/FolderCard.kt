@@ -87,7 +87,11 @@ fun FolderCard(
           .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+        val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+        val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
         val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
         val horizontalPadding = 32.dp
         val spacing = 8.dp

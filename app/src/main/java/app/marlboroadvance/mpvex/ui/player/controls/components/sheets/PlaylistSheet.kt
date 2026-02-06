@@ -279,7 +279,10 @@ fun PlaylistSheet(
       tonalElevation = 0.dp,
     ) {
       Column(
-        modifier = modifier.padding(vertical = MaterialTheme.spacing.smaller)
+        modifier = modifier.padding(
+          vertical = MaterialTheme.spacing.smaller,
+          horizontal = if (!isListMode) MaterialTheme.spacing.medium else 0.dp
+        )
       ) {
         // Header showing current playlist info with toggle button
         val currentItem = playlist.find { it.isPlaying }
@@ -287,7 +290,7 @@ fun PlaylistSheet(
           modifier = Modifier
             .fillMaxWidth()
             .padding(
-              horizontal = MaterialTheme.spacing.medium,
+              horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
               vertical = MaterialTheme.spacing.small,
             ),
           verticalAlignment = Alignment.CenterVertically,
@@ -356,7 +359,7 @@ fun PlaylistSheet(
           LazyRow(
             state = lazyListState,
             contentPadding = PaddingValues(
-              horizontal = MaterialTheme.spacing.medium,
+              horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
               vertical = MaterialTheme.spacing.small
             ),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
