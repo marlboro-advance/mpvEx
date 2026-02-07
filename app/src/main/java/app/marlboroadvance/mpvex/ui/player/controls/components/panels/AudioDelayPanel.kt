@@ -41,7 +41,12 @@ fun AudioDelayPanel(
 ) {
   val preferences = koinInject<AudioPreferences>()
   
-  DraggablePanel(modifier = modifier) {
+  DraggablePanel(
+    modifier = modifier,
+    header = {
+      AudioDelayCardTitle(onClose = onDismissRequest)
+    }
+  ) {
     val delay by MPVLib.propDouble["audio-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
 
@@ -53,7 +58,6 @@ fun AudioDelayPanel(
       },
       onApply = { preferences.defaultAudioDelay.set((delayFloat * 1000).roundToInt()) },
       onReset = { MPVLib.setPropertyDouble("audio-delay", 0.0) },
-      title = { AudioDelayCardTitle(onClose = onDismissRequest) },
       delayType = DelayType.Audio,
     )
   }
@@ -66,7 +70,6 @@ fun DelayCard(
     onDelayChange: (Float) -> Unit,
     onApply: () -> Unit,
     onReset: () -> Unit,
-    title: @Composable () -> Unit,
     delayType: DelayType,
 ) {
     DelayCardContent(
@@ -74,7 +77,6 @@ fun DelayCard(
         onDelayChange = onDelayChange,
         onApply = onApply,
         onReset = onReset,
-        title = title,
         delayType = delayType
     )
 }
@@ -87,7 +89,10 @@ fun AudioDelayCardTitle(
   Row(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
-    modifier = modifier.fillMaxWidth(),
+    modifier = modifier
+      .fillMaxWidth()
+      .padding(horizontal = MaterialTheme.spacing.medium)
+      .padding(top = MaterialTheme.spacing.small),
   ) {
     Text(
       stringResource(R.string.player_sheets_audio_delay_card_title),

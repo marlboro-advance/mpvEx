@@ -8,6 +8,7 @@ import app.marlboroadvance.mpvex.preferences.preference.getEnum
  */
 class BrowserPreferences(
   preferenceStore: PreferenceStore,
+  context: android.content.Context,
 ) {
   // Folder sorting preferences
   val folderSortType = preferenceStore.getEnum("folder_sort_type", FolderSortType.Title)
@@ -19,9 +20,12 @@ class BrowserPreferences(
 
   val folderViewMode = preferenceStore.getEnum("folder_view_mode", FolderViewMode.AlbumView)
 
+  private val isTablet = context.resources.configuration.smallestScreenWidthDp >= 600
+  val folderGridColumnsPortrait = preferenceStore.getInt("folder_grid_columns_portrait", if (isTablet) 4 else 3)
+  val folderGridColumnsLandscape = preferenceStore.getInt("folder_grid_columns_landscape", 5)
 
-  val folderGridColumns = preferenceStore.getInt("folder_grid_columns", 3)
-  val videoGridColumns = preferenceStore.getInt("video_grid_columns", 2)
+  val videoGridColumnsPortrait = preferenceStore.getInt("video_grid_columns_portrait", if (isTablet) 4 else 2)
+  val videoGridColumnsLandscape = preferenceStore.getInt("video_grid_columns_landscape", 4)
 
   // Visibility preferences for video card chips
   val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", true)
@@ -36,6 +40,7 @@ class BrowserPreferences(
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
   val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
   val showTotalSizeChip = preferenceStore.getBoolean("show_total_size_chip", true)
+  val showDateChip = preferenceStore.getBoolean("show_date_chip", false)
   val showFolderPath = preferenceStore.getBoolean("show_folder_path", true)
 
   // Auto-scroll to last played media preference (like MX Player)

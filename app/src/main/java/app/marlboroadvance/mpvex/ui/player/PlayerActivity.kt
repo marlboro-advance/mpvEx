@@ -39,6 +39,7 @@ import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -48,6 +49,7 @@ import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.HttpUtils
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
+import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
@@ -137,6 +139,11 @@ class PlayerActivity :
    * Preferences for browser settings.
    */
   private val browserPreferences: BrowserPreferences by inject()
+
+  /**
+   * Preferences for appearance settings.
+   */
+  private val appearancePreferences: AppearancePreferences by inject()
 
   /**
    * Manager for file operations.
@@ -3110,10 +3117,13 @@ class PlayerActivity :
 
         val parentFolder = currentFile.parentFile ?: return@runCatching
 
-        val videoExtensions = setOf("mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "3gp", "mpg", "mpeg", "ts")
+        val videoExtensions = StorageScanUtils.VIDEO_EXTENSIONS
+        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
         val files = parentFolder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in videoExtensions
+          file.isFile &&
+            StorageScanUtils.isVideoFile(file) &&
+            !StorageScanUtils.shouldSkipFile(file, showHiddenFiles)
         } ?: return@runCatching
 
         val launchSource = intent.getStringExtra("launch_source") ?: ""
@@ -3121,7 +3131,12 @@ class PlayerActivity :
           val videoSortType = browserPreferences.videoSortType.get()
           val videoSortOrder = browserPreferences.videoSortOrder.get()
           val bucketId = parentFolder.absolutePath.replace("\\", "/")
-          val videosInFolder = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(context, setOf(bucketId))
+          val videosInFolder =
+            app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(
+              context,
+              setOf(bucketId),
+              showHiddenFiles = showHiddenFiles,
+            )
           val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
           sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }
         } else {

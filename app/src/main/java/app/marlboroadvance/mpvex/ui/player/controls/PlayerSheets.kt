@@ -89,12 +89,13 @@ fun PlayerSheets(
               isOpen = true,
               currentPath = savedPickerPath ?: android.os.Environment.getExternalStorageDirectory().absolutePath,
               onDismiss = { showFilePicker = false },
+              onPathChanged = { path ->
+                  if (path != null) {
+                      subtitlesPreferences.pickerPath.set(path)
+                  }
+              },
               onFileSelected = { path ->
                   showFilePicker = false
-                  val parent = java.io.File(path).parent
-                  if (parent != null) {
-                      subtitlesPreferences.pickerPath.set(parent)
-                  }
                    onAddSubtitle(Uri.parse("file://$path"))
               },
               onSystemPickerRequest = {
@@ -169,6 +170,7 @@ fun PlayerSheets(
         onStartTimer = onStartSleepTimer,
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
+        onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
       )
     }
 
