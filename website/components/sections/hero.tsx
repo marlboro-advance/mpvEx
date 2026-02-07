@@ -11,8 +11,19 @@ import { motion, type Variants } from "framer-motion";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/site";
+import { formatCompactNumber } from "@/lib/utils";
 
-export function HeroSection({ version }: { version?: string }) {
+export function HeroSection({
+  version,
+  downloadUrl,
+  stars,
+  contributors,
+}: {
+  version?: string;
+  downloadUrl?: string;
+  stars?: number;
+  contributors?: number;
+}) {
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
@@ -38,7 +49,7 @@ export function HeroSection({ version }: { version?: string }) {
   };
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center pt-40 md:pt-48 pb-20 overflow-hidden bg-background">
+    <section className="relative flex flex-col items-center pt-40 md:pt-48 pb-20 overflow-hidden bg-background">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-grid-black/[0.05] dark:bg-grid-white/[0.05] bg-size-[40px_40px]" />
@@ -100,7 +111,10 @@ export function HeroSection({ version }: { version?: string }) {
             size="lg"
             className="h-12 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground rounded-full transition-all duration-300 shadow-[0_0_20px_-5px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_-5px_rgba(124,58,237,0.6)] cursor-pointer"
             onClick={() =>
-              window.open(siteConfig.links.latestRelease, "_blank")
+              window.open(
+                downloadUrl || siteConfig.links.latestRelease,
+                "_blank",
+              )
             }
           >
             <Play className="w-4 h-4 mr-2 fill-current" />
@@ -119,31 +133,37 @@ export function HeroSection({ version }: { version?: string }) {
         {/* Stats Grid */}
         <motion.div
           variants={itemVariants}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 py-8 border-t border-foreground/5"
+          className="flex flex-wrap justify-center gap-8 md:gap-12 py-8 border-t border-foreground/5 max-w-4xl mx-auto"
         >
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center min-w-[100px]">
             <span className="text-3xl font-bold text-foreground mb-1">
               Apache 2.0
             </span>
             <span className="text-sm text-muted-foreground">License</span>
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center min-w-[100px]">
             <span className="text-3xl font-bold text-foreground mb-1">
               Libmpv
             </span>
             <span className="text-sm text-muted-foreground">Powered</span>
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center min-w-[100px]">
             <span className="text-3xl font-bold text-foreground mb-1">M3</span>
             <span className="text-sm text-muted-foreground">
               Material Design
             </span>
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center min-w-[100px]">
             <span className="text-3xl font-bold text-foreground mb-1">
-              No Ads
+              {stars ? formatCompactNumber(stars) : "100+"}
             </span>
-            <span className="text-sm text-muted-foreground">Free & Open</span>
+            <span className="text-sm text-muted-foreground">GitHub Stars</span>
+          </div>
+          <div className="flex flex-col items-center min-w-[100px]">
+            <span className="text-3xl font-bold text-foreground mb-1">
+              {contributors ? formatCompactNumber(contributors) : "10+"}
+            </span>
+            <span className="text-sm text-muted-foreground">Contributors</span>
           </div>
         </motion.div>
       </motion.div>

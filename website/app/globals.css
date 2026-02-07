@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
+@plugin "@toolwind/corner-shape";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -58,7 +59,7 @@
     --border: 30 10% 85%;
     --input: 30 10% 85%;
     --ring: 262.1 83.3% 57.8%;
-    --radius: 0.75rem;
+    --radius: 1.25rem;
   }
 
   .dark {
@@ -84,7 +85,7 @@
   }
 
   * {
-    @apply border-border;
+    @apply border-border corner-squircle;
   }
   body {
     @apply bg-background text-foreground;
@@ -96,7 +97,7 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-secondary;
+    @apply bg-clip-text text-transparent bg-linear-to-r from-primary via-purple-500 to-secondary;
   }
 
   .bg-grid-white {
