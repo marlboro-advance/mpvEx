@@ -12,19 +12,30 @@ import { Footer } from "@/components/sections/footer";
 import { Header } from "@/components/sections/header";
 import { HeroSection } from "@/components/sections/hero";
 import { ScreenshotsSection } from "@/components/sections/screenshots";
-import { getLatestRelease } from "@/lib/github";
+import {
+  getLatestRelease,
+  getRepositoryContributors,
+  getRepositoryStats,
+} from "@/lib/github";
 import { siteConfig } from "@/lib/site";
 
 export default async function Home() {
   const latestRelease = await getLatestRelease();
+  const repoStats = await getRepositoryStats();
+  const userContributors = await getRepositoryContributors();
   const version = latestRelease?.tag_name || siteConfig.version;
 
   return (
     <main className="bg-background text-foreground">
-      <Header />
-      <HeroSection version={version} />
+      <Header downloadUrl={latestRelease?.html_url} />
+      <HeroSection
+        version={version}
+        downloadUrl={latestRelease?.html_url}
+        stars={repoStats?.stars}
+        contributors={userContributors?.length}
+      />
       <FeaturesSection />
-      <DownloadsSection />
+      <DownloadsSection downloadUrl={latestRelease?.html_url} />
       <ScreenshotsSection />
       <ContributorsSection />
       <Footer />
