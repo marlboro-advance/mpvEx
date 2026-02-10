@@ -25,6 +25,7 @@ data class VideoWithPlaybackInfo(
   val timeRemaining: Long? = null, // in seconds
   val progressPercentage: Float? = null, // 0.0 to 1.0
   val isOldAndUnplayed: Boolean = false, // true if video is older than threshold and never played
+  val isWatched: Boolean = false, // true if video has any playback history
 )
 
 class VideoListViewModel(
@@ -160,6 +161,7 @@ class VideoListViewModel(
           timeRemaining = playbackState?.timeRemaining?.toLong(),
           progressPercentage = progress,
           isOldAndUnplayed = isOldAndUnplayed,
+          isWatched = playbackState != null,
         )
       }
     _videosWithPlaybackInfo.value = videosWithInfo

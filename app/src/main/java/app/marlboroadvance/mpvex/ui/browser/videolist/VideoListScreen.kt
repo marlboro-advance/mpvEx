@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -679,7 +681,7 @@ private fun VideoListContent(
               LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
                 state = gridState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,
@@ -701,6 +703,7 @@ private fun VideoListContent(
                 isRecentlyPlayed = isRecentlyPlayed,
                 isSelected = selectionManager.isSelected(videoWithInfo.video),
                 isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                isWatched = videoWithInfo.isWatched,
                 onClick = { onVideoClick(videoWithInfo.video) },
                 onLongClick = { onVideoLongClick(videoWithInfo.video) },
                 onThumbClick = if (tapThumbnailToSelect) {
@@ -732,7 +735,7 @@ private fun VideoListContent(
             ) {
               LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,
@@ -752,6 +755,7 @@ private fun VideoListContent(
                   isRecentlyPlayed = isRecentlyPlayed,
                   isSelected = selectionManager.isSelected(videoWithInfo.video),
                   isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                  isWatched = videoWithInfo.isWatched,
                   onClick = { onVideoClick(videoWithInfo.video) },
                   onLongClick = { onVideoLongClick(videoWithInfo.video) },
                   onThumbClick = if (tapThumbnailToSelect) {

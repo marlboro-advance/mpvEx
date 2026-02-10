@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -68,13 +69,6 @@ fun DraggablePanel(
         Surface(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
-                .pointerInput(maxOffset, minOffset) { // Restart detector if bounds change
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        val newOffset = offsetX + dragAmount.x
-                        offsetX = newOffset.coerceIn(minOffset, maxOffset)
-                    }
-                }
                 .onSizeChanged { panelWidth = it.width }
                 .widthIn(max = 380.dp),
             shape = MaterialTheme.shapes.extraLarge,
@@ -83,18 +77,30 @@ fun DraggablePanel(
             tonalElevation = 0.dp,
         ) {
             Column {
-                 // Drag Indicator
+                 // Drag Handle & Indicator
                  Box(
                      modifier = Modifier
-                         .padding(top = 12.dp, bottom = 4.dp)
-                         .width(32.dp)
-                         .height(4.dp)
-                         .align(Alignment.CenterHorizontally)
-                         .background(
-                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                             shape = RoundedCornerShape(2.dp)
-                         )
-                 )
+                         .fillMaxWidth()
+                         .height(28.dp) // Good touch target size
+                         .pointerInput(maxOffset, minOffset) {
+                             detectDragGestures { change, dragAmount ->
+                                 change.consume()
+                                 val newOffset = offsetX + dragAmount.x
+                                 offsetX = newOffset.coerceIn(minOffset, maxOffset)
+                             }
+                         },
+                     contentAlignment = Alignment.Center
+                 ) {
+                     Box(
+                         modifier = Modifier
+                             .width(32.dp)
+                             .height(4.dp)
+                             .background(
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                 shape = RoundedCornerShape(2.dp)
+                             )
+                     )
+                 }
                 
                 // Fixed header (if provided) - stays constant
                 if (header != null) {
