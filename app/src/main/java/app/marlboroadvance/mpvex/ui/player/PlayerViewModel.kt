@@ -534,12 +534,20 @@ class PlayerViewModel(
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
+        
         if (toApply != 0) {
-          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-          val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
-          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
-          MPVLib.command("seek", toApply.toString(), seekMode)
+          val duration = MPVLib.getPropertyInt("duration") ?: 0
+          val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
+          
+          if (duration > 0 && currentPos + toApply >= duration) {
+              // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
+              MPVLib.command("seek", "100", "absolute-percent+exact")
+          } else {
+              // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+              val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
+              val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", toApply.toString(), seekMode)
+          }
         }
       }
   }

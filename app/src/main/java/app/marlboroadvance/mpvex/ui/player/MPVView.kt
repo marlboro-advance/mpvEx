@@ -218,8 +218,8 @@ class MPVView(
 
   private fun setupAudioOptions() {
     // Disable MPV's automatic audio selection
-    // App will handle track selection manually via TrackSelector to respect user choices, But we also set 'alang' so mpv can pick the correct initial track
-    MPVLib.setOptionString("alang", audioPreferences.preferredLanguages.get())
+    // App will handle track selection manually via TrackSelector to respect user choices
+    MPVLib.setOptionString("alang", "")
     MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
@@ -233,8 +233,8 @@ class MPVView(
   // Setup
   private fun setupSubtitlesOptions() {
     // Disable MPV's automatic subtitle selection
-    // App will handle track selection manually via TrackSelector to respect user choices, But we also set 'slang' so mpv can pick the correct initial track
-    MPVLib.setOptionString("slang", subtitlesPreferences.preferredLanguages.get())
+    // App will handle track selection manually via TrackSelector to respect user choices
+    MPVLib.setOptionString("slang", "")
     MPVLib.setOptionString("sub-auto", "no")
     MPVLib.setOptionString("sub-file-paths", "")
     MPVLib.setOptionString("subs-fallback", "no")

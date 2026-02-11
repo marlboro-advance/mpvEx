@@ -891,7 +891,7 @@ private fun GridContent(
     LazyVerticalGrid(
       columns = GridCells.Fixed(folderGridColumns),
       state = gridState,
-      modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+      modifier = Modifier.fillMaxSize(),
       contentPadding = PaddingValues(
         start = 8.dp,
         end = 8.dp,
@@ -963,7 +963,7 @@ private fun ListContent(
   Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
       state = listState,
-      modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+      modifier = Modifier.fillMaxSize(),
       contentPadding = PaddingValues(
         start = 8.dp,
         end = 8.dp,

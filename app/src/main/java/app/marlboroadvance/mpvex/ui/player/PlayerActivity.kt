@@ -1934,6 +1934,13 @@ class PlayerActivity :
                 ).toInt(),
             timeRemaining = timeRemaining,
             externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
+            hasBeenWatched = run {
+              val watchedThreshold = browserPreferences.watchedThreshold.get()
+              val durationSeconds = duration.toFloat()
+              val progress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
+              val isCurrentlyWatched = progress >= (watchedThreshold / 100f)
+              isCurrentlyWatched || (oldState?.hasBeenWatched == true)
+            },
           ),
         )
       }.onFailure { e ->

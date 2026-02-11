@@ -88,3 +88,32 @@ fun MultipleSpeedPlayerUpdate(
 private fun PreviewMultipleSpeedPlayerUpdate() {
   MultipleSpeedPlayerUpdate(currentSpeed = 2f)
 }
+@Composable
+fun SeekPlayerUpdate(
+  currentTime: String,
+  seekDelta: String,
+  modifier: Modifier = Modifier,
+) {
+  PlayerUpdate(modifier) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = currentTime,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+      
+      Text(
+        text = " $seekDelta",
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Normal,
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+      )
+    }
+  }
+}

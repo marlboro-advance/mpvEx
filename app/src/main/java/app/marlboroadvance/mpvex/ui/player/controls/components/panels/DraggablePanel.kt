@@ -81,7 +81,7 @@ fun DraggablePanel(
                  Box(
                      modifier = Modifier
                          .fillMaxWidth()
-                         .height(28.dp) // Good touch target size
+                         .height(18.dp) // Good touch target size
                          .pointerInput(maxOffset, minOffset) {
                              detectDragGestures { change, dragAmount ->
                                  change.consume()

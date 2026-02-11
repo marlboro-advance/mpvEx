@@ -76,6 +76,7 @@ fun ChapterTrack(
       stringResource(R.string.player_sheets_track_title_wo_lang, index + 1, chapter.name),
       fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
       fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+      color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
       maxLines = 1,
       modifier = Modifier.weight(1f),
       overflow = TextOverflow.Ellipsis,
@@ -84,6 +85,7 @@ fun ChapterTrack(
       Utils.prettyTime(chapter.start.toInt()),
       fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
       fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+      color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
     )
   }
 }

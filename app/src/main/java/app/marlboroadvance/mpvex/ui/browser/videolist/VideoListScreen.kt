@@ -681,7 +681,7 @@ private fun VideoListContent(
               LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
                 state = gridState,
-                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,
@@ -735,7 +735,7 @@ private fun VideoListContent(
             ) {
               LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,

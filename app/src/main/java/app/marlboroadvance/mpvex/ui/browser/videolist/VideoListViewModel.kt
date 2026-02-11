@@ -35,6 +35,7 @@ class VideoListViewModel(
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
+  private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
   // Using MediaFileRepository singleton directly
 
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
@@ -136,6 +137,7 @@ class VideoListViewModel(
     val videosWithInfo =
       videos.map { video ->
         val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+        val watchedThreshold = browserPreferences.watchedThreshold.get()
 
         // Calculate watch progress (0.0 to 1.0)
         val progress = if (playbackState != null && video.duration > 0) {
@@ -156,12 +158,23 @@ class VideoListViewModel(
         // Video is unplayed if there's no playback state record
         val isOldAndUnplayed = playbackState == null
 
+        val isWatched = if (playbackState != null && video.duration > 0) {
+           val durationSeconds = video.duration / 1000
+           val timeRemaining = playbackState.timeRemaining.toLong()
+           val watched = durationSeconds - timeRemaining
+           val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+           val calculatedWatched = progressValue >= (watchedThreshold / 100f)
+           playbackState.hasBeenWatched || calculatedWatched
+        } else {
+           false
+        }
+
         VideoWithPlaybackInfo(
           video = video,
           timeRemaining = playbackState?.timeRemaining?.toLong(),
           progressPercentage = progress,
           isOldAndUnplayed = isOldAndUnplayed,
-          isWatched = playbackState != null,
+          isWatched = isWatched,
         )
       }
     _videosWithPlaybackInfo.value = videosWithInfo
