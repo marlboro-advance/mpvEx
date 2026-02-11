@@ -2,6 +2,7 @@
 
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -51,10 +54,13 @@ fun DraggablePanel(
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     var panelWidth by remember { mutableIntStateOf(0) }
+
+    val configuration = LocalConfiguration.current
+    val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.CenterEnd // Default to Right End
+        contentAlignment = if (isPortrait) Alignment.Center else Alignment.CenterEnd
     ) {
         val density = LocalDensity.current
         val parentWidthPx = with(density) { maxWidth.toPx() }
@@ -65,12 +71,16 @@ fun DraggablePanel(
         val maxOffset = 0f
         val minOffset = -freeSpace
 
+        // In portrait, cap panel height to 50% of available height
+        val panelMaxHeight = if (isPortrait) maxHeight * 0.5f else maxHeight
+
         val colors = panelCardsColors()
         Surface(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .onSizeChanged { panelWidth = it.width }
-                .widthIn(max = 380.dp),
+                .widthIn(max = 380.dp)
+                .heightIn(max = panelMaxHeight),
             shape = MaterialTheme.shapes.extraLarge,
             color = colors.containerColor,
             contentColor = colors.contentColor,
