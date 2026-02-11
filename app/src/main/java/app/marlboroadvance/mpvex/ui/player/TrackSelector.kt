@@ -76,7 +76,7 @@ class TrackSelector(
       
       // Check if track already selected (from saved state or user choice)
       val currentAid = MPVLib.getPropertyInt("aid")
-      if (currentAid != null && currentAid > 0) return
+      if (hasState && currentAid != null && currentAid > 0) return
 
       // Get preferred languages
       val preferredLangs = audioPreferences.preferredLanguages.get()
