@@ -41,6 +41,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import app.marlboroadvance.mpvex.ui.preferences.CustomButton
 import java.io.File
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
@@ -233,6 +234,108 @@ class PlayerViewModel(
         // Update hr-seek settings dynamically
         MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+      }
+    }
+    
+    setupCustomButtons()
+  }
+
+  // ==================== Custom Buttons ====================
+
+  data class CustomButtonState(
+    val id: String,
+    val label: String,
+    val isLeft: Boolean,
+  )
+
+  private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
+  val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
+
+  private fun setupCustomButtons() {
+    viewModelScope.launch(Dispatchers.IO) {
+      val buttons = mutableListOf<CustomButtonState>()
+      val scriptContent = buildString {
+        val jsonString = playerPreferences.customButtons.get()
+        if (jsonString.isNotBlank()) {
+          try {
+             val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
+             
+             customButtonsList.filter { it.isActive }.forEach { btn ->
+               val safeId = btn.id.replace("-", "_")
+               processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, btn.isLeft, buttons)
+             }
+          } catch (e: Exception) {
+             e.printStackTrace()
+          }
+        }
+      }
+
+      _customButtons.value = buttons
+
+      if (scriptContent.isNotEmpty()) {
+        val scriptsDir = File(host.context.filesDir, "scripts")
+        if (!scriptsDir.exists()) scriptsDir.mkdirs()
+        
+        val file = File(scriptsDir, "custombuttons.lua")
+        file.writeText(scriptContent)
+        MPVLib.command("load-script", file.absolutePath)
+      }
+    }
+  }
+
+  fun callCustomButton(id: String) {
+    val safeId = id.replace("-", "_")
+    MPVLib.command("script-message", "call_button_$safeId")
+  }
+  
+  fun callCustomButtonLongPress(id: String) {
+    val safeId = id.replace("-", "_")
+    MPVLib.command("script-message", "call_button_long_$safeId")
+  }
+
+  private fun StringBuilder.processButton(
+    originalId: String,
+    safeId: String,
+    label: String,
+    command: String,
+    longPressCommand: String,
+    onStartup: String,
+    isLeft: Boolean,
+    uiList: MutableList<CustomButtonState>
+  ) {
+    if (label.isNotBlank()) {
+      uiList.add(CustomButtonState(originalId, label, isLeft))
+      
+      // On Startup Code
+      if (onStartup.isNotBlank()) {
+          append(onStartup)
+          append("\n")
+      }
+
+      // Click Handler
+      if (command.isNotBlank()) {
+        append(
+          """
+          function button_${safeId}()
+              ${command}
+          end
+          mp.register_script_message('call_button_${safeId}', button_${safeId})
+          """.trimIndent()
+        )
+        append("\n")
+      }
+      
+      // Long Press Handler
+      if (longPressCommand.isNotBlank()) {
+        append(
+          """
+          function button_long_${safeId}()
+              ${longPressCommand}
+          end
+          mp.register_script_message('call_button_long_${safeId}', button_long_${safeId})
+          """.trimIndent()
+        )
+        append("\n")
       }
     }
   }

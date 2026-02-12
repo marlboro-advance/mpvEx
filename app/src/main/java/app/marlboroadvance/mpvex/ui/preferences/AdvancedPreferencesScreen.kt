@@ -456,6 +456,21 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
               )
+
+              PreferenceDivider()
+
+              Preference(
+                title = { Text("Custom Lua") },
+                summary = {
+                  Text(
+                    "Create and manage custom Lua buttons",
+                    color = MaterialTheme.colorScheme.outline
+                  )
+                },
+                onClick = {
+                  backStack.add(app.marlboroadvance.mpvex.ui.preferences.CustomButtonScreen)
+                }
+              )
             }
           }
           

@@ -26,6 +26,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -172,6 +173,7 @@ fun PlayerControls(
   val playerTimeToDisappear by playerPreferences.playerTimeToDisappear.collectAsState()
   val chapters by viewModel.chapters.collectAsState(persistentListOf())
   val playlistMode by playerPreferences.playlistMode.collectAsState()
+  val customButtons by viewModel.customButtons.collectAsState()
 
   val onOpenSheet: (Sheets) -> Unit = {
     viewModel.sheetShown.update { _ -> it }
@@ -274,6 +276,7 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
+        val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -516,6 +519,126 @@ fun PlayerControls(
 
             else -> {}
           }
+        }
+
+        val areButtonsVisible = controlsShown && !areControlsLocked
+
+        AnimatedVisibility(
+            visible = areButtonsVisible && !isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(customLeftButtonsRef) {
+                start.linkTo(parent.start, spacing.medium)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.65f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                customButtons.filter { it.isLeft }.forEach { button ->
+                    Surface(
+                        onClick = { 
+                           resetControlsTimestamp = System.currentTimeMillis()
+                           viewModel.callCustomButton(button.id) 
+                        },
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = areButtonsVisible && !isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(customRightButtonsRef) {
+                end.linkTo(parent.end, spacing.medium)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.65f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                customButtons.filter { !it.isLeft }.forEach { button ->
+                    Surface(
+                        onClick = { 
+                           resetControlsTimestamp = System.currentTimeMillis()
+                           viewModel.callCustomButton(button.id) 
+                        },
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+            }
+        }
+        
+        AnimatedVisibility(
+            visible = areButtonsVisible && isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(createRef()) {
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.65f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                customButtons.forEach { button ->
+                    Surface(
+                        onClick = { 
+                           resetControlsTimestamp = System.currentTimeMillis()
+                           viewModel.callCustomButton(button.id) 
+                        },
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+            }
         }
 
         AnimatedVisibility(
