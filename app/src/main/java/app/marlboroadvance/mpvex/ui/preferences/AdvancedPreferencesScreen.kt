@@ -469,7 +469,8 @@ object AdvancedPreferencesScreen : Screen {
                 },
                 onClick = {
                   backStack.add(app.marlboroadvance.mpvex.ui.preferences.CustomButtonScreen)
-                }
+                },
+                enabled = enableLuaScripts,
               )
             }
           }
