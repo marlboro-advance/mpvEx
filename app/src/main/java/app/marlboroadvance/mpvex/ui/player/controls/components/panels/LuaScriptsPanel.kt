@@ -51,7 +51,7 @@ fun LuaScriptsPanel(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val preferences = koinInject<AdvancedPreferences>()
+    val preferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     
     val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
     val selectedScripts by preferences.selectedLuaScripts.collectAsState()
@@ -95,20 +95,9 @@ fun LuaScriptsPanel(
     
     fun toggleScriptSelection(scriptName: String) {
         val newSelection = if (selectedScripts.contains(scriptName)) {
-            // Disabling script
-            Toast.makeText(context, "Restart required to disable script fully", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "$scriptName disabled. Video restart required.", Toast.LENGTH_LONG).show()
             selectedScripts - scriptName
         } else {
-            // Enabling script - Try to load immediately
-            val scriptFile = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                ?.findFile(scriptName)
-            
-            if (scriptFile != null) {
-                try {
-                } catch (e: Exception) {
-                    // ignore
-                }
-            }
             selectedScripts + scriptName
         }
         preferences.selectedLuaScripts.set(newSelection)
