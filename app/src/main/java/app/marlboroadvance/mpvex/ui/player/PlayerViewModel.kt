@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -43,6 +44,9 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import app.marlboroadvance.mpvex.ui.preferences.CustomButton
 import java.io.File
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -77,6 +81,7 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val advancedPreferences: AdvancedPreferences by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
 
@@ -637,12 +642,20 @@ class PlayerViewModel(
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
+        
         if (toApply != 0) {
-          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-          val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
-          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
-          MPVLib.command("seek", toApply.toString(), seekMode)
+          val duration = MPVLib.getPropertyInt("duration") ?: 0
+          val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
+          
+          if (duration > 0 && currentPos + toApply >= duration) {
+              // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
+              MPVLib.command("seek", "100", "absolute-percent+exact")
+          } else {
+              // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+              val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
+              val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", toApply.toString(), seekMode)
+          }
         }
       }
   }

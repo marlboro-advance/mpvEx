@@ -105,6 +105,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.BrightnessSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.CompactSpeedIndicator
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.player.controls.components.MultipleSpeedPlayerUpdate
+import app.marlboroadvance.mpvex.ui.player.controls.components.SeekPlayerUpdate
 import app.marlboroadvance.mpvex.ui.player.controls.components.SeekbarWithTimers
 import app.marlboroadvance.mpvex.ui.player.controls.components.SpeedControlSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.TextPlayerUpdate
@@ -430,7 +431,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
-              top.linkTo(parent.top, 64.dp)
+              top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
             },
         ) {
           when (currentPlayerUpdate) {
@@ -481,9 +482,10 @@ fun PlayerControls(
 
             is PlayerUpdates.HorizontalSeek -> {
               val seekUpdate = currentPlayerUpdate as PlayerUpdates.HorizontalSeek
-              TextPlayerUpdate(
-                text = "${seekUpdate.currentTime} [${seekUpdate.seekDelta}]",
-                modifier = Modifier.width(220.dp),
+              SeekPlayerUpdate(
+                currentTime = seekUpdate.currentTime,
+                seekDelta = "[${seekUpdate.seekDelta}]",
+                modifier = Modifier, // Let content size determine width
               )
             }
 
