@@ -105,7 +105,7 @@ fun GestureHandler(
   }
   val multipleSpeedGesture by playerPreferences.holdForMultipleSpeed.collectAsState()
   val showDynamicSpeedOverlay by playerPreferences.showDynamicSpeedOverlay.collectAsState()
-  val brightnessGesture = playerPreferences.brightnessGesture.get()
+  val brightnessGesture by playerPreferences.brightnessGesture.collectAsState()
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
@@ -367,7 +367,17 @@ fun GestureHandler(
                 longPressTriggeredDuringTouch = true
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 originalSpeed = playbackSpeed ?: 1f
-                MPVLib.setPropertyFloat("speed", multipleSpeedGesture)
+                // Ramp speed up incrementally to avoid audio filter stutter
+                val startSpeed = originalSpeed
+                val targetSpeed = multipleSpeedGesture
+                val steps = 5
+                val stepDelay = 16L // ~one frame per step
+                for (i in 1..steps) {
+                  val t = i.toFloat() / steps
+                  val intermediateSpeed = startSpeed + (targetSpeed - startSpeed) * t
+                  MPVLib.setPropertyFloat("speed", intermediateSpeed)
+                  if (i < steps) delay(stepDelay)
+                }
 
                 if (showDynamicSpeedOverlay) {
                   isDynamicSpeedControlActive = true
@@ -588,7 +598,19 @@ fun GestureHandler(
             isLongPressing = false
             isDynamicSpeedControlActive = false
             hasSwipedEnough = false
-            MPVLib.setPropertyFloat("speed", originalSpeed)
+            // Ramp speed back down incrementally to avoid audio filter stutter
+            val currentSpeed = MPVLib.getPropertyFloat("speed") ?: multipleSpeedGesture
+            val targetSpeed = originalSpeed
+            val steps = 5
+            val stepDelay = 16L
+            coroutineScope.launch {
+              for (i in 1..steps) {
+                val t = i.toFloat() / steps
+                val intermediateSpeed = currentSpeed + (targetSpeed - currentSpeed) * t
+                MPVLib.setPropertyFloat("speed", intermediateSpeed)
+                if (i < steps) delay(stepDelay)
+              }
+            }
             viewModel.playerUpdate.update { PlayerUpdates.None }
           }
 

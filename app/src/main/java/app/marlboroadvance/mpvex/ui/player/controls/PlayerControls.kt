@@ -18,6 +18,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.Image
@@ -26,6 +31,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -72,6 +78,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -97,6 +105,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.BrightnessSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.CompactSpeedIndicator
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
 import app.marlboroadvance.mpvex.ui.player.controls.components.MultipleSpeedPlayerUpdate
+import app.marlboroadvance.mpvex.ui.player.controls.components.SeekPlayerUpdate
 import app.marlboroadvance.mpvex.ui.player.controls.components.SeekbarWithTimers
 import app.marlboroadvance.mpvex.ui.player.controls.components.SpeedControlSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.TextPlayerUpdate
@@ -133,6 +142,7 @@ fun <T> playerControlsEnterAnimationSpec(): FiniteAnimationSpec<T> =
   ExperimentalAnimationGraphicsApi::class,
   ExperimentalMaterial3Api::class,
   ExperimentalMaterial3ExpressiveApi::class,
+  ExperimentalFoundationApi::class,
 )
 @Composable
 @Suppress("CyclomaticComplexMethod", "ViewModelForwarding")
@@ -172,6 +182,9 @@ fun PlayerControls(
   val playerTimeToDisappear by playerPreferences.playerTimeToDisappear.collectAsState()
   val chapters by viewModel.chapters.collectAsState(persistentListOf())
   val playlistMode by playerPreferences.playlistMode.collectAsState()
+    val haptic = LocalHapticFeedback.current
+
+    val customButtons by viewModel.customButtons.collectAsState()
 
   val onOpenSheet: (Sheets) -> Unit = {
     viewModel.sheetShown.update { _ -> it }
@@ -274,6 +287,7 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
+        val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -417,7 +431,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
-              top.linkTo(parent.top, 64.dp)
+              top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
             },
         ) {
           when (currentPlayerUpdate) {
@@ -468,9 +482,10 @@ fun PlayerControls(
 
             is PlayerUpdates.HorizontalSeek -> {
               val seekUpdate = currentPlayerUpdate as PlayerUpdates.HorizontalSeek
-              TextPlayerUpdate(
-                text = "${seekUpdate.currentTime} [${seekUpdate.seekDelta}]",
-                modifier = Modifier.width(220.dp),
+              SeekPlayerUpdate(
+                currentTime = seekUpdate.currentTime,
+                seekDelta = "[${seekUpdate.seekDelta}]",
+                modifier = Modifier, // Let content size determine width
               )
             }
 
@@ -516,6 +531,180 @@ fun PlayerControls(
 
             else -> {}
           }
+        }
+
+        val areButtonsVisible = controlsShown && !areControlsLocked
+
+        AnimatedVisibility(
+            visible = areButtonsVisible && !isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(customLeftButtonsRef) {
+                start.linkTo(parent.start, spacing.medium)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.65f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                customButtons.filter { it.isLeft }.forEach { button ->
+                    val buttonInteractionSource = remember { MutableInteractionSource() }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                interactionSource = buttonInteractionSource,
+                                indication = ripple(),
+                                onClick = {
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButton(button.id)
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButtonLongPress(button.id)
+                                }
+                            )
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .basicMarquee(),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = areButtonsVisible && !isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(customRightButtonsRef) {
+                end.linkTo(parent.end, spacing.medium)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.65f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState(), reverseScrolling = true)
+            ) {
+                customButtons.filter { !it.isLeft }.forEach { button ->
+                    val buttonInteractionSource = remember { MutableInteractionSource() }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                interactionSource = buttonInteractionSource,
+                                indication = ripple(),
+                                onClick = {
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButton(button.id)
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButtonLongPress(button.id)
+                                }
+                            )
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .basicMarquee(),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
+        }
+        
+        AnimatedVisibility(
+            visible = areButtonsVisible && isPortrait,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.constrainAs(createRef()) {
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                verticalBias = 0.72f
+                width = Dimension.preferredWrapContent
+                height = Dimension.wrapContent
+            }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                customButtons.forEach { button ->
+                    val buttonInteractionSource = remember { MutableInteractionSource() }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                interactionSource = buttonInteractionSource,
+                                indication = ripple(),
+                                onClick = {
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButton(button.id)
+                                },
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    resetControlsTimestamp = System.currentTimeMillis()
+                                    viewModel.callCustomButtonLongPress(button.id)
+                                }
+                            )
+                    ) {
+                        Text(
+                            text = button.label,
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .basicMarquee(),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
         }
 
         AnimatedVisibility(
