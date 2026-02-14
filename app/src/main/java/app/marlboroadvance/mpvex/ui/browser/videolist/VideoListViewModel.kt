@@ -41,6 +41,7 @@ class VideoListViewModel(
   KoinComponent {
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
+  private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
   private val recentlyPlayedRepository: app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository by inject()
   // Using MediaFileRepository singleton directly
 

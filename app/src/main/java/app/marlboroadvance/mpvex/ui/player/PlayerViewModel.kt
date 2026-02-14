@@ -258,32 +258,36 @@ class PlayerViewModel(
 
   private fun setupCustomButtons() {
     viewModelScope.launch(Dispatchers.IO) {
-      val buttons = mutableListOf<CustomButtonState>()
-      val scriptContent = buildString {
-        val jsonString = playerPreferences.customButtons.get()
-        if (jsonString.isNotBlank()) {
-          try {
-             val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
-             
-             customButtonsList.filter { it.isActive }.forEach { btn ->
-               val safeId = btn.id.replace("-", "_")
-               processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, btn.isLeft, buttons)
-             }
-          } catch (e: Exception) {
-             e.printStackTrace()
+      try {
+        val buttons = mutableListOf<CustomButtonState>()
+        val scriptContent = buildString {
+          val jsonString = playerPreferences.customButtons.get()
+          if (jsonString.isNotBlank()) {
+            try {
+               val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
+               
+               customButtonsList.filter { it.isActive }.forEach { btn ->
+                 val safeId = btn.id.replace("-", "_")
+                 processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, btn.isLeft, buttons)
+               }
+            } catch (e: Exception) {
+               e.printStackTrace()
+            }
           }
         }
-      }
 
-      _customButtons.value = buttons
+        _customButtons.value = buttons
 
-      if (scriptContent.isNotEmpty()) {
-        val scriptsDir = File(host.context.filesDir, "scripts")
-        if (!scriptsDir.exists()) scriptsDir.mkdirs()
-        
-        val file = File(scriptsDir, "custombuttons.lua")
-        file.writeText(scriptContent)
-        MPVLib.command("load-script", file.absolutePath)
+        if (scriptContent.isNotEmpty()) {
+          val scriptsDir = File(host.context.filesDir, "scripts")
+          if (!scriptsDir.exists()) scriptsDir.mkdirs()
+          
+          val file = File(scriptsDir, "custombuttons.lua")
+          file.writeText(scriptContent)
+          MPVLib.command("load-script", file.absolutePath)
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
       }
     }
   }
