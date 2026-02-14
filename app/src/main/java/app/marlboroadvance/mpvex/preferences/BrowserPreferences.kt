@@ -45,6 +45,9 @@ class BrowserPreferences(
 
   // Auto-scroll to last played media preference (like MX Player)
   val autoScrollToLastPlayed = preferenceStore.getBoolean("auto_scroll_to_last_played", false)
+
+  // Watched threshold preference (percentage 1-100)
+  val watchedThreshold = preferenceStore.getInt("watched_threshold", 95)
 }
 
 /**

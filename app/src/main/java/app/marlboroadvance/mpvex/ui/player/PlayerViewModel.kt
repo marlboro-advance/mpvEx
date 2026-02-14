@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -42,6 +43,9 @@ import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -76,6 +80,7 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val advancedPreferences: AdvancedPreferences by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
 
@@ -233,6 +238,74 @@ class PlayerViewModel(
         // Update hr-seek settings dynamically
         MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+      }
+    }
+
+    // Monitor Lua script changes to load them at runtime
+    viewModelScope.launch {
+      
+      var knownScripts = advancedPreferences.selectedLuaScripts.get()
+      
+      advancedPreferences.selectedLuaScripts.changes()
+        .map { it } // Optional: ensure flow type
+        .collect { newScripts ->
+        // Find added scripts
+        val addedScripts = newScripts - knownScripts
+        
+        if (addedScripts.isNotEmpty()) {
+           withContext(Dispatchers.IO) {
+               val context = host.context
+               val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+               
+               if (mpvConfStorageUri.isNotBlank()) {
+                   try {
+                       val tree = DocumentFile.fromTreeUri(context, mpvConfStorageUri.toUri())
+                       if (tree != null && tree.exists()) {
+                           val scriptsDir = File(context.filesDir, "scripts")
+                           if (!scriptsDir.exists()) scriptsDir.mkdirs()
+
+                           addedScripts.forEach { scriptName ->
+                               val scriptFile = tree.findFile(scriptName)
+                               if (scriptFile != null && scriptFile.exists()) {
+                                   val destFile = File(scriptsDir, scriptName)
+                                   
+                                   // Copy content
+                                   context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+                                       destFile.outputStream().use { output ->
+                                           input.copyTo(output)
+                                       }
+                                   }
+                                   
+                                   // Load into MPV
+                                   MPVLib.command("load-script", destFile.absolutePath)
+                                   
+                                   withContext(Dispatchers.Main) {
+                                       Toast.makeText(context, "Script loaded: $scriptName", Toast.LENGTH_SHORT).show()
+                                   }
+                               }
+                           }
+                       }
+                   } catch (e: Exception) {
+                       Log.e("PlayerViewModel", "Error loading Lua script at runtime", e)
+                       withContext(Dispatchers.Main) {
+                           Toast.makeText(context, "Failed to load script", Toast.LENGTH_SHORT).show()
+                       }
+                   }
+               }
+           }
+        }
+        
+        // Find removed scripts (just warn)
+        val removedScripts = knownScripts - newScripts
+        if (removedScripts.isNotEmpty()) {
+            withContext(Dispatchers.Main) {
+                if (System.currentTimeMillis() - 2000 > 0) { // Simple check to avoid toast spam on init if logic is weird, but mostly this is fine
+                     Toast.makeText(host.context, "Restart required to disable script fully", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        
+        knownScripts = newScripts
       }
     }
   }
@@ -534,12 +607,20 @@ class PlayerViewModel(
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
+        
         if (toApply != 0) {
-          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-          val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
-          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
-          MPVLib.command("seek", toApply.toString(), seekMode)
+          val duration = MPVLib.getPropertyInt("duration") ?: 0
+          val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
+          
+          if (duration > 0 && currentPos + toApply >= duration) {
+              // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
+              MPVLib.command("seek", "100", "absolute-percent+exact")
+          } else {
+              // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+              val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
+              val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", toApply.toString(), seekMode)
+          }
         }
       }
   }

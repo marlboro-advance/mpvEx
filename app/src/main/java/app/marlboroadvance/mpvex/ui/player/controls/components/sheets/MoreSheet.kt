@@ -158,13 +158,16 @@ if (infoDialogData != null) {
               Text(text = stringResource(id = R.string.player_sheets_filters_title))
             }
           }
-          TextButton(onClick = onEnterLuaScriptsPanel) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(imageVector = Icons.Default.Code, contentDescription = null)
-              Text(text = "Lua Scripts")
+          val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
+          if (enableLuaScripts) {
+            TextButton(onClick = onEnterLuaScriptsPanel) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              ) {
+                Icon(imageVector = Icons.Default.Code, contentDescription = null)
+                Text(text = "Lua Scripts")
+              }
             }
           }
         }

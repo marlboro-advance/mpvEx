@@ -1463,7 +1463,7 @@ class PlayerActivity :
         // Check if autoplay next video is enabled
         val autoplayEnabled = playerPreferences.autoplayNextVideo.get()
 
-        if (hasNextItem && autoplayEnabled) {
+        if (hasNextItem && (autoplayEnabled || viewModel.shouldRepeatPlaylist())) {
           // Play next item in playlist
           playNext()
         } else if (viewModel.shouldRepeatPlaylist()) {
@@ -1934,6 +1934,13 @@ class PlayerActivity :
                 ).toInt(),
             timeRemaining = timeRemaining,
             externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
+            hasBeenWatched = run {
+              val watchedThreshold = browserPreferences.watchedThreshold.get()
+              val durationSeconds = duration.toFloat()
+              val progress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
+              val isCurrentlyWatched = progress >= (watchedThreshold / 100f)
+              isCurrentlyWatched || (oldState?.hasBeenWatched == true)
+            },
           ),
         )
       }.onFailure { e ->
@@ -3127,7 +3134,7 @@ class PlayerActivity :
         } ?: return@runCatching
 
         val launchSource = intent.getStringExtra("launch_source") ?: ""
-        val siblingFiles = if (launchSource == "video_list") {
+        val siblingFiles = if (launchSource == "video_list" || launchSource == "recently_played_button" || launchSource == "first_video_button") {
           val videoSortType = browserPreferences.videoSortType.get()
           val videoSortOrder = browserPreferences.videoSortOrder.get()
           val bucketId = parentFolder.absolutePath.replace("\\", "/")
@@ -3140,7 +3147,7 @@ class PlayerActivity :
           val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
           sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }
         } else {
-          files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+          files.sortedWith { f1, f2 -> app.marlboroadvance.mpvex.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT.compare(f1.name, f2.name) }
         }
 
         if (siblingFiles.size <= 1) return@runCatching
