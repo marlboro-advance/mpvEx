@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +64,7 @@ fun VideoCard(
   isSelected: Boolean = false,
   progressPercentage: Float? = null,
   isOldAndUnplayed: Boolean = false,
+  isWatched: Boolean = false,
   onThumbClick: () -> Unit = {},
   isGridMode: Boolean = false,
   gridColumns: Int = 1,
@@ -220,6 +222,7 @@ fun VideoCard(
             }
           }
 
+
           // Duration overlay
           Box(
             modifier = Modifier
@@ -264,8 +267,16 @@ fun VideoCard(
             MaterialTheme.typography.titleSmall
           } else {
             if (gridColumns == 1) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall
+          }.let { baseStyle ->
+            if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
           },
-          color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+          color = if (isRecentlyPlayed) {
+            MaterialTheme.colorScheme.tertiary 
+          } else if (isWatched) {
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+          } else {
+            MaterialTheme.colorScheme.onSurface
+          },
           maxLines = maxLines,
           overflow = TextOverflow. Ellipsis,
           textAlign = if (useFolderNameStyle) {
@@ -488,6 +499,7 @@ fun VideoCard(
             }
           }
 
+
           // Duration timestamp overlay at bottom-right of the thumbnail
           Box(
             modifier =
@@ -542,8 +554,16 @@ fun VideoCard(
               MaterialTheme.typography.titleMedium
             } else {
               MaterialTheme.typography.titleSmall
+            }.let { baseStyle ->
+              if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
             },
-            color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
+            color = if (isRecentlyPlayed) {
+              MaterialTheme.colorScheme.tertiary 
+            } else if (isWatched) {
+              MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            } else {
+              MaterialTheme.colorScheme.onSurface
+            },
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
           )

@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -50,7 +51,7 @@ fun LuaScriptsPanel(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val preferences = koinInject<AdvancedPreferences>()
+    val preferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     
     val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
     val selectedScripts by preferences.selectedLuaScripts.collectAsState()
@@ -94,20 +95,9 @@ fun LuaScriptsPanel(
     
     fun toggleScriptSelection(scriptName: String) {
         val newSelection = if (selectedScripts.contains(scriptName)) {
-            // Disabling script
-            Toast.makeText(context, "Restart required to disable script fully", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "$scriptName disabled. Video restart required.", Toast.LENGTH_LONG).show()
             selectedScripts - scriptName
         } else {
-            // Enabling script - Try to load immediately
-            val scriptFile = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                ?.findFile(scriptName)
-            
-            if (scriptFile != null) {
-                try {
-                } catch (e: Exception) {
-                    // ignore
-                }
-            }
             selectedScripts + scriptName
         }
         preferences.selectedLuaScripts.set(newSelection)
@@ -147,11 +137,29 @@ fun LuaScriptsPanel(
                     CircularProgressIndicator()
                 }
             } else if (availableScripts.isEmpty()) {
-                Text(
-                    "No lua scripts found in configuration directory.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Text(
+                        "No Lua scripts found",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Place .lua files in your mpv configuration directory.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             } else {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)

@@ -80,9 +80,18 @@ object LuaScriptsScreen : Screen {
         runCatching {
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
           if (tree != null && tree.exists()) {
-            tree.listFiles().forEach { file ->
-              if (file.isFile && file.name?.endsWith(".lua") == true) {
-                file.name?.let { scripts.add(it) }
+            // Look for scripts/ subfolder first (case-insensitive), fall back to root
+            val scriptsDir = tree.listFiles().firstOrNull {
+              it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
+            } ?: tree
+            val scriptExtensions = setOf("lua", "js")
+            scriptsDir.listFiles().forEach { file ->
+              if (file.isFile) {
+                val name = file.name ?: return@forEach
+                val ext = name.substringAfterLast('.', "").lowercase()
+                if (ext in scriptExtensions) {
+                  scripts.add(name)
+                }
               }
             }
           }
