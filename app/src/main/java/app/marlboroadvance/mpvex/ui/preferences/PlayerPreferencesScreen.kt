@@ -307,7 +307,7 @@ object PlayerPreferencesScreen : Screen {
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_player_controls))
           }
-          
+
           item {
             PreferenceCard {
               val allowGesturesInPanels by preferences.allowGesturesInPanels.collectAsState()
