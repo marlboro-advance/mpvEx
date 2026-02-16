@@ -584,33 +584,47 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.isAppearanceLightStatusBars = false
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.isAppearanceLightStatusBars = false
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      // Defensive: InsetsController animation can crash under FD pressure
+      // (e.g. during high-res HEVC playback on certain devices)
+      Log.e(TAG, "Failed to show system bars", e)
     }
     _controlsShown.value = true
   }
 
   fun hideControls() {
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to hide system bars", e)
     }
     _controlsShown.value = false
     _seekBarShown.value = false
   }
 
   fun autoHideControls() {
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to hide system bars", e)
     }
     _controlsShown.value = false
     _seekBarShown.value = true

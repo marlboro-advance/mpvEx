@@ -375,6 +375,10 @@ class PlayerActivity :
             playlistWindowOffset = 0
             playlistTotalCount = totalCount
             Log.d(TAG, "Loaded all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load playlist from database", e)
@@ -788,10 +792,14 @@ class PlayerActivity :
     }
 
     // Always start with status bar hidden - it will show when controls are shown
-    windowInsetsController.apply {
-      hide(WindowInsetsCompat.Type.statusBars())
-      hide(WindowInsetsCompat.Type.navigationBars())
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    try {
+      windowInsetsController.apply {
+        hide(WindowInsetsCompat.Type.statusBars())
+        hide(WindowInsetsCompat.Type.navigationBars())
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to setup system UI insets", e)
     }
 
     // Don't use LOW_PROFILE if we plan to show status bar with controls
@@ -818,10 +826,14 @@ class PlayerActivity :
     WindowCompat.setDecorFitsSystemWindows(window, true)
 
     // Restore default behavior and show bars in one go
-    windowInsetsController.apply {
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to restore system UI insets", e)
     }
   }
 
@@ -1575,7 +1587,10 @@ class PlayerActivity :
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
     if (isPaused) {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // Only clear keep-screen-on if the preference is NOT enabled
+      if (!playerPreferences.keepScreenOnWhenPaused.get()) {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      }
     } else {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -2456,9 +2471,13 @@ class PlayerActivity :
   private fun enterPipUIMode() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     WindowCompat.setDecorFitsSystemWindows(window, true)
-    windowInsetsController.apply {
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to show system bars for PiP mode", e)
     }
   }
 
@@ -3310,6 +3329,10 @@ class PlayerActivity :
             playlist = newPlaylist
             playlistIndex = newIndex
             Log.d(TAG, "Auto-playlist generated: ${playlist.size} videos")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         }
       }.onFailure { e ->
