@@ -28,12 +28,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -108,9 +110,41 @@ class PlayerViewModel(
   val pos by MPVLib.propInt["time-pos"].collectAsState(viewModelScope)
   val duration by MPVLib.propInt["duration"].collectAsState(viewModelScope)
 
+  // High-precision position and duration for smooth seekbar
+  private val _precisePosition = MutableStateFlow(0f)
+  val precisePosition = _precisePosition.asStateFlow()
+
+  private val _preciseDuration = MutableStateFlow(0f)
+  val preciseDuration = _preciseDuration.asStateFlow()
+
   // Audio state
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
+
+  init {
+    // Poll precise position only when playing
+    viewModelScope.launch {
+      while (isActive) {
+        if (paused != true) {
+          val time = MPVLib.getPropertyDouble("time-pos")
+          if (time != null) {
+            _precisePosition.value = time.toFloat()
+          }
+        }
+        delay(16) // ~60fps updates
+      }
+    }
+
+    // Update precise duration when the integer duration changes (avoid polling)
+    viewModelScope.launch {
+      MPVLib.propInt["duration"].collect { _ ->
+        val dur = MPVLib.getPropertyDouble("duration")
+        if (dur != null && dur > 0) {
+            _preciseDuration.value = dur.toFloat()
+        }
+      }
+    }
+  }
   val maxVolume = host.audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
   val subtitleTracks: StateFlow<List<TrackNode>> =
@@ -247,12 +281,19 @@ class PlayerViewModel(
       }
     }
 
-    // Monitor duration changes to automatically enable precise seeking for short videos
+    // Monitor duration and AB loop changes to automatically enable precise seeking
     viewModelScope.launch {
-      MPVLib.propInt["duration"].collect { duration ->
+      combine(
+        MPVLib.propInt["duration"],
+        abLoopA,
+        abLoopB
+      ) { duration, loopA, loopB ->
+        Triple(duration, loopA, loopB)
+      }.collect { (duration, loopA, loopB) ->
         val videoDuration = duration ?: 0
-        // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120
+        // Use precise seeking for videos shorter than 2 minutes, or if AB loop is active, or if preference is enabled
+        val isLoopActive = loopA != null || loopB != null
+        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
         
         // Update hr-seek settings dynamically
         MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
@@ -584,33 +625,47 @@ class PlayerViewModel(
 
   fun showControls() {
     if (sheetShown.value != Sheets.None || panelShown.value != Panels.None) return
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
-      host.windowInsetsController.isAppearanceLightStatusBars = false
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+        host.windowInsetsController.isAppearanceLightStatusBars = false
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      // Defensive: InsetsController animation can crash under FD pressure
+      // (e.g. during high-res HEVC playback on certain devices)
+      Log.e(TAG, "Failed to show system bars", e)
     }
     _controlsShown.value = true
   }
 
   fun hideControls() {
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to hide system bars", e)
     }
     _controlsShown.value = false
     _seekBarShown.value = false
   }
 
   fun autoHideControls() {
-    if (playerPreferences.showSystemStatusBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
-    }
-    if (playerPreferences. showSystemNavigationBar.get()) {
-      host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+    try {
+      if (playerPreferences.showSystemStatusBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+      }
+      if (playerPreferences.showSystemNavigationBar.get()) {
+        host.windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to hide system bars", e)
     }
     _controlsShown.value = false
     _seekBarShown.value = true
@@ -1480,14 +1535,12 @@ class PlayerViewModel(
       // Toggle off - clear point A
       _abLoopA.value = null
       MPVLib.setPropertyString("ab-loop-a", "no")
-      showToast("Loop A Cleared")
       return
     }
 
     val currentPos = MPVLib.getPropertyDouble("time-pos") ?: return
     _abLoopA.value = currentPos
     MPVLib.setPropertyDouble("ab-loop-a", currentPos)
-    showToast("A: ${formatTimestamp(currentPos)}")
   }
 
   fun setLoopB() {
@@ -1495,14 +1548,12 @@ class PlayerViewModel(
       // Toggle off - clear point B
       _abLoopB.value = null
       MPVLib.setPropertyString("ab-loop-b", "no")
-      showToast("Loop B Cleared")
       return
     }
 
     val currentPos = MPVLib.getPropertyDouble("time-pos") ?: return
     _abLoopB.value = currentPos
     MPVLib.setPropertyDouble("ab-loop-b", currentPos)
-    showToast("B: ${formatTimestamp(currentPos)}")
   }
 
   fun clearABLoop() {
@@ -1511,15 +1562,14 @@ class PlayerViewModel(
     _abLoopB.value = null
     MPVLib.setPropertyString("ab-loop-a", "no")
     MPVLib.setPropertyString("ab-loop-b", "no")
-    if (hadLoop) showToast("Loop Cleared")
   }
 
-  private fun formatTimestamp(seconds: Double): String {
+  fun formatTimestamp(seconds: Double): String {
     val totalSec = seconds.toInt()
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
-    return if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%d:%02d", m, s)
+    return if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
   }
 
   // ==================== Mirroring ====================
@@ -1528,11 +1578,12 @@ class PlayerViewModel(
     val newMirrorState = !_isMirrored.value
     _isMirrored.value = newMirrorState
     
-    // Use video filter for mirroring
-    // vf toggle hflip
-    MPVLib.command("vf", "toggle", "hflip")
-    
-    // showToast(if (newMirrorState) "Mirroring Enabled" else "Mirroring Disabled")
+    // Use labeled video filter for mirroring to avoid state desync
+    if (newMirrorState) {
+      MPVLib.command("vf", "add", "@mpvex_hflip:hflip")
+    } else {
+      MPVLib.command("vf", "remove", "@mpvex_hflip")
+    }
     playerUpdate.value = PlayerUpdates.ShowText(if (newMirrorState) "H-Flip On" else "H-Flip Off")
   }
 
@@ -1540,14 +1591,19 @@ class PlayerViewModel(
     val newState = !_isVerticalFlipped.value
     _isVerticalFlipped.value = newState
 
-    MPVLib.command("vf", "toggle", "vflip")
+    // Use labeled video filter for vflip to avoid state desync
+    if (newState) {
+      MPVLib.command("vf", "add", "@mpvex_vflip:vflip")
+    } else {
+      MPVLib.command("vf", "remove", "@mpvex_vflip")
+    }
 
     playerUpdate.value = PlayerUpdates.ShowText(if (newState) "V-Flip On" else "V-Flip Off")
   }
 
   // ==================== Utility ====================
 
-  private fun showToast(message: String) {
+  fun showToast(message: String) {
     Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
   }
 

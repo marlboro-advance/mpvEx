@@ -375,6 +375,10 @@ class PlayerActivity :
             playlistWindowOffset = 0
             playlistTotalCount = totalCount
             Log.d(TAG, "Loaded all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load playlist from database", e)
@@ -410,6 +414,18 @@ class PlayerActivity :
 
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
+
+    // Observe selected Lua scripts for runtime loading
+    lifecycleScope.launch {
+      var previousScripts = advancedPreferences.selectedLuaScripts.get()
+      advancedPreferences.selectedLuaScripts.changes().collect { newScripts ->
+        val addedScripts = newScripts - previousScripts
+        addedScripts.forEach { scriptName ->
+          loadScriptAtRuntime(scriptName)
+        }
+        previousScripts = newScripts
+      }
+    }
 
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -788,10 +804,14 @@ class PlayerActivity :
     }
 
     // Always start with status bar hidden - it will show when controls are shown
-    windowInsetsController.apply {
-      hide(WindowInsetsCompat.Type.statusBars())
-      hide(WindowInsetsCompat.Type.navigationBars())
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    try {
+      windowInsetsController.apply {
+        hide(WindowInsetsCompat.Type.statusBars())
+        hide(WindowInsetsCompat.Type.navigationBars())
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to setup system UI insets", e)
     }
 
     // Don't use LOW_PROFILE if we plan to show status bar with controls
@@ -818,10 +838,14 @@ class PlayerActivity :
     WindowCompat.setDecorFitsSystemWindows(window, true)
 
     // Restore default behavior and show bars in one go
-    windowInsetsController.apply {
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to restore system UI insets", e)
     }
   }
 
@@ -1103,6 +1127,59 @@ class PlayerActivity :
     }
 
     Log.d(TAG, "Fonts sync: $count file(s) from MPV directory")
+  }
+
+  /**
+   * Loads a specific Lua script at runtime without restarting the player.
+   * Finds the script in the user's MPV directory, copies it to internal storage,
+   * and commands MPV to load it.
+   */
+  private fun loadScriptAtRuntime(scriptName: String) {
+    if (!mpvInitialized || isFinishing) return
+
+    val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+    if (mpvConfStorageUri.isBlank()) return
+
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        val tree = DocumentFile.fromTreeUri(this@PlayerActivity, mpvConfStorageUri.toUri())
+        if (tree != null && tree.exists()) {
+          // Look for scripts/ subfolder first (case-insensitive), fall back to root
+          val scriptsDir = findSubdirCaseInsensitive(tree, "scripts") ?: tree
+          
+          val scriptFile = scriptsDir.listFiles().firstOrNull { 
+            it.name == scriptName 
+          }
+
+          if (scriptFile != null) {
+            val internalScriptsDir = File(filesDir, "scripts")
+            if (!internalScriptsDir.exists()) internalScriptsDir.mkdirs()
+            
+            val targetFile = File(internalScriptsDir, scriptName)
+            
+            contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+              targetFile.outputStream().use { output ->
+                input.copyTo(output)
+              }
+            }
+            
+            withContext(Dispatchers.Main) {
+              MPVLib.command("load-script", targetFile.absolutePath)
+              viewModel.showToast("Loaded script: $scriptName")
+            }
+          }
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error loading script at runtime: $scriptName", e)
+        withContext(Dispatchers.Main) {
+          android.widget.Toast.makeText(
+            this@PlayerActivity,
+            "Failed to load script: ${e.message}",
+            android.widget.Toast.LENGTH_LONG
+          ).show()
+        }
+      }
+    }
   }
 
   // ==================== Helpers ====================
@@ -1575,7 +1652,10 @@ class PlayerActivity :
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
     if (isPaused) {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // Only clear keep-screen-on if the preference is NOT enabled
+      if (!playerPreferences.keepScreenOnWhenPaused.get()) {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      }
     } else {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -2456,9 +2536,13 @@ class PlayerActivity :
   private fun enterPipUIMode() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     WindowCompat.setDecorFitsSystemWindows(window, true)
-    windowInsetsController.apply {
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to show system bars for PiP mode", e)
     }
   }
 
@@ -3310,6 +3394,10 @@ class PlayerActivity :
             playlist = newPlaylist
             playlistIndex = newIndex
             Log.d(TAG, "Auto-playlist generated: ${playlist.size} videos")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         }
       }.onFailure { e ->

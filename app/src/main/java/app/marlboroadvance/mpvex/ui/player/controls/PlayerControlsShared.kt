@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -648,9 +649,9 @@ fun RenderPlayerButton(
       ) { expanded ->
         if (expanded) {
           Surface(
-            shape = MaterialTheme.shapes.large,
-            color = if (!hideBackground) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else Color.Black.copy(alpha = 0.35f),
-            border = if (!hideBackground) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)) else null,
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
             modifier = Modifier.height(buttonSize),
           ) {
             Row(
@@ -661,17 +662,19 @@ fun RenderPlayerButton(
               // Point A Button - always transparent background
               Surface(
                 shape = CircleShape,
-                color = if (loopA != null) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                color = if (loopA != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
                 modifier = Modifier
-                  .size(buttonSize - 4.dp)
+                  .height(buttonSize - 4.dp)
+                  .widthIn(min = buttonSize - 4.dp)
                   .clip(CircleShape)
                   .clickable(onClick = { viewModel.setLoopA() }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
-                    text = "A",
+                    text = if (loopA != null) viewModel.formatTimestamp(loopA!!) else "A",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopA != null) MaterialTheme.colorScheme.onPrimaryContainer else controlColor,
+                    color = if (loopA != null) MaterialTheme.colorScheme.onTertiaryContainer else controlColor,
+                    modifier = Modifier.padding(horizontal = if (loopA != null) 8.dp else 0.dp),
                   )
                 }
               }
@@ -702,17 +705,19 @@ fun RenderPlayerButton(
               // Point B Button - always transparent background
               Surface(
                 shape = CircleShape,
-                color = if (loopB != null) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                color = if (loopB != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
                 modifier = Modifier
-                  .size(buttonSize - 4.dp)
+                  .height(buttonSize - 4.dp)
+                  .widthIn(min = buttonSize - 4.dp)
                   .clip(CircleShape)
                   .clickable(onClick = { viewModel.setLoopB() }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
                   Text(
-                    text = "B",
+                    text = if (loopB != null) viewModel.formatTimestamp(loopB!!) else "B",
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (loopB != null) MaterialTheme.colorScheme.onPrimaryContainer else controlColor,
+                    color = if (loopB != null) MaterialTheme.colorScheme.onTertiaryContainer else controlColor,
+                    modifier = Modifier.padding(horizontal = if (loopB != null) 8.dp else 0.dp),
                   )
                 }
               }

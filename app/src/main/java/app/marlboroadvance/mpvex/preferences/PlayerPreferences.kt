@@ -66,6 +66,8 @@ class PlayerPreferences(
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
 
+  val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
+
   // Custom Buttons - JSON List
   val customButtons = preferenceStore.getString("custom_buttons_json", "[]")
 }
