@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -41,7 +42,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import app.marlboroadvance.mpvex.ui.preferences.CustomButton
 import java.io.File
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
+import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -76,6 +81,7 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val advancedPreferences: AdvancedPreferences by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
 
@@ -233,6 +239,112 @@ class PlayerViewModel(
         // Update hr-seek settings dynamically
         MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+      }
+    }
+    
+    setupCustomButtons()
+  }
+
+  // ==================== Custom Buttons ====================
+
+  data class CustomButtonState(
+    val id: String,
+    val label: String,
+    val isLeft: Boolean,
+  )
+
+  private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
+  val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
+
+  private fun setupCustomButtons() {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val buttons = mutableListOf<CustomButtonState>()
+        val scriptContent = buildString {
+          val jsonString = playerPreferences.customButtons.get()
+          if (jsonString.isNotBlank()) {
+            try {
+               val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
+               
+               customButtonsList.filter { it.isActive }.forEach { btn ->
+                 val safeId = btn.id.replace("-", "_")
+                 processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, btn.isLeft, buttons)
+               }
+            } catch (e: Exception) {
+               e.printStackTrace()
+            }
+          }
+        }
+
+        _customButtons.value = buttons
+
+        if (scriptContent.isNotEmpty()) {
+          val scriptsDir = File(host.context.filesDir, "scripts")
+          if (!scriptsDir.exists()) scriptsDir.mkdirs()
+          
+          val file = File(scriptsDir, "custombuttons.lua")
+          file.writeText(scriptContent)
+          MPVLib.command("load-script", file.absolutePath)
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
+      }
+    }
+  }
+
+  fun callCustomButton(id: String) {
+    val safeId = id.replace("-", "_")
+    MPVLib.command("script-message", "call_button_$safeId")
+  }
+  
+  fun callCustomButtonLongPress(id: String) {
+    val safeId = id.replace("-", "_")
+    MPVLib.command("script-message", "call_button_long_$safeId")
+  }
+
+  private fun StringBuilder.processButton(
+    originalId: String,
+    safeId: String,
+    label: String,
+    command: String,
+    longPressCommand: String,
+    onStartup: String,
+    isLeft: Boolean,
+    uiList: MutableList<CustomButtonState>
+  ) {
+    if (label.isNotBlank()) {
+      uiList.add(CustomButtonState(originalId, label, isLeft))
+      
+      // On Startup Code
+      if (onStartup.isNotBlank()) {
+          append(onStartup)
+          append("\n")
+      }
+
+      // Click Handler
+      if (command.isNotBlank()) {
+        append(
+          """
+          function button_${safeId}()
+              ${command}
+          end
+          mp.register_script_message('call_button_${safeId}', button_${safeId})
+          """.trimIndent()
+        )
+        append("\n")
+      }
+      
+      // Long Press Handler
+      if (longPressCommand.isNotBlank()) {
+        append(
+          """
+          function button_long_${safeId}()
+              ${longPressCommand}
+          end
+          mp.register_script_message('call_button_long_${safeId}', button_long_${safeId})
+          """.trimIndent()
+        )
+        append("\n")
       }
     }
   }
@@ -534,12 +646,20 @@ class PlayerViewModel(
         delay(SEEK_COALESCE_DELAY_MS)
         val toApply = pendingSeekOffset
         pendingSeekOffset = 0
+        
         if (toApply != 0) {
-          // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
-          val maxDuration = MPVLib.getPropertyInt("duration") ?: 0
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || maxDuration < 120
-          val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
-          MPVLib.command("seek", toApply.toString(), seekMode)
+          val duration = MPVLib.getPropertyInt("duration") ?: 0
+          val currentPos = MPVLib.getPropertyInt("time-pos") ?: 0
+          
+          if (duration > 0 && currentPos + toApply >= duration) {
+              // If seeking past the end, force seek to 100% absolute to ensure EOF is triggered
+              MPVLib.command("seek", "100", "absolute-percent+exact")
+          } else {
+              // Use precise seeking for videos shorter than 2 minutes (120 seconds) or if preference is enabled
+              val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || duration < 120
+              val seekMode = if (shouldUsePreciseSeeking) "relative+exact" else "relative+keyframes"
+              MPVLib.command("seek", toApply.toString(), seekMode)
+          }
         }
       }
   }

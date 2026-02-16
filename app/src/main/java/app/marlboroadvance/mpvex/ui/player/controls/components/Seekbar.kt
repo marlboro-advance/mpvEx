@@ -516,7 +516,7 @@ fun VideoTimer(
         )
         .wrapContentHeight(Alignment.CenterVertically),
     text = Utils.prettyTime(value.toInt(), isInverted),
-    color = MaterialTheme.colorScheme.onSurface,
+    color = Color.White,
     textAlign = TextAlign.Center,
   )
 }

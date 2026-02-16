@@ -389,7 +389,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.VIDEO_ZOOM -> {
-      if (currentZoom != 0f) {
+      if (kotlin.math.abs(currentZoom) >= 0.005f) {
         @OptIn(ExperimentalFoundationApi::class)
         Surface(
           shape = CircleShape,
