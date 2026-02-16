@@ -949,6 +949,11 @@ class PlayerActivity :
       val ext = name.substringAfterLast('.', "").lowercase()
       if (ext !in scriptExtensions) return@forEach
 
+      val selectedScripts = advancedPreferences.selectedLuaScripts.get()
+      if (!selectedScripts.contains(name)) {
+          return@forEach
+      }
+
       runCatching {
         contentResolver.openInputStream(file.uri)?.use { input ->
           File(internalScriptsDir, name).outputStream().use { output ->
@@ -1533,6 +1538,9 @@ class PlayerActivity :
         if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
           setOrientation()
         }
+        
+        // Re-apply Anime4K shaders (check for resolution limit)
+        player.applyAnime4KShaders()
       }
     }
   }

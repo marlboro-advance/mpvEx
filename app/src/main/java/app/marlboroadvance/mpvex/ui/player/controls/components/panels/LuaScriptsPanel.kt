@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -71,7 +72,15 @@ fun LuaScriptsPanel(
             runCatching {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
                 if (tree != null && tree.exists()) {
-                    tree.listFiles().forEach { file ->
+                    // Try to find "scripts" subdirectory first (case-insensitive)
+                    val scriptsDir = tree.listFiles().firstOrNull { 
+                        it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+                    }
+                    
+                    // Use scripts dir if found, otherwise use root
+                    val sourceDir = scriptsDir ?: tree
+                    
+                    sourceDir.listFiles().forEach { file ->
                         if (file.isFile && file.name?.endsWith(".lua") == true) {
                             file.name?.let { scripts.add(it) }
                         }
@@ -125,7 +134,9 @@ fun LuaScriptsPanel(
         }
     ) {
         Column(
-            Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+            Modifier
+                .padding(horizontal = MaterialTheme.spacing.medium)
+                .imePadding(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             
