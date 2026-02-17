@@ -415,6 +415,18 @@ class PlayerActivity :
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
 
+    // Observe selected Lua scripts for runtime loading
+    lifecycleScope.launch {
+      var previousScripts = advancedPreferences.selectedLuaScripts.get()
+      advancedPreferences.selectedLuaScripts.changes().collect { newScripts ->
+        val addedScripts = newScripts - previousScripts
+        addedScripts.forEach { scriptName ->
+          loadScriptAtRuntime(scriptName)
+        }
+        previousScripts = newScripts
+      }
+    }
+
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
   }
@@ -1115,6 +1127,59 @@ class PlayerActivity :
     }
 
     Log.d(TAG, "Fonts sync: $count file(s) from MPV directory")
+  }
+
+  /**
+   * Loads a specific Lua script at runtime without restarting the player.
+   * Finds the script in the user's MPV directory, copies it to internal storage,
+   * and commands MPV to load it.
+   */
+  private fun loadScriptAtRuntime(scriptName: String) {
+    if (!mpvInitialized || isFinishing) return
+
+    val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+    if (mpvConfStorageUri.isBlank()) return
+
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        val tree = DocumentFile.fromTreeUri(this@PlayerActivity, mpvConfStorageUri.toUri())
+        if (tree != null && tree.exists()) {
+          // Look for scripts/ subfolder first (case-insensitive), fall back to root
+          val scriptsDir = findSubdirCaseInsensitive(tree, "scripts") ?: tree
+          
+          val scriptFile = scriptsDir.listFiles().firstOrNull { 
+            it.name == scriptName 
+          }
+
+          if (scriptFile != null) {
+            val internalScriptsDir = File(filesDir, "scripts")
+            if (!internalScriptsDir.exists()) internalScriptsDir.mkdirs()
+            
+            val targetFile = File(internalScriptsDir, scriptName)
+            
+            contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+              targetFile.outputStream().use { output ->
+                input.copyTo(output)
+              }
+            }
+            
+            withContext(Dispatchers.Main) {
+              MPVLib.command("load-script", targetFile.absolutePath)
+              viewModel.showToast("Loaded script: $scriptName")
+            }
+          }
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error loading script at runtime: $scriptName", e)
+        withContext(Dispatchers.Main) {
+          android.widget.Toast.makeText(
+            this@PlayerActivity,
+            "Failed to load script: ${e.message}",
+            android.widget.Toast.LENGTH_LONG
+          ).show()
+        }
+      }
+    }
   }
 
   // ==================== Helpers ====================
@@ -2101,9 +2166,20 @@ class PlayerActivity :
             hasBeenWatched = run {
               val watchedThreshold = browserPreferences.watchedThreshold.get()
               val durationSeconds = duration.toFloat()
-              val progress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
+              val currentPos = viewModel.pos ?: 0
+              
+              // Check if we are at the end (effectively watched)
+              // Using a small buffer (1s) to account for float inaccuracies or near-end stops
+              val isFinished = (durationSeconds > 0) && (currentPos >= durationSeconds - 1)
+
+              val progress = if (durationSeconds > 0) currentPos.toFloat() / durationSeconds else 0f
               val isCurrentlyWatched = progress >= (watchedThreshold / 100f)
-              isCurrentlyWatched || (oldState?.hasBeenWatched == true)
+              
+              // Also check lastPosition in case we are saving partway through (though lastPosition might be 0 if finished)
+              val oldProgress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
+              val wasWatchedThisSession = oldProgress >= (watchedThreshold / 100f)
+
+              isCurrentlyWatched || isFinished || wasWatchedThisSession || (oldState?.hasBeenWatched == true)
             },
           ),
         )
