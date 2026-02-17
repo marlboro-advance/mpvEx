@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.rotate
 import app.marlboroadvance.mpvex.preferences.PlayerButton
 import app.marlboroadvance.mpvex.preferences.getPlayerButtonLabel
 
@@ -101,12 +102,22 @@ fun PlayerButtonChip(
               )
             }
           }
+          PlayerButton.AB_LOOP -> {
+            Text(
+              text = "AB",
+              fontSize = 15.sp,
+              textAlign = TextAlign.Center,
+              fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            )
+          }
           else -> {
             // Default: Icon only
             Icon(
               imageVector = button.icon,
               contentDescription = label,
-              modifier = Modifier.size(24.dp), 
+              modifier = Modifier.size(24.dp).then(
+                if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier
+              ),
             )
           }
         }
