@@ -78,7 +78,7 @@ fun AddToPlaylistDialog(
         scope.launch {
           val playlistId = repository.createPlaylist(name)
           val items = videos.map { video ->
-            video.path to video.displayName
+            video.uri.toString() to video.displayName
           }
           repository.addItemsToPlaylist(playlistId.toInt(), items)
           val message = if (videos.size == 1) {
@@ -160,7 +160,7 @@ fun AddToPlaylistDialog(
                 onClick = {
                   scope.launch {
                     val items = videos.map { video ->
-                      video.path to video.displayName
+                      video.uri.toString() to video.displayName
                     }
                     repository.addItemsToPlaylist(playlist.id, items)
                     val message = if (videos.size == 1) {
