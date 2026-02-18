@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.domain.media.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class VideoFolder(
   val bucketId: String,
   val name: String,

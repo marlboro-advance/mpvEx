@@ -54,9 +54,7 @@ import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1824,7 +1822,6 @@ class PlayerActivity :
    * Initializes playback state, loads saved playback data, restores custom settings,
    * applies user preferences, and sets up metadata and media session.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
     // Extract fileName from intent only if not already set
     // This preserves fileName set in onNewIntent or onCreate
@@ -1860,7 +1857,7 @@ class PlayerActivity :
     }
 
     // Save to recently played when video actually loads and plays
-    GlobalScope.launch(Dispatchers.IO) {
+    lifecycleScope.launch(Dispatchers.IO) {
       if (playlist.isNotEmpty()) {
         // For playlist items, save using the current URI
         // All items are loaded, so playlistIndex is the direct index
@@ -2125,11 +2122,10 @@ class PlayerActivity :
   /**
    * Saves the current playback state to the database.
    *
-   * Uses GlobalScope to ensure save completes even if activity is destroyed.
+   * Uses lifecycleScope to save state; cancels previous pending saves.
    *
    * @param mediaTitle The title of the media being played
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaIdentifier.isBlank()) return
 
@@ -2309,10 +2305,8 @@ class PlayerActivity :
   /**
    * Saves the currently playing file to recently played history.
    *
-   * Uses GlobalScope to ensure save completes even if activity is destroyed.
    * Handles various URI schemes and infers launch source.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private suspend fun saveRecentlyPlayed() {
     runCatching {
       val uri = extractUriFromIntent(intent)
