@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -166,6 +167,8 @@ fun PlayerControls(
   val paused by MPVLib.propBoolean["pause"].collectAsState()
   val duration by MPVLib.propInt["duration"].collectAsState()
   val position by MPVLib.propInt["time-pos"].collectAsState()
+  val precisePosition by viewModel.precisePosition.collectAsState()
+  val preciseDuration by viewModel.preciseDuration.collectAsState()
   val playbackSpeed by MPVLib.propFloat["speed"].collectAsState()
   val doubleTapSeekAmount by viewModel.doubleTapSeekAmount.collectAsState()
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
@@ -185,6 +188,9 @@ fun PlayerControls(
     val haptic = LocalHapticFeedback.current
 
     val customButtons by viewModel.customButtons.collectAsState()
+    
+  val abLoopA by viewModel.abLoopA.collectAsState()
+  val abLoopB by viewModel.abLoopB.collectAsState()
 
   val onOpenSheet: (Sheets) -> Unit = {
     viewModel.sheetShown.update { _ -> it }
@@ -470,6 +476,7 @@ fun PlayerControls(
             is PlayerUpdates.ShowText ->
               TextPlayerUpdate(
                 (currentPlayerUpdate as PlayerUpdates.ShowText).value,
+                modifier = Modifier.widthIn(min = 120.dp),
               )
 
             is PlayerUpdates.VideoZoom -> {
@@ -1017,8 +1024,8 @@ fun PlayerControls(
           val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
 
           SeekbarWithTimers(
-            position = position?.toFloat() ?: 0f,
-            duration = duration?.toFloat() ?: 0f,
+            position = precisePosition,
+            duration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f,
             onValueChange = {
               isSeeking = true
               resetControlsTimestamp = System.currentTimeMillis()
@@ -1038,6 +1045,8 @@ fun PlayerControls(
             chapters = chapters.toImmutableList(),
             paused = paused ?: false,
             seekbarStyle = seekbarStyle,
+            loopStart = abLoopA?.toFloat(),
+            loopEnd = abLoopB?.toFloat(),
           )
         }
 

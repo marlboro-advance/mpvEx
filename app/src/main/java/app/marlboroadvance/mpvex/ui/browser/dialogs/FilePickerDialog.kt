@@ -3,6 +3,8 @@ package app.marlboroadvance.mpvex.ui.browser.dialogs
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Environment
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -381,6 +383,10 @@ private fun FolderItem(
       fontWeight = FontWeight.Medium,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.basicMarquee(
+        animationMode = MarqueeAnimationMode.Immediately,
+        repeatDelayMillis = 2000,
+      ),
     )
   }
 }
@@ -412,6 +418,10 @@ private fun FileItem(
       fontWeight = FontWeight.Normal,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.basicMarquee(
+        animationMode = MarqueeAnimationMode.Immediately,
+        repeatDelayMillis = 2000,
+      ),
     )
   }
 }

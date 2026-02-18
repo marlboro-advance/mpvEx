@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -171,7 +172,11 @@ private fun NormalTopBar(
 
   TopAppBar(
     colors = TopAppBarDefaults.topAppBarColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainer,
+      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
+        Color.Black
+      } else {
+        MaterialTheme.colorScheme.surfaceContainer
+      },
     ),
     title = {
       val titleModifier = Modifier
@@ -310,7 +315,11 @@ private fun SelectionTopBar(
 
   TopAppBar(
     colors = TopAppBarDefaults.topAppBarColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainer,
+      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
+        Color.Black
+      } else {
+        MaterialTheme.colorScheme.surfaceContainer
+      },
     ),
     title = {
       Row(

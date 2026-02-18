@@ -317,10 +317,20 @@ class MPVView(
   }
 
 
-  private fun applyAnime4KShaders() {
+  internal fun applyAnime4KShaders() {
     runCatching {
       val enabled = decoderPreferences.enableAnime4K.get()
       if (!enabled) {
+        MPVLib.setOptionString("glsl-shaders", "")
+        return
+      }
+      
+      // Auto-disable for 4K/8K content (performance & quality)
+      val width = MPVLib.getPropertyInt("video-params/w") ?: 0
+      val height = MPVLib.getPropertyInt("video-params/h") ?: 0
+      if (width >= 3840 || height >= 2160) {
+        android.util.Log.d(TAG, "Video is 4K+ (${width}x${height}), disabling Anime4K")
+        MPVLib.setOptionString("glsl-shaders", "")
         return
       }
       
@@ -340,6 +350,7 @@ class MPVView(
       
       // Check if mode is OFF - if so, don't apply any shaders
       if (modeStr == "OFF") {
+        MPVLib.setOptionString("glsl-shaders", "")
         return  // Exit early - user wants it OFF
       }
       
@@ -368,6 +379,8 @@ class MPVView(
         
         // Apply shaders (MUST use setOptionString in initOptions!)
         MPVLib.setOptionString("glsl-shaders", shaderChain)
+      } else {
+        MPVLib.setOptionString("glsl-shaders", "")
       }
     }.onFailure {
       // Don't crash - just continue without shaders

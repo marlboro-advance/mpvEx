@@ -105,8 +105,16 @@ object LuaScriptsScreen : Screen {
           }
         }
         withContext(Dispatchers.Main) {
-          availableScripts = scripts.sorted()
+          val sortedScripts = scripts.sorted()
+          availableScripts = sortedScripts
           isLoading = false
+
+          // Prune selected scripts that no longer exist
+          val currentSelection = preferences.selectedLuaScripts.get()
+          val validSelection = currentSelection.filter { it in sortedScripts }
+          if (validSelection.size != currentSelection.size) {
+            preferences.selectedLuaScripts.set(validSelection.toSet())
+          }
         }
       }
     }
