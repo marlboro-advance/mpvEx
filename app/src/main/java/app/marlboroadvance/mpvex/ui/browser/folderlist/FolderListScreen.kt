@@ -897,8 +897,6 @@ private fun GridContent(
         end = 8.dp,
         bottom = navigationBarHeight
       ),
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       items(folders.size) { index ->
         val folder = folders[index]

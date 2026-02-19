@@ -278,6 +278,7 @@ fun VideoCard(
             MaterialTheme.colorScheme.onSurface
           },
           maxLines = maxLines,
+          minLines = 2,
           overflow = TextOverflow. Ellipsis,
           textAlign = if (useFolderNameStyle) {
             TextAlign.Center

@@ -173,6 +173,7 @@ fun FolderCard(
           style = MaterialTheme.typography.titleSmall,
           color = if (isRecentlyPlayed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface,
           maxLines = maxLines,
+          minLines = 2,
           overflow = TextOverflow. Ellipsis,
           textAlign = androidx.compose.ui. text.style.TextAlign.Center,
         )
