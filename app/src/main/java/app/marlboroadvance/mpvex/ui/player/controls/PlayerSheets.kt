@@ -22,6 +22,8 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSp
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.WyzieSearchSheet
+import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -115,6 +117,8 @@ fun PlayerSheets(
           )
       }
 
+      val isSearching by viewModel.isSearchingSub.collectAsState()
+
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
@@ -122,10 +126,20 @@ fun PlayerSheets(
         onAddSubtitle = {
              showFilePicker = true
         },
+        onSearchOnline = { query ->
+          // In the new system, if query is null, we can try to auto-detect from media title
+          // But here we just trigger the search in the viewModel
+          val mediaInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
+          val searchId = query ?: mediaInfo.title
+          viewModel.searchSubtitles(searchId)
+          onShowSheet(Sheets.WyzieSearch)
+        },
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
         onDismissRequest = onDismissRequest,
+        isSearching = isSearching,
+        mediaTitle = viewModel.currentMediaTitle,
       )
     }
 
@@ -278,6 +292,19 @@ fun PlayerSheets(
           playerPreferences = playerPreferences,
         )
       }
+    }
+
+    Sheets.WyzieSearch -> {
+      val results by viewModel.wyzieSearchResults.collectAsState()
+      val isSearching by viewModel.isSearchingSub.collectAsState()
+      val isDownloading by viewModel.isDownloadingSub.collectAsState()
+      WyzieSearchSheet(
+        results = results.toImmutableList(),
+        onDownload = { viewModel.downloadSubtitle(it) },
+        onDismissRequest = onDismissRequest,
+        isSearching = isSearching,
+        isDownloading = isDownloading,
+      )
     }
   }
 }

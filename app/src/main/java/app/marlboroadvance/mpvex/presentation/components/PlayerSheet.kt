@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.sizeIn
@@ -81,7 +83,7 @@ fun PlayerSheet(
   }
   val maxHeight =
     if (LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT) {
-      LocalConfiguration.current.screenHeightDp.dp * .65f
+      LocalConfiguration.current.screenHeightDp.dp * .90f
     } else {
       LocalConfiguration.current.screenHeightDp.dp * .95f
     }
@@ -158,7 +160,7 @@ fun PlayerSheet(
           ).windowInsetsPadding(
             WindowInsets.systemBars
               .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-          ),
+          ).imePadding(),
       shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
       color = surfaceColor ?: MaterialTheme.colorScheme.surface,
       tonalElevation = tonalElevation,

@@ -5,6 +5,7 @@ import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepositor
 import app.marlboroadvance.mpvex.di.DatabaseModule
 import app.marlboroadvance.mpvex.di.FileManagerModule
 import app.marlboroadvance.mpvex.di.PreferencesModule
+import app.marlboroadvance.mpvex.di.networkModule
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
 import app.marlboroadvance.mpvex.presentation.crash.GlobalExceptionHandler
 import `is`.xyz.mpv.FastThumbnails
@@ -32,6 +33,7 @@ class App : Application() {
         PreferencesModule,
         DatabaseModule,
         FileManagerModule,
+        networkModule,
         app.marlboroadvance.mpvex.di.domainModule,
       )
     }

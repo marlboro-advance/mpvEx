@@ -35,13 +35,14 @@ fun <T> GenericTracksSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
   lazyListState: LazyListState? = null,
+  customMaxWidth: androidx.compose.ui.unit.Dp? = null,
   header: @Composable () -> Unit = {},
   track: @Composable (T) -> Unit = {},
   footer: @Composable () -> Unit = {},
 ) {
   val listState = lazyListState ?: rememberLazyListState()
   
-  PlayerSheet(onDismissRequest) {
+  PlayerSheet(onDismissRequest, customMaxWidth = customMaxWidth) {
     Column(modifier) {
       header()
       LazyColumn(state = listState) {

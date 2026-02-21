@@ -82,6 +82,7 @@ enum class Sheets {
   AspectRatios,
   FrameNavigation,
   Playlist,
+  WyzieSearch,
 }
 
 enum class Panels {
