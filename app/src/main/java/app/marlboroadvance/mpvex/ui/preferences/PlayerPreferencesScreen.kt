@@ -170,6 +170,24 @@ object PlayerPreferencesScreen : Screen {
                   )
                 },
               )
+
+              PreferenceDivider()
+
+              val keepScreenOnWhenPaused by preferences.keepScreenOnWhenPaused.collectAsState()
+              SwitchPreference(
+                value = keepScreenOnWhenPaused,
+                onValueChange = preferences.keepScreenOnWhenPaused::set,
+                title = { Text("Keep screen on when paused") },
+                summary = {
+                  Text(
+                    text = if (keepScreenOnWhenPaused)
+                      "Screen stays awake while video is paused"
+                    else
+                      "Screen can turn off while video is paused",
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
             }
           }
           // Seeking Section
@@ -307,7 +325,7 @@ object PlayerPreferencesScreen : Screen {
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_player_controls))
           }
-          
+
           item {
             PreferenceCard {
               val allowGesturesInPanels by preferences.allowGesturesInPanels.collectAsState()

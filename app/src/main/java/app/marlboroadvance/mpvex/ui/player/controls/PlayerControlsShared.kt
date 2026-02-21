@@ -1,11 +1,14 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,6 +46,9 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOutMap
+import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -389,7 +396,7 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.VIDEO_ZOOM -> {
-      if (currentZoom != 0f) {
+      if (kotlin.math.abs(currentZoom) >= 0.005f) {
         @OptIn(ExperimentalFoundationApi::class)
         Surface(
           shape = CircleShape,
@@ -578,6 +585,169 @@ fun RenderPlayerButton(
           },
           modifier = Modifier.size(buttonSize),
         )
+      }
+    }
+
+    PlayerButton.MIRROR -> {
+      val isMirrored by viewModel.isMirrored.collectAsState()
+      ControlsButton(
+        icon = Icons.Default.Flip,
+        onClick = viewModel::toggleMirroring,
+        color = if (hideBackground) {
+          if (isMirrored) MaterialTheme.colorScheme.primary else controlColor
+        } else {
+          if (isMirrored) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        },
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
+    PlayerButton.VERTICAL_FLIP -> {
+      val isVerticalFlipped by viewModel.isVerticalFlipped.collectAsState()
+      val vFlipColor = if (hideBackground) {
+        if (isVerticalFlipped) MaterialTheme.colorScheme.primary else controlColor
+      } else {
+        if (isVerticalFlipped) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+      }
+      Surface(
+        shape = CircleShape,
+        color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+        contentColor = vFlipColor,
+        border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        modifier = Modifier
+          .size(buttonSize)
+          .clip(CircleShape)
+          .clickable(onClick = viewModel::toggleVerticalFlip),
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(
+            imageVector = Icons.Default.Flip,
+            contentDescription = "Vertical Flip",
+            tint = vFlipColor,
+            modifier = Modifier
+              .padding(MaterialTheme.spacing.small)
+              .size(20.dp)
+              .rotate(90f),
+          )
+        }
+      }
+    }
+
+    PlayerButton.AB_LOOP -> {
+      val isExpanded by viewModel.isABLoopExpanded.collectAsState()
+      val loopA by viewModel.abLoopA.collectAsState()
+      val loopB by viewModel.abLoopB.collectAsState()
+
+      AnimatedContent(
+        targetState = isExpanded,
+        transitionSpec = {
+          (fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(250)))
+            .togetherWith(fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(250)))
+            .using(SizeTransform(clip = false))
+        },
+        label = "ABLoopExpandCollapse",
+      ) { expanded ->
+        if (expanded) {
+          Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            modifier = Modifier.height(buttonSize),
+          ) {
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(2.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(horizontal = 4.dp),
+            ) {
+              // Point A Button - always transparent background
+              Surface(
+                shape = CircleShape,
+                color = if (loopA != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
+                modifier = Modifier
+                  .height(buttonSize - 4.dp)
+                  .widthIn(min = buttonSize - 4.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = { viewModel.setLoopA() }),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Text(
+                    text = if (loopA != null) viewModel.formatTimestamp(loopA!!) else "A",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (loopA != null) MaterialTheme.colorScheme.onTertiaryContainer else controlColor,
+                    modifier = Modifier.padding(horizontal = if (loopA != null) 8.dp else 0.dp),
+                  )
+                }
+              }
+
+              // Clear/Close Button - always has background
+              Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                modifier = Modifier
+                  .size(buttonSize - 4.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = {
+                    viewModel.clearABLoop()
+                    viewModel.toggleABLoopExpanded()
+                  }),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear Loop",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp),
+                  )
+                }
+              }
+
+              // Point B Button - always transparent background
+              Surface(
+                shape = CircleShape,
+                color = if (loopB != null) MaterialTheme.colorScheme.tertiaryContainer else Color.Transparent,
+                modifier = Modifier
+                  .height(buttonSize - 4.dp)
+                  .widthIn(min = buttonSize - 4.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = { viewModel.setLoopB() }),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Text(
+                    text = if (loopB != null) viewModel.formatTimestamp(loopB!!) else "B",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (loopB != null) MaterialTheme.colorScheme.onTertiaryContainer else controlColor,
+                    modifier = Modifier.padding(horizontal = if (loopB != null) 8.dp else 0.dp),
+                  )
+                }
+              }
+            }
+          }
+        } else {
+          // Collapsed: Show "AB" text button
+          Surface(
+            shape = CircleShape,
+            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            modifier = Modifier
+              .size(buttonSize)
+              .clip(CircleShape)
+              .clickable(onClick = viewModel::toggleABLoopExpanded),
+          ) {
+            Box(contentAlignment = Alignment.Center) {
+              Text(
+                text = "AB",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = if (hideBackground) {
+                  if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else controlColor
+                } else {
+                  if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                },
+              )
+            }
+          }
+        }
       }
     }
 

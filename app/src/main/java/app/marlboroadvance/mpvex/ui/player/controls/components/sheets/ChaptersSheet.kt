@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -27,8 +29,18 @@ fun ChaptersSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val listState = rememberLazyListState()
+
+  LaunchedEffect(currentChapter, chapters) {
+    val index = chapters.indexOf(currentChapter)
+    if (index >= 0) {
+      listState.scrollToItem(index)
+    }
+  }
+
   GenericTracksSheet(
     chapters,
+    lazyListState = listState,
     track = {
       ChapterTrack(
         it,
@@ -64,6 +76,7 @@ fun ChapterTrack(
       stringResource(R.string.player_sheets_track_title_wo_lang, index + 1, chapter.name),
       fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
       fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+      color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
       maxLines = 1,
       modifier = Modifier.weight(1f),
       overflow = TextOverflow.Ellipsis,
@@ -72,6 +85,7 @@ fun ChapterTrack(
       Utils.prettyTime(chapter.start.toInt()),
       fontStyle = if (selected) FontStyle.Italic else FontStyle.Normal,
       fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Normal,
+      color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
     )
   }
 }

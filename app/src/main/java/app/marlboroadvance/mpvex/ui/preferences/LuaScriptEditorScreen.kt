@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -89,13 +90,20 @@ data class LuaScriptEditorScreen(
           val tempFile = kotlin.io.path.createTempFile()
           runCatching {
             val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-            val scriptFile = tree?.findFile(scriptName)
-            if (scriptFile != null && scriptFile.exists()) {
-              context.contentResolver.openInputStream(scriptFile.uri)?.copyTo(tempFile.outputStream())
-              val content = tempFile.readLines().joinToString("\n")
-              withContext(Dispatchers.Main) {
-                scriptContent = content
-                hasUnsavedChanges = false
+            if (tree != null && tree.exists()) {
+              // Try to find "scripts" subdirectory first (case-insensitive)
+              val scriptsDir = tree.listFiles().firstOrNull { 
+                  it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+              } ?: tree
+
+              val scriptFile = scriptsDir.findFile(scriptName)
+              if (scriptFile != null && scriptFile.exists()) {
+                context.contentResolver.openInputStream(scriptFile.uri)?.copyTo(tempFile.outputStream())
+                val content = tempFile.readLines().joinToString("\n")
+                withContext(Dispatchers.Main) {
+                  scriptContent = content
+                  hasUnsavedChanges = false
+                }
               }
             }
           }
@@ -128,14 +136,19 @@ data class LuaScriptEditorScreen(
             }
             return@launch
           }
+          
+          // Try to find "scripts" subdirectory first (case-insensitive)
+          val scriptsDir = tree.listFiles().firstOrNull { 
+              it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+          } ?: tree
 
           // If renaming, delete old file
           if (!isNewScript && scriptName != null && scriptName != finalFileName) {
-            tree.findFile(scriptName)?.delete()
+            scriptsDir.findFile(scriptName)?.delete()
           }
 
-          val existing = tree.findFile(finalFileName)
-          val scriptFile = existing ?: tree.createFile("text/plain", finalFileName)?.also { it.renameTo(finalFileName) }
+          val existing = scriptsDir.findFile(finalFileName)
+          val scriptFile = existing ?: scriptsDir.createFile("text/plain", finalFileName)?.also { it.renameTo(finalFileName) }
           val uri = scriptFile?.uri ?: run {
             withContext(Dispatchers.Main) {
               Toast.makeText(context, "Failed to create file", Toast.LENGTH_LONG).show()
@@ -175,31 +188,38 @@ data class LuaScriptEditorScreen(
       scope.launch(Dispatchers.IO) {
         try {
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-          val scriptFile = tree?.findFile(scriptName)
-          if (scriptFile != null && scriptFile.exists()) {
-            // Copy to cache directory for sharing
-            val cacheFile = File(context.cacheDir, scriptName)
-            context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
-              cacheFile.outputStream().use { output ->
-                input.copyTo(output)
+          if (tree != null && tree.exists()) {
+            // Try to find "scripts" subdirectory first (case-insensitive)
+            val scriptsDir = tree.listFiles().firstOrNull { 
+                it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+            } ?: tree
+
+            val scriptFile = scriptsDir.findFile(scriptName)
+            if (scriptFile != null && scriptFile.exists()) {
+              // Copy to cache directory for sharing
+              val cacheFile = File(context.cacheDir, scriptName)
+              context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+                cacheFile.outputStream().use { output ->
+                  input.copyTo(output)
+                }
               }
-            }
-            
-            // Get content URI using FileProvider
-            val contentUri = FileProvider.getUriForFile(
-              context,
-              "${context.packageName}.provider",
-              cacheFile
-            )
-            
-            withContext(Dispatchers.Main) {
-              val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, contentUri)
-                putExtra(Intent.EXTRA_SUBJECT, scriptName)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+              
+              // Get content URI using FileProvider
+              val contentUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                cacheFile
+              )
+              
+              withContext(Dispatchers.Main) {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                  type = "text/plain"
+                  putExtra(Intent.EXTRA_STREAM, contentUri)
+                  putExtra(Intent.EXTRA_SUBJECT, scriptName)
+                  addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share $scriptName"))
               }
-              context.startActivity(Intent.createChooser(shareIntent, "Share $scriptName"))
             }
           }
         } catch (e: Exception) {
@@ -223,22 +243,29 @@ data class LuaScriptEditorScreen(
       scope.launch(Dispatchers.IO) {
         try {
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-          val scriptFile = tree?.findFile(scriptName)
-          if (scriptFile != null && scriptFile.exists()) {
-            val deleted = scriptFile.delete()
-            
-            if (deleted) {
-              // Remove from selected scripts if it was selected
-              val selectedScripts = preferences.selectedLuaScripts.get()
-              if (selectedScripts.contains(scriptName)) {
-                preferences.selectedLuaScripts.set(selectedScripts - scriptName)
+          if (tree != null && tree.exists()) {
+              // Try to find "scripts" subdirectory first (case-insensitive)
+              val scriptsDir = tree.listFiles().firstOrNull { 
+                  it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+              } ?: tree
+
+              val scriptFile = scriptsDir.findFile(scriptName)
+              if (scriptFile != null && scriptFile.exists()) {
+                val deleted = scriptFile.delete()
+                
+                if (deleted) {
+                  // Remove from selected scripts if it was selected
+                  val selectedScripts = preferences.selectedLuaScripts.get()
+                  if (selectedScripts.contains(scriptName)) {
+                    preferences.selectedLuaScripts.set(selectedScripts - scriptName)
+                  }
+                  
+                  withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "$scriptName deleted", Toast.LENGTH_SHORT).show()
+                    backStack.removeLastOrNull()
+                  }
+                }
               }
-              
-              withContext(Dispatchers.Main) {
-                Toast.makeText(context, "$scriptName deleted", Toast.LENGTH_SHORT).show()
-                backStack.removeLastOrNull()
-              }
-            }
           }
         } catch (e: Exception) {
           withContext(Dispatchers.Main) {
@@ -358,6 +385,7 @@ data class LuaScriptEditorScreen(
         modifier = Modifier
           .fillMaxSize()
           .padding(padding)
+          .imePadding()
       ) {
         // Editable title field
         BasicTextField(

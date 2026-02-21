@@ -57,8 +57,8 @@ export function ScreenshotsSection() {
           </p>
         </div>
 
-        <div className="flex justify-start overflow-x-auto pb-12 pt-12 pl-4 md:pl-32 pr-4 md:pr-32 scrollbar-hide">
-          <div className="flex flex-nowrap items-center gap-6 md:gap-12 perspective-[1000px]">
+        <div className="flex justify-start overflow-x-auto pb-12 pt-12 pl-4 md:pl-32 pr-4 md:pr-32 scrollbar-hide snap-x snap-proximity">
+          <div className="flex flex-nowrap items-center gap-6 md:gap-12 w-max">
             {screenshots.map((screenshot) => (
               <motion.div
                 key={screenshot.id}
@@ -67,7 +67,7 @@ export function ScreenshotsSection() {
                   zIndex: 20,
                   transition: { duration: 0.2 },
                 }}
-                className="relative shrink-0 w-[160px] md:w-[200px] aspect-9/19 rounded-4xl overflow-hidden border-4 border-foreground/5 dark:border-white/5 bg-black shadow-2xl cursor-pointer transition-all duration-200 group"
+                className="relative shrink-0 w-[160px] md:w-[200px] aspect-9/19 rounded-4xl overflow-hidden border-4 border-foreground/5 dark:border-white/5 bg-black shadow-2xl cursor-pointer transition-all duration-200 group snap-center"
               >
                 {/* Phone bezel gloss */}
                 <div className="absolute inset-0 pointer-events-none z-20 rounded-4xl ring-1 ring-foreground/10 dark:ring-white/10 shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]" />

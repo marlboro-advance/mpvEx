@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -50,7 +52,7 @@ fun LuaScriptsPanel(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val preferences = koinInject<AdvancedPreferences>()
+    val preferences = koinInject<app.marlboroadvance.mpvex.preferences.AdvancedPreferences>()
     
     val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
     val selectedScripts by preferences.selectedLuaScripts.collectAsState()
@@ -70,7 +72,15 @@ fun LuaScriptsPanel(
             runCatching {
                 val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
                 if (tree != null && tree.exists()) {
-                    tree.listFiles().forEach { file ->
+                    // Try to find "scripts" subdirectory first (case-insensitive)
+                    val scriptsDir = tree.listFiles().firstOrNull { 
+                        it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true 
+                    }
+                    
+                    // Use scripts dir if found, otherwise use root
+                    val sourceDir = scriptsDir ?: tree
+                    
+                    sourceDir.listFiles().forEach { file ->
                         if (file.isFile && file.name?.endsWith(".lua") == true) {
                             file.name?.let { scripts.add(it) }
                         }
@@ -86,28 +96,25 @@ fun LuaScriptsPanel(
                 }
             }
             withContext(Dispatchers.Main) {
-                availableScripts = scripts.sorted()
+                val sortedScripts = scripts.sorted()
+                availableScripts = sortedScripts
                 isLoading = false
+
+                // Prune selected scripts that no longer exist
+                val currentSelection = preferences.selectedLuaScripts.get()
+                val validSelection = currentSelection.filter { it in sortedScripts }
+                if (validSelection.size != currentSelection.size) {
+                    preferences.selectedLuaScripts.set(validSelection.toSet())
+                }
             }
         }
     }
     
     fun toggleScriptSelection(scriptName: String) {
         val newSelection = if (selectedScripts.contains(scriptName)) {
-            // Disabling script
-            Toast.makeText(context, "Restart required to disable script fully", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "$scriptName disabled. Video restart required.", Toast.LENGTH_LONG).show()
             selectedScripts - scriptName
         } else {
-            // Enabling script - Try to load immediately
-            val scriptFile = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-                ?.findFile(scriptName)
-            
-            if (scriptFile != null) {
-                try {
-                } catch (e: Exception) {
-                    // ignore
-                }
-            }
             selectedScripts + scriptName
         }
         preferences.selectedLuaScripts.set(newSelection)
@@ -135,7 +142,9 @@ fun LuaScriptsPanel(
         }
     ) {
         Column(
-            Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+            Modifier
+                .padding(horizontal = MaterialTheme.spacing.medium)
+                .imePadding(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             
@@ -147,11 +156,29 @@ fun LuaScriptsPanel(
                     CircularProgressIndicator()
                 }
             } else if (availableScripts.isEmpty()) {
-                Text(
-                    "No lua scripts found in configuration directory.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Text(
+                        "No Lua scripts found",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Place .lua files in your mpv configuration directory.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             } else {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
