@@ -540,7 +540,7 @@ fun PlayerControls(
           }
         }
 
-        val areButtonsVisible = controlsShown && !areControlsLocked
+        val areButtonsVisible = controlsShown && !areControlsLocked && !areSlidersShown
 
         AnimatedVisibility(
             visible = areButtonsVisible && !isPortrait,
