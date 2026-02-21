@@ -1314,8 +1314,9 @@ class PlayerViewModel(
 
     return activity.playlist.mapIndexed { index, uri ->
       val title = activity.getPlaylistItemTitle(uri)
-      // Get path for thumbnail generation
-      val path = uri.path ?: uri.toString()
+      // Path is not used for thumbnail loading - thumbnails are loaded directly from URI
+      // Keep it for cache key compatibility
+      val path = uri.toString()
       val isCurrentlyPlaying = index == activity.playlistIndex
 
       // Try to get from cache first (synchronized access)

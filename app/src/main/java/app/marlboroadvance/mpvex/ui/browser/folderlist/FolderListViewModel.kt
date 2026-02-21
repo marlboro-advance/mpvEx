@@ -12,6 +12,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
+import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,9 @@ class FolderListViewModel(
   KoinComponent {
   private val foldersPreferences: FoldersPreferences by inject()
   private val appearancePreferences: AppearancePreferences by inject()
+  private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
+  private val metadataCache: VideoMetadataCacheRepository by inject()
 
   private val _allVideoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
   private val _videoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
@@ -351,21 +354,28 @@ class FolderListViewModel(
              return@launch
         }
 
-        // OPTIMIZATION: Skip enrichment if data is up-to-date
-        if (!needsEnrichment) {
-             Log.d(TAG, "Data up to date, skipping enrichment")
+        // OPTIMIZATION: Skip enrichment if data is up-to-date OR if duration chip is disabled
+        val needsDurationEnrichment = needsEnrichment && MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)
+        
+        if (!needsDurationEnrichment) {
+             if (!needsEnrichment) {
+                 Log.d(TAG, "Data up to date, skipping enrichment")
+             } else {
+                 Log.d(TAG, "Duration chip disabled, skipping metadata extraction")
+             }
              _scanStatus.value = null
              return@launch
         }
 
-        // PHASE 2: Background Enrichment
+        // PHASE 2: Background Enrichment (only if duration chip is enabled)
         _isEnriching.value = true
         _scanStatus.value = "Processing metadata..."
         
-        val enrichedFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
-          .enrichVideoFolders(
+        val enrichedFolders = MetadataRetrieval.enrichFoldersIfNeeded(
             context = getApplication(),
             folders = mergedFolders,
+            browserPreferences = browserPreferences,
+            metadataCache = metadataCache,
             onProgress = { processed, total ->
                _scanStatus.value = "Processing metadata $processed/$total"
             }
