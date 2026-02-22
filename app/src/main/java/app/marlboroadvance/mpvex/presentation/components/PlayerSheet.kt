@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.sizeIn
@@ -79,12 +81,13 @@ fun PlayerSheet(
   } else {
     420.dp
   }
-  val maxHeight =
-    if (LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT) {
-      LocalConfiguration.current.screenHeightDp.dp * .65f
-    } else {
-      LocalConfiguration.current.screenHeightDp.dp * .95f
-    }
+  val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+  val maxHeight = when {
+    isImeVisible -> LocalConfiguration.current.screenHeightDp.dp
+    LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT ->
+      LocalConfiguration.current.screenHeightDp.dp * .90f
+    else -> LocalConfiguration.current.screenHeightDp.dp
+  }
 
   var backgroundAlpha by remember { mutableFloatStateOf(0f) }
   val alpha by animateFloatAsState(
@@ -158,7 +161,7 @@ fun PlayerSheet(
           ).windowInsetsPadding(
             WindowInsets.systemBars
               .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-          ),
+          ).imePadding(),
       shape = MaterialTheme.shapes.extraLarge.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize),
       color = surfaceColor ?: MaterialTheme.colorScheme.surface,
       tonalElevation = tonalElevation,

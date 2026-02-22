@@ -21,6 +21,9 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
+import app.marlboroadvance.mpvex.repository.wyzie.WyzieSearchRepository
+import app.marlboroadvance.mpvex.repository.wyzie.WyzieSubtitle
+import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -86,10 +89,28 @@ class PlayerViewModel(
   private val advancedPreferences: AdvancedPreferences by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.marlboroadvance.mpvex.database.dao.PlaybackStateDao by inject()
+  private val wyzieRepository: WyzieSearchRepository by inject()
 
   // Playlist items for the playlist sheet
   private val _playlistItems = kotlinx.coroutines.flow.MutableStateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>>(emptyList())
   val playlistItems: kotlinx.coroutines.flow.StateFlow<List<app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistItem>> = _playlistItems.asStateFlow()
+
+  // Wyzie Search Results
+  private val _wyzieSearchResults = MutableStateFlow<List<WyzieSubtitle>>(emptyList())
+  val wyzieSearchResults: StateFlow<List<WyzieSubtitle>> = _wyzieSearchResults.asStateFlow()
+
+  private val _isDownloadingSub = MutableStateFlow(false)
+  val isDownloadingSub: StateFlow<Boolean> = _isDownloadingSub.asStateFlow()
+
+  private val _isSearchingSub = MutableStateFlow(false)
+  val isSearchingSub: StateFlow<Boolean> = _isSearchingSub.asStateFlow()
+
+  private val _isOnlineSectionExpanded = MutableStateFlow(true)
+  val isOnlineSectionExpanded: StateFlow<Boolean> = _isOnlineSectionExpanded.asStateFlow()
+
+  fun toggleOnlineSection() {
+      _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
+  }
 
   // Cache for video metadata to avoid re-extracting - limited size to prevent unbounded growth
   private val metadataCache = LinkedHashMap<String, Pair<String, String>>(101, 1f, true) // key: uri.toString(), value: (duration, resolution)
@@ -226,12 +247,15 @@ class PlayerViewModel(
   val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
 
   // Media title for subtitle association
-  private var currentMediaTitle: String = ""
+  var currentMediaTitle: String = ""
   private var lastAutoSelectedMediaTitle: String? = null
 
   // External subtitle tracking
   private val _externalSubtitles = mutableListOf<String>()
   val externalSubtitles: List<String> get() = _externalSubtitles.toList()
+  
+  // Mapping from mpv internal path/URI to the original source URI (resolves deletion issues)
+  private val mpvPathToUriMap = mutableMapOf<String, String>()
 
   // Repeat and Shuffle state
   private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
@@ -483,8 +507,14 @@ class PlayerViewModel(
     }
   }
 
-  fun addSubtitle(uri: Uri) {
+  fun addSubtitle(uri: Uri, select: Boolean = true, silent: Boolean = false) {
     viewModelScope.launch(Dispatchers.IO) {
+      val uriString = uri.toString()
+      if (_externalSubtitles.contains(uriString)) {
+        android.util.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
+        return@launch
+      }
+
       runCatching {
         val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
 
@@ -502,12 +532,18 @@ class PlayerViewModel(
               Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
           } catch (e: SecurityException) {
-            // Permission already granted or not available, continue anyway
-            android.util.Log.w("PlayerViewModel", "Could not take persistent permission for $uri", e)
+            // Permission already granted, not available, or not needed (e.g. from tree).
+            android.util.Log.i("PlayerViewModel", "Persistent permission not taken for $uri (may already have it via tree)")
           }
         }
 
-        MPVLib.command("sub-add", uri.toString(), "select")
+        val mpvPath = uri.resolveUri(host.context) ?: uri.toString()
+        val mode = if (select) "select" else "auto"
+        
+        // Store mapping for reliable physical deletion later
+        mpvPathToUriMap[mpvPath] = uri.toString()
+        
+        MPVLib.command("sub-add", mpvPath, mode)
 
         // Track external subtitle URI for persistence
         val uriString = uri.toString()
@@ -516,13 +552,43 @@ class PlayerViewModel(
         }
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-        withContext(Dispatchers.Main) {
-          showToast("$displayName added")
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("$displayName added")
+          }
         }
       }.onFailure {
-        withContext(Dispatchers.Main) {
-          showToast("Failed to load subtitle")
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("Failed to load subtitle")
+          }
         }
+      }
+    }
+  }
+
+  private fun scanLocalSubtitles(mediaTitle: String) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val saveFolderUri = subtitlesPreferences.subtitleSaveFolder.get()
+      if (saveFolderUri.isBlank()) return@launch
+      
+      try {
+        val sanitizedTitle = MediaInfoParser.parse(mediaTitle).title
+        val parentDir = DocumentFile.fromTreeUri(host.context, Uri.parse(saveFolderUri)) ?: return@launch
+        val movieDir = parentDir.findFile(sanitizedTitle) ?: return@launch
+        
+        if (movieDir.isDirectory) {
+          movieDir.listFiles().forEach { file ->
+            if (file.isFile && isValidSubtitleFile(file.name ?: "")) {
+              withContext(Dispatchers.Main) {
+                // Don't auto-select during scan, just make available
+                addSubtitle(file.uri, select = false, silent = true)
+              }
+            }
+          }
+        }
+      } catch (e: Exception) {
+        android.util.Log.e("PlayerViewModel", "Error scanning local subtitles: ${e.message}", e)
       }
     }
   }
@@ -533,6 +599,8 @@ class PlayerViewModel(
       lastAutoSelectedMediaTitle = null
       // Clear external subtitles when media changes
       _externalSubtitles.clear()
+      // Scan for previously downloaded/added subtitles
+      scanLocalSubtitles(mediaTitle)
     }
   }
 
@@ -543,20 +611,57 @@ class PlayerViewModel(
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch(Dispatchers.IO) {
-      // Find the subtitle URI before removing
+      // Find the subtitle track info before removing
       val tracks = subtitleTracks.value
       val trackToRemove = tracks.firstOrNull { it.id == id }
       
-      // Remove from MPV
-      MPVLib.command("sub-remove", id.toString())
-      
-      // Remove from tracked external subtitles if it's external
-      if (trackToRemove?.external == true) {
-        // Try to find and remove from our tracked list
-        // Since we can't get the original URI from MPV, we'll remove based on external flag
-        // This is a limitation, but on reload we'll re-add all tracked subtitles anyway
+      // If it's external, physically delete the file if we can find its URI
+      if (trackToRemove?.external == true && trackToRemove.externalFilename != null) {
+        val mpvPath = trackToRemove.externalFilename
+        val originalUriString = mpvPathToUriMap[mpvPath] ?: mpvPath
+        val uri = Uri.parse(originalUriString)
+        
+        val deleted = wyzieRepository.deleteSubtitleFile(uri)
+        
+        if (deleted) {
+          _externalSubtitles.remove(originalUriString)
+          mpvPathToUriMap.remove(mpvPath)
+          withContext(Dispatchers.Main) {
+            showToast("Subtitle deleted")
+          }
+        }
       }
+      
+        MPVLib.command("sub-remove", id.toString())
     }
+  }
+
+  fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null) {
+     viewModelScope.launch {
+         _isSearchingSub.value = true
+         wyzieRepository.search(query, season, episode)
+             .onSuccess { results ->
+                 _wyzieSearchResults.value = results
+             }
+             .onFailure {
+                 showToast("Search failed: ${it.message}")
+             }
+         _isSearchingSub.value = false
+     }
+  }
+
+  fun downloadSubtitle(subtitle: WyzieSubtitle) {
+      viewModelScope.launch {
+          _isDownloadingSub.value = true
+          wyzieRepository.download(subtitle, currentMediaTitle)
+              .onSuccess { uri ->
+                  addSubtitle(uri)
+              }
+              .onFailure {
+                  showToast("Download failed: ${it.message}")
+              }
+          _isDownloadingSub.value = false
+      }
   }
 
   fun selectSub(id: Int) {
@@ -1489,8 +1594,6 @@ class PlayerViewModel(
     (host as? PlayerActivity)?.playPrevious()
   }
 
-  fun getCurrentMediaTitle(): String = currentMediaTitle
-
   // ==================== Repeat and Shuffle ====================
 
   fun applyPersistedShuffleState() {
@@ -1621,7 +1724,6 @@ class PlayerViewModel(
   fun showToast(message: String) {
     Toast.makeText(host.context, message, Toast.LENGTH_SHORT).show()
   }
-
 }
 
 // Extension functions

@@ -22,6 +22,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSp
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
+import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -115,17 +116,31 @@ fun PlayerSheets(
           )
       }
 
+      val isSearching by viewModel.isSearchingSub.collectAsState()
+      val isDownloading by viewModel.isDownloadingSub.collectAsState()
+      val results by viewModel.wyzieSearchResults.collectAsState()
+      val isOnlineSectionExpanded by viewModel.isOnlineSectionExpanded.collectAsState()
+
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
         isSubtitleSelected = isSubtitleSelected,
-        onAddSubtitle = {
-             showFilePicker = true
+        onAddSubtitle = { showFilePicker = true },
+        onSearchOnline = { query ->
+          val mediaInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
+          viewModel.searchSubtitles(query ?: mediaInfo.title)
         },
+        onDownloadOnline = { viewModel.downloadSubtitle(it) },
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
         onDismissRequest = onDismissRequest,
+        isSearching = isSearching,
+        isDownloading = isDownloading,
+        searchResults = results.toImmutableList(),
+        isOnlineSectionExpanded = isOnlineSectionExpanded,
+        onToggleOnlineSection = { viewModel.toggleOnlineSection() },
+        mediaTitle = viewModel.currentMediaTitle,
       )
     }
 
@@ -277,7 +292,7 @@ fun PlayerSheets(
           isM3UPlaylist = isM3U,
           playerPreferences = playerPreferences,
         )
-      }
     }
   }
+}
 }
