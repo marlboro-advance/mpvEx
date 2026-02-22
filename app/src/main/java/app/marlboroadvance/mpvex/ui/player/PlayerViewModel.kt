@@ -105,6 +105,13 @@ class PlayerViewModel(
   private val _isSearchingSub = MutableStateFlow(false)
   val isSearchingSub: StateFlow<Boolean> = _isSearchingSub.asStateFlow()
 
+  private val _isOnlineSectionExpanded = MutableStateFlow(true)
+  val isOnlineSectionExpanded: StateFlow<Boolean> = _isOnlineSectionExpanded.asStateFlow()
+
+  fun toggleOnlineSection() {
+      _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
+  }
+
   // Cache for video metadata to avoid re-extracting - limited size to prevent unbounded growth
   private val metadataCache = LinkedHashMap<String, Pair<String, String>>(101, 1f, true) // key: uri.toString(), value: (duration, resolution)
   private val METADATA_CACHE_MAX_SIZE = 100
@@ -486,8 +493,14 @@ class PlayerViewModel(
     }
   }
 
-  fun addSubtitle(uri: Uri, select: Boolean = true) {
+  fun addSubtitle(uri: Uri, select: Boolean = true, silent: Boolean = false) {
     viewModelScope.launch(Dispatchers.IO) {
+      val uriString = uri.toString()
+      if (_externalSubtitles.contains(uriString)) {
+        android.util.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
+        return@launch
+      }
+
       runCatching {
         val fileName = getFileNameFromUri(uri) ?: "subtitle.srt"
 
@@ -505,8 +518,8 @@ class PlayerViewModel(
               Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
           } catch (e: SecurityException) {
-            // Permission already granted or not available, continue anyway
-            android.util.Log.w("PlayerViewModel", "Could not take persistent permission for $uri", e)
+            // Permission already granted, not available, or not needed (e.g. from tree).
+            android.util.Log.i("PlayerViewModel", "Persistent permission not taken for $uri (may already have it via tree)")
           }
         }
 
@@ -525,12 +538,16 @@ class PlayerViewModel(
         }
 
         val displayName = fileName.take(30).let { if (fileName.length > 30) "$it..." else it }
-        withContext(Dispatchers.Main) {
-          showToast("$displayName added")
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("$displayName added")
+          }
         }
       }.onFailure {
-        withContext(Dispatchers.Main) {
-          showToast("Failed to load subtitle")
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("Failed to load subtitle")
+          }
         }
       }
     }
@@ -551,7 +568,7 @@ class PlayerViewModel(
             if (file.isFile && isValidSubtitleFile(file.name ?: "")) {
               withContext(Dispatchers.Main) {
                 // Don't auto-select during scan, just make available
-                addSubtitle(file.uri, select = false)
+                addSubtitle(file.uri, select = false, silent = true)
               }
             }
           }

@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -103,7 +104,8 @@ fun getTrackTitle(
 ): String {
   // Handle external subtitles
   if (track.isSubtitle && track.external == true && track.externalFilename != null) {
-    val fileName = track.externalFilename.substringAfterLast("/")
+    val decoded = Uri.decode(track.externalFilename)
+    val fileName = decoded.substringAfterLast("/")
     return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, fileName)
   }
 

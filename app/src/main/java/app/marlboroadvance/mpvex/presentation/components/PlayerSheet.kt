@@ -81,12 +81,13 @@ fun PlayerSheet(
   } else {
     420.dp
   }
-  val maxHeight =
-    if (LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT) {
+  val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+  val maxHeight = when {
+    isImeVisible -> LocalConfiguration.current.screenHeightDp.dp
+    LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT ->
       LocalConfiguration.current.screenHeightDp.dp * .90f
-    } else {
-      LocalConfiguration.current.screenHeightDp.dp * .95f
-    }
+    else -> LocalConfiguration.current.screenHeightDp.dp
+  }
 
   var backgroundAlpha by remember { mutableFloatStateOf(0f) }
   val alpha by animateFloatAsState(
