@@ -125,11 +125,9 @@ class PlayerViewModel(
     // Poll precise position only when playing
     viewModelScope.launch {
       while (isActive) {
-        if (paused != true) {
-          val time = MPVLib.getPropertyDouble("time-pos")
-          if (time != null) {
-            _precisePosition.value = time.toFloat()
-          }
+        val time = MPVLib.getPropertyDouble("time-pos")
+        if (time != null) {
+          _precisePosition.value = time.toFloat()
         }
         delay(16) // ~60fps updates
       }
@@ -301,6 +299,17 @@ class PlayerViewModel(
       }
     }
     
+    
+    // Refresh custom buttons when Lua scripts are enabled/disabled or configuration changes
+    viewModelScope.launch {
+      combine(
+        advancedPreferences.enableLuaScripts.changes(),
+        playerPreferences.customButtons.changes()
+      ) { _, _ -> }.collect {
+        setupCustomButtons()
+      }
+    }
+
     setupCustomButtons()
   }
 
@@ -319,6 +328,11 @@ class PlayerViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       try {
         val buttons = mutableListOf<CustomButtonState>()
+        if (!advancedPreferences.enableLuaScripts.get()) {
+            _customButtons.value = buttons
+            return@launch
+        }
+
         val scriptContent = buildString {
           val jsonString = playerPreferences.customButtons.get()
           if (jsonString.isNotBlank()) {
