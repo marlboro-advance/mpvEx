@@ -116,11 +116,23 @@ fun PlayerSheets(
           )
       }
 
-      val isSearching by viewModel.isSearchingSub.collectAsState()
-      val isDownloading by viewModel.isDownloadingSub.collectAsState()
-      val results by viewModel.wyzieSearchResults.collectAsState()
-      val isOnlineSectionExpanded by viewModel.isOnlineSectionExpanded.collectAsState()
+      val isSearching by viewModel.isSearchingSub.composeCollectAsState()
+      val isDownloading by viewModel.isDownloadingSub.composeCollectAsState()
+      val results by viewModel.wyzieSearchResults.composeCollectAsState()
+      val isOnlineSectionExpanded by viewModel.isOnlineSectionExpanded.composeCollectAsState()
 
+      // Media Search / Autocomplete
+      val mediaResults by viewModel.mediaSearchResults.composeCollectAsState()
+      val isSearchingMedia by viewModel.isSearchingMedia.composeCollectAsState()
+      
+      // TV Show / Seasons / Episodes
+      val selectedTvShow by viewModel.selectedTvShow.composeCollectAsState()
+      val isFetchingTvDetails by viewModel.isFetchingTvDetails.composeCollectAsState()
+      val selectedSeason by viewModel.selectedSeason.composeCollectAsState()
+      val seasonEpisodes by viewModel.seasonEpisodes.composeCollectAsState()
+      val isFetchingEpisodes by viewModel.isFetchingEpisodes.composeCollectAsState()
+      val selectedEpisode by viewModel.selectedEpisode.composeCollectAsState()
+      
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
@@ -128,7 +140,9 @@ fun PlayerSheets(
         onAddSubtitle = { showFilePicker = true },
         onSearchOnline = { query ->
           val mediaInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
-          viewModel.searchSubtitles(query ?: mediaInfo.title)
+          val s = selectedSeason?.season_number
+          val e = selectedEpisode?.episode_number
+          viewModel.searchSubtitles(query ?: mediaInfo.title, s, e)
         },
         onDownloadOnline = { viewModel.downloadSubtitle(it) },
         onRemoveSubtitle = onRemoveSubtitle,
@@ -141,6 +155,20 @@ fun PlayerSheets(
         isOnlineSectionExpanded = isOnlineSectionExpanded,
         onToggleOnlineSection = { viewModel.toggleOnlineSection() },
         mediaTitle = viewModel.currentMediaTitle,
+        // Autocomplete & Series Selection
+        mediaSearchResults = mediaResults.toImmutableList(),
+        isSearchingMedia = isSearchingMedia,
+        onSearchMedia = { viewModel.searchMedia(it) },
+        onSelectMedia = { viewModel.selectMedia(it) },
+        selectedTvShow = selectedTvShow,
+        isFetchingTvDetails = isFetchingTvDetails,
+        selectedSeason = selectedSeason,
+        onSelectSeason = { viewModel.selectSeason(it) },
+        seasonEpisodes = seasonEpisodes.toImmutableList(),
+        isFetchingEpisodes = isFetchingEpisodes,
+        selectedEpisode = selectedEpisode,
+        onSelectEpisode = { viewModel.selectEpisode(it) },
+        onClearMediaSelection = { viewModel.clearMediaSelection() }
       )
     }
 

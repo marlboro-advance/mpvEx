@@ -20,7 +20,7 @@ object SortUtils {
       when (sortType) {
         VideoSortType.Title -> videos.sortedWith { t1, t2 -> NaturalOrderComparator.DEFAULT.compare(t1.displayName, t2.displayName) }
         VideoSortType.Duration -> videos.sortedBy { it.duration }
-        VideoSortType.Date -> videos.sortedBy { it.dateAdded }
+        VideoSortType.Date -> videos.sortedBy { it.dateModified }
         VideoSortType.Size -> videos.sortedBy { it.size }
       }
     return if (sortOrder.isAscending) sorted else sorted.reversed()

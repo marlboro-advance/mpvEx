@@ -34,28 +34,64 @@ data class WyzieSubtitle(
     val release: String? = null,
     val releases: List<String> = emptyList(),
     val origin: String? = null,
-    val fileName: String? = null
+    val fileName: String? = null,
+    val matchedRelease: String? = null,
+    val matchedFilter: String? = null,
+    val downloadCount: Int? = null
 ) {
     val displayName: String get() = fileName ?: release ?: media ?: "Unknown Subtitle"
     val displayLanguage: String get() = display ?: language ?: "Unknown"
 }
 
-@Serializable
-data class WyzieSearchResponse(
-    val results: List<WyzieSubtitle> = emptyList()
-)
 
 @Serializable
 data class WyzieTmdbResult(
     val id: Int,
     val mediaType: String,
     val title: String,
-    val releaseYear: String? = null
+    val releaseYear: String? = null,
+    val poster: String? = null,
+    val backdrop: String? = null,
+    val overview: String? = null
 )
 
 @Serializable
 data class WyzieTmdbResponse(
     val results: List<WyzieTmdbResult>
+)
+
+@Serializable
+data class WyzieSeason(
+    val id: Int? = null,
+    val name: String? = null,
+    val season_number: Int,
+    val episode_count: Int? = null,
+    val poster_path: String? = null,
+    val overview: String? = null
+)
+
+@Serializable
+data class WyzieEpisode(
+    val id: Int? = null,
+    val name: String? = null,
+    val episode_number: Int,
+    val season_number: Int,
+    val still_path: String? = null,
+    val overview: String? = null
+)
+
+@Serializable
+data class WyzieTvShowDetails(
+    val id: Int,
+    val name: String,
+    val seasons: List<WyzieSeason> = emptyList()
+)
+
+@Serializable
+data class WyzieSeasonDetails(
+    val id: String? = null,
+    val season_number: Int,
+    val episodes: List<WyzieEpisode> = emptyList()
 )
 
 object WyzieSources {
@@ -134,15 +170,19 @@ class WyzieSearchRepository(
             if (!query.startsWith("tt", ignoreCase = true) && !query.all { it.isDigit() }) {
                 val tmdbResults = tmdbSearch(query)
                 if (tmdbResults.isNotEmpty()) {
-                    searchId = tmdbResults[0].id.toString()
+                    val result = tmdbResults[0]
+                    if (result.mediaType == "tv" && (season == null || episode == null)) {
+                        return@withContext Result.failure(Exception("Please select both a Season and an Episode"))
+                    }
+                    searchId = result.id.toString()
                 } else {
                     return@withContext Result.failure(Exception("Could not find media ID for '$query'"))
                 }
             }
 
-            val selectedLangs = preferences.subdlLanguages.get()
-            val languages = if (selectedLangs.isNotEmpty() && !selectedLangs.contains("all")) {
-                selectedLangs.joinToString(",").lowercase()
+            val selectedLangsRaw = preferences.subdlLanguages.get()
+            val languages = if (selectedLangsRaw.isNotEmpty() && !selectedLangsRaw.contains("all")) {
+                selectedLangsRaw.joinToString(",").lowercase()
             } else null
 
             val sources = preferences.wyzieSources.get()
@@ -167,7 +207,23 @@ class WyzieSearchRepository(
                 hi = if (hearingImpaired) true else null
             )
             
-            val sortedResults = results.sortedWith(compareByDescending<WyzieSubtitle> { sub ->
+            // The Wyzie API often returns all languages regardless of query parameters.
+            // We must strictly filter the results locally based on selected languages.
+            val filteredResults = if (languages != null && languages != "all") {
+                val allowedLangs = languages.split(",").map { it.trim() }
+                results.filter { sub -> 
+                    // Map the subtitle language code (which is sometimes lowercase, sometimes not)
+                    val subLangCode = WyzieLanguages.ALL.entries.find { 
+                        it.value.equals(sub.language, ignoreCase = true) 
+                    }?.key ?: sub.language?.lowercase()
+                    
+                    allowedLangs.contains(subLangCode)
+                }
+            } else {
+                results
+            }
+            
+            val sortedResults = filteredResults.sortedWith(compareByDescending<WyzieSubtitle> { sub ->
                 val name = sub.displayName.lowercase()
                 val q = query.lowercase()
                 var score = 0
@@ -180,7 +236,7 @@ class WyzieSearchRepository(
 
             Result.success(sortedResults)
         } catch (e: Exception) {
-            Log.e("WyzieSearchRepository", "Search failed", e)
+            Log.e("WyzieSearchRepository", "Search failed: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -195,22 +251,53 @@ class WyzieSearchRepository(
         source: String = "all",
         hi: Boolean? = null
     ): List<WyzieSubtitle> {
-        val url = StringBuilder("$baseUrl/search?id=$id")
+        fun encode(s: String) = URLEncoder.encode(s, "UTF-8")
+        
+        val url = StringBuilder("$baseUrl/search?id=${encode(id)}")
             .apply {
-                season?.let { append("&season=$it") }
-                episode?.let { append("&episode=$it") }
-                language?.let { append("&language=$it") }
-                format?.let { append("&format=$it") }
-                encoding?.let { append("&encoding=$it") }
-                append("&source=$source&unzip=true")
+                if (season != null && episode != null) {
+                    append("&season=$season")
+                    append("&episode=$episode")
+                }
+                
+                // Wyzie API language format: single or multiple language codes are comma separated: `language=en,es`
+                language?.filter { !it.isWhitespace() }?.let { append("&language=${encode(it)}") }
+                
+                // Format and Encoding parameters
+                format?.split(",")?.filter { it.isNotBlank() }?.forEach { append("&${encode(it.trim())}=true") }
+                encoding?.split(",")?.filter { it.isNotBlank() }?.forEach { append("&${encode(it.trim())}=true") }
+                
+                // Source is a special case, "all" defaults to all sources implicitly, but adding specific sources works like `opensubtitles=true`
+                if (source != "all") {
+                   source.split(",").filter { it.isNotBlank() }.forEach { append("&${encode(it.trim())}=true") }
+                }
+
+                append("&unzip=true")
                 hi?.let { append("&hi=$it") }
             }.toString()
 
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Search failed: ${response.code}")
-            val body = response.body?.string() ?: throw IOException("Empty body")
-            return json.decodeFromString(body)
+            val responseBodyString = response.body?.string() ?: ""
+            if (!response.isSuccessful) {
+                // Wyzie API returns 400 when no subtitles are found for valid parameters
+                if (response.code == 400 && responseBodyString.contains("No subtitles found", ignoreCase = true)) {
+                    return emptyList()
+                }
+                
+                if (response.code == 400 && responseBodyString.contains("season and episode", ignoreCase = true)) {
+                    throw IOException("Please select both a Season and an Episode.")
+                }
+                val errorMsg = "Search failed: HTTP ${response.code} for URL: $url | Body: $responseBodyString"
+                Log.e("WyzieSearchRepository", errorMsg)
+                throw IOException(errorMsg)
+            }
+            return try {
+                json.decodeFromString<List<WyzieSubtitle>>(responseBodyString)
+            } catch (e: Exception) {
+                Log.e("WyzieSearchRepository", "Failed to parse response: $responseBodyString", e)
+                emptyList()
+            }
         }
     }
 
@@ -248,6 +335,45 @@ class WyzieSearchRepository(
             Result.success(Uri.fromFile(file))
         } catch (e: Exception) {
             Log.e("WyzieSearchRepository", "Download failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchMedia(query: String): Result<List<WyzieTmdbResult>> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(tmdbSearch(query))
+        } catch (e: Exception) {
+            Log.e("WyzieSearchRepository", "Media search failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTvShowDetails(id: Int): Result<WyzieTvShowDetails> = withContext(Dispatchers.IO) {
+        try {
+            val url = "$baseUrl/api/tmdb/tv/$id"
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Failed to get TV show details: ${response.code}")
+                val body = response.body?.string() ?: throw IOException("Empty body from $url")
+                Result.success(json.decodeFromString<WyzieTvShowDetails>(body))
+            }
+        } catch (e: Exception) {
+            Log.e("WyzieSearchRepository", "Failed to get TV show details", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getSeasonEpisodes(id: Int, season: Int): Result<List<WyzieEpisode>> = withContext(Dispatchers.IO) {
+        try {
+            val url = "$baseUrl/api/tmdb/tv/$id/$season"
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Failed to get season episodes: ${response.code}")
+                val body = response.body?.string() ?: throw IOException("Empty body from $url")
+                Result.success(json.decodeFromString<WyzieSeasonDetails>(body).episodes)
+            }
+        } catch (e: Exception) {
+            Log.e("WyzieSearchRepository", "Failed to get season episodes", e)
             Result.failure(e)
         }
     }

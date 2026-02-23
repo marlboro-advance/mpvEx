@@ -22,6 +22,7 @@ import app.marlboroadvance.mpvex.repository.wyzie.WyzieSubtitle
 import app.marlboroadvance.mpvex.ui.player.TrackNode
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
+import coil3.compose.AsyncImage
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
@@ -51,6 +52,20 @@ fun SubtitlesSheet(
   onToggleOnlineSection: () -> Unit = {},
   modifier: Modifier = Modifier,
   mediaTitle: String = "",
+  // Autocomplete & Series Selection
+  mediaSearchResults: ImmutableList<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult> = emptyList<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult>().toImmutableList(),
+  isSearchingMedia: Boolean = false,
+  onSearchMedia: (String) -> Unit = {},
+  onSelectMedia: (app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult) -> Unit = {},
+  selectedTvShow: app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails? = null,
+  isFetchingTvDetails: Boolean = false,
+  selectedSeason: app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason? = null,
+  onSelectSeason: (app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason) -> Unit = {},
+  seasonEpisodes: ImmutableList<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode> = emptyList<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>().toImmutableList(),
+  isFetchingEpisodes: Boolean = false,
+  selectedEpisode: app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode? = null,
+  onSelectEpisode: (app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode) -> Unit = {},
+  onClearMediaSelection: () -> Unit = {}
 ) {
   val items = remember(tracks, searchResults, isSearching, isOnlineSectionExpanded) {
     val list = mutableListOf<SubtitleItem>()
@@ -99,52 +114,110 @@ fun SubtitlesSheet(
       val keyboardController = LocalSoftwareKeyboardController.current
       var searchQuery by remember { mutableStateOf("") }
       val mediaInfo = remember(mediaTitle) { MediaInfoParser.parse(mediaTitle) }
-
-      OutlinedTextField(
-        value = searchQuery,
-        onValueChange = { searchQuery = it },
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
-        placeholder = { Text(stringResource(R.string.pref_subtitles_search_online)) },
-        leadingIcon = {
-          IconButton(onClick = { searchQuery = mediaInfo.title }) {
-            Icon(Icons.Default.AutoFixHigh, null, tint = MaterialTheme.colorScheme.primary)
-          }
-        },
-        trailingIcon = {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            if (searchQuery.isNotEmpty()) {
-              IconButton(onClick = { searchQuery = "" }) {
-                Icon(Icons.Default.Close, null)
+      
+      Column {
+        OutlinedTextField(
+          value = searchQuery,
+          onValueChange = { 
+            searchQuery = it
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.extraSmall),
+          placeholder = { Text(stringResource(R.string.pref_subtitles_search_online)) },
+          leadingIcon = {
+            IconButton(onClick = { 
+              searchQuery = mediaInfo.title
+              onSearchMedia(mediaInfo.title)
+            }) {
+              Icon(Icons.Default.AutoFixHigh, null, tint = MaterialTheme.colorScheme.primary)
+            }
+          },
+          trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = { 
+                  searchQuery = ""
+                  onClearMediaSelection()
+                }) {
+                  Icon(Icons.Default.Close, null)
+                }
+              }
+              if (isSearching || isDownloading || isSearchingMedia) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+              }
+              IconButton(onClick = {
+                val q = if (searchQuery.isNotBlank()) searchQuery else mediaInfo.title
+                searchQuery = q
+                onSearchMedia(q)
+                keyboardController?.hide()
+              }) {
+                Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
               }
             }
-            if (isSearching || isDownloading) {
-                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                 Spacer(Modifier.width(8.dp))
-            }
-            IconButton(onClick = { 
-              if (searchQuery.isNotBlank()) onSearchOnline(searchQuery) else onSearchOnline(null)
-              keyboardController?.hide()
-            }) {
-              Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
+          },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+          keyboardActions = KeyboardActions(onSearch = {
+            val q = if (searchQuery.isNotBlank()) searchQuery else mediaInfo.title
+            searchQuery = q
+            onSearchMedia(q)
+            keyboardController?.hide()
+          }),
+          shape = RoundedCornerShape(12.dp),
+          colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+          )
+        )
+
+        // Autocomplete Results
+        if (mediaSearchResults.isNotEmpty()) {
+          Card(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = MaterialTheme.spacing.medium)
+              .heightIn(max = 200.dp),
+            shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+          ) {
+            androidx.compose.foundation.lazy.LazyColumn {
+              items(mediaSearchResults.size) { index ->
+                val result = mediaSearchResults[index]
+                TmdbResultRow(
+                  result = result,
+                  onClick = { 
+                    searchQuery = result.title
+                    onSelectMedia(result)
+                    keyboardController?.hide()
+                  }
+                )
+                if (index < mediaSearchResults.size - 1) {
+                  HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
+              }
             }
           }
-        },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = {
-          onSearchOnline(if (searchQuery.isNotBlank()) searchQuery else null)
-          keyboardController?.hide()
-        }),
-        shape = RoundedCornerShape(12.dp),
-        colors = TextFieldDefaults.colors(
-          focusedContainerColor = Color.Transparent,
-          unfocusedContainerColor = Color.Transparent,
-          focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-          unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-        )
-      )
+        }
+
+        // Series / Season / Episode Selection UI
+        if (selectedTvShow != null) {
+          SeriesDetailsSection(
+            tvShow = selectedTvShow,
+            isFetchingSeasons = isFetchingTvDetails,
+            selectedSeason = selectedSeason,
+            onSelectSeason = onSelectSeason,
+            isFetchingEpisodes = isFetchingEpisodes,
+            episodes = seasonEpisodes,
+            selectedEpisode = selectedEpisode,
+            onSelectEpisode = onSelectEpisode,
+            onClose = onClearMediaSelection
+          )
+        }
+      }
       if (isSearching) {
         LinearProgressIndicator(
           modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium).height(2.dp),
@@ -266,3 +339,145 @@ fun SubtitleTrackRow(
     }
   }
 }
+
+@Composable
+fun TmdbResultRow(
+    result: app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = result.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${result.mediaType.uppercase()} ${result.releaseYear ?: ""}".trim(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun SeriesDetailsSection(
+    tvShow: app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails,
+    isFetchingSeasons: Boolean,
+    selectedSeason: app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason?,
+    onSelectSeason: (app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason) -> Unit,
+    isFetchingEpisodes: Boolean,
+    episodes: ImmutableList<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>,
+    selectedEpisode: app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode?,
+    onSelectEpisode: (app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode) -> Unit,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.medium)
+            .padding(bottom = MaterialTheme.spacing.small),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = tvShow.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Season Dropdown
+                val seasonDropdownExpanded = remember { mutableStateOf(false) }
+                Box {
+                  OutlinedButton(
+                      onClick = { seasonDropdownExpanded.value = true },
+                      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                      modifier = Modifier.height(32.dp)
+                  ) {
+                      Text(
+                          text = selectedSeason?.let { "S${it.season_number}" } ?: "Season",
+                          style = MaterialTheme.typography.bodySmall,
+                          maxLines = 1
+                      )
+                      Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                  }
+                  DropdownMenu(
+                      expanded = seasonDropdownExpanded.value,
+                      onDismissRequest = { seasonDropdownExpanded.value = false }
+                  ) {
+                      tvShow.seasons.forEach { season ->
+                          DropdownMenuItem(
+                              text = { Text("Season ${season.season_number}") },
+                              onClick = {
+                                  onSelectSeason(season)
+                                  seasonDropdownExpanded.value = false
+                              }
+                          )
+                      }
+                  }
+                }
+
+                // Episode Dropdown
+                val episodeDropdownExpanded = remember { mutableStateOf(false) }
+                Box {
+                  OutlinedButton(
+                      onClick = { episodeDropdownExpanded.value = true },
+                      enabled = selectedSeason != null && !isFetchingEpisodes,
+                      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                      modifier = Modifier.height(32.dp)
+                  ) {
+                      if (isFetchingEpisodes) {
+                          CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp)
+                          Spacer(Modifier.width(4.dp))
+                      }
+                      Text(
+                          text = selectedEpisode?.let { "E${it.episode_number}" } ?: "Ep",
+                          style = MaterialTheme.typography.bodySmall,
+                          maxLines = 1
+                      )
+                      Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                  }
+                  DropdownMenu(
+                      expanded = episodeDropdownExpanded.value,
+                      onDismissRequest = { episodeDropdownExpanded.value = false }
+                  ) {
+                      episodes.forEach { episode ->
+                          DropdownMenuItem(
+                              text = { Text("Ep ${episode.episode_number}: ${episode.name}") },
+                              onClick = {
+                                  onSelectEpisode(episode)
+                                  episodeDropdownExpanded.value = false
+                              }
+                          )
+                      }
+                  }
+                }
+
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+

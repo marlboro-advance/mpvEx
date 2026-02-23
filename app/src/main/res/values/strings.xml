@@ -176,7 +176,7 @@
   <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
   <string name="pref_subtitles_save_location">Subtitle Save Location</string>
   <string name="pref_subtitles_search_online">Online Subtitle Search…</string>
-  <string name="pref_subtitles_subdl_languages">SubDL Languages</string>
+  <string name="pref_subtitles_subdl_languages">Subtitle Languages</string>
   <string name="all_languages">All (Selective Filtering)</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>

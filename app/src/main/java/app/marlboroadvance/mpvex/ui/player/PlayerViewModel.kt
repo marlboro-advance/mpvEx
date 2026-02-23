@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -107,6 +108,33 @@ class PlayerViewModel(
 
   private val _isOnlineSectionExpanded = MutableStateFlow(true)
   val isOnlineSectionExpanded: StateFlow<Boolean> = _isOnlineSectionExpanded.asStateFlow()
+
+  // Media Search / Autocomplete
+  private val _mediaSearchResults = MutableStateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult>>(emptyList())
+  val mediaSearchResults: StateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult>> = _mediaSearchResults.asStateFlow()
+
+  private val _isSearchingMedia = MutableStateFlow(false)
+  val isSearchingMedia: StateFlow<Boolean> = _isSearchingMedia.asStateFlow()
+
+  // TV Show Details
+  private val _selectedTvShow = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails?>(null)
+  val selectedTvShow: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieTvShowDetails?> = _selectedTvShow.asStateFlow()
+
+  private val _isFetchingTvDetails = MutableStateFlow(false)
+  val isFetchingTvDetails: StateFlow<Boolean> = _isFetchingTvDetails.asStateFlow()
+
+  // Season / Episode
+  private val _selectedSeason = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason?>(null)
+  val selectedSeason: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason?> = _selectedSeason.asStateFlow()
+
+  private val _seasonEpisodes = MutableStateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>>(emptyList())
+  val seasonEpisodes: StateFlow<List<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode>> = _seasonEpisodes.asStateFlow()
+
+  private val _isFetchingEpisodes = MutableStateFlow(false)
+  val isFetchingEpisodes: StateFlow<Boolean> = _isFetchingEpisodes.asStateFlow()
+
+  private val _selectedEpisode = MutableStateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode?>(null)
+  val selectedEpisode: StateFlow<app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode?> = _selectedEpisode.asStateFlow()
 
   fun toggleOnlineSection() {
       _isOnlineSectionExpanded.value = !_isOnlineSectionExpanded.value
@@ -327,8 +355,8 @@ class PlayerViewModel(
     // Refresh custom buttons when Lua scripts are enabled/disabled or configuration changes
     viewModelScope.launch {
       combine(
-        advancedPreferences.enableLuaScripts.changes(),
-        playerPreferences.customButtons.changes()
+        advancedPreferences.enableLuaScripts.changes().drop(1),
+        playerPreferences.customButtons.changes().drop(1)
       ) { _, _ -> }.collect {
         setupCustomButtons()
       }
@@ -604,10 +632,6 @@ class PlayerViewModel(
     }
   }
 
-  fun setExternalSubtitles(subtitles: List<String>) {
-    _externalSubtitles.clear()
-    _externalSubtitles.addAll(subtitles)
-  }
 
   fun removeSubtitle(id: Int) {
     viewModelScope.launch(Dispatchers.IO) {
@@ -636,6 +660,95 @@ class PlayerViewModel(
     }
   }
 
+  // --- Media Search and Series Management ---
+
+  private var mediaSearchJob: Job? = null
+
+  fun searchMedia(query: String) {
+    mediaSearchJob?.cancel()
+    if (query.isBlank()) {
+      _mediaSearchResults.value = emptyList()
+      return
+    }
+
+    mediaSearchJob = viewModelScope.launch {
+      delay(300) // Debounce
+      _isSearchingMedia.value = true
+      wyzieRepository.searchMedia(query)
+        .onSuccess { results ->
+          _mediaSearchResults.value = results
+        }
+        .onFailure {
+          // Silent failure for autocomplete, or optionally show toast(if someone is reading this if u need u can impelmen this in future )
+        }
+      _isSearchingMedia.value = false
+    }
+  }
+
+  fun selectMedia(result: app.marlboroadvance.mpvex.repository.wyzie.WyzieTmdbResult) {
+    _mediaSearchResults.value = emptyList() // Clear results after selection
+    _wyzieSearchResults.value = emptyList() // Clear old subtitle results
+    
+    if (result.mediaType == "tv") {
+      fetchTvShowDetails(result.id)
+    } else {
+      // For movies, just search subtitles directly with the TMDB ID
+      searchSubtitles(result.title)
+      // Ideally we should pass the TMDB ID to searchSubtitles too if the API supports it
+    }
+  }
+
+  private fun fetchTvShowDetails(id: Int) {
+    viewModelScope.launch {
+      _isFetchingTvDetails.value = true
+        wyzieRepository.getTvShowDetails(id)
+          .onSuccess { details ->
+            val validSeasons = details.seasons.filter { it.season_number > 0 }.sortedBy { it.season_number }
+            _selectedTvShow.value = details.copy(seasons = validSeasons)
+            _selectedSeason.value = null
+            _seasonEpisodes.value = emptyList()
+          }
+        .onFailure {
+          showToast("Failed to load series details: ${it.message}")
+        }
+      _isFetchingTvDetails.value = false
+    }
+  }
+
+  fun selectSeason(season: app.marlboroadvance.mpvex.repository.wyzie.WyzieSeason) {
+    val tvShowId = _selectedTvShow.value?.id ?: return
+    _selectedSeason.value = season
+    
+    viewModelScope.launch {
+      _isFetchingEpisodes.value = true
+      wyzieRepository.getSeasonEpisodes(tvShowId, season.season_number)
+        .onSuccess { episodes ->
+          val validEpisodes = episodes.filter { it.episode_number > 0 }.sortedBy { it.episode_number }
+          _seasonEpisodes.value = validEpisodes
+          _selectedEpisode.value = null
+        }
+        .onFailure {
+          showToast("Failed to load episodes: ${it.message}")
+        }
+      _isFetchingEpisodes.value = false
+    }
+  }
+
+  fun selectEpisode(episode: app.marlboroadvance.mpvex.repository.wyzie.WyzieEpisode) {
+    _selectedEpisode.value = episode
+    val tvShowName = _selectedTvShow.value?.name ?: currentMediaTitle
+    searchSubtitles(tvShowName, episode.season_number, episode.episode_number)
+  }
+
+  fun clearMediaSelection() {
+    _selectedTvShow.value = null
+    _selectedSeason.value = null
+    _seasonEpisodes.value = emptyList()
+    _selectedEpisode.value = null
+    _mediaSearchResults.value = emptyList()
+  }
+
+  // --- Subtitle Search ---
   fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null) {
      viewModelScope.launch {
          _isSearchingSub.value = true
@@ -664,16 +777,6 @@ class PlayerViewModel(
       }
   }
 
-  fun selectSub(id: Int) {
-    val primarySid = MPVLib.getPropertyInt("sid")
-
-    // Toggle subtitle: if clicking the current subtitle, turn it off, otherwise select the new one
-    if (id == primarySid) {
-      MPVLib.setPropertyBoolean("sid", false)
-    } else {
-      MPVLib.setPropertyInt("sid", id)
-    }
-  }
 
   fun toggleSubtitle(id: Int) {
     val primarySid = MPVLib.getPropertyInt("sid") ?: 0
