@@ -236,6 +236,7 @@ fun PlayerSheets(
       VideoZoomSheet(
         videoZoom = videoZoom,
         onSetVideoZoom = viewModel::setVideoZoom,
+        onResetVideoPan = viewModel::resetVideoPan,
         onDismissRequest = onDismissRequest,
       )
     }

@@ -1279,6 +1279,24 @@ class PlayerViewModel(
     MPVLib.setPropertyDouble("video-zoom", zoom.toDouble())
   }
 
+  // Video pan (for pan & zoom feature)
+  private val _videoPanX = MutableStateFlow(0f)
+  val videoPanX: StateFlow<Float> = _videoPanX.asStateFlow()
+
+  private val _videoPanY = MutableStateFlow(0f)
+  val videoPanY: StateFlow<Float> = _videoPanY.asStateFlow()
+
+  fun setVideoPan(x: Float, y: Float) {
+    _videoPanX.value = x
+    _videoPanY.value = y
+    MPVLib.setPropertyDouble("video-pan-x", x.toDouble())
+    MPVLib.setPropertyDouble("video-pan-y", y.toDouble())
+  }
+
+  fun resetVideoPan() {
+    setVideoPan(0f, 0f)
+  }
+
   fun resetVideoZoom() {
     setVideoZoom(0f)
   }
