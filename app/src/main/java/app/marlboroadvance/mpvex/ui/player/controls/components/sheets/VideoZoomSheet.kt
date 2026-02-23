@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +46,7 @@ fun VideoZoomSheet(
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val defaultZoom by playerPreferences.defaultVideoZoom.collectAsState()
+  val panAndZoomEnabled by playerPreferences.panAndZoomEnabled.collectAsState()
   var zoom by remember { mutableFloatStateOf(videoZoom) }
 
   val currentOnSetVideoZoom by rememberUpdatedState(onSetVideoZoom)
@@ -62,6 +64,7 @@ fun VideoZoomSheet(
     ZoomVideoSheet(
       zoom = zoom,
       defaultZoom = defaultZoom,
+      panAndZoomEnabled = panAndZoomEnabled,
       onZoomChange = { newZoom -> zoom = newZoom },
       onSetAsDefault = {
         playerPreferences.defaultVideoZoom.set(zoom)
@@ -70,6 +73,14 @@ fun VideoZoomSheet(
         zoom = 0f
         playerPreferences.defaultVideoZoom.set(0f)
         onResetVideoPan()
+<<<<<<< HEAD
+=======
+      },
+      onPanAndZoomToggle = { enabled ->
+        playerPreferences.panAndZoomEnabled.set(enabled)
+        if (!enabled) {
+          onResetVideoPan()
+        }
       },
       modifier = modifier,
     )
@@ -80,9 +91,11 @@ fun VideoZoomSheet(
 private fun ZoomVideoSheet(
   zoom: Float,
   defaultZoom: Float,
+  panAndZoomEnabled: Boolean,
   onZoomChange: (Float) -> Unit,
   onSetAsDefault: () -> Unit,
   onReset: () -> Unit,
+  onPanAndZoomToggle: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val isDefault = zoom == defaultZoom
@@ -141,8 +154,24 @@ private fun ZoomVideoSheet(
           .padding(horizontal = MaterialTheme.spacing.medium)
           .padding(top = MaterialTheme.spacing.extraSmall),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.End,
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Switch(
+          checked = panAndZoomEnabled,
+          onCheckedChange = onPanAndZoomToggle,
+        )
+        Text(
+          text = "Pan & Zoom",
+          style = MaterialTheme.typography.bodySmall,
+        )
+      }
+
+      androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+
       Button(
         onClick = onSetAsDefault,
         enabled = !isDefault,

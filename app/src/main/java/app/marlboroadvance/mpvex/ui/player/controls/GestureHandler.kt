@@ -109,6 +109,7 @@ fun GestureHandler(
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
+  val panAndZoomEnabled by playerPreferences.panAndZoomEnabled.collectAsState()
   val horizontalSwipeToSeek by playerPreferences.horizontalSwipeToSeek.collectAsState()
   val horizontalSwipeSensitivity by playerPreferences.horizontalSwipeSensitivity.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
@@ -626,13 +627,17 @@ fun GestureHandler(
           }
         }
       }
-      .pointerInput(pinchToZoomGesture, areControlsLocked) {
+      .pointerInput(pinchToZoomGesture, panAndZoomEnabled, areControlsLocked) {
         if (!pinchToZoomGesture || areControlsLocked) return@pointerInput
 
         awaitEachGesture {
           var zoom = 0f
           var isZoomGestureStarted = false
           var initialDistance = 0f
+          var initialMidX = 0f
+          var initialMidY = 0f
+          var initialPanX = 0f
+          var initialPanY = 0f
 
           // Wait for at least one pointer
           awaitFirstDown(requireUnconsumed = false)
@@ -655,11 +660,19 @@ fun GestureHandler(
                     (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
                 ).toFloat()
 
+                // Midpoint of the two fingers
+                val midX = (pointer1.x + pointer2.x) / 2f
+                val midY = (pointer1.y + pointer2.y) / 2f
+
                 if (initialDistance == 0f) {
                   // First time detecting pinch - record initial distance and zoom
                   initialDistance = currentDistance
                   zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
                   isZoomGestureStarted = false
+                  initialMidX = midX
+                  initialMidY = midY
+                  initialPanX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
+                  initialPanY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
                 }
 
                 val distanceChange = abs(currentDistance - initialDistance)
@@ -677,6 +690,20 @@ fun GestureHandler(
                     val zoomDelta = ln(zoomScale.toDouble()).toFloat() * 1.5f
                     val newZoom = (zoom + zoomDelta).coerceIn(-2f, 3f)
                     viewModel.setVideoZoom(newZoom)
+
+                    // Pan toward finger midpoint when pan & zoom is enabled
+                    if (panAndZoomEnabled) {
+                      val screenWidth = size.width.toFloat()
+                      val screenHeight = size.height.toFloat()
+                      if (screenWidth > 0 && screenHeight > 0) {
+                        val deltaX = midX - initialMidX
+                        val deltaY = midY - initialMidY
+                        val panSensitivity = 1.5f / screenWidth
+                        val newPanX = (initialPanX - deltaX * panSensitivity).coerceIn(-1f, 1f)
+                        val newPanY = (initialPanY - deltaY * panSensitivity).coerceIn(-1f, 1f)
+                        viewModel.setVideoPan(newPanX, newPanY)
+                      }
+                    }
                   }
                 }
 
@@ -685,6 +712,59 @@ fun GestureHandler(
               }
             } else if (pointerCount < 2 && initialDistance != 0f) {
               // User lifted a finger, end the gesture
+              break
+            }
+          } while (event.changes.any { it.pressed })
+        }
+      }
+      // Single-finger pan gesture (only when Pan & Zoom enabled and zoomed in)
+      .pointerInput(panAndZoomEnabled, pinchToZoomGesture, areControlsLocked) {
+        if (!panAndZoomEnabled || !pinchToZoomGesture || areControlsLocked) return@pointerInput
+
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          val startPosition = down.position
+          var isPanning = false
+          var startPanX = 0f
+          var startPanY = 0f
+
+          do {
+            val event = awaitPointerEvent()
+            val pointerCount = event.changes.count { it.pressed }
+
+            if (pointerCount == 1) {
+              event.changes.forEach { change ->
+                if (change.pressed) {
+                  val currentZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+                  if (currentZoom <= 0f) return@forEach
+
+                  val currentPosition = change.position
+                  val deltaX = currentPosition.x - startPosition.x
+                  val deltaY = currentPosition.y - startPosition.y
+                  val distance = sqrt(deltaX * deltaX + deltaY * deltaY)
+
+                  if (!isPanning && distance > 30f && abs(deltaY) > abs(deltaX) * 0.5f) {
+                    // Start panning
+                    isPanning = true
+                    startPanX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
+                    startPanY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+                  }
+
+                  if (isPanning) {
+                    val screenWidth = size.width.toFloat()
+                    val screenHeight = size.height.toFloat()
+                    if (screenWidth > 0 && screenHeight > 0) {
+                      val panSensitivity = 1.5f / screenWidth
+                      val newPanX = (startPanX - deltaX * panSensitivity).coerceIn(-1f, 1f)
+                      val newPanY = (startPanY - deltaY * panSensitivity).coerceIn(-1f, 1f)
+                      viewModel.setVideoPan(newPanX, newPanY)
+                    }
+                    change.consume()
+                  }
+                }
+              }
+            } else if (pointerCount > 1) {
+              // Multi-finger, stop panning
               break
             }
           } while (event.changes.any { it.pressed })
