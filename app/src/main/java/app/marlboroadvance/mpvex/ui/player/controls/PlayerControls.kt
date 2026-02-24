@@ -437,7 +437,7 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
-              top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
+              top.linkTo(parent.top, if (isPortrait) 32.dp else 16.dp)
             },
         ) {
           when (currentPlayerUpdate) {
