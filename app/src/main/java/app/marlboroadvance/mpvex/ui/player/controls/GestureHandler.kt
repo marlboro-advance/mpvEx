@@ -638,6 +638,12 @@ fun GestureHandler(
           var initialMidY = 0f
           var initialPanX = 0f
           var initialPanY = 0f
+          // EMA smoothing state for buttery-smooth zoom & pan
+          var smoothedZoom = 0f
+          var smoothedPanX = 0f
+          var smoothedPanY = 0f
+          val zoomSmoothingFactor = 0.35f   // Lower = smoother but laggier
+          val panSmoothingFactor = 0.40f
 
           // Wait for at least one pointer
           awaitFirstDown(requireUnconsumed = false)
@@ -668,11 +674,14 @@ fun GestureHandler(
                   // First time detecting pinch - record initial distance and zoom
                   initialDistance = currentDistance
                   zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+                  smoothedZoom = zoom
                   isZoomGestureStarted = false
                   initialMidX = midX
                   initialMidY = midY
                   initialPanX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
                   initialPanY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+                  smoothedPanX = initialPanX
+                  smoothedPanY = initialPanY
                 }
 
                 val distanceChange = abs(currentDistance - initialDistance)
@@ -685,11 +694,14 @@ fun GestureHandler(
                   }
 
                   if (initialDistance > 0) {
-                    // Calculate zoom based on distance ratio
+                    // Calculate zoom based on distance ratio with logarithmic curve
                     val zoomScale = currentDistance / initialDistance
                     val zoomDelta = ln(zoomScale.toDouble()).toFloat() * 1.5f
-                    val newZoom = (zoom + zoomDelta).coerceIn(-2f, 3f)
-                    viewModel.setVideoZoom(newZoom)
+                    val rawZoom = (zoom + zoomDelta).coerceIn(-2f, 3f)
+
+                    // EMA smooth the zoom value for jitter-free experience
+                    smoothedZoom = smoothedZoom + (rawZoom - smoothedZoom) * zoomSmoothingFactor
+                    viewModel.setVideoZoom(smoothedZoom)
 
                     // Pan toward finger midpoint when pan & zoom is enabled
                     if (panAndZoomEnabled) {
@@ -698,10 +710,17 @@ fun GestureHandler(
                       if (screenWidth > 0 && screenHeight > 0) {
                         val deltaX = midX - initialMidX
                         val deltaY = midY - initialMidY
-                        val panSensitivity = 1.5f / screenWidth
-                        val newPanX = (initialPanX - deltaX * panSensitivity).coerceIn(-1f, 1f)
-                        val newPanY = (initialPanY - deltaY * panSensitivity).coerceIn(-1f, 1f)
-                        viewModel.setVideoPan(newPanX, newPanY)
+                        // Adaptive sensitivity: more zoomed in = finer pan control
+                        val zoomFactor = (1f + smoothedZoom).coerceAtLeast(0.5f)
+                        val panSensitivity = 1.2f / (screenWidth * zoomFactor)
+                        // Dynamic pan limits: allow wider panning when more zoomed in
+                        val panLimit = (0.5f + smoothedZoom * 0.5f).coerceIn(0.3f, 2f)
+                        val rawPanX = (initialPanX - deltaX * panSensitivity).coerceIn(-panLimit, panLimit)
+                        val rawPanY = (initialPanY - deltaY * panSensitivity).coerceIn(-panLimit, panLimit)
+                        // EMA smooth pan for buttery movement
+                        smoothedPanX = smoothedPanX + (rawPanX - smoothedPanX) * panSmoothingFactor
+                        smoothedPanY = smoothedPanY + (rawPanY - smoothedPanY) * panSmoothingFactor
+                        viewModel.setVideoPan(smoothedPanX, smoothedPanY)
                       }
                     }
                   }
@@ -727,6 +746,10 @@ fun GestureHandler(
           var isPanning = false
           var startPanX = 0f
           var startPanY = 0f
+          // EMA smoothing for single-finger pan
+          var smoothedPanX = 0f
+          var smoothedPanY = 0f
+          val panSmoothingFactor = 0.45f  // Responsive yet smooth
 
           do {
             val event = awaitPointerEvent()
@@ -743,21 +766,30 @@ fun GestureHandler(
                   val deltaY = currentPosition.y - startPosition.y
                   val distance = sqrt(deltaX * deltaX + deltaY * deltaY)
 
-                  if (!isPanning && distance > 30f && abs(deltaY) > abs(deltaX) * 0.5f) {
-                    // Start panning
+                  // Lower threshold (20f instead of 30f) and allow any direction
+                  if (!isPanning && distance > 20f) {
                     isPanning = true
                     startPanX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
                     startPanY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+                    smoothedPanX = startPanX
+                    smoothedPanY = startPanY
                   }
 
                   if (isPanning) {
                     val screenWidth = size.width.toFloat()
                     val screenHeight = size.height.toFloat()
                     if (screenWidth > 0 && screenHeight > 0) {
-                      val panSensitivity = 1.5f / screenWidth
-                      val newPanX = (startPanX - deltaX * panSensitivity).coerceIn(-1f, 1f)
-                      val newPanY = (startPanY - deltaY * panSensitivity).coerceIn(-1f, 1f)
-                      viewModel.setVideoPan(newPanX, newPanY)
+                      // Adaptive sensitivity based on zoom level
+                      val zoomFactor = (1f + currentZoom).coerceAtLeast(0.5f)
+                      val panSensitivity = 1.2f / (screenWidth * zoomFactor)
+                      // Dynamic pan limits based on zoom
+                      val panLimit = (0.5f + currentZoom * 0.5f).coerceIn(0.3f, 2f)
+                      val rawPanX = (startPanX - deltaX * panSensitivity).coerceIn(-panLimit, panLimit)
+                      val rawPanY = (startPanY - deltaY * panSensitivity).coerceIn(-panLimit, panLimit)
+                      // Apply EMA smoothing
+                      smoothedPanX = smoothedPanX + (rawPanX - smoothedPanX) * panSmoothingFactor
+                      smoothedPanY = smoothedPanY + (rawPanY - smoothedPanY) * panSmoothingFactor
+                      viewModel.setVideoPan(smoothedPanX, smoothedPanY)
                     }
                     change.consume()
                   }

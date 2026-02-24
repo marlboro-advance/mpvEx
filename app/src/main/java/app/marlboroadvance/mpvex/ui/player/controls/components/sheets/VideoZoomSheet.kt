@@ -73,8 +73,6 @@ fun VideoZoomSheet(
         zoom = 0f
         playerPreferences.defaultVideoZoom.set(0f)
         onResetVideoPan()
-<<<<<<< HEAD
-=======
       },
       onPanAndZoomToggle = { enabled ->
         playerPreferences.panAndZoomEnabled.set(enabled)
