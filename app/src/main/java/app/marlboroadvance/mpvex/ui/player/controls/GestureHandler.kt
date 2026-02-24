@@ -365,7 +365,9 @@ fun GestureHandler(
                 longPressTriggered = true
                 isLongPressing = true
                 longPressTriggeredDuringTouch = true
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                // haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.playerUpdate.update { PlayerUpdates.None }
+                viewModel.hideControls()
                 originalSpeed = playbackSpeed ?: 1f
                 // Ramp speed up incrementally to avoid audio filter stutter
                 val startSpeed = originalSpeed
@@ -475,7 +477,7 @@ fun GestureHandler(
                           val newSpeed = speedPresets[newIndex]
 
                           if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            // haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             lastAppliedSpeed = newSpeed
                             MPVLib.setPropertyFloat("speed", newSpeed)
                             viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed, true) }
