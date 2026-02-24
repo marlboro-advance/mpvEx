@@ -50,6 +50,7 @@ class PlayerPreferences(
   val playerTimeToDisappear = preferenceStore.getInt("player_time_to_disappear", 4000)
 
   val defaultVideoZoom = preferenceStore.getFloat("default_video_zoom", 0f)
+  val panAndZoomEnabled = preferenceStore.getBoolean("pan_and_zoom_enabled", false)
 
   val includeSubtitlesInSnapshot = preferenceStore.getBoolean("include_subtitles_in_snapshot", false)
 
@@ -62,7 +63,7 @@ class PlayerPreferences(
   val shuffleEnabled = preferenceStore.getBoolean("shuffle_enabled", false)
 
   // New: autoplay next video when current file ends
-  val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", false)
+  val autoplayNextVideo = preferenceStore.getBoolean("autoplay_next_video", true)
 
   val autoPiPOnNavigation = preferenceStore.getBoolean("auto_pip_on_navigation", false)
 

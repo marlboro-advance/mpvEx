@@ -750,28 +750,13 @@ fun GestureHandler(
                     val currentPos = clampedPosition.toInt()
                     val seekDelta = (clampedPosition - initialVideoPosition).toInt()
                     
-                    // Smart time formatting function - no hour if 0, always 00 format
-                    fun formatTime(seconds: Int): String {
-                      val absSeconds = kotlin.math.abs(seconds)
-                      val hours = absSeconds / 3600
-                      val minutes = (absSeconds % 3600) / 60
-                      val secs = absSeconds % 60
-                      
-                      return if (hours > 0) {
-                        String.format("%d:%02d:%02d", hours, minutes, secs)
-                      } else {
-                        String.format("%02d:%02d", minutes, secs)
-                      }
-                    }
-                    
-                    // Format current position
-                    val currentTimeStr = formatTime(currentPos)
+                    val currentTimeStr = formatSeekTime(currentPos)
                     
                     // Format seek delta with +/- prefix
                     val deltaStr = if (seekDelta >= 0) {
-                      "+${formatTime(seekDelta)}"
+                      "+${formatSeekTime(seekDelta)}"
                     } else {
-                      "-${formatTime(-seekDelta)}"
+                      "-${formatSeekTime(-seekDelta)}"
                     }
                     
                     // Use PlayerUpdates system like zoom updates
@@ -909,6 +894,18 @@ fun calculateNewVerticalGestureValue(originalValue: Int, startingY: Float, newY:
 
 fun calculateNewVerticalGestureValue(originalValue: Float, startingY: Float, newY: Float, sensitivity: Float): Float {
   return originalValue + ((startingY - newY) * sensitivity)
+}
+
+private fun formatSeekTime(seconds: Int): String {
+  val absSeconds = kotlin.math.abs(seconds)
+  val hours = absSeconds / 3600
+  val minutes = (absSeconds % 3600) / 60
+  val secs = absSeconds % 60
+  return if (hours > 0) {
+    String.format("%d:%02d:%02d", hours, minutes, secs)
+  } else {
+    String.format("%02d:%02d", minutes, secs)
+  }
 }
 
 @Composable

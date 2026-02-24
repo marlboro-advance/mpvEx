@@ -2245,16 +2245,8 @@ class PlayerActivity :
       Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
 
       for (subUri in externalSubUris) {
-        runCatching {
-          MPVLib.command("sub-add", subUri, "cached")
-          Log.d(TAG, "Restored external subtitle: $subUri")
-        }.onFailure { e ->
-          Log.e(TAG, "Failed to restore external subtitle: $subUri", e)
-        }
+        viewModel.addSubtitle(Uri.parse(subUri), select = false, silent = true)
       }
-
-      // Update ViewModel's tracked list
-      viewModel.setExternalSubtitles(externalSubUris)
     }
 
     // Always restore subtitle and audio tracks from saved state
@@ -3379,8 +3371,7 @@ class PlayerActivity :
           val videosInFolder =
             app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(
               context,
-              setOf(bucketId),
-              showHiddenFiles = showHiddenFiles,
+              setOf(bucketId)
             )
           val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
           sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }

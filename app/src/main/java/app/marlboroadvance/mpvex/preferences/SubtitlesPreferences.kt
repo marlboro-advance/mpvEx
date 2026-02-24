@@ -43,6 +43,15 @@ class SubtitlesPreferences(
   val defaultSubSpeed = preferenceStore.getFloat("sub_default_speed", 1f)
   
   val pickerPath = preferenceStore.getString("sub_picker_path")
+  
+  val subdlApiKey = preferenceStore.getString("subdl_api_key", "")
+  val subtitleSaveFolder = preferenceStore.getString("sub_save_folder", "")
+  val subdlLanguages = preferenceStore.getStringSet("subdl_languages", setOf("en"))
+  
+  val wyzieSources = preferenceStore.getStringSet("wyzie_sources", setOf("all"))
+  val wyzieFormats = preferenceStore.getStringSet("wyzie_formats", setOf("srt", "ass"))
+  val wyzieEncodings = preferenceStore.getStringSet("wyzie_encodings", setOf("utf-8"))
+  val wyzieHearingImpaired = preferenceStore.getBoolean("wyzie_hi", false)
 }
 
 enum class SubtitleJustification(

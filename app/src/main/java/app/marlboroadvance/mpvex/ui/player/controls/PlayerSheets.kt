@@ -21,7 +21,9 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.MoreSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.OnlineSubtitleSearchSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
+import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -119,13 +121,62 @@ fun PlayerSheets(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
         isSubtitleSelected = isSubtitleSelected,
-        onAddSubtitle = {
-             showFilePicker = true
-        },
+        onAddSubtitle = { showFilePicker = true },
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
+        onOpenOnlineSearch = { onShowSheet(Sheets.OnlineSubtitleSearch) },
+        onDismissRequest = onDismissRequest
+      )
+    }
+
+    Sheets.OnlineSubtitleSearch -> {
+      val isSearching by viewModel.isSearchingSub.composeCollectAsState()
+      val isDownloading by viewModel.isDownloadingSub.composeCollectAsState()
+      val results by viewModel.wyzieSearchResults.composeCollectAsState()
+      val isOnlineSectionExpanded by viewModel.isOnlineSectionExpanded.composeCollectAsState()
+
+      // Media Search / Autocomplete
+      val mediaResults by viewModel.mediaSearchResults.composeCollectAsState()
+      val isSearchingMedia by viewModel.isSearchingMedia.composeCollectAsState()
+      
+      // TV Show / Seasons / Episodes
+      val selectedTvShow by viewModel.selectedTvShow.composeCollectAsState()
+      val isFetchingTvDetails by viewModel.isFetchingTvDetails.composeCollectAsState()
+      val selectedSeason by viewModel.selectedSeason.composeCollectAsState()
+      val seasonEpisodes by viewModel.seasonEpisodes.composeCollectAsState()
+      val isFetchingEpisodes by viewModel.isFetchingEpisodes.composeCollectAsState()
+      val selectedEpisode by viewModel.selectedEpisode.composeCollectAsState()
+
+      OnlineSubtitleSearchSheet(
         onDismissRequest = onDismissRequest,
+        onDownloadOnline = { viewModel.downloadSubtitle(it) },
+        isSearching = isSearching,
+        isDownloading = isDownloading,
+        searchResults = results.toImmutableList(),
+        isOnlineSectionExpanded = isOnlineSectionExpanded,
+        onToggleOnlineSection = { viewModel.toggleOnlineSection() },
+        mediaTitle = viewModel.currentMediaTitle,
+        // Autocomplete & Series Selection
+        mediaSearchResults = mediaResults.toImmutableList(),
+        isSearchingMedia = isSearchingMedia,
+        onSearchMedia = { 
+          viewModel.searchMedia(it)
+          val mediaInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
+          val s = selectedSeason?.season_number
+          val e = selectedEpisode?.episode_number
+          viewModel.searchSubtitles(it, s, e)
+        },
+        onSelectMedia = { viewModel.selectMedia(it) },
+        selectedTvShow = selectedTvShow,
+        isFetchingTvDetails = isFetchingTvDetails,
+        selectedSeason = selectedSeason,
+        onSelectSeason = { viewModel.selectSeason(it) },
+        seasonEpisodes = seasonEpisodes.toImmutableList(),
+        isFetchingEpisodes = isFetchingEpisodes,
+        selectedEpisode = selectedEpisode,
+        onSelectEpisode = { viewModel.selectEpisode(it) },
+        onClearMediaSelection = { viewModel.clearMediaSelection() }
       )
     }
 
@@ -193,6 +244,7 @@ fun PlayerSheets(
       VideoZoomSheet(
         videoZoom = videoZoom,
         onSetVideoZoom = viewModel::setVideoZoom,
+        onResetVideoPan = viewModel::resetVideoPan,
         onDismissRequest = onDismissRequest,
       )
     }
@@ -277,7 +329,7 @@ fun PlayerSheets(
           isM3UPlaylist = isM3U,
           playerPreferences = playerPreferences,
         )
-      }
     }
   }
+}
 }

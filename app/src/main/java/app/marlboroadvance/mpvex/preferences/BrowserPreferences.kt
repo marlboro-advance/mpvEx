@@ -30,15 +30,17 @@ class BrowserPreferences(
   // Visibility preferences for video card chips
   val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", true)
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", true)
-  val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", true)
-  val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", true)
+  // Metadata-dependent chips (disabled by default for better performance)
+  val showResolutionChip = preferenceStore.getBoolean("show_resolution_chip", false)
+  val showFramerateInResolution = preferenceStore.getBoolean("show_framerate_in_resolution", false)
+  val showSubtitleIndicator = preferenceStore.getBoolean("show_subtitle_indicator", false)
   val showProgressBar = preferenceStore.getBoolean("show_progress_bar", true)
-  val showSubtitleIndicator = preferenceStore.getBoolean("show_subtitle_indicator", true)
   val mediaLayoutMode = preferenceStore.getEnum("media_layout_mode", MediaLayoutMode. LIST)
 
   // Visibility preferences for folder card chips
   val showTotalVideosChip = preferenceStore.getBoolean("show_total_videos_chip", true)
-  val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", true)
+  // Metadata-dependent chips (disabled by default for better performance)
+  val showTotalDurationChip = preferenceStore.getBoolean("show_total_duration_chip", false)
   val showTotalSizeChip = preferenceStore.getBoolean("show_total_size_chip", true)
   val showDateChip = preferenceStore.getBoolean("show_date_chip", false)
   val showFolderPath = preferenceStore.getBoolean("show_folder_path", true)

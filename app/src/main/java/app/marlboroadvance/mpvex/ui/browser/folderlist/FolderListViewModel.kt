@@ -12,6 +12,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
+import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -34,6 +36,7 @@ class FolderListViewModel(
   KoinComponent {
   private val foldersPreferences: FoldersPreferences by inject()
   private val appearancePreferences: AppearancePreferences by inject()
+  private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
 
   private val _allVideoFolders = MutableStateFlow<List<VideoFolder>>(emptyList())
@@ -212,13 +215,12 @@ class FolderListViewModel(
         val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
         val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
         val currentTime = System.currentTimeMillis()
-        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
         val foldersWithCounts = folders.map { folder ->
           try {
             // Get all videos in this folder
             val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
-              .getVideosInFolder(getApplication(), folder.bucketId, showHiddenFiles)
+              .getVideosInFolder(getApplication(), folder.bucketId)
 
             // Count new unplayed videos
             val newCount = videos.count { video ->
@@ -269,6 +271,8 @@ class FolderListViewModel(
    * Scans the filesystem recursively to find all folders containing videos.
    * Uses optimized parallel scanning with complete metadata (including duration)
    * to provide fast, non-flickering results.
+   * 
+   * Note: Always shows all folders including hidden ones (showHiddenFiles setting not applied here)
    */
   private fun loadVideoFolders() {
     // Cancel any previous scan to prevent concurrent execution
@@ -287,13 +291,10 @@ class FolderListViewModel(
         // Capture current state for comparison
         val currentFoldersMap = _allVideoFolders.value.associateBy { it.bucketId }
 
-        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
-
-        // PHASE 1: Fast Parallel Scan
+        // PHASE 1: Fast Parallel Scan (always show all folders)
         val fastFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
           .getAllVideoFoldersFast(
             context = getApplication(),
-            showHiddenFiles = showHiddenFiles,
             onProgress = { count ->
               // Only show progress if we don't have existing data (silent refresh)
               if (!hasExistingData) {
@@ -351,21 +352,28 @@ class FolderListViewModel(
              return@launch
         }
 
-        // OPTIMIZATION: Skip enrichment if data is up-to-date
-        if (!needsEnrichment) {
-             Log.d(TAG, "Data up to date, skipping enrichment")
+        // OPTIMIZATION: Skip enrichment if data is up-to-date OR if duration chip is disabled
+        val needsDurationEnrichment = needsEnrichment && MetadataRetrieval.isFolderMetadataNeeded(browserPreferences)
+        
+        if (!needsDurationEnrichment) {
+             if (!needsEnrichment) {
+                 Log.d(TAG, "Data up to date, skipping enrichment")
+             } else {
+                 Log.d(TAG, "Duration chip disabled, skipping metadata extraction")
+             }
              _scanStatus.value = null
              return@launch
         }
 
-        // PHASE 2: Background Enrichment
+        // PHASE 2: Background Enrichment (only if duration chip is enabled)
         _isEnriching.value = true
         _scanStatus.value = "Processing metadata..."
         
-        val enrichedFolders = app.marlboroadvance.mpvex.repository.MediaFileRepository
-          .enrichVideoFolders(
+        val enrichedFolders = MetadataRetrieval.enrichFoldersIfNeeded(
             context = getApplication(),
             folders = mergedFolders,
+            browserPreferences = browserPreferences,
+            metadataCache = metadataCache,
             onProgress = { processed, total ->
                _scanStatus.value = "Processing metadata $processed/$total"
             }

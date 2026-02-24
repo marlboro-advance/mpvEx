@@ -105,8 +105,8 @@ export async function getRepositoryStats() {
 
 export async function getLatestRelease() {
   try {
-    // Fetch list of releases to find the latest pre-release
-    const url = `${GITHUB_API_URL}/repos/${REPO_OWNER}/${REPO_NAME}/releases`;
+    // Fetch the latest stable release
+    const url = `${GITHUB_API_URL}/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
     const response = await fetch(url, {
       next: { revalidate: 3600 }, // Cache for 1 hour
       headers: {
@@ -118,13 +118,7 @@ export async function getLatestRelease() {
       throw new Error(`GitHub API error: ${response.status}`);
     }
 
-    const releases = await response.json();
-    // Find the first release that is a prerelease
-    const release = releases.find((r: any) => r.prerelease);
-
-    if (!release) {
-      return null;
-    }
+    const release = await response.json();
 
     return {
       tag_name: release.tag_name,

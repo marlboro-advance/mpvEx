@@ -62,6 +62,7 @@ import dev.vivvvek.seeker.Segment
 import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -141,9 +142,12 @@ fun SeekbarWithTimers(
                 if (!isUserInteracting) isUserInteracting = true
                 userPosition = newPosition.coerceIn(0f, duration)
                 onValueChange(userPosition)
-                scope.launch { animatedPosition.snapTo(userPosition) }
-                isUserInteracting = false
-                onValueChangeFinished()
+                scope.launch { 
+                  // Snap to user position immediately to prevent jumping
+                  animatedPosition.snapTo(userPosition)
+                  isUserInteracting = false
+                  onValueChangeFinished()
+                }
               }
             )
           }
@@ -153,14 +157,21 @@ fun SeekbarWithTimers(
                 isUserInteracting = true 
               },
               onDragEnd = { 
-                scope.launch { animatedPosition.snapTo(userPosition) }
-                isUserInteracting = false
-                onValueChangeFinished()
+                scope.launch { 
+                  // Allow a tiny window for mpv/viewModel to sync back before releasing control
+                  delay(50) 
+                  animatedPosition.snapTo(userPosition)
+                  isUserInteracting = false
+                  onValueChangeFinished()
+                }
               },
               onDragCancel = { 
-                scope.launch { animatedPosition.snapTo(userPosition) }
-                isUserInteracting = false
-                onValueChangeFinished()
+                scope.launch { 
+                  delay(50)
+                  animatedPosition.snapTo(userPosition)
+                  isUserInteracting = false
+                  onValueChangeFinished()
+                }
               },
             ) { change, _ ->
               change.consume()

@@ -540,7 +540,7 @@ fun PlayerControls(
           }
         }
 
-        val areButtonsVisible = controlsShown && !areControlsLocked
+        val areButtonsVisible = controlsShown && !areControlsLocked && !areSlidersShown
 
         AnimatedVisibility(
             visible = areButtonsVisible && !isPortrait,
@@ -579,7 +579,7 @@ fun PlayerControls(
                                     viewModel.callCustomButton(button.id)
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     resetControlsTimestamp = System.currentTimeMillis()
                                     viewModel.callCustomButtonLongPress(button.id)
                                 }
@@ -636,7 +636,7 @@ fun PlayerControls(
                                     viewModel.callCustomButton(button.id)
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     resetControlsTimestamp = System.currentTimeMillis()
                                     viewModel.callCustomButtonLongPress(button.id)
                                 }
@@ -694,7 +694,7 @@ fun PlayerControls(
                                     viewModel.callCustomButton(button.id)
                                 },
                                 onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     resetControlsTimestamp = System.currentTimeMillis()
                                     viewModel.callCustomButtonLongPress(button.id)
                                 }
