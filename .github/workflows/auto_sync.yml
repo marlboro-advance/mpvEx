@@ -1,0 +1,37 @@
+name: Auto Sync with Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Har raat 12 baje (Midnight) apne aap sync hoga
+  workflow_dispatch: # Manual button se sync karne ka option
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync and Merge from Upstream
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Original repo ko upstream set kiya
+          git remote add upstream https://github.com/marlboro-advance/mpvex.git
+          git fetch upstream
+          
+          # Naye changes ko aapke code me merge karega (Agar conflict aaya toh aapka custom design bacha lega)
+          git merge upstream/main -X ours -m "Auto-sync from upstream" || echo "No changes to merge"
+          git push origin ${{ github.ref_name }}
+
+      - name: Trigger Auto Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Sync ke baad aapka Auto Unsigned Build chalu kar dega
+          gh workflow run preview.yml --ref ${{ github.ref_name }} || echo "Build trigger failed but sync successful"
