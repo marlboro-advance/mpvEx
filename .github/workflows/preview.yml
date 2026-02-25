@@ -1,24 +1,30 @@
-name: Auto Unsigned Build
+name: Preview Build & Deploy
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 on:
-  push:
-    branches:
-      - main
-      - master
-      - improve-speed-overlay
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      commit_count: ${{ steps.set_commit.outputs.commit_count }}
+      build_time: ${{ steps.set_commit.outputs.build_time }}
+      universal_size: ${{ steps.set_commit.outputs.universal_size }}
+      arm64-v8a_size: ${{ steps.set_commit.outputs.arm64-v8a_size }}
+      armeabi-v7a_size: ${{ steps.set_commit.outputs.armeabi-v7a_size }}
+      x86_size: ${{ steps.set_commit.outputs.x86_size }}
+      x86_64_size: ${{ steps.set_commit.outputs.x86_64_size }}
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Generate short SHA
-        id: set-short-sha
-        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+        with:
+          fetch-depth: 0
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -30,23 +36,127 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Unsigned APKs with Gradle
-        run: ./gradlew assembleStandardRelease --warning-mode all
+      - name: Build with Gradle
+        run: ./gradlew assembleStandardPreview
 
-      - name: Upload arm64-v8a Artifact
+      - name: Sign APKs
+        run: |
+          set -e
+          PREVIEW_DIR="app/build/outputs/apk/standard/preview"
+          
+          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
+          
+          APK_COUNT=$(find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "No unsigned preview APK files found"
+            ls -lah "$PREVIEW_DIR"
+            rm release.keystore
+            exit 1
+          fi
+          
+          find "$PREVIEW_DIR" -name "app-standard-*-preview-unsigned.apk" -type f | while read -r apk; do
+            signed_apk="${apk/-unsigned/}"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks release.keystore \
+              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --out "$signed_apk" \
+              "$apk"
+          
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
+            rm "$apk"
+          done
+          
+          rm release.keystore
+          ls -lh "$PREVIEW_DIR"/app-standard-*-preview.apk
+
+      - name: Copy build artifacts
+        id: set_commit
+        run: |
+          set -e
+          commit_count=$(git rev-list --count HEAD)
+          build_time=$(date -u +"%Y-%m-%d %H:%M UTC")
+          echo "commit_count=$commit_count" >> $GITHUB_OUTPUT
+          echo "build_time=$build_time" >> $GITHUB_OUTPUT
+
+          declare -a apks=("universal" "arm64-v8a" "armeabi-v7a" "x86" "x86_64")
+          mkdir -p output
+          # Initialize empty array for file sizes
+          declare -a file_sizes=()
+          
+          for arch in "${apks[@]}"; do
+            src="app/build/outputs/apk/standard/preview/app-standard-${arch}-preview.apk"
+            dest="output/mpvEx-preview-r${commit_count}-${arch}.apk"
+            cp "$src" "$dest"
+          
+            # Get file size in human-readable format
+            size=$(du -h "$dest" | cut -f1)
+            echo "${arch}_size=$size" >> $GITHUB_OUTPUT
+          done
+
+      - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mpvEx-arm64-v8a-unsigned-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/standard/release/app-standard-arm64-v8a-release-unsigned.apk
+          name: preview-apks
+          path: output/
 
-      - name: Upload armeabi-v7a Artifact
-        uses: actions/upload-artifact@v4
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: mpvEx-armeabi-v7a-unsigned-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/standard/release/app-standard-armeabi-v7a-release-unsigned.apk
+          name: preview-apks
+          path: ./public
 
-      - name: Upload universal Artifact
-        uses: actions/upload-artifact@v4
+      - name: Generate download page
+        run: |
+          commit_count=${{ needs.build.outputs.commit_count }}
+          build_time="${{ needs.build.outputs.build_time }}"
+          echo "<!DOCTYPE html>
+          <html lang='en'>
+          <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>mpvEx Preview Builds</title>
+            <style>
+              body { font-family: sans-serif; padding: 2em; background: #0d1117; color: #c9d1d9; }
+              h1 { color: #58a6ff; }
+              a { color: #58a6ff; text-decoration: none; display: block; margin: 8px 0; }
+              a:hover { text-decoration: underline; }
+              .note { color: #8b949e; font-size: 0.9em; margin-top: 1em; }
+              .filesize { color: #8b949e; font-size: 0.9em; }
+            </style>
+          </head>
+          <body>
+            <h1>mpvEx Preview Build r${commit_count}</h1>
+            <p>Build time: ${build_time}</p>
+            <p>Download the latest signed APKs:</p>
+            <ul>
+              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'>Universal (${{ needs.build.outputs.universal_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'>arm64-v8a (${{ needs.build.outputs.arm64-v8a_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'>armeabi-v7a (${{ needs.build.outputs.armeabi-v7a_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86 (${{ needs.build.outputs.x86_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
+            </ul>
+            <p class='note'>Built automatically from the <code>dev</code> branch.</p>
+          </body>
+          </html>" > ./public/index.html
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: mpvEx-universal-unsigned-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/standard/release/app-standard-universal-release-unsigned.apk
+          path: ./public
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
