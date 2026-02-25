@@ -437,7 +437,13 @@ fun PlayerControls(
           modifier =
             Modifier.constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
-              top.linkTo(parent.top, if (isPortrait) 32.dp else 16.dp)
+              
+              // Yahan smart condition add ki gayi hai
+              if (currentPlayerUpdate is PlayerUpdates.MultipleSpeed || currentPlayerUpdate is PlayerUpdates.DynamicSpeedControl) {
+                  top.linkTo(parent.top, if (isPortrait) 32.dp else 16.dp)
+              } else {
+                  top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
+              }
             },
         ) {
           when (currentPlayerUpdate) {
