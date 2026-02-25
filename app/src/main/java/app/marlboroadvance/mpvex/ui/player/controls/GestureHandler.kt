@@ -365,7 +365,10 @@ fun GestureHandler(
                 longPressTriggered = true
                 isLongPressing = true
                 longPressTriggeredDuringTouch = true
-                // haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                
+                // PR ke liye haptics wapas chalu kar diya gaya hai
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                
                 viewModel.playerUpdate.update { PlayerUpdates.None }
                 viewModel.hideControls()
                 originalSpeed = playbackSpeed ?: 1f
@@ -477,7 +480,10 @@ fun GestureHandler(
                           val newSpeed = speedPresets[newIndex]
 
                           if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
-                            // haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            
+                            // PR ke liye swipe wala haptic bhi wapas chalu kar diya gaya hai
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            
                             lastAppliedSpeed = newSpeed
                             MPVLib.setPropertyFloat("speed", newSpeed)
                             viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed, true) }
