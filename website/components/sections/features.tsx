@@ -37,7 +37,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="py-32 px-4 sm:px-6 lg:px-8 bg-background relative overflow-hidden"
+      className="py-20 px-4 sm:px-6 lg:px-8 bg-background relative overflow-hidden"
     >
       {/* Background Grid */}
       <div className="absolute inset-0 bg-grid-black/[0.02] dark:bg-grid-white/[0.02] bg-size-[32px_32px] pointer-events-none" />

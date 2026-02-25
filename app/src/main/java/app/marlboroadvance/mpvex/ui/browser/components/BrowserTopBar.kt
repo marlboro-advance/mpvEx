@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.ViewComfy
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +42,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -167,6 +171,13 @@ private fun NormalTopBar(
   }
 
   TopAppBar(
+    colors = TopAppBarDefaults.topAppBarColors(
+      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
+        Color.Black
+      } else {
+        MaterialTheme.colorScheme.surfaceContainer
+      },
+    ),
     title = {
       val titleModifier = Modifier
         .onGloballyPositioned { coordinates ->
@@ -303,6 +314,13 @@ private fun SelectionTopBar(
   var showDropdown by remember { mutableStateOf(false) }
 
   TopAppBar(
+    colors = TopAppBarDefaults.topAppBarColors(
+      containerColor = if (MaterialTheme.colorScheme.background == Color.Black) {
+        Color.Black
+      } else {
+        MaterialTheme.colorScheme.surfaceContainer
+      },
+    ),
     title = {
       Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -472,6 +490,6 @@ private fun SelectionTopBar(
         }
       }
     },
-    modifier = modifier,
+    modifier = modifier.clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
   )
 }

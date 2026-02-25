@@ -25,7 +25,7 @@ import app.marlboroadvance.mpvex.domain.network.NetworkConnection
     PlaylistEntity::class,
     PlaylistItemEntity::class,
   ],
-  version = 7,
+  version = 8,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class)

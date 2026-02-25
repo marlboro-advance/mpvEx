@@ -1,5 +1,6 @@
 package app.marlboroadvance.mpvex.ui.browser.folderlist
 
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,8 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AccountTree
@@ -76,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
@@ -100,7 +105,6 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.ViewModeSelector
 import app.marlboroadvance.mpvex.ui.browser.dialogs.VisibilityToggle
 import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemDirectoryScreen
 import app.marlboroadvance.mpvex.ui.browser.filesystem.FileSystemBrowserRootScreen
-import app.marlboroadvance.mpvex.ui.browser.filesystem.searchRecursively
 import app.marlboroadvance.mpvex.ui.browser.selection.rememberSelectionManager
 import app.marlboroadvance.mpvex.ui.browser.sheets.PlayLinkSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
@@ -142,8 +146,6 @@ object FolderListScreen : Screen {
     val backstack = LocalBackStack.current
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusRequester = remember { FocusRequester() }
 
     // ViewModels and preferences
     val viewModel: FolderListViewModel = viewModel(
@@ -165,7 +167,11 @@ object FolderListScreen : Screen {
 
     // Preferences
     val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-    val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+    val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
     val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
@@ -173,8 +179,8 @@ object FolderListScreen : Screen {
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
     // UI state - use standalone states to avoid scroll issues with predictive back gesture
-    val listState = remember { LazyListState() }
-    val gridState = remember { androidx.compose.foundation.lazy.grid.LazyGridState() }
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val navigationBarHeight = LocalNavigationBarHeight.current
     val isRefreshing = remember { mutableStateOf(false) }
     val sortDialogOpen = rememberSaveable { mutableStateOf(false) }
@@ -186,6 +192,27 @@ object FolderListScreen : Screen {
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var searchResults by remember { mutableStateOf<List<FileSystemItem>>(emptyList()) }
     var isSearchLoading by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Search logic
+    LaunchedEffect(searchQuery, isSearching) {
+      if (isSearching && searchQuery.isNotBlank()) {
+        isSearchLoading = true
+        try {
+          val results = searchFoldersAndVideos(context, searchQuery)
+          searchResults = results
+        } catch (e: Exception) {
+          Log.e("FolderListScreen", "Error during search", e)
+          searchResults = emptyList()
+        } finally {
+          isSearchLoading = false
+        }
+      } else {
+        searchResults = emptyList()
+        isSearchLoading = false
+      }
+    }
 
     // FAB state
     val isFabVisible = remember { mutableStateOf(true) }
@@ -211,15 +238,8 @@ object FolderListScreen : Screen {
       SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
     }
 
-    val filteredFolders = if (isSearching && searchQuery.isNotBlank()) {
-      sortedFolders.filter { folder ->
-        folder.name.contains(searchQuery, ignoreCase = true) ||
-          folder.path.contains(searchQuery, ignoreCase = true)
-      }
-    } else {
-      sortedFolders
-    }
-
+    val filteredFolders = sortedFolders
+    
     // Selection manager
     val selectionManager = rememberSelectionManager(
       items = sortedFolders,
@@ -254,41 +274,6 @@ object FolderListScreen : Screen {
       }
       lifecycleOwner.lifecycle.addObserver(observer)
       onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // Search functionality
-    LaunchedEffect(isSearching) {
-      if (isSearching) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
-      }
-    }
-
-    LaunchedEffect(searchQuery, isSearching) {
-      if (isSearching && searchQuery.isNotBlank()) {
-        isSearchLoading = true
-        coroutineScope.launch {
-          try {
-            val allResults = mutableListOf<FileSystemItem>()
-            videoFolders.forEach { folder ->
-              try {
-                val folderResults = searchRecursively(context, folder.path, searchQuery)
-                allResults.addAll(folderResults)
-              } catch (e: Exception) {
-                android.util.Log.e("FolderListScreen", "Error searching folder ${folder.path}", e)
-              }
-            }
-            searchResults = allResults
-          } catch (e: Exception) {
-            android.util.Log.e("FolderListScreen", "Error during search", e)
-            searchResults = emptyList()
-          } finally {
-            isSearchLoading = false
-          }
-        }
-      } else {
-        searchResults = emptyList()
-      }
     }
 
     // Optimized back handler for immediate response
@@ -505,21 +490,40 @@ object FolderListScreen : Screen {
         when (permissionState.status) {
           PermissionStatus.Granted -> {
             if (isSearching) {
-              SearchContent(
-                searchQuery = searchQuery,
-                searchResults = searchResults,
-                isSearchLoading = isSearchLoading,
-                navigationBarHeight = navigationBarHeight,
-                showSubtitleIndicator = showSubtitleIndicator,
-                onFolderClick = { folder ->
-                  backstack.add(FileSystemDirectoryScreen(folder.path))
-                },
-                onVideoClick = { video ->
-                  MediaUtils.playFile(video, context, "search")
-                },
-                listState = listState, // Pass the main listState for FAB tracking
-                isFabVisible = isFabVisible, // Pass FAB visibility state
-              )
+              // Show search results
+              Box(modifier = Modifier.fillMaxSize()) {
+                if (isSearchLoading) {
+                  // Loading state
+                  Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                  ) {
+                    CircularProgressIndicator()
+                  }
+                } else if (searchResults.isEmpty()) {
+                  // No results
+                  EmptyState(
+                    icon = Icons.Filled.Search,
+                    title = "No results found",
+                    message = "No folders or videos match your search query",
+                    modifier = Modifier.fillMaxSize(),
+                  )
+                } else {
+                  // Show search results
+                  SearchResultsContent(
+                    searchResults = searchResults,
+                    navigationBarHeight = navigationBarHeight,
+                    onFolderClick = { folder ->
+                      backstack.add(app.marlboroadvance.mpvex.ui.browser.videolist.VideoListScreen(folder.bucketId, folder.name))
+                    },
+                    onVideoClick = { video ->
+                      MediaUtils.playFile(video, context)
+                    },
+                    mediaLayoutMode = mediaLayoutMode,
+                    folderGridColumns = folderGridColumns,
+                  )
+                }
+              }
             } else {
               FolderListContent(
                 folders = filteredFolders,
@@ -585,171 +589,6 @@ object FolderListScreen : Screen {
         itemCount = selectionManager.selectedCount,
         itemNames = selectionManager.getSelectedItems().map { it.name },
       )
-    }
-  }
-}
-
-@Composable
-private fun SearchContent(
-  searchQuery: String,
-  searchResults: List<FileSystemItem>,
-  isSearchLoading: Boolean,
-  navigationBarHeight: androidx.compose.ui.unit.Dp,
-  showSubtitleIndicator: Boolean,
-  onFolderClick: (FileSystemItem.Folder) -> Unit,
-  onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
-  listState: LazyListState, // Accept the main listState
-  isFabVisible: androidx.compose.runtime.MutableState<Boolean>, // Accept FAB visibility state
-) {
-  // Track scroll for FAB visibility in search mode with proper scroll direction detection
-  val previousIndex = remember { mutableIntStateOf(0) }
-  val previousOffset = remember { mutableIntStateOf(0) }
-  
-  LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-    val currentIndex = listState.firstVisibleItemIndex
-    val currentOffset = listState.firstVisibleItemScrollOffset
-    
-    // Show FAB when at the top
-    if (currentIndex == 0 && currentOffset == 0) {
-      isFabVisible.value = true
-    } else {
-      // Calculate if scrolling down or up
-      val isScrollingDown = if (currentIndex != previousIndex.value) {
-        currentIndex > previousIndex.value
-      } else {
-        currentOffset > previousOffset.value
-      }
-      
-      // Hide when scrolling down, show when scrolling up
-      isFabVisible.value = !isScrollingDown
-    }
-    
-    previousIndex.value = currentIndex
-    previousOffset.value = currentOffset
-  }
-
-  Box(modifier = Modifier.fillMaxSize()) {
-    when {
-      isSearchLoading -> {
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = 80.dp), // Account for bottom navigation bar
-          contentAlignment = Alignment.Center,
-        ) {
-          Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-          ) {
-            CircularProgressIndicator(
-              modifier = Modifier.size(48.dp),
-              color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-              text = "Searching all folders...",
-              style = MaterialTheme.typography.bodyMedium,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-        }
-      }
-
-      searchQuery.isNotBlank() && searchResults.isEmpty() -> {
-        Box(
-          modifier = Modifier.fillMaxSize(),
-          contentAlignment = Alignment.Center,
-        ) {
-          EmptyState(
-            icon = Icons.Filled.Folder,
-            title = "No results found",
-            message = "No files or folders match \"$searchQuery\"",
-          )
-        }
-      }
-
-      searchResults.isNotEmpty() -> {
-        Box(modifier = Modifier.fillMaxSize()) {
-          // Content extends full height for transparency
-          LazyColumn(
-            state = listState, // Use the passed listState
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-              start = 8.dp,
-              end = 8.dp,
-              top = 12.dp,
-              bottom = navigationBarHeight
-            ),
-          ) {
-            // Separate folders and videos for proper ordering and deduplicate
-            val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().distinctBy { it.path }
-            val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().distinctBy { it.video.id }
-
-            // Folders first
-            items(
-              items = folders,
-              key = { "search_folder_${it.path}_${it.hashCode()}" },
-            ) { folder ->
-              val folderModel = VideoFolder(
-                bucketId = folder.path,
-                name = folder.name,
-                path = folder.path,
-                videoCount = folder.videoCount,
-                totalSize = folder.totalSize,
-                totalDuration = folder.totalDuration,
-                lastModified = folder.lastModified / 1000,
-              )
-
-              FolderCard(
-                folder = folderModel,
-                isSelected = false,
-                isRecentlyPlayed = false,
-                onClick = { onFolderClick(folder) },
-                onLongClick = { },
-                onThumbClick = { onFolderClick(folder) },
-                isGridMode = false,
-              )
-            }
-
-            // Videos second
-            items(
-              items = videos,
-              key = { "search_video_${it.video.id}_${it.video.path}_${it.hashCode()}" },
-            ) { videoFile ->
-              VideoCard(
-                video = videoFile.video,
-                progressPercentage = null,
-                isRecentlyPlayed = false,
-                isSelected = false,
-                onClick = { onVideoClick(videoFile.video) },
-                onLongClick = { },
-                onThumbClick = { onVideoClick(videoFile.video) },
-                isGridMode = false,
-                showSubtitleIndicator = showSubtitleIndicator,
-                overrideShowSizeChip = null,
-                overrideShowResolutionChip = null,
-                useFolderNameStyle = false,
-              )
-            }
-          }
-
-          // Scrollbar with bottom padding to avoid overlap with navigation
-          Box(
-            modifier = Modifier
-              .fillMaxSize()
-              .padding(bottom = navigationBarHeight)
-          ) {
-            LazyColumnScrollbar(
-              state = listState, // Use the passed listState
-              settings = ScrollbarSettings(
-                thumbUnselectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                thumbSelectedColor = MaterialTheme.colorScheme.primary,
-              ),
-            ) {
-              // Empty content - scrollbar only
-            }
-          }
-        }
-      }
     }
   }
 }
@@ -1023,28 +862,45 @@ private fun FolderSortDialog(
   val showTotalVideosChip by browserPreferences.showTotalVideosChip.collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val folderViewMode by browserPreferences.folderViewMode.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
+      label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      onValueChange = {
+        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
+        else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = if (isLandscape) 3f..5f else 2f..4f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Video Grid Columns",
+      label = "Video Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      onValueChange = {
+        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+        else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = if (isLandscape) 3f..5f else 1f..3f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 
@@ -1135,8 +991,180 @@ private fun FolderSortDialog(
         checked = showTotalSizeChip,
         onCheckedChange = { browserPreferences.showTotalSizeChip.set(it) },
       ),
+      VisibilityToggle(
+        label = "Date",
+        checked = showDateChip,
+        onCheckedChange = { browserPreferences.showDateChip.set(it) },
+      ),
     ),
     folderGridColumnSelector = folderGridColumnSelector,
     videoGridColumnSelector = videoGridColumnSelector,
   )
+}
+
+
+/**
+ * Displays search results based on the user's layout preference (grid or list)
+ */
+@Composable
+private fun SearchResultsContent(
+  searchResults: List<FileSystemItem>,
+  navigationBarHeight: androidx.compose.ui.unit.Dp,
+  onFolderClick: (app.marlboroadvance.mpvex.domain.media.model.VideoFolder) -> Unit,
+  onVideoClick: (app.marlboroadvance.mpvex.domain.media.model.Video) -> Unit,
+  mediaLayoutMode: app.marlboroadvance.mpvex.preferences.MediaLayoutMode,
+  folderGridColumns: Int,
+) {
+  val folders = searchResults.filterIsInstance<FileSystemItem.Folder>().map { folder ->
+    app.marlboroadvance.mpvex.domain.media.model.VideoFolder(
+      bucketId = folder.path,  // Use path as bucketId since FileSystemItem.Folder doesn't have bucketId
+      name = folder.name,
+      path = folder.path,
+      videoCount = folder.videoCount,
+      totalSize = folder.totalSize,
+      totalDuration = folder.totalDuration,
+      lastModified = folder.lastModified
+    )
+  }
+  val videos = searchResults.filterIsInstance<FileSystemItem.VideoFile>().map { it.video }
+  
+  val isGridMode = mediaLayoutMode == app.marlboroadvance.mpvex.preferences.MediaLayoutMode.GRID
+  
+  Box(modifier = Modifier.fillMaxSize()) {
+    if (isGridMode) {
+      LazyVerticalGrid(
+        columns = GridCells.Fixed(folderGridColumns),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+          start = 8.dp,
+          end = 8.dp,
+          top = 8.dp,
+          bottom = navigationBarHeight + 8.dp
+        ),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        items(folders.size) { index ->
+          val folder = folders[index]
+          FolderCard(
+            folder = folder,
+            isSelected = false,
+            isRecentlyPlayed = false,
+            onClick = { onFolderClick(folder) },
+            onLongClick = {},
+            onThumbClick = { onFolderClick(folder) },
+            newVideoCount = 0,
+            isGridMode = true,
+          )
+        }
+        
+        items(videos.size) { index ->
+          val video = videos[index]
+          VideoCard(
+            video = video,
+            isSelected = false,
+            onClick = { onVideoClick(video) },
+            onLongClick = {},
+            onThumbClick = { onVideoClick(video) },
+            isGridMode = true,
+          )
+        }
+      }
+    } else {
+      LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+          start = 8.dp,
+          end = 8.dp,
+          top = 8.dp,
+          bottom = navigationBarHeight + 8.dp
+        ),
+      ) {
+        items(folders.size) { index ->
+          val folder = folders[index]
+          FolderCard(
+            folder = folder,
+            isSelected = false,
+            isRecentlyPlayed = false,
+            onClick = { onFolderClick(folder) },
+            onLongClick = {},
+            onThumbClick = { onFolderClick(folder) },
+            newVideoCount = 0,
+            isGridMode = false,
+          )
+        }
+        
+        items(videos.size) { index ->
+          val video = videos[index]
+          VideoCard(
+            video = video,
+            isSelected = false,
+            onClick = { onVideoClick(video) },
+            onLongClick = {},
+            onThumbClick = { onVideoClick(video) },
+            isGridMode = false,
+          )
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Searches for folders and videos matching the query
+ * Returns FileSystemItem results containing matching folders and videos
+ */
+private suspend fun searchFoldersAndVideos(
+  context: Context,
+  query: String,
+): List<FileSystemItem> {
+  val results = mutableListOf<FileSystemItem>()
+  
+  try {
+    Log.d("FolderListScreen", "Searching for: $query")
+    
+    // Get all video folders
+    val folders = app.marlboroadvance.mpvex.repository.MediaFileRepository
+      .getAllVideoFoldersFast(context)
+    
+    // Search in folders
+    folders.forEach { folder ->
+      if (folder.name.contains(query, ignoreCase = true) || 
+          folder.path.contains(query, ignoreCase = true)) {
+        results.add(
+          FileSystemItem.Folder(
+            name = folder.name,
+            path = folder.path,
+            lastModified = folder.lastModified,
+            videoCount = folder.videoCount,
+            totalSize = folder.totalSize,
+            totalDuration = folder.totalDuration,
+          )
+        )
+      }
+      
+      // Also search within videos in this folder
+      val videos = app.marlboroadvance.mpvex.repository.MediaFileRepository
+        .getVideosInFolder(context, folder.bucketId)
+      
+      videos.forEach { video ->
+        if (video.displayName.contains(query, ignoreCase = true)) {
+          results.add(
+            FileSystemItem.VideoFile(
+              name = video.displayName,
+              path = video.path,
+              lastModified = video.dateModified,
+              video = video,
+            )
+          )
+        }
+      }
+    }
+    
+    Log.d("FolderListScreen", "Found ${results.size} results for: $query")
+  } catch (e: Exception) {
+    Log.e("FolderListScreen", "Error searching folders and videos", e)
+  }
+  
+  return results
 }

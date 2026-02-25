@@ -8,12 +8,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
@@ -51,6 +54,7 @@ fun CurrentChapter(
     modifier =
       modifier
         .height(45.dp)
+        .widthIn(max = 220.dp)
         .clip(RoundedCornerShape(50))
         .clickable(onClick = onClick),
     shape = RoundedCornerShape(50),
@@ -86,22 +90,13 @@ fun CurrentChapter(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
       ) {
-        Icon(
-          imageVector = Icons.Default.Bookmarks,
-          contentDescription = null,
-          modifier =
-            Modifier
-              .padding(end = MaterialTheme.spacing.extraSmall)
-              .size(20.dp),
-          tint = MaterialTheme.colorScheme.onSurface,
-        )
         Text(
           text = Utils.prettyTime(currentChapter.start.toInt()),
-          fontWeight = FontWeight.ExtraBold,
+          fontWeight = FontWeight.Bold,
           style = MaterialTheme.typography.bodyMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
-          color = MaterialTheme.colorScheme.onSurface,
+          color = MaterialTheme.colorScheme.primary,
         )
         currentChapter.name.let {
           Text(
@@ -118,8 +113,9 @@ fun CurrentChapter(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.basicMarquee(),
           )
         }
       }

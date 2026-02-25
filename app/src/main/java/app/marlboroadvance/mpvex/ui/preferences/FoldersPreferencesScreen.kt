@@ -481,16 +481,10 @@ private fun AddFolderDialog(
  * Uses optimized fast scanning for better performance
  */
 private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> {
-  val appearancePreferences =
-    org.koin.java.KoinJavaComponent.get<AppearancePreferences>(AppearancePreferences::class.java)
-
-  val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
-
   // Use fast optimized scanning - 5-10x faster for large libraries
   return app.marlboroadvance.mpvex.repository.MediaFileRepository
     .getAllVideoFoldersFast(
-      context = context,
-      showHiddenFiles = showHiddenFiles,
+      context = context
     )
 }
 

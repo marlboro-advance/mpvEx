@@ -340,25 +340,33 @@ object MediaInfoOps {
           val hasEmbeddedSubtitles = textCount > 0
 
           val subtitleCodec = if (hasEmbeddedSubtitles) {
-            val codecId = mi.getInfo(MediaInfo.Stream.Text, 0, "CodecID")
+            val codecs = mutableSetOf<String>()
+            for (i in 0 until textCount) {
+              val codecId = mi.getInfo(MediaInfo.Stream.Text, i, "CodecID")
 
-            when {
-              codecId.contains("PGS", ignoreCase = true) -> "PGS"
-              codecId.contains("ASS", ignoreCase = true) -> "ASS"
-              codecId.contains("SSA", ignoreCase = true) -> "SSA"
-              codecId.contains("SRT", ignoreCase = true) -> "SRT"
-              codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
-              codecId.contains("VOBSUB", ignoreCase = true) -> "VOBSUB"
-              codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
-              codecId.contains("UTF8", ignoreCase = true) -> "SRT"
-              codecId.contains("HDMV", ignoreCase = true) -> "PGS"
-              codecId.contains("DVB", ignoreCase = true) -> "DVB"
-              codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
-              codecId.isNotEmpty() -> {
-                codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+              val normalizedCodec = when {
+                codecId.contains("PGS", ignoreCase = true) -> "PGS"
+                codecId.contains("ASS", ignoreCase = true) -> "ASS"
+                codecId.contains("SSA", ignoreCase = true) -> "SSA"
+                codecId.contains("SRT", ignoreCase = true) -> "SRT"
+                codecId.contains("SUBRIP", ignoreCase = true) -> "SRT"
+                codecId.contains("VOBSUB", ignoreCase = true) -> "DVD"
+                codecId.contains("WEBVTT", ignoreCase = true) -> "VTT"
+                codecId.contains("UTF8", ignoreCase = true) -> "SRT"
+                codecId.contains("HDMV", ignoreCase = true) -> "PGS"
+                codecId.contains("DVB", ignoreCase = true) -> "DVB"
+                codecId.contains("MOV_TEXT", ignoreCase = true) -> "TX3G"
+                codecId.isNotEmpty() -> {
+                  codecId.substringAfterLast("/").substringAfterLast("_").uppercase()
+                }
+                else -> ""
               }
-              else -> ""
+              
+              if (normalizedCodec.isNotEmpty()) {
+                codecs.add(normalizedCodec)
+              }
             }
+            codecs.joinToString(" ")
           } else ""
 
           VideoMetadata(fileSize, duration, width, height, fps, hasEmbeddedSubtitles, subtitleCodec)

@@ -10,6 +10,7 @@ import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.utils.storage.FolderScanUtils
+import app.marlboroadvance.mpvex.utils.storage.MediaStoreScanner
 import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,7 +40,7 @@ object MediaFileRepository : KoinComponent {
   // In-memory cache for fast subsequent loads
   private val videoFoldersCache = mutableMapOf<String, Pair<List<VideoFolder>, Long>>()
   private val videosCache = mutableMapOf<String, Pair<List<Video>, Long>>()
-  private const val CACHE_VALIDITY_MS = Long.MAX_VALUE // Never expire - only clear on manual refresh
+  private const val CACHE_VALIDITY_MS = 10 * 60 * 1000L // 10 minutes — still cleared on manual refresh
 
   /**
    * Clears all in-memory caches
@@ -55,9 +56,7 @@ object MediaFileRepository : KoinComponent {
    * Clears cache for a specific folder (all variants)
    */
   fun clearCacheForFolder(bucketId: String) {
-    // Clear both cached variants (with and without hidden files)
-    videosCache.remove("$bucketId-true")
-    videosCache.remove("$bucketId-false")
+    videosCache.remove(bucketId)
     Log.d(TAG, "Cleared cache for bucket: $bucketId")
   }
 
@@ -66,18 +65,15 @@ object MediaFileRepository : KoinComponent {
   // =============================================================================
 
   /**
-   * Scans all storage volumes to find all folders containing videos
-   * Used by FolderListViewModel for album view
-   *
-   * LEGACY VERSION: Maintains backward compatibility with metadata extraction
-   * For better performance, use getAllVideoFoldersFast() instead
+   * Scans all storage volumes to find all folders containing videos using MediaStore
+   * Much faster and simpler than recursive file scanning
+   * Shows all folders including hidden ones.
    */
   suspend fun getAllVideoFolders(
-    context: Context,
-    showHiddenFiles: Boolean,
+    context: Context
   ): List<VideoFolder> =
     withContext(Dispatchers.IO) {
-      val cacheKey = "all_folders_$showHiddenFiles"
+      val cacheKey = "all_folders"
 
       // Check cache first
       videoFoldersCache[cacheKey]?.let { (cached, timestamp) ->
@@ -88,12 +84,7 @@ object MediaFileRepository : KoinComponent {
       }
 
       try {
-        val folders = FolderScanUtils.scanAllStorageForVideoFolders(
-          context = context,
-          showHiddenFiles = showHiddenFiles,
-          metadataCache = metadataCache,
-        )
-        val result = FolderScanUtils.convertToVideoFolders(folders)
+        val result = MediaStoreScanner.getAllVideoFolders(context)
 
         // Update cache
         videoFoldersCache[cacheKey] = Pair(result, System.currentTimeMillis())
@@ -107,99 +98,40 @@ object MediaFileRepository : KoinComponent {
     }
 
   /**
-   * OPTIMIZED: Ultra-fast scan for video folders with parallel processing
-   * Returns folders immediately with basic info (count, size)
-   * Duration will be 0 initially - call enrichVideoFolders() to populate
-   *
-   * This is 5-10x faster than getAllVideoFolders() for large file systems
-   *
-   * @param context Application context
-   * @param showHiddenFiles Whether to show hidden files/folders
-   * @param onProgress Optional callback for progress updates (folder count found)
-   * @return List of VideoFolder with basic info (no duration)
+   * Fast scan using MediaStore - same as getAllVideoFolders
+   * Kept for backward compatibility
    */
   suspend fun getAllVideoFoldersFast(
     context: Context,
-    showHiddenFiles: Boolean,
     onProgress: ((Int) -> Unit)? = null,
-  ): List<VideoFolder> =
-    withContext(Dispatchers.IO) {
-      try {
-        val folders = FolderScanUtils.scanAllStorageForVideoFoldersOptimized(
-          context = context,
-          showHiddenFiles = showHiddenFiles,
-          onProgress = onProgress,
-        )
-        FolderScanUtils.convertToVideoFolders(folders)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error fast scanning for video folders", e)
-        emptyList()
-      }
-    }
+  ): List<VideoFolder> = getAllVideoFolders(context)
 
   /**
-   * OPTIMIZED: Enriches folder list with metadata (duration) in background
-   * Call after getAllVideoFoldersFast() to add duration information
-   *
-   * @param context Application context
-   * @param folders List of folders to enrich (from fast scan)
-   * @param onProgress Optional callback for progress (processed, total)
-   * @return Updated list with duration information
+   * No-op enrichment - MediaStore already provides all metadata
+   * Kept for backward compatibility
    */
   suspend fun enrichVideoFolders(
     context: Context,
     folders: List<VideoFolder>,
     onProgress: ((Int, Int) -> Unit)? = null,
-  ): List<VideoFolder> =
-    withContext(Dispatchers.IO) {
-      try {
-        // Convert back to FolderData map
-        val folderDataMap = folders.associate { folder ->
-          folder.path to FolderScanUtils.FolderData(
-            path = folder.path,
-            name = folder.name,
-            videoCount = folder.videoCount,
-            totalSize = folder.totalSize,
-            totalDuration = folder.totalDuration,
-            lastModified = folder.lastModified,
-          )
-        }
-
-        // Enrich with metadata
-        val enrichedMap = FolderScanUtils.enrichFolderMetadata(
-          context = context,
-          folders = folderDataMap,
-          metadataCache = metadataCache,
-          onProgress = onProgress,
-        )
-
-        // Convert back to VideoFolder list
-        FolderScanUtils.convertToVideoFolders(enrichedMap)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error enriching video folders", e)
-        folders // Return original on error
-      }
-    }
+  ): List<VideoFolder> = folders
 
   // =============================================================================
   // VIDEO FILE OPERATIONS
   // =============================================================================
 
   /**
-   * Gets all videos in a specific folder
-   * OPTIMIZED: Uses batch metadata extraction for faster loading
-   * @param bucketId Can be either a path or a bucket ID (path hash)
-   * @param showHiddenFiles Whether to show hidden files
+   * Gets all videos in a specific folder using MediaStore
+   * @param bucketId Folder path
+   * Shows all videos including hidden ones.
    */
   suspend fun getVideosInFolder(
     context: Context,
-    bucketId: String,
-    showHiddenFiles: Boolean = true,
+    bucketId: String
   ): List<Video> =
     withContext(Dispatchers.IO) {
       // Check cache first
-      // Cache key includes showHiddenFiles to ensure different results are cached separately
-      val cacheKey = "$bucketId-$showHiddenFiles"
+      val cacheKey = bucketId
       videosCache[cacheKey]?.let { (cached, timestamp) ->
         if (System.currentTimeMillis() - timestamp < CACHE_VALIDITY_MS) {
           Log.d(TAG, "Returning cached videos for bucket $bucketId (${cached.size} videos)")
@@ -208,54 +140,7 @@ object MediaFileRepository : KoinComponent {
       }
 
       try {
-        // Determine if bucketId is a path or hash
-        val folderPath = if (bucketId.contains("/")) {
-          bucketId // It's already a path
-        } else {
-          bucketId // Treat as path for now
-        }
-
-        // Scan the directory for video files
-        val directory = File(folderPath)
-        if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
-          Log.w(TAG, "Cannot access directory: $folderPath")
-          // Return cached data even if expired on error
-          return@withContext videosCache[cacheKey]?.first ?: emptyList()
-        }
-
-        val videoFiles = directory.listFiles()?.filter {
-          it.isFile && StorageScanUtils.isVideoFile(it) && !StorageScanUtils.shouldSkipFile(it, showHiddenFiles)
-        } ?: emptyList()
-
-        Log.d(TAG, "Found ${videoFiles.size} videos in $folderPath")
-
-        // Batch extract metadata for all videos
-        val fileTriples = videoFiles.map { file ->
-          Triple(file, Uri.fromFile(file), file.name)
-        }
-
-        val metadataMap = metadataCache.getOrExtractMetadataBatch(fileTriples)
-
-        // Create video objects with metadata
-        val videos = videoFiles.mapNotNull { videoFile ->
-          try {
-            if (videoFile.exists()) {
-              createVideoFromFileWithMetadata(
-                videoFile,
-                folderPath,
-                directory.name,
-                metadataMap[videoFile.absolutePath],
-              )
-            } else {
-              null
-            }
-          } catch (e: Exception) {
-            Log.w(TAG, "Error processing video file: ${videoFile.absolutePath}", e)
-            null
-          }
-        }
-
-        val result = videos.sortedBy { it.displayName.lowercase() }
+        val result = MediaStoreScanner.getVideosInFolder(context, bucketId)
 
         // Update cache
         videosCache[cacheKey] = Pair(result, System.currentTimeMillis())
@@ -264,22 +149,22 @@ object MediaFileRepository : KoinComponent {
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for bucket $bucketId", e)
         // Return cached data even if expired on error
-        return@withContext videosCache[cacheKey]?.first ?: emptyList()
+        videosCache[cacheKey]?.first ?: emptyList()
       }
     }
 
   /**
    * Gets videos from multiple folders
+   * Shows all videos including hidden ones.
    */
   suspend fun getVideosForBuckets(
     context: Context,
-    bucketIds: Set<String>,
-    showHiddenFiles: Boolean = true,
+    bucketIds: Set<String>
   ): List<Video> =
     withContext(Dispatchers.IO) {
       val result = mutableListOf<Video>()
       for (id in bucketIds) {
-        runCatching { result += getVideosInFolder(context, id, showHiddenFiles) }
+        runCatching { result += getVideosInFolder(context, id) }
       }
       result
     }

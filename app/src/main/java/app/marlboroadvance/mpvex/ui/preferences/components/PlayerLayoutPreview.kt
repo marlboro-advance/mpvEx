@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
@@ -376,11 +377,15 @@ private fun MiniChip(button: PlayerButton) {
           Text("T", fontSize = 10.sp, color = Color.White) // Symbol for Title
       } else if (button == PlayerButton.CURRENT_CHAPTER) {
           Text("C", fontSize = 10.sp, color = Color.White) // Symbol for Chapter
+      } else if (button == PlayerButton.AB_LOOP) {
+          Text("AB", fontSize = 8.sp, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
       } else {
           Icon(
               imageVector = button.icon,
               contentDescription = null,
-              modifier = Modifier.size(14.dp),
+              modifier = Modifier.size(14.dp).then(
+                if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier
+              ),
               tint = Color.White
           )
       }

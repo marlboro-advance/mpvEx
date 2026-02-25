@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Timer
@@ -66,6 +67,7 @@ fun MoreSheet(
   onStartTimer: (Int) -> Unit,
   onDismissRequest: () -> Unit,
   onEnterFiltersPanel: () -> Unit,
+  onEnterLuaScriptsPanel: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -156,6 +158,18 @@ if (infoDialogData != null) {
               Text(text = stringResource(id = R.string.player_sheets_filters_title))
             }
           }
+          val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
+          if (enableLuaScripts) {
+            TextButton(onClick = onEnterLuaScriptsPanel) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              ) {
+                Icon(imageVector = Icons.Default.Code, contentDescription = null)
+                Text(text = "Lua Scripts")
+              }
+            }
+          }
         }
       }
       SectionHeaderWithInfo(
@@ -203,12 +217,27 @@ if (infoDialogData != null) {
       
       // Shaders Controls
       if (enableAnime4K && !gpuNext) {
+        // Auto-detect resolution to disable for 4K+
+        val width = MPVLib.getPropertyInt("video-params/w") ?: 0
+        val height = MPVLib.getPropertyInt("video-params/h") ?: 0
+        val isHighRes = width >= 3840 || height >= 2160
+
         // Presets (Mode) - Now on Top
         Text(
             text = stringResource(R.string.anime4k_mode_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
+        
+        if (isHighRes) {
+            Text(
+                text = "Not available for 4K/8K video",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
+
         LazyRow(
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
@@ -216,6 +245,7 @@ if (infoDialogData != null) {
             FilterChip(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4kMode == mode.name,
+              enabled = !isHighRes,
               onClick = {
                 decoderPreferences.anime4kMode.set(mode.name)
                 
@@ -257,7 +287,7 @@ if (infoDialogData != null) {
              FilterChip(
               label = { Text(stringResource(quality.titleRes)) },
               selected = anime4kQuality == quality.name,
-              enabled = anime4kMode != "OFF",
+              enabled = anime4kMode != "OFF" && !isHighRes,
               onClick = {
                 decoderPreferences.anime4kQuality.set(quality.name)
 

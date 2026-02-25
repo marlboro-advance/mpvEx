@@ -80,9 +80,18 @@ object LuaScriptsScreen : Screen {
         runCatching {
           val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
           if (tree != null && tree.exists()) {
-            tree.listFiles().forEach { file ->
-              if (file.isFile && file.name?.endsWith(".lua") == true) {
-                file.name?.let { scripts.add(it) }
+            // Look for scripts/ subfolder first (case-insensitive), fall back to root
+            val scriptsDir = tree.listFiles().firstOrNull {
+              it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
+            } ?: tree
+            val scriptExtensions = setOf("lua", "js")
+            scriptsDir.listFiles().forEach { file ->
+              if (file.isFile) {
+                val name = file.name ?: return@forEach
+                val ext = name.substringAfterLast('.', "").lowercase()
+                if (ext in scriptExtensions) {
+                  scripts.add(name)
+                }
               }
             }
           }
@@ -96,8 +105,16 @@ object LuaScriptsScreen : Screen {
           }
         }
         withContext(Dispatchers.Main) {
-          availableScripts = scripts.sorted()
+          val sortedScripts = scripts.sorted()
+          availableScripts = sortedScripts
           isLoading = false
+
+          // Prune selected scripts that no longer exist
+          val currentSelection = preferences.selectedLuaScripts.get()
+          val validSelection = currentSelection.filter { it in sortedScripts }
+          if (validSelection.size != currentSelection.size) {
+            preferences.selectedLuaScripts.set(validSelection.toSet())
+          }
         }
       }
     }

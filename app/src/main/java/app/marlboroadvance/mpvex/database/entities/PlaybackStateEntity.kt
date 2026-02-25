@@ -17,4 +17,5 @@ data class PlaybackStateEntity(
   val audioDelay: Int,
   val timeRemaining: Int = 0, // in seconds (duration - lastPosition)
   val externalSubtitles: String = "", // Comma-separated list of external subtitle URIs
+  val hasBeenWatched: Boolean = false, // Persistent flag: true if video has ever reached the watched threshold
 )

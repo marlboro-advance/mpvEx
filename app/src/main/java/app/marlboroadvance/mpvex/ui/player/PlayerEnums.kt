@@ -74,6 +74,7 @@ enum class Sheets {
   None,
   PlaybackSpeed,
   SubtitleTracks,
+  OnlineSubtitleSearch,
   AudioTracks,
   Chapters,
   Decoders,
@@ -90,6 +91,7 @@ enum class Panels {
   SubtitleDelay,
   AudioDelay,
   VideoFilters,
+  LuaScripts,
 }
 
 sealed class PlayerUpdates {

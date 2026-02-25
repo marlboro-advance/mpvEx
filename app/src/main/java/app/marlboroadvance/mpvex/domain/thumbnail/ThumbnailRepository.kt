@@ -82,9 +82,7 @@ class ThumbnailRepository(
         return@withContext null
       }
 
-      synchronized(memoryCache) {
-        memoryCache.get(key)
-      }?.let { return@withContext it }
+      memoryCache.get(key)?.let { return@withContext it }
 
       ongoingOperations[key]?.let {
         return@withContext it.await()
@@ -94,7 +92,7 @@ class ThumbnailRepository(
         async {
           try {
             loadFromDisk(video)?.let { thumbnail ->
-              synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
+              memoryCache.put(key, thumbnail)
               _thumbnailReadyKeys.tryEmit(key)
               return@async thumbnail
             }
@@ -126,7 +124,7 @@ class ThumbnailRepository(
               return@async null
             }
 
-            synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
+            memoryCache.put(key, thumbnail)
             _thumbnailReadyKeys.tryEmit(key)
             writeToDisk(video, thumbnail)
 

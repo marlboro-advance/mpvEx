@@ -74,9 +74,11 @@ class TrackSelector(
     try {
       val totalTrackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
       
-      // Check if track already selected (from saved state or user choice)
+      // Check if track already selected (from saved state)
+      // Only respect existing selection if we have a saved state.
+      // Otherwise, we want to enforce preferences even if mpv picked a default.
       val currentAid = MPVLib.getPropertyInt("aid")
-      if (currentAid != null && currentAid > 0) return
+      if (hasState && currentAid != null && currentAid > 0) return
 
       // Get preferred languages
       val preferredLangs = audioPreferences.preferredLanguages.get()
@@ -145,9 +147,10 @@ class TrackSelector(
     try {
       val totalTrackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
       
-      // Check if track already selected (from saved state or user choice)
+      // Check if track already selected (from saved state)
       val currentSid = MPVLib.getPropertyInt("sid")
-      if (currentSid != null && currentSid > 0) return
+      // Only return if hasState. If !hasState, we want to check preferences.
+      if (hasState && currentSid != null && currentSid > 0) return
 
       // If saved state exists with subtitles disabled, respect that choice
       if (hasState && (currentSid == null || currentSid <= 0)) return

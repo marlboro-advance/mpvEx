@@ -14,10 +14,11 @@ import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Title
-// import androidx.compose.material.icons.outlined.VideoLabel // No longer needed
-import androidx.compose.material.icons.outlined.ZoomIn
+import androidx.compose.material.icons.outlined.Flip
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -45,7 +46,10 @@ enum class PlayerButton(
   CURRENT_CHAPTER(Icons.Outlined.Bookmarks), // <-- CHANGED ICON
   REPEAT_MODE(Icons.Outlined.Repeat),
   SHUFFLE(Icons.Outlined.Shuffle),
-  NONE(Icons.Outlined.Bookmarks), // 'NONE' is filtered out, icon is irrelevant
+  MIRROR(Icons.Outlined.Flip),
+  VERTICAL_FLIP(Icons.Outlined.Flip),
+  AB_LOOP(Icons.Outlined.Repeat),
+  NONE(Icons.Outlined.Bookmarks),
 }
 
 /**
@@ -83,5 +87,8 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.CURRENT_CHAPTER -> "Current Chapter" // stringResource(R.string.btn_label_chapter)
     PlayerButton.REPEAT_MODE -> "Repeat Mode" // stringResource(R.string.btn_label_repeat_mode)
     PlayerButton.SHUFFLE -> "Shuffle" // stringResource(R.string.btn_label_shuffle)
-    PlayerButton.NONE -> "None" // stringResource(R.string.btn_label_none)
+    PlayerButton.MIRROR -> "Horizontal Flip"
+    PlayerButton.VERTICAL_FLIP -> "Vertical Flip"
+    PlayerButton.AB_LOOP -> "A-B Loop"
+    PlayerButton.NONE -> "None"
   }

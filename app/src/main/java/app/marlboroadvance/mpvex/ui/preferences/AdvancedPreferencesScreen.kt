@@ -209,6 +209,36 @@ object AdvancedPreferencesScreen : Screen {
             val flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
             context.contentResolver.takePersistableUriPermission(uri, flags)
             preferences.mpvConfStorageUri.set(uri.toString())
+
+            // Auto-create standard MPV folder structure
+            scope.launch(Dispatchers.IO) {
+              runCatching {
+                val tree = DocumentFile.fromTreeUri(context, uri)
+                if (tree != null && tree.exists() && tree.canWrite()) {
+                  val subdirs = listOf("fonts", "script-opts", "scripts", "shaders")
+                  for (name in subdirs) {
+                    val existing = tree.listFiles().firstOrNull {
+                      it.isDirectory && it.name?.equals(name, ignoreCase = true) == true
+                    }
+                    if (existing == null) {
+                      tree.createDirectory(name)
+                    }
+                  }
+                  // Create default mpv.conf if missing
+                  val hasConf = tree.listFiles().any {
+                    it.isFile && it.name?.equals("mpv.conf", ignoreCase = true) == true
+                  }
+                  if (!hasConf) {
+                    tree.createFile("application/octet-stream", "mpv.conf")
+                  }
+                  withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "MPV directory ready ✓", Toast.LENGTH_SHORT).show()
+                  }
+                }
+              }.onFailure { e ->
+                android.util.Log.e("AdvancedPrefs", "Error creating MPV directory structure", e)
+              }
+            }
           }
         val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
         LazyColumn(
@@ -455,6 +485,22 @@ object AdvancedPreferencesScreen : Screen {
                   backStack.add(LuaScriptsScreen)
                 },
                 enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
+              )
+
+              PreferenceDivider()
+
+              Preference(
+                title = { Text("Custom Lua") },
+                summary = {
+                  Text(
+                    "Create and manage custom Lua buttons",
+                    color = MaterialTheme.colorScheme.outline
+                  )
+                },
+                onClick = {
+                  backStack.add(app.marlboroadvance.mpvex.ui.preferences.CustomButtonScreen)
+                },
+                enabled = enableLuaScripts,
               )
             }
           }

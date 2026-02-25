@@ -159,12 +159,12 @@ fun PlaybackSpeedSheet(
                val snapped = (it * 20).roundToInt() / 20f
                onSpeedChange(snapped)
             },
-            valueRange = 0.1f..10f,
+            valueRange = 0.1f..4.0f,
             modifier = Modifier.weight(1f)
           )
           
         RepeatingIconButton(
-           onClick = { onSpeedChange((speed + 0.05f).coerceAtMost(10f)) },
+           onClick = { onSpeedChange((speed + 0.05f).coerceAtMost(4.0f)) },
            modifier = Modifier.size(40.dp)
         ) {
            Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp))

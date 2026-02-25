@@ -16,7 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/site";
 
-export function Header() {
+export function Header({ downloadUrl }: { downloadUrl?: string }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { scrollY } = useScroll();
@@ -57,7 +57,7 @@ export function Header() {
               className="object-cover"
             />
           </div>
-          <span className="hidden sm:inline-block text-foreground font-bold text-lg tracking-tight group-hover:text-primary transition-colors">
+          <span className="text-foreground font-bold text-lg tracking-tight group-hover:text-primary transition-colors">
             mpvEx
           </span>
         </div>
@@ -114,21 +114,29 @@ export function Header() {
           <Button
             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all duration-300 shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)] active:scale-95"
             onClick={() =>
-              window.open(siteConfig.links.latestRelease, "_blank")
+              window.open(
+                downloadUrl || siteConfig.links.latestRelease,
+                "_blank",
+              )
             }
           >
             Download
           </Button>
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="lg:hidden p-2 text-foreground hover:bg-foreground/5 rounded-xl transition-colors"
-          aria-label="Toggle Menu"
-        >
-          {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        {/* Mobile Actions */}
+        <div className="lg:hidden flex items-center gap-2">
+          <div className="md:hidden p-1 flex justify-center">
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 w-10 h-10 flex items-center justify-center bg-foreground/5 hover:bg-foreground/10 rounded-2xl transition-all active:scale-95 font-bold"
+            aria-label="Toggle Menu"
+          >
+            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile Menu */}
@@ -162,16 +170,16 @@ export function Header() {
               </div>
             ))}
 
-            <div className="h-px bg-foreground/10 my-2" />
+            <div className="h-px bg-foreground/10 my-2 md:hidden" />
 
-            <div className="flex items-center gap-3 pt-2">
-              <div className="flex-1 p-1 bg-foreground/5 rounded-2xl flex justify-center border border-foreground/5">
-                <ThemeToggle />
-              </div>
+            <div className="flex items-center gap-3 pt-2 md:hidden">
               <Button
                 className="flex-2 h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-lg active:scale-95 transition-all"
                 onClick={() => {
-                  window.open(siteConfig.links.latestRelease, "_blank");
+                  window.open(
+                    downloadUrl || siteConfig.links.latestRelease,
+                    "_blank",
+                  );
                   setIsOpen(false);
                 }}
               >
@@ -179,7 +187,7 @@ export function Header() {
               </Button>
             </div>
 
-            <div className="flex justify-center gap-6 mt-4 opacity-60">
+            <div className="flex justify-center gap-6 mt-4 opacity-60 md:hidden">
               <a
                 href={siteConfig.links.github}
                 target="_blank"

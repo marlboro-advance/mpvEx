@@ -63,7 +63,12 @@ fun SubtitleDelayPanel(
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
 
-  DraggablePanel(modifier = modifier) {
+  DraggablePanel(
+    modifier = modifier,
+    header = {
+      SubtitleDelayTitle(onClose = onDismissRequest)
+    }
+  ) {
     val delay by MPVLib.propDouble["sub-delay"].collectAsState()
     val delayFloat by remember { derivedStateOf { (delay ?: 0.0).toFloat() } }
     val speed by MPVLib.propDouble["sub-speed"].collectAsState()
@@ -86,7 +91,6 @@ fun SubtitleDelayPanel(
         MPVLib.setPropertyDouble("sub-delay", preferences.defaultSubDelay.get() / 1000.0)
         MPVLib.setPropertyDouble("sub-speed", preferences.defaultSubSpeed.get().toDouble())
       },
-      onClose = onDismissRequest,
     )
   }
 }
@@ -100,14 +104,12 @@ private fun SubtitleDelayCardContent(
   onSpeedChange: (Float) -> Unit,
   onApply: () -> Unit,
   onReset: () -> Unit,
-  onClose: () -> Unit,
 ) {
     DelayCardContent(
       delay = delay,
       onDelayChange = onDelayChange,
       onApply = onApply,
       onReset = onReset,
-      title = { SubtitleDelayTitle(onClose = onClose) },
       delayType = DelayType.Subtitle,
       extraSettings = {
         OutlinedNumericChooser(
@@ -132,17 +134,14 @@ fun DelayCardContent( // Renamed from DelayCard and removed the Card wrapper
   onDelayChange: (Float) -> Unit,
   onApply: () -> Unit,
   onReset: () -> Unit,
-  title: @Composable () -> Unit,
   delayType: DelayType,
   extraSettings: @Composable ColumnScope.() -> Unit = {},
 ) {
+    // Note: verticalScroll is now handled by DraggablePanel
     Column(
-       Modifier
-         .verticalScroll(rememberScrollState())
-         .padding(MaterialTheme.spacing.medium),
+       Modifier.padding(MaterialTheme.spacing.medium),
        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
-       title()
        OutlinedNumericChooser(
          label = { Text(stringResource(R.string.player_sheets_sub_delay_card_delay)) },
          value = delay,
@@ -245,7 +244,10 @@ fun SubtitleDelayTitle(
   Row(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
-    modifier = modifier.fillMaxWidth(),
+    modifier = modifier
+      .fillMaxWidth()
+      .padding(horizontal = MaterialTheme.spacing.medium)
+      .padding(top = MaterialTheme.spacing.small),
   ) {
     Text(
       stringResource(R.string.player_sheets_sub_delay_card_title),

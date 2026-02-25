@@ -29,7 +29,7 @@ val PreferencesModule =
     singleOf(::SubtitlesPreferences)
     singleOf(::AudioPreferences)
     singleOf(::AdvancedPreferences)
-    singleOf(::BrowserPreferences)
+    single { BrowserPreferences(get(), androidContext()) }
     singleOf(::FoldersPreferences)
     singleOf(::SettingsManager)
   }

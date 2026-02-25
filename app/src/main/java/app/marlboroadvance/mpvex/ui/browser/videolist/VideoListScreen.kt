@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -136,6 +138,7 @@ data class VideoListScreen(
     val videosWithPlaybackInfo by viewModel.videosWithPlaybackInfo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
+    val lastPlayedInFolderPath by viewModel.lastPlayedInFolderPath.collectAsState()
     val playlistMode by playerPreferences.playlistMode.collectAsState()
     val videosWereDeletedOrMoved by viewModel.videosWereDeletedOrMoved.collectAsState()
 
@@ -144,10 +147,11 @@ data class VideoListScreen(
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
     val sortedVideosWithInfo =
       remember(videosWithPlaybackInfo, videoSortType, videoSortOrder) {
+        val infoById = videosWithPlaybackInfo.associateBy { it.video.id }
         val sortedVideos = SortUtils.sortVideos(videosWithPlaybackInfo.map { it.video }, videoSortType, videoSortOrder)
-        // Maintain the playback info mapping
+        // Maintain the playback info mapping — O(1) lookup per item
         sortedVideos.map { video ->
-          videosWithPlaybackInfo.find { it.video.id == video.id } ?: VideoWithPlaybackInfo(video)
+          infoById[video.id] ?: VideoWithPlaybackInfo(video)
         }
       }
 
@@ -303,7 +307,7 @@ data class VideoListScreen(
           videosWithInfo = sortedVideosWithInfo,
           isLoading = isLoading && videos.isEmpty(),
           isRefreshing = isRefreshing,
-          recentlyPlayedFilePath = recentlyPlayedFilePath,
+          recentlyPlayedFilePath = lastPlayedInFolderPath ?: recentlyPlayedFilePath,
           videosWereDeletedOrMoved = videosWereDeletedOrMoved,
           autoScrollToLastPlayed = autoScrollToLastPlayed,
           onRefresh = { viewModel.refresh() },
@@ -515,7 +519,11 @@ private fun VideoListContent(
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
@@ -697,6 +705,7 @@ private fun VideoListContent(
                 isRecentlyPlayed = isRecentlyPlayed,
                 isSelected = selectionManager.isSelected(videoWithInfo.video),
                 isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                isWatched = videoWithInfo.isWatched,
                 onClick = { onVideoClick(videoWithInfo.video) },
                 onLongClick = { onVideoLongClick(videoWithInfo.video) },
                 onThumbClick = if (tapThumbnailToSelect) {
@@ -748,6 +757,7 @@ private fun VideoListContent(
                   isRecentlyPlayed = isRecentlyPlayed,
                   isSelected = selectionManager.isSelected(videoWithInfo.video),
                   isOldAndUnplayed = videoWithInfo.isOldAndUnplayed,
+                  isWatched = videoWithInfo.isWatched,
                   onClick = { onVideoClick(videoWithInfo.video) },
                   onLongClick = { onVideoLongClick(videoWithInfo.video) },
                   onThumbClick = if (tapThumbnailToSelect) {
@@ -779,14 +789,23 @@ private fun VideoSortDialog(
   onSortOrderChange: (SortOrder) -> Unit,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
-  val videoGridColumns by browserPreferences.videoGridColumns.collectAsState()
-  val folderGridColumns by browserPreferences.folderGridColumns.collectAsState()
+  val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
+  val videoGridColumnsLandscape by browserPreferences.videoGridColumnsLandscape.collectAsState()
+  val folderGridColumnsPortrait by browserPreferences.folderGridColumnsPortrait.collectAsState()
+  val folderGridColumnsLandscape by browserPreferences.folderGridColumnsLandscape.collectAsState()
+
+  val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+  val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+  val videoGridColumns = if (isLandscape) videoGridColumnsLandscape else videoGridColumnsPortrait
+  val folderGridColumns = if (isLandscape) folderGridColumnsLandscape else folderGridColumnsPortrait
   val appearancePreferences = koinInject<AppearancePreferences>()
   val showThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
   val showSizeChip by browserPreferences.showSizeChip.collectAsState()
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
@@ -794,19 +813,27 @@ private fun VideoSortDialog(
 
   val folderGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Folder Grid Columns",
+      label = "Folder Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = folderGridColumns,
-      onValueChange = { browserPreferences.folderGridColumns.set(it) },
-      valueRange = 2f..4f,
-      steps = 1,
+      onValueChange = {
+        if (isLandscape) browserPreferences.folderGridColumnsLandscape.set(it)
+        else browserPreferences.folderGridColumnsPortrait.set(it)
+      },
+      valueRange = if (isLandscape) 3f..5f else 2f..4f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 
   val videoGridColumnSelector = if (mediaLayoutMode == MediaLayoutMode.GRID) {
     GridColumnSelector(
-      label = "Grid Columns",
+      label = "Grid Columns (${if (isLandscape) "Landscape" else "Portrait"})",
       currentValue = videoGridColumns,
-      onValueChange = { browserPreferences.videoGridColumns.set(it) },
+      onValueChange = {
+        if (isLandscape) browserPreferences.videoGridColumnsLandscape.set(it)
+        else browserPreferences.videoGridColumnsPortrait.set(it)
+      },
+      valueRange = if (isLandscape) 3f..5f else 1f..3f,
+      steps = if (isLandscape) 1 else 1,
     )
   } else null
 
@@ -902,6 +929,11 @@ private fun VideoSortDialog(
           label = "Framerate",
           checked = showFramerateInResolution,
           onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+        ),
+        VisibilityToggle(
+          label = "Date",
+          checked = showDateChip,
+          onCheckedChange = { browserPreferences.showDateChip.set(it) },
         ),
       ),
     folderGridColumnSelector = folderGridColumnSelector,

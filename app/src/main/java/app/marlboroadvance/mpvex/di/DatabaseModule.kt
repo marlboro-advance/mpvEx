@@ -322,6 +322,144 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
   }
 }
 
+/**
+ * Migration from version 7 to version 8
+ *
+ * Changes:
+ * - Adds hasBeenWatched column to PlaybackStateEntity to persist watched status
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_7_8", "Starting migration from version 7 to 8")
+      
+      // Add hasBeenWatched column to PlaybackStateEntity
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `hasBeenWatched` INTEGER NOT NULL DEFAULT 0")
+      
+      android.util.Log.d("Migration_7_8", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_7_8", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
+/**
+ * Migration from version 8 to version 9
+ *
+ * This is a repair migration to fix databases that have incorrect schema at version 6/7/8.
+ * Some users have databases that claim to be version 6+ but still have the old v1 schema
+ * with secondarySubDelay column instead of externalSubtitles.
+ *
+ * Changes:
+ * - Ensures PlaybackStateEntity has the correct schema by recreating the table
+ * - Preserves all existing data during the migration
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    try {
+      android.util.Log.d("Migration_8_9", "Starting migration from version 8 to 9 (schema repair)")
+      
+      // Check current schema to see if we need to repair
+      val cursor = db.query("PRAGMA table_info(PlaybackStateEntity)")
+      val existingColumns = mutableSetOf<String>()
+      while (cursor.moveToNext()) {
+        val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+        existingColumns.add(columnName)
+      }
+      cursor.close()
+      
+      android.util.Log.d("Migration_8_9", "Existing columns: $existingColumns")
+      
+      // Check if we have the wrong schema (secondarySubDelay instead of externalSubtitles)
+      val hasSecondarySubDelay = existingColumns.contains("secondarySubDelay")
+      val hasExternalSubtitles = existingColumns.contains("externalSubtitles")
+      val hasHasBeenWatched = existingColumns.contains("hasBeenWatched")
+      
+      if (hasSecondarySubDelay || !hasExternalSubtitles || !hasHasBeenWatched) {
+        android.util.Log.d("Migration_8_9", "Schema mismatch detected, recreating table")
+        
+        // Create new table with correct schema
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `PlaybackStateEntity_new` (
+            `mediaTitle` TEXT NOT NULL,
+            `lastPosition` INTEGER NOT NULL,
+            `playbackSpeed` REAL NOT NULL,
+            `videoZoom` REAL NOT NULL DEFAULT 0.0,
+            `sid` INTEGER NOT NULL,
+            `secondarySid` INTEGER NOT NULL DEFAULT -1,
+            `subDelay` INTEGER NOT NULL,
+            `subSpeed` REAL NOT NULL,
+            `aid` INTEGER NOT NULL,
+            `audioDelay` INTEGER NOT NULL,
+            `timeRemaining` INTEGER NOT NULL DEFAULT 0,
+            `externalSubtitles` TEXT NOT NULL DEFAULT '',
+            `hasBeenWatched` INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(`mediaTitle`)
+          )
+          """.trimIndent()
+        )
+        
+        // Copy data from old table, handling missing columns
+        if (hasExternalSubtitles && hasHasBeenWatched) {
+          // Schema is correct, just copy everything
+          db.execSQL(
+            """
+            INSERT INTO `PlaybackStateEntity_new` 
+            SELECT * FROM `PlaybackStateEntity`
+            """.trimIndent()
+          )
+        } else if (hasExternalSubtitles && !hasHasBeenWatched) {
+          // Missing hasBeenWatched only
+          db.execSQL(
+            """
+            INSERT INTO `PlaybackStateEntity_new` 
+            (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+             `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
+            SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+                   `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, 0
+            FROM `PlaybackStateEntity`
+            """.trimIndent()
+          )
+        } else {
+          // Has old schema with secondarySubDelay, need to map columns
+          db.execSQL(
+            """
+            INSERT INTO `PlaybackStateEntity_new` 
+            (`mediaTitle`, `lastPosition`, `playbackSpeed`, `videoZoom`, `sid`, `secondarySid`, 
+             `subDelay`, `subSpeed`, `aid`, `audioDelay`, `timeRemaining`, `externalSubtitles`, `hasBeenWatched`)
+            SELECT `mediaTitle`, `lastPosition`, `playbackSpeed`, 
+                   COALESCE(`videoZoom`, 0.0), 
+                   `sid`, 
+                   COALESCE(`secondarySid`, -1), 
+                   `subDelay`, `subSpeed`, `aid`, `audioDelay`, 
+                   COALESCE(`timeRemaining`, 0), 
+                   '', 
+                   0
+            FROM `PlaybackStateEntity`
+            """.trimIndent()
+          )
+        }
+        
+        // Drop old table and rename new one
+        db.execSQL("DROP TABLE `PlaybackStateEntity`")
+        db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
+        
+        android.util.Log.d("Migration_8_9", "Table recreated successfully")
+      } else {
+        android.util.Log.d("Migration_8_9", "Schema is correct, no repair needed")
+      }
+      
+      android.util.Log.d("Migration_8_9", "Migration completed successfully")
+    } catch (e: Exception) {
+      android.util.Log.e("Migration_8_9", "Migration failed", e)
+      throw e
+    }
+  }
+}
+
+
 val DatabaseModule =
   module {
     single<Json> {
@@ -336,7 +474,7 @@ val DatabaseModule =
       Room
         .databaseBuilder(context, MpvExDatabase::class.java, "mpvex.db")
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
         .fallbackToDestructiveMigration(true) // Fallback if migration fails (last resort)
         .build()
     }

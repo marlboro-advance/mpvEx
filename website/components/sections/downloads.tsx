@@ -21,8 +21,8 @@ const iconMap: Record<string, React.ReactNode> = {
   ),
 };
 
-export function DownloadsSection() {
-  FlaskConical
+export function DownloadsSection({ downloadUrl }: { downloadUrl?: string }) {
+  FlaskConical;
   return (
     <section className="py-32 px-4 sm:px-6 lg:px-8 bg-background relative overflow-hidden">
       {/* Background Lighting */}
@@ -63,7 +63,13 @@ export function DownloadsSection() {
                 </p>
                 <Button
                   className="w-full h-12 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-                  onClick={() => window.open(option.link, "_blank")}
+                  onClick={() => {
+                    if (option.title === "Preview Builds" && downloadUrl) {
+                      window.open(downloadUrl, "_blank");
+                    } else {
+                      window.open(option.link, "_blank");
+                    }
+                  }}
                 >
                   {option.cta}
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />

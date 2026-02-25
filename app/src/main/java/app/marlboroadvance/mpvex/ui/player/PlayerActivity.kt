@@ -39,6 +39,7 @@ import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -48,13 +49,12 @@ import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.HttpUtils
 import app.marlboroadvance.mpvex.utils.media.SubtitleOps
+import app.marlboroadvance.mpvex.utils.storage.StorageScanUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -137,6 +137,11 @@ class PlayerActivity :
    * Preferences for browser settings.
    */
   private val browserPreferences: BrowserPreferences by inject()
+
+  /**
+   * Preferences for appearance settings.
+   */
+  private val appearancePreferences: AppearancePreferences by inject()
 
   /**
    * Manager for file operations.
@@ -368,6 +373,10 @@ class PlayerActivity :
             playlistWindowOffset = 0
             playlistTotalCount = totalCount
             Log.d(TAG, "Loaded all $totalCount items from playlist $pid (isM3U: $isM3uPlaylist)")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load playlist from database", e)
@@ -403,6 +412,18 @@ class PlayerActivity :
 
     // Apply persisted shuffle state after playlist is loaded
     viewModel.applyPersistedShuffleState()
+
+    // Observe selected Lua scripts for runtime loading
+    lifecycleScope.launch {
+      var previousScripts = advancedPreferences.selectedLuaScripts.get()
+      advancedPreferences.selectedLuaScripts.changes().collect { newScripts ->
+        val addedScripts = newScripts - previousScripts
+        addedScripts.forEach { scriptName ->
+          loadScriptAtRuntime(scriptName)
+        }
+        previousScripts = newScripts
+      }
+    }
 
     window.attributes.layoutInDisplayCutoutMode =
       WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -781,10 +802,14 @@ class PlayerActivity :
     }
 
     // Always start with status bar hidden - it will show when controls are shown
-    windowInsetsController.apply {
-      hide(WindowInsetsCompat.Type.statusBars())
-      hide(WindowInsetsCompat.Type.navigationBars())
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    try {
+      windowInsetsController.apply {
+        hide(WindowInsetsCompat.Type.statusBars())
+        hide(WindowInsetsCompat.Type.navigationBars())
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to setup system UI insets", e)
     }
 
     // Don't use LOW_PROFILE if we plan to show status bar with controls
@@ -811,10 +836,14 @@ class PlayerActivity :
     WindowCompat.setDecorFitsSystemWindows(window, true)
 
     // Restore default behavior and show bars in one go
-    windowInsetsController.apply {
-      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to restore system UI insets", e)
     }
   }
 
@@ -827,8 +856,7 @@ class PlayerActivity :
     // MPV will load scripts during initialize(), so they must exist beforehand
     runCatching {
       Utils.copyAssets(this@PlayerActivity)
-      copyMPVConfigFiles()
-      copyMPVScripts()
+      syncFromUserMpvDirectory()
       Log.d(TAG, "MPV config and scripts prepared successfully")
     }.onFailure { e ->
       Log.e(TAG, "Error copying MPV config and scripts", e)
@@ -841,157 +869,357 @@ class PlayerActivity :
 
     // Add observer after initialization
     MPVLib.addObserver(playerObserver)
+  }
 
-    // Copy fonts asynchronously (not critical for initial playback)
-    lifecycleScope.launch(Dispatchers.IO) {
+  /**
+   * Syncs ALL MPV assets from the user's configured MPV directory to internal storage.
+   * Handles: mpv.conf, input.conf, scripts/, script-opts/, shaders/, fonts/
+   *
+   * Uses case-insensitive subfolder matching and falls back to root scanning
+   * if standard subfolders don't exist. Falls back to preferences-based config
+   * if no user directory is configured.
+   */
+  private fun syncFromUserMpvDirectory() {
+    val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+
+    // Try to open the user's MPV directory
+    val tree = if (mpvConfStorageUri.isNotBlank()) {
       runCatching {
-        copyMPVFonts()
+        DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
+      }.getOrNull()?.takeIf { it.exists() && it.canRead() }
+    } else null
+
+    if (tree != null) {
+      Log.d(TAG, "Syncing from user MPV directory: ${tree.uri}")
+      syncConfigFiles(tree)
+      syncScripts(tree)
+      syncScriptOpts(tree)
+      syncShaders(tree)
+      syncFonts(tree)
+      Log.d(TAG, "Full MPV directory sync completed")
+    } else {
+      // Fallback: use preferences-based config (no user directory set)
+      Log.d(TAG, "No MPV directory configured, using preferences fallback")
+      copyMPVConfigFromPreferences()
+    }
+  }
+
+  // ==================== Config Files Sync ====================
+
+  /**
+   * Syncs mpv.conf and input.conf from the user's MPV directory.
+   * Also caches the content in preferences for the config editor.
+   */
+  private fun syncConfigFiles(tree: DocumentFile) {
+    for (configName in listOf("mpv.conf", "input.conf")) {
+      runCatching {
+        val configFile = findFileCaseInsensitive(tree, configName)
+        if (configFile != null && configFile.exists() && configFile.canRead()) {
+          contentResolver.openInputStream(configFile.uri)?.use { input ->
+            val content = input.bufferedReader().readText()
+            File(filesDir, configName).writeText(content)
+            // Cache in preferences for the config editor
+            when (configName) {
+              "mpv.conf" -> advancedPreferences.mpvConf.set(content)
+              "input.conf" -> advancedPreferences.inputConf.set(content)
+            }
+            Log.d(TAG, "Synced config: $configName (${content.length} chars)")
+          }
+        } else {
+          // Config not in directory, fall back to preferences
+          val prefContent = when (configName) {
+            "mpv.conf" -> advancedPreferences.mpvConf.get()
+            "input.conf" -> advancedPreferences.inputConf.get()
+            else -> ""
+          }
+          File(filesDir, configName).apply {
+            if (!exists()) createNewFile()
+            if (prefContent.isNotBlank()) writeText(prefContent)
+          }
+          Log.d(TAG, "Config not found in directory, used preferences: $configName")
+        }
       }.onFailure { e ->
-        Log.e(TAG, "Error copying MPV fonts", e)
+        Log.e(TAG, "Error syncing config: $configName", e)
       }
     }
   }
 
+  // ==================== Scripts Sync ====================
+
   /**
-   * Copies or creates the MPV configuration files.
+   * Syncs all script files (.lua, .js) from the user's MPV directory.
+   * Looks in scripts/ subfolder first (case-insensitive), falls back to root.
    */
-  private fun copyMPVConfigFiles() {
-    val applicationPath = filesDir.path
-    runCatching {
-      // Create mpv.conf
-      File("$applicationPath/mpv.conf").apply {
-        if (!exists()) createNewFile()
-        val content = advancedPreferences.mpvConf.get()
-        if (content.isNotBlank()) {
-          writeText(content)
-        } else {
-          // Default optimized config for fast stream loading
-          writeText(getDefaultMpvConfig())
-        }
+  private fun syncScripts(tree: DocumentFile) {
+    val internalScriptsDir = File(filesDir, "scripts")
+    internalScriptsDir.mkdirs()
+    internalScriptsDir.listFiles()?.forEach { it.delete() }
+
+    if (!advancedPreferences.enableLuaScripts.get()) {
+      Log.d(TAG, "Lua scripts disabled, skipping")
+      return
+    }
+
+    val scriptsSubdir = findSubdirCaseInsensitive(tree, "scripts")
+    val sourceDir = scriptsSubdir ?: tree
+    val scriptExtensions = setOf("lua", "js")
+    var count = 0
+
+    sourceDir.listFiles().forEach { file ->
+      if (!file.isFile) return@forEach
+      val name = file.name ?: return@forEach
+      val ext = name.substringAfterLast('.', "").lowercase()
+      if (ext !in scriptExtensions) return@forEach
+
+      val selectedScripts = advancedPreferences.selectedLuaScripts.get()
+      if (!selectedScripts.contains(name)) {
+          return@forEach
       }
 
-      // Create input.conf
-      File("$applicationPath/input.conf").apply {
+      runCatching {
+        contentResolver.openInputStream(file.uri)?.use { input ->
+          File(internalScriptsDir, name).outputStream().use { output ->
+            input.copyTo(output)
+          }
+          count++
+          Log.d(TAG, "Synced script: $name")
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error syncing script: $name", e)
+      }
+    }
+
+    Log.d(TAG, "Scripts sync: $count file(s) from ${if (scriptsSubdir != null) "scripts/" else "root"}")
+  }
+
+  // ==================== Script Options Sync ====================
+
+  /**
+   * Syncs all files from script-opts/ subfolder (case-insensitive).
+   */
+  private fun syncScriptOpts(tree: DocumentFile) {
+    val internalScriptOptsDir = File(filesDir, "script-opts")
+    internalScriptOptsDir.mkdirs()
+    internalScriptOptsDir.listFiles()?.forEach { it.delete() }
+
+    val scriptOptsSubdir = findSubdirCaseInsensitive(tree, "script-opts")
+    if (scriptOptsSubdir == null) {
+      Log.d(TAG, "No script-opts/ subfolder found, skipping")
+      return
+    }
+
+    var count = 0
+    scriptOptsSubdir.listFiles().forEach { file ->
+      if (!file.isFile) return@forEach
+      val name = file.name ?: return@forEach
+
+      runCatching {
+        contentResolver.openInputStream(file.uri)?.use { input ->
+          File(internalScriptOptsDir, name).outputStream().use { output ->
+            input.copyTo(output)
+          }
+          count++
+          Log.d(TAG, "Synced script-opt: $name")
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error syncing script-opt: $name", e)
+      }
+    }
+
+    Log.d(TAG, "Script-opts sync: $count file(s)")
+  }
+
+  // ==================== Shaders Sync ====================
+
+  /**
+   * Syncs shader files (.glsl, .hook, .comp) from the user's MPV directory.
+   * Looks in shaders/ subfolder first (case-insensitive), falls back to root.
+   * Saves to shaders/user/ to avoid conflicts with built-in Anime4K shaders.
+   */
+  private fun syncShaders(tree: DocumentFile) {
+    val userShadersDir = File(filesDir, "shaders/user")
+    userShadersDir.mkdirs()
+    userShadersDir.listFiles()?.forEach { it.delete() }
+
+    val shadersSubdir = findSubdirCaseInsensitive(tree, "shaders")
+    val sourceDir = shadersSubdir ?: tree
+    val shaderExtensions = setOf("glsl", "hook", "comp")
+    var count = 0
+
+    sourceDir.listFiles().forEach { file ->
+      if (!file.isFile) return@forEach
+      val name = file.name ?: return@forEach
+      val ext = name.substringAfterLast('.', "").lowercase()
+      if (ext !in shaderExtensions) return@forEach
+
+      runCatching {
+        contentResolver.openInputStream(file.uri)?.use { input ->
+          File(userShadersDir, name).outputStream().use { output ->
+            input.copyTo(output)
+          }
+          count++
+          Log.d(TAG, "Synced shader: $name")
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error syncing shader: $name", e)
+      }
+    }
+
+    Log.d(TAG, "Shaders sync: $count file(s)")
+  }
+
+  // ==================== Fonts Sync ====================
+
+  /**
+   * Syncs font files (.ttf, .otf, .ttc, .woff, .woff2) from the user's MPV directory.
+   * Looks in fonts/ subfolder first (case-insensitive), falls back to root.
+   * Also syncs from the subtitle preferences font folder if set.
+   */
+  private fun syncFonts(tree: DocumentFile) {
+    val internalFontsDir = File(filesDir, "fonts")
+    internalFontsDir.mkdirs()
+
+    val fontsSubdir = findSubdirCaseInsensitive(tree, "fonts")
+    val sourceDir = fontsSubdir ?: tree
+    val fontExtensions = setOf("ttf", "otf", "ttc", "woff", "woff2")
+    var count = 0
+
+    sourceDir.listFiles().forEach { file ->
+      if (!file.isFile) return@forEach
+      val name = file.name ?: return@forEach
+      val ext = name.substringAfterLast('.', "").lowercase()
+      if (ext !in fontExtensions) return@forEach
+
+      val target = File(internalFontsDir, name)
+      // Skip if font already exists (fonts can be large)
+      if (target.exists()) return@forEach
+
+      runCatching {
+        contentResolver.openInputStream(file.uri)?.use { input ->
+          target.outputStream().use { output ->
+            input.copyTo(output)
+          }
+          count++
+          Log.d(TAG, "Synced font: $name")
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error syncing font: $name", e)
+      }
+    }
+
+    // Also sync from subtitle preferences font folder if set
+    runCatching {
+      val fontsFolderUri = subtitlesPreferences.fontsFolder.get()
+      if (fontsFolderUri.isNotBlank()) {
+        val destDir = fileManager.fromPath("${filesDir.path}/fonts")
+        if (!fileManager.exists(destDir)) {
+          fileManager.createDir(fileManager.fromPath(filesDir.path), "fonts")
+        }
+        val fontsDir = fileManager.fromUri(fontsFolderUri.toUri())
+        if (fontsDir != null && fileManager.exists(fontsDir)) {
+          fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
+        }
+      }
+    }.onFailure { e ->
+      Log.e(TAG, "Error syncing subtitle fonts: ${e.message}")
+    }
+
+    Log.d(TAG, "Fonts sync: $count file(s) from MPV directory")
+  }
+
+  /**
+   * Loads a specific Lua script at runtime without restarting the player.
+   * Finds the script in the user's MPV directory, copies it to internal storage,
+   * and commands MPV to load it.
+   */
+  private fun loadScriptAtRuntime(scriptName: String) {
+    if (!mpvInitialized || isFinishing) return
+
+    val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
+    if (mpvConfStorageUri.isBlank()) return
+
+    lifecycleScope.launch(Dispatchers.IO) {
+      runCatching {
+        val tree = DocumentFile.fromTreeUri(this@PlayerActivity, mpvConfStorageUri.toUri())
+        if (tree != null && tree.exists()) {
+          // Look for scripts/ subfolder first (case-insensitive), fall back to root
+          val scriptsDir = findSubdirCaseInsensitive(tree, "scripts") ?: tree
+          
+          val scriptFile = scriptsDir.listFiles().firstOrNull { 
+            it.name == scriptName 
+          }
+
+          if (scriptFile != null) {
+            val internalScriptsDir = File(filesDir, "scripts")
+            if (!internalScriptsDir.exists()) internalScriptsDir.mkdirs()
+            
+            val targetFile = File(internalScriptsDir, scriptName)
+            
+            contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+              targetFile.outputStream().use { output ->
+                input.copyTo(output)
+              }
+            }
+            
+            withContext(Dispatchers.Main) {
+              MPVLib.command("load-script", targetFile.absolutePath)
+              viewModel.showToast("Loaded script: $scriptName")
+            }
+          }
+        }
+      }.onFailure { e ->
+        Log.e(TAG, "Error loading script at runtime: $scriptName", e)
+        withContext(Dispatchers.Main) {
+          android.widget.Toast.makeText(
+            this@PlayerActivity,
+            "Failed to load script: ${e.message}",
+            android.widget.Toast.LENGTH_LONG
+          ).show()
+        }
+      }
+    }
+  }
+
+  // ==================== Helpers ====================
+
+  /**
+   * Fallback: copies config from preferences when no user MPV directory is set.
+   */
+  private fun copyMPVConfigFromPreferences() {
+    runCatching {
+      File(filesDir, "mpv.conf").apply {
+        if (!exists()) createNewFile()
+        val content = advancedPreferences.mpvConf.get()
+        if (content.isNotBlank()) writeText(content)
+      }
+      File(filesDir, "input.conf").apply {
         if (!exists()) createNewFile()
         val content = advancedPreferences.inputConf.get()
         if (content.isNotBlank()) writeText(content)
       }
+      // Ensure scripts directory exists even without user dir
+      File(filesDir, "scripts").mkdirs()
+      File(filesDir, "fonts").mkdirs()
     }.onFailure { e ->
-      Log.e(TAG, "Error creating config files", e)
+      Log.e(TAG, "Error creating fallback config files", e)
     }
   }
 
   /**
-   * Returns default MPV configuration.
+   * Finds a subdirectory by name (case-insensitive) within a DocumentFile.
    */
-  private fun getDefaultMpvConfig(): String {
-    return ""
-  }
-
-  private fun copyMPVScripts() {
-    runCatching {
-      val applicationPath = filesDir.path
-      val scriptsDir =
-        fileManager.createDir(
-          fileManager.fromPath(applicationPath),
-          "scripts",
-        ) ?: run {
-          Log.e(TAG, "Failed to create scripts directory")
-          return@runCatching
-        }
-
-      // Clean existing scripts first
-      fileManager.deleteContent(scriptsDir)
-      Log.d(TAG, "Cleaned scripts directory")
-
-      // Copy user-selected Lua scripts if enabled
-      if (advancedPreferences.enableLuaScripts.get()) {
-        val selectedScripts = advancedPreferences.selectedLuaScripts.get()
-        val mpvConfStorageUri = advancedPreferences.mpvConfStorageUri.get()
-
-        Log.d(TAG, "Lua scripts enabled: ${selectedScripts.size} script(s) selected: ${selectedScripts.joinToString()}")
-
-        if (selectedScripts.isEmpty()) {
-          Log.d(TAG, "No Lua scripts selected, skipping copy")
-          return@runCatching
-        }
-
-        if (mpvConfStorageUri.isBlank()) {
-          Log.w(TAG, "MPV config storage URI not set, cannot copy Lua scripts")
-          return@runCatching
-        }
-
-        val tree = DocumentFile.fromTreeUri(this, mpvConfStorageUri.toUri())
-        if (tree == null) {
-          Log.e(TAG, "Failed to access MPV config storage directory")
-          return@runCatching
-        }
-
-        if (!tree.exists() || !tree.canRead()) {
-          Log.e(TAG, "MPV config storage directory does not exist or cannot be read")
-          return@runCatching
-        }
-
-        var successCount = 0
-        var failCount = 0
-
-        selectedScripts.forEach { scriptName ->
-          runCatching {
-            val scriptFile = tree.findFile(scriptName)
-            if (scriptFile != null && scriptFile.exists() && scriptFile.canRead()) {
-              contentResolver.openInputStream(scriptFile.uri)?.use { input ->
-                val scriptsDirPath = File(filesDir.path, "scripts")
-                scriptsDirPath.mkdirs()
-                val targetFile = File(scriptsDirPath, scriptName)
-                targetFile.writeText(input.bufferedReader().readText())
-                Log.d(TAG, "Successfully copied Lua script: $scriptName to ${targetFile.absolutePath}")
-                successCount++
-              } ?: run {
-                Log.e(TAG, "Failed to open input stream for Lua script: $scriptName")
-                failCount++
-              }
-            } else {
-              Log.w(TAG, "Lua script not found or not readable: $scriptName")
-              failCount++
-            }
-          }.onFailure { e ->
-            Log.e(TAG, "Error copying Lua script: $scriptName", e)
-            failCount++
-          }
-        }
-
-        Log.d(TAG, "Lua scripts copy completed: $successCount succeeded, $failCount failed")
-      } else {
-        Log.d(TAG, "Lua scripts disabled in preferences")
-      }
-    }.onFailure { e ->
-      Log.e(TAG, "Error in copyMPVScripts", e)
+  private fun findSubdirCaseInsensitive(parent: DocumentFile, name: String): DocumentFile? =
+    parent.listFiles().firstOrNull {
+      it.isDirectory && it.name?.equals(name, ignoreCase = true) == true
     }
-  }
 
-  private fun copyMPVFonts() {
-    runCatching {
-      val persistentPath = filesDir.path
-      val destDir = ensureFontsDirectory(persistentPath)
-
-      val fontsFolderUri = subtitlesPreferences.fontsFolder.get().toUri()
-      val fontsDir = fileManager.fromUri(fontsFolderUri) ?: return@runCatching
-
-      if (fileManager.exists(fontsDir)) {
-        fileManager.copyDirectoryWithContent(fontsDir, destDir, false)
-      }
-    }.onFailure { e ->
-      Log.e(TAG, "Error copying fonts: ${e.message}")
+  /**
+   * Finds a file by name (case-insensitive) within a DocumentFile.
+   */
+  private fun findFileCaseInsensitive(parent: DocumentFile, name: String): DocumentFile? =
+    parent.listFiles().firstOrNull {
+      it.isFile && it.name?.equals(name, ignoreCase = true) == true
     }
-  }
-
-  private fun ensureFontsDirectory(basePath: String): com.github.k1rakishou.fsaf.file.AbstractFile {
-    val destDir = fileManager.fromPath("$basePath/fonts")
-    if (!fileManager.exists(destDir)) {
-      fileManager.createDir(fileManager.fromPath(basePath), "fonts")
-    }
-    return destDir
-  }
 
   override fun onResume() {
     super.onResume()
@@ -1385,6 +1613,9 @@ class PlayerActivity :
         if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
           setOrientation()
         }
+        
+        // Re-apply Anime4K shaders (check for resolution limit)
+        player.applyAnime4KShaders()
       }
     }
   }
@@ -1419,7 +1650,10 @@ class PlayerActivity :
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
     if (isPaused) {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      // Only clear keep-screen-on if the preference is NOT enabled
+      if (!playerPreferences.keepScreenOnWhenPaused.get()) {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      }
     } else {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -1456,7 +1690,7 @@ class PlayerActivity :
         // Check if autoplay next video is enabled
         val autoplayEnabled = playerPreferences.autoplayNextVideo.get()
 
-        if (hasNextItem && autoplayEnabled) {
+        if (hasNextItem && (autoplayEnabled || viewModel.shouldRepeatPlaylist())) {
           // Play next item in playlist
           playNext()
         } else if (viewModel.shouldRepeatPlaylist()) {
@@ -1588,7 +1822,6 @@ class PlayerActivity :
    * Initializes playback state, loads saved playback data, restores custom settings,
    * applies user preferences, and sets up metadata and media session.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private fun handleFileLoaded() {
     // Extract fileName from intent only if not already set
     // This preserves fileName set in onNewIntent or onCreate
@@ -1624,7 +1857,7 @@ class PlayerActivity :
     }
 
     // Save to recently played when video actually loads and plays
-    GlobalScope.launch(Dispatchers.IO) {
+    lifecycleScope.launch(Dispatchers.IO) {
       if (playlist.isNotEmpty()) {
         // For playlist items, save using the current URI
         // All items are loaded, so playlistIndex is the direct index
@@ -1889,11 +2122,10 @@ class PlayerActivity :
   /**
    * Saves the current playback state to the database.
    *
-   * Uses GlobalScope to ensure save completes even if activity is destroyed.
+   * Uses lifecycleScope to save state; cancels previous pending saves.
    *
    * @param mediaTitle The title of the media being played
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private fun saveVideoPlaybackState(mediaTitle: String) {
     if (mediaIdentifier.isBlank()) return
 
@@ -1927,6 +2159,24 @@ class PlayerActivity :
                 ).toInt(),
             timeRemaining = timeRemaining,
             externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
+            hasBeenWatched = run {
+              val watchedThreshold = browserPreferences.watchedThreshold.get()
+              val durationSeconds = duration.toFloat()
+              val currentPos = viewModel.pos ?: 0
+              
+              // Check if we are at the end (effectively watched)
+              // Using a small buffer (1s) to account for float inaccuracies or near-end stops
+              val isFinished = (durationSeconds > 0) && (currentPos >= durationSeconds - 1)
+
+              val progress = if (durationSeconds > 0) currentPos.toFloat() / durationSeconds else 0f
+              val isCurrentlyWatched = progress >= (watchedThreshold / 100f)
+              
+              // Also check lastPosition in case we are saving partway through (though lastPosition might be 0 if finished)
+              val oldProgress = if (durationSeconds > 0) lastPosition.toFloat() / durationSeconds else 0f
+              val wasWatchedThisSession = oldProgress >= (watchedThreshold / 100f)
+
+              isCurrentlyWatched || isFinished || wasWatchedThisSession || (oldState?.hasBeenWatched == true)
+            },
           ),
         )
       }.onFailure { e ->
@@ -1995,16 +2245,8 @@ class PlayerActivity :
       Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
 
       for (subUri in externalSubUris) {
-        runCatching {
-          MPVLib.command("sub-add", subUri, "cached")
-          Log.d(TAG, "Restored external subtitle: $subUri")
-        }.onFailure { e ->
-          Log.e(TAG, "Failed to restore external subtitle: $subUri", e)
-        }
+        viewModel.addSubtitle(Uri.parse(subUri), select = false, silent = true)
       }
-
-      // Update ViewModel's tracked list
-      viewModel.setExternalSubtitles(externalSubUris)
     }
 
     // Always restore subtitle and audio tracks from saved state
@@ -2055,10 +2297,8 @@ class PlayerActivity :
   /**
    * Saves the currently playing file to recently played history.
    *
-   * Uses GlobalScope to ensure save completes even if activity is destroyed.
    * Handles various URI schemes and infers launch source.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private suspend fun saveRecentlyPlayed() {
     runCatching {
       val uri = extractUriFromIntent(intent)
@@ -2293,9 +2533,13 @@ class PlayerActivity :
   private fun enterPipUIMode() {
     window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
     WindowCompat.setDecorFitsSystemWindows(window, true)
-    windowInsetsController.apply {
-      show(WindowInsetsCompat.Type.systemBars())
-      show(WindowInsetsCompat.Type.navigationBars())
+    try {
+      windowInsetsController.apply {
+        show(WindowInsetsCompat.Type.systemBars())
+        show(WindowInsetsCompat.Type.navigationBars())
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to show system bars for PiP mode", e)
     }
   }
 
@@ -3110,22 +3354,29 @@ class PlayerActivity :
 
         val parentFolder = currentFile.parentFile ?: return@runCatching
 
-        val videoExtensions = setOf("mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "3gp", "mpg", "mpeg", "ts")
+        val videoExtensions = StorageScanUtils.VIDEO_EXTENSIONS
+        val showHiddenFiles = appearancePreferences.showHiddenFiles.get()
 
         val files = parentFolder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in videoExtensions
+          file.isFile &&
+            StorageScanUtils.isVideoFile(file) &&
+            !StorageScanUtils.shouldSkipFile(file, showHiddenFiles)
         } ?: return@runCatching
 
         val launchSource = intent.getStringExtra("launch_source") ?: ""
-        val siblingFiles = if (launchSource == "video_list") {
+        val siblingFiles = if (launchSource == "video_list" || launchSource == "recently_played_button" || launchSource == "first_video_button") {
           val videoSortType = browserPreferences.videoSortType.get()
           val videoSortOrder = browserPreferences.videoSortOrder.get()
           val bucketId = parentFolder.absolutePath.replace("\\", "/")
-          val videosInFolder = app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(context, setOf(bucketId))
+          val videosInFolder =
+            app.marlboroadvance.mpvex.repository.MediaFileRepository.getVideosForBuckets(
+              context,
+              setOf(bucketId)
+            )
           val sortedVideos = app.marlboroadvance.mpvex.utils.sort.SortUtils.sortVideos(videosInFolder, videoSortType, videoSortOrder)
           sortedVideos.mapNotNull { video -> files.find { it.absolutePath == video.path } }
         } else {
-          files.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+          files.sortedWith { f1, f2 -> app.marlboroadvance.mpvex.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT.compare(f1.name, f2.name) }
         }
 
         if (siblingFiles.size <= 1) return@runCatching
@@ -3139,6 +3390,10 @@ class PlayerActivity :
             playlist = newPlaylist
             playlistIndex = newIndex
             Log.d(TAG, "Auto-playlist generated: ${playlist.size} videos")
+            // Re-initialize shuffle now that playlist is available
+            if (viewModel.shuffleEnabled.value) {
+              onShuffleToggled(true)
+            }
           }
         }
       }.onFailure { e ->
