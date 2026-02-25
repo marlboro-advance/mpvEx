@@ -385,7 +385,7 @@ class PlayerViewModel(
                // Try new slot-based format first
                val slotsData = json.decodeFromString<app.marlboroadvance.mpvex.ui.preferences.CustomButtonSlots>(jsonString)
                slotsData.slots.forEachIndexed { index, btn ->
-                 if (btn != null) {
+                 if (btn != null && btn.enabled) {   // skip disabled buttons
                    val safeId = btn.id.replace("-", "_")
                    val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
                    processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)

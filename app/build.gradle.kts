@@ -92,6 +92,7 @@ android {
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+    isCoreLibraryDesugaringEnabled = true
   }
   buildFeatures {
     compose = true
@@ -216,6 +217,10 @@ dependencies {
 
   implementation(libs.coil.core)
   implementation(libs.coil.compose)
+  // Sora Editor
+  implementation(libs.sora.editor)
+  implementation(libs.sora.editor.textmate)
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 fun getCommitCount(): String = runCommand("git rev-list --count HEAD") ?: "0"
