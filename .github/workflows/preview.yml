@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - improve-speed-overlay
   workflow_dispatch:
 
 jobs:
