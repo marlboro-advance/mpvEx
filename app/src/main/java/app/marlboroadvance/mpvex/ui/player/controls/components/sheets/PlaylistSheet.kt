@@ -273,6 +273,7 @@ fun PlaylistSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
     customMaxWidth = sheetWidth,
+    customMaxHeight = if (isPortrait) LocalConfiguration.current.screenHeightDp.dp * 0.5f else null,
   ) {
     Surface(
       modifier = Modifier.fillMaxWidth(),

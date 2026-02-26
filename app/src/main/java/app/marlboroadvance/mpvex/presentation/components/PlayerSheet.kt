@@ -69,6 +69,7 @@ fun PlayerSheet(
   modifier: Modifier = Modifier,
   tonalElevation: Dp = 1.dp,
   customMaxWidth: Dp? = null,
+  customMaxHeight: Dp? = null,
   surfaceColor: Color? = null,
   content: @Composable () -> Unit,
 ) {
@@ -82,7 +83,7 @@ fun PlayerSheet(
     420.dp
   }
   val isImeVisible = WindowInsets.ime.getBottom(density) > 0
-  val maxHeight = when {
+  val maxHeight = customMaxHeight ?: when {
     isImeVisible -> LocalConfiguration.current.screenHeightDp.dp
     LocalConfiguration.current.orientation == ORIENTATION_PORTRAIT ->
       LocalConfiguration.current.screenHeightDp.dp * .90f

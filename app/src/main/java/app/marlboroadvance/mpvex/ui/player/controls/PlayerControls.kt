@@ -357,7 +357,15 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(brightnessSlider) {
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(brightnessSlider) {
               if (swapVolumeAndBrightness) {
                 start.linkTo(parent.start, if (isPortrait) spacing.medium else spacing.extraLarge)
               } else {
@@ -387,7 +395,15 @@ fun PlayerControls(
               fadeOut(playerControlsExitAnimationSpec())
             },
           modifier =
-            Modifier.constrainAs(volumeSlider) {
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(volumeSlider) {
               if (swapVolumeAndBrightness) {
                 end.linkTo(parent.end, if (isPortrait) spacing.medium else spacing.extraLarge)
               } else {
@@ -435,7 +451,15 @@ fun PlayerControls(
           enter = fadeIn(playerControlsEnterAnimationSpec()),
           exit = fadeOut(playerControlsExitAnimationSpec()),
           modifier =
-            Modifier.constrainAs(playerUpdates) {
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(playerUpdates) {
               linkTo(parent.start, parent.end)
               top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
             },
@@ -546,7 +570,19 @@ fun PlayerControls(
             visible = areButtonsVisible && !isPortrait,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.constrainAs(customLeftButtonsRef) {
+            modifier = Modifier
+                .then(
+                  if (showSystemNavigationBar) {
+                    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                    Modifier.padding(
+                      start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                      end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                    )
+                  } else {
+                    Modifier
+                  }
+                )
+                .constrainAs(customLeftButtonsRef) {
                 start.linkTo(parent.start, spacing.medium)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
@@ -603,7 +639,19 @@ fun PlayerControls(
             visible = areButtonsVisible && !isPortrait,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.constrainAs(customRightButtonsRef) {
+            modifier = Modifier
+                .then(
+                  if (showSystemNavigationBar) {
+                    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                    Modifier.padding(
+                      start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                      end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                    )
+                  } else {
+                    Modifier
+                  }
+                )
+                .constrainAs(customRightButtonsRef) {
                 end.linkTo(parent.end, spacing.medium)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
@@ -660,7 +708,19 @@ fun PlayerControls(
             visible = areButtonsVisible && isPortrait,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.constrainAs(customPortraitButtonsRef) {
+            modifier = Modifier
+                .then(
+                  if (showSystemNavigationBar) {
+                    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                    Modifier.padding(
+                      start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                      end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                    )
+                  } else {
+                    Modifier
+                  }
+                )
+                .constrainAs(customPortraitButtonsRef) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
                 top.linkTo(parent.top)
@@ -723,6 +783,17 @@ fun PlayerControls(
               .then(
                 if (showSystemStatusBar) {
                   Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .then(
+                if (showSystemNavigationBar) {
+                  val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+                  Modifier.padding(
+                    start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
+                    end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+                  )
                 } else {
                   Modifier
                 }
