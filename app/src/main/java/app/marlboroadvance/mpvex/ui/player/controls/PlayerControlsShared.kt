@@ -315,79 +315,122 @@ fun RenderPlayerButton(
       val isSnapshotLoading by viewModel.isSnapshotLoading.collectAsState()
       val context = LocalContext.current
 
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        // Previous frame button (only visible when expanded)
-        AnimatedVisibility(
-          visible = isExpanded,
-          enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(200)),
-          exit = fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(200)),
-        ) {
-          ControlsButton(
-            Icons.Default.FastRewind,
-            onClick = { viewModel.frameStepBackward() },
-            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(buttonSize),
-          )
-        }
-
-        // Camera button - shows loading indicator when taking snapshot
-        if (isExpanded && isSnapshotLoading) {
-          // Show loading indicator
+      AnimatedContent(
+        targetState = isExpanded,
+        transitionSpec = {
+          (fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(250)))
+            .togetherWith(fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(250)))
+            .using(SizeTransform(clip = false))
+        },
+        label = "FrameNavExpandCollapse",
+      ) { expanded ->
+        if (expanded) {
           Surface(
-            shape = CircleShape,
-            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            border = if (hideBackground) null else BorderStroke(
-              1.dp,
-              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            ),
-            modifier = Modifier.size(buttonSize),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            modifier = Modifier.height(buttonSize),
           ) {
-            Box(
-              contentAlignment = Alignment.Center,
-              modifier = Modifier.fillMaxSize(),
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(2.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(horizontal = 4.dp),
             ) {
-              CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = if (hideBackground) controlColor else MaterialTheme.colorScheme.primary,
-              )
+              // Previous frame button
+              Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier
+                  .size(buttonSize - 4.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = {
+                    viewModel.frameStepBackward()
+                    viewModel.resetFrameNavigationTimer()
+                  }),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Icon(
+                    imageVector = Icons.Default.FastRewind,
+                    contentDescription = "Previous Frame",
+                    tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
+                  )
+                }
+              }
+
+              // Camera / Loading button
+              if (isSnapshotLoading) {
+                Surface(
+                  shape = CircleShape,
+                  color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                  border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                  modifier = Modifier.size(buttonSize - 4.dp),
+                ) {
+                  Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    CircularProgressIndicator(
+                      modifier = Modifier.size(16.dp),
+                      strokeWidth = 2.dp,
+                      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.primary,
+                    )
+                  }
+                }
+              } else {
+                @OptIn(ExperimentalFoundationApi::class)
+                Surface(
+                  shape = CircleShape,
+                  color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+                  border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                  modifier = Modifier
+                    .size(buttonSize - 4.dp)
+                    .clip(CircleShape)
+                    .combinedClickable(
+                      onClick = {
+                        viewModel.takeSnapshot(context)
+                        viewModel.resetFrameNavigationTimer()
+                      },
+                      onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                    ),
+                ) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                      imageVector = Icons.Default.CameraAlt,
+                      contentDescription = "Take Screenshot",
+                      tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                      modifier = Modifier.size(20.dp),
+                    )
+                  }
+                }
+              }
+
+              // Next frame button
+              Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier
+                  .size(buttonSize - 4.dp)
+                  .clip(CircleShape)
+                  .clickable(onClick = {
+                    viewModel.frameStepForward()
+                    viewModel.resetFrameNavigationTimer()
+                  }),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Icon(
+                    imageVector = Icons.Default.FastForward,
+                    contentDescription = "Next Frame",
+                    tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
+                  )
+                }
+              }
             }
           }
         } else {
-          // Regular camera button
+          // Collapsed: Show camera icon button
           ControlsButton(
-            icon = if (isExpanded) Icons.Default.CameraAlt else Icons.Default.Camera,
-            onClick = {
-              if (isExpanded) {
-                // Take snapshot when expanded
-                viewModel.takeSnapshot(context)
-                viewModel.resetFrameNavigationTimer()
-              } else {
-                // Toggle expansion when collapsed
-                viewModel.toggleFrameNavigationExpanded()
-              }
-            },
+            icon = Icons.Default.Camera,
+            onClick = viewModel::toggleFrameNavigationExpanded,
             onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
-            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(buttonSize),
-          )
-        }
-
-        // Next frame button (only visible when expanded)
-        AnimatedVisibility(
-          visible = isExpanded,
-          enter = fadeIn(animationSpec = tween(200)) + expandHorizontally(animationSpec = tween(200)),
-          exit = fadeOut(animationSpec = tween(200)) + shrinkHorizontally(animationSpec = tween(200)),
-        ) {
-          ControlsButton(
-            Icons.Default.FastForward,
-            onClick = { viewModel.frameStepForward() },
             color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(buttonSize),
           )

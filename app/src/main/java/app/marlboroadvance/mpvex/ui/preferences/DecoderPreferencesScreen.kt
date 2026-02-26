@@ -38,6 +38,7 @@ import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.player.Debanding
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.utils.VulkanUtils
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ListPreference
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
@@ -52,6 +53,7 @@ object DecoderPreferencesScreen : Screen {
     val preferences = koinInject<DecoderPreferences>()
     val backstack = LocalBackStack.current
     val context = LocalContext.current
+    val isVulkanSupported = remember { VulkanUtils.isVulkanSupported(context) }
     var showGpuNextWarning by remember { mutableStateOf(false) }
     Scaffold(
       topBar = {
@@ -166,6 +168,28 @@ object DecoderPreferencesScreen : Screen {
                       }
                   )
               }
+
+              PreferenceDivider()
+
+              val useVulkan by preferences.useVulkan.collectAsState()
+              SwitchPreference(
+                value = useVulkan,
+                onValueChange = {
+                  preferences.useVulkan.set(it)
+                },
+                enabled = isVulkanSupported,
+                title = { Text(stringResource(R.string.pref_decoder_vulkan_title)) },
+                summary = {
+                  Text(
+                    stringResource(
+                      if (isVulkanSupported) R.string.pref_decoder_vulkan_summary
+                      else R.string.pref_decoder_vulkan_not_supported
+                    ),
+                    color = if (isVulkanSupported) MaterialTheme.colorScheme.outline
+                           else MaterialTheme.colorScheme.error,
+                  )
+                },
+              )
 
               PreferenceDivider()
 

@@ -171,9 +171,6 @@ class WyzieSearchRepository(
                 val tmdbResults = tmdbSearch(query)
                 if (tmdbResults.isNotEmpty()) {
                     val result = tmdbResults[0]
-                    if (result.mediaType == "tv" && (season == null || episode == null)) {
-                        return@withContext Result.failure(Exception("Please select both a Season and an Episode"))
-                    }
                     searchId = result.id.toString()
                 } else {
                     return@withContext Result.failure(Exception("Could not find media ID for '$query'"))

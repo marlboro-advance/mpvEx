@@ -175,6 +175,9 @@
   <string name="pref_decoder_gpu_next_purple_screen_fix">如果遇到紫屏问题，请尝试在高级设置（mpv.conf）中禁用 opengl-pbo：</string>
   <string name="pref_decoder_gpu_next_enable_anyway">仍然启用</string>
   <string name="pref_decoder_debanding_title">去色带</string>
+  <string name="pref_decoder_vulkan_title">使用 Vulkan</string>
+  <string name="pref_decoder_vulkan_summary">在支持的设备上启用 Vulkan 渲染（可能会提升性能）</string>
+  <string name="pref_decoder_vulkan_not_supported">不支持（需要 Android 13+ 及 Vulkan 1.3）</string>
   <string name="pref_decoder_yuv420p_title">使用 YUV420P 像素格式</string>
   <string name="pref_decoder_yuv420p_summary">可修复某些视频编码导致的黑屏问题，也可以牺牲画质来提升性能</string>
   <string name="pref_subtitles">字幕</string>
@@ -327,7 +330,7 @@
   <string name="player_sheets_stats_page_chip">第 %d 页</string>
   <string name="player_sheets_stats_page_0_desc">已禁用。无叠加统计信息。</string>
   <string name="player_sheets_stats_page_1_desc">概览。CPU/GPU 使用率、音画同步、丢帧数、时钟速度。</string>
-  <string name="player_sheets_stats_page_2_desc">帧计时。解码/渲染耗时、缩放器信息。</string>
+  <string name="player_sheets_stats_page_2_desc">帧计时。解码/渲染耗时、缩悉器信息。</string>
   <string name="player_sheets_stats_page_3_desc">缓存状态。缓冲区健康度、解复用缓存、可跳转范围。</string>
   <string name="player_sheets_stats_page_4_desc">当前按键绑定。已映射的键盘快捷键列表。</string>
   <string name="player_sheets_stats_page_5_desc">轨道列表。视频、音频和字幕轨道的详细信息。</string>

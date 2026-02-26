@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 @Suppress("CyclomaticComplexMethod", "MultipleEmitters")
@@ -109,6 +110,7 @@ fun GestureHandler(
   val volumeGesture by playerPreferences.volumeGesture.collectAsState()
   val swapVolumeAndBrightness by playerPreferences.swapVolumeAndBrightness.collectAsState()
   val pinchToZoomGesture by playerPreferences.pinchToZoomGesture.collectAsState()
+  val panAndZoomEnabled by playerPreferences.panAndZoomEnabled.collectAsState()
   val horizontalSwipeToSeek by playerPreferences.horizontalSwipeToSeek.collectAsState()
   val horizontalSwipeSensitivity by playerPreferences.horizontalSwipeSensitivity.collectAsState()
   var isLongPressing by remember { mutableStateOf(false) }
@@ -626,65 +628,169 @@ fun GestureHandler(
           }
         }
       }
-      .pointerInput(pinchToZoomGesture, areControlsLocked) {
+      .pointerInput(pinchToZoomGesture, panAndZoomEnabled, areControlsLocked) {
         if (!pinchToZoomGesture || areControlsLocked) return@pointerInput
+
+        // Helper: get video display dimensions at 1x (how mpv fits the video to screen)
+        fun videoDisplaySize(): Pair<Float, Float> {
+          val sw = size.width.toFloat()
+          val sh = size.height.toFloat()
+          val va = MPVLib.getPropertyDouble("video-params/aspect")?.toFloat() ?: (sw / sh)
+          val sa = sw / sh
+          return if (va >= sa) Pair(sw, sw / va) else Pair(sh * va, sh)
+        }
+
+        // Helper: apply pan with EMA smoothing and bounds clamping
+        fun applyPan(
+          dx: Float, dy: Float, scale: Float,
+          smoothState: FloatArray, // [smoothX, smoothY, initialized]
+          smoothFactor: Float = 0.5f,
+        ) {
+          val sw = size.width.toFloat()
+          val sh = size.height.toFloat()
+          if (sw <= 0 || sh <= 0) return
+          val (bw, bh) = videoDisplaySize()
+          // 1 finger pixel = 1 video pixel
+          val curX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
+          val curY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+          val targetX = curX + dx / (bw * scale)
+          val targetY = curY + dy / (bh * scale)
+          // Initialize smoothing on first call
+          if (smoothState[2] == 0f) { smoothState[0] = targetX; smoothState[1] = targetY; smoothState[2] = 1f }
+          smoothState[0] += (targetX - smoothState[0]) * smoothFactor
+          smoothState[1] += (targetY - smoothState[1]) * smoothFactor
+          // Bounds: video edge can't go past screen edge
+          val maxPan = ((scale - 1f) / (2f * scale)).coerceAtLeast(0f)
+          viewModel.setVideoPan(
+            smoothState[0].coerceIn(-maxPan, maxPan),
+            smoothState[1].coerceIn(-maxPan, maxPan),
+          )
+        }
 
         awaitEachGesture {
           var zoom = 0f
-          var isZoomGestureStarted = false
-          var initialDistance = 0f
+          var gestureStarted = false
+          var prevDist = 0f
+          var prevMidX = 0f
+          var prevMidY = 0f
+          val panSmooth = floatArrayOf(0f, 0f, 0f) // smoothX, smoothY, initialized
 
-          // Wait for at least one pointer
           awaitFirstDown(requireUnconsumed = false)
 
           do {
             val event = awaitPointerEvent()
-            val pointerCount = event.changes.count { it.pressed }
+            val pressed = event.changes.filter { it.pressed }
 
-            // Check if we have exactly 2 fingers (pinch gesture)
-            if (pointerCount == 2) {
-              val pointers = event.changes.filter { it.pressed }
+            if (pressed.size == 2) {
+              val p1 = pressed[0].position
+              val p2 = pressed[1].position
+              val dx = p2.x - p1.x
+              val dy = p2.y - p1.y
+              val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+              val midX = (p1.x + p2.x) / 2f
+              val midY = (p1.y + p2.y) / 2f
 
-              if (pointers.size == 2) {
-                val pointer1 = pointers[0].position
-                val pointer2 = pointers[1].position
-
-                // Calculate distance between two fingers
-                val currentDistance = sqrt(
-                  ((pointer2.x - pointer1.x) * (pointer2.x - pointer1.x) +
-                    (pointer2.y - pointer1.y) * (pointer2.y - pointer1.y)).toDouble(),
-                ).toFloat()
-
-                if (initialDistance == 0f) {
-                  // First time detecting pinch - record initial distance and zoom
-                  initialDistance = currentDistance
-                  zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
-                  isZoomGestureStarted = false
+              if (prevDist == 0f) {
+                // First frame — capture baseline
+                prevDist = dist
+                zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+                prevMidX = midX
+                prevMidY = midY
+              } else {
+                // Activate on significant pinch movement
+                if (!gestureStarted && abs(dist - prevDist) > 5f) {
+                  gestureStarted = true
+                  viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
                 }
 
-                val distanceChange = abs(currentDistance - initialDistance)
+                if (gestureStarted) {
+                  // Per-frame zoom: small delta from previous distance → naturally smooth
+                  val zoomDelta = ln((dist / prevDist).toDouble()).toFloat() * 1.2f
+                  zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
+                  viewModel.setVideoZoom(zoom)
 
-                // Only start zoom if movement is significant (reduces accidental zooms)
-                if (distanceChange > 10f) {
-                  if (!isZoomGestureStarted) {
-                    isZoomGestureStarted = true
-                    viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
-                  }
-
-                  if (initialDistance > 0) {
-                    // Calculate zoom based on distance ratio
-                    val zoomScale = currentDistance / initialDistance
-                    val zoomDelta = ln(zoomScale.toDouble()).toFloat() * 1.5f
-                    val newZoom = (zoom + zoomDelta).coerceIn(-2f, 3f)
-                    viewModel.setVideoZoom(newZoom)
+                  // Simultaneous pan while pinching
+                  if (panAndZoomEnabled) {
+                    applyPan(midX - prevMidX, midY - prevMidY, 2f.pow(zoom), panSmooth)
                   }
                 }
 
-                // Consume the events to prevent other gestures
-                pointers.forEach { it.consume() }
+                prevDist = dist
+                prevMidX = midX
+                prevMidY = midY
               }
-            } else if (pointerCount < 2 && initialDistance != 0f) {
-              // User lifted a finger, end the gesture
+
+              pressed.forEach { it.consume() }
+            } else if (pressed.size < 2 && prevDist != 0f) {
+              break
+            }
+          } while (event.changes.any { it.pressed })
+        }
+      }
+      // Single-finger pan (only when Pan & Zoom enabled and zoomed in)
+      .pointerInput(panAndZoomEnabled, pinchToZoomGesture, areControlsLocked) {
+        if (!panAndZoomEnabled || !pinchToZoomGesture || areControlsLocked) return@pointerInput
+
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          var panning = false
+          var prevX = down.position.x
+          var prevY = down.position.y
+          val startX = prevX
+          val startY = prevY
+          val panSmooth = floatArrayOf(0f, 0f, 0f)
+
+          // Helper: get video display dimensions at 1x
+          fun videoDisplaySize(): Pair<Float, Float> {
+            val sw = size.width.toFloat()
+            val sh = size.height.toFloat()
+            val va = MPVLib.getPropertyDouble("video-params/aspect")?.toFloat() ?: (sw / sh)
+            val sa = sw / sh
+            return if (va >= sa) Pair(sw, sw / va) else Pair(sh * va, sh)
+          }
+
+          do {
+            val event = awaitPointerEvent()
+            val pressed = event.changes.filter { it.pressed }
+
+            if (pressed.size == 1) {
+              val change = pressed[0]
+              val zoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f
+              if (zoom <= 0f) { continue }
+
+              val pos = change.position
+
+              // Activate after 20px drag threshold
+              if (!panning) {
+                val d = sqrt((pos.x - startX).let { it * it } + (pos.y - startY).let { it * it })
+                if (d > 20f) { panning = true; prevX = pos.x; prevY = pos.y }
+              }
+
+              if (panning) {
+                val sw = size.width.toFloat()
+                val sh = size.height.toFloat()
+                if (sw > 0 && sh > 0) {
+                  val scale = 2f.pow(zoom)
+                  val (bw, bh) = videoDisplaySize()
+                  val curX = MPVLib.getPropertyDouble("video-pan-x")?.toFloat() ?: 0f
+                  val curY = MPVLib.getPropertyDouble("video-pan-y")?.toFloat() ?: 0f
+                  val targetX = curX + (pos.x - prevX) / (bw * scale)
+                  val targetY = curY + (pos.y - prevY) / (bh * scale)
+                  // Initialize smoothing on first pan frame
+                  if (panSmooth[2] == 0f) { panSmooth[0] = targetX; panSmooth[1] = targetY; panSmooth[2] = 1f }
+                  panSmooth[0] += (targetX - panSmooth[0]) * 0.5f
+                  panSmooth[1] += (targetY - panSmooth[1]) * 0.5f
+                  val maxPan = ((scale - 1f) / (2f * scale)).coerceAtLeast(0f)
+                  viewModel.setVideoPan(
+                    panSmooth[0].coerceIn(-maxPan, maxPan),
+                    panSmooth[1].coerceIn(-maxPan, maxPan),
+                  )
+                  prevX = pos.x
+                  prevY = pos.y
+                }
+                change.consume()
+              }
+            } else if (pressed.size > 1) {
               break
             }
           } while (event.changes.any { it.pressed })

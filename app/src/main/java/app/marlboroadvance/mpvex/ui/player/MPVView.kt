@@ -96,6 +96,12 @@ class MPVView(
 
   override fun initOptions() {
     setVo(if (decoderPreferences.gpuNext.get()) "gpu-next" else "gpu")
+    
+    // Set GPU API context (Vulkan or OpenGL)
+    if (decoderPreferences.useVulkan.get()) {
+      MPVLib.setOptionString("gpu-context", "androidvk")
+    }
+    
     MPVLib.setOptionString("profile", "fast")
 
     // Set hwdec with fallback order: HW+ (mediacodec) -> HW (mediacodec-copy) -> SW (no)

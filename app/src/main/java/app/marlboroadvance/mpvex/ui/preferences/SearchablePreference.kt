@@ -382,6 +382,13 @@ object SearchablePreferences {
                 screen = DecoderPreferencesScreen,
             ))
             add(SearchablePreference(
+                titleRes = R.string.pref_decoder_vulkan_title,
+                summaryRes = R.string.pref_decoder_vulkan_summary,
+                keywords = listOf("vulkan", "gpu", "rendering", "graphics", "api", "performance"),
+                category = "Decoder",
+                screen = DecoderPreferencesScreen,
+            ))
+            add(SearchablePreference(
                 titleRes = R.string.pref_decoder_debanding_title,
                 keywords = listOf("deband", "banding", "gradient", "visual", "quality"),
                 category = "Decoder",

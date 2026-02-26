@@ -9,6 +9,7 @@ class DecoderPreferences(
 ) {
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
   val gpuNext = preferenceStore.getBoolean("gpu_next")
+  val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
   val useYUV420P = preferenceStore.getBoolean("use_yuv420p", false)
 
   val debanding = preferenceStore.getEnum("debanding", Debanding.None)
