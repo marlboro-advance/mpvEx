@@ -6,10 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -32,7 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +49,6 @@ import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
-import app.marlboroadvance.mpvex.ui.components.SoraCodeEditor
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -279,31 +284,11 @@ data class LuaScriptEditorScreen(
         TopAppBar(
           title = {
             Column {
-              androidx.compose.foundation.text.BasicTextField(
-                value = fileName,
-                onValueChange = {
-                  fileName = it
-                  hasUnsavedChanges = true
-                },
-                textStyle = MaterialTheme.typography.headlineSmall.copy(
-                  fontWeight = FontWeight.ExtraBold,
-                  color = MaterialTheme.colorScheme.primary
-                ),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
-                decorationBox = { innerTextField ->
-                  Box {
-                    if (fileName.isEmpty()) {
-                      Text(
-                        text = "Script name",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                          fontWeight = FontWeight.ExtraBold,
-                          color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                      )
-                    }
-                    innerTextField()
-                  }
-                }
+              Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
               )
               if (hasUnsavedChanges) {
                 Text(
@@ -394,7 +379,7 @@ data class LuaScriptEditorScreen(
             }
           },
         )
-      }
+      },
     ) { padding ->
       Column(
         modifier = Modifier
@@ -402,18 +387,76 @@ data class LuaScriptEditorScreen(
           .padding(padding)
           .imePadding()
       ) {
-        // Sora code editor — full-featured Lua editor with:
-        //  • TextMate syntax highlighting (One Dark theme, Lua grammar)
-        //  • Line numbers + auto-indent + bracket auto-pairs
-        //  • Lua symbol / keypad bar above the soft keyboard
-        //  • Autocomplete popup
-        SoraCodeEditor(
+        // Editable title field
+        BasicTextField(
+          value = fileName,
+          onValueChange = {
+            fileName = it
+            hasUnsavedChanges = true
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+          textStyle = LocalTextStyle.current.copy(
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+          ),
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+          decorationBox = { innerTextField ->
+            Box(
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              if (fileName.isEmpty()) {
+                Text(
+                  text = "Title",
+                  style = LocalTextStyle.current.copy(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                  ),
+                )
+              }
+              innerTextField()
+            }
+          },
+        )
+        
+        // Script content editor
+        BasicTextField(
           value = scriptContent,
           onValueChange = {
             scriptContent = it
             hasUnsavedChanges = true
           },
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 400.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+          textStyle = LocalTextStyle.current.copy(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+          ),
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+          decorationBox = { innerTextField ->
+            Box(
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              if (scriptContent.isEmpty()) {
+                Text(
+                  text = "-- Enter your Lua script here...\n-- Example:\n-- mp.msg.info(\"Hello from MPV Lua script!\")",
+                  style = LocalTextStyle.current.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                  ),
+                )
+              }
+              innerTextField()
+            }
+          },
         )
       }
     }

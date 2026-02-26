@@ -293,7 +293,7 @@ fun PlayerControls(
         val playerPauseButton = createRef()
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
-        val (customLeftButtonsRef, customRightButtonsRef, customPortraitButtonsRef) = createRefs()
+        val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -660,7 +660,7 @@ fun PlayerControls(
             visible = areButtonsVisible && isPortrait,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.constrainAs(customPortraitButtonsRef) {
+            modifier = Modifier.constrainAs(createRef()) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
                 top.linkTo(parent.top)

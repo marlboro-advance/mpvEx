@@ -17,7 +17,6 @@ okhttp = "5.3.0"
 sardineAndroid = "0.8"
 reorderable = "3.0.0"
 coil = "3.3.0"
-sora-editor = "0.23.6"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -75,9 +74,6 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-core = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
-
-sora-editor = { module = "io.github.Rosemoe.sora-editor:editor", version.ref = "sora-editor" }
-sora-editor-textmate = { module = "io.github.Rosemoe.sora-editor:language-textmate", version.ref = "sora-editor" }
 
 
 [bundles]
