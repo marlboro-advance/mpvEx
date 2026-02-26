@@ -217,9 +217,12 @@ class MPVView(
     )
 
   private fun setupAudioOptions() {
-    // Disable MPV's automatic audio selection
-    // App will handle track selection manually via TrackSelector to respect user choices
-    MPVLib.setOptionString("alang", "")
+    val preferredLangs = audioPreferences.preferredLanguages.get()
+    if (preferredLangs.isNotBlank()) {
+      MPVLib.setOptionString("alang", preferredLangs)
+      MPVLib.setPropertyString("alang", preferredLangs)
+    }
+
     MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
     MPVLib.setOptionString("audio-pitch-correction", audioPreferences.audioPitchCorrection.get().toString())
     MPVLib.setOptionString("volume-max", (audioPreferences.volumeBoostCap.get() + 100).toString())
@@ -232,12 +235,16 @@ class MPVView(
 
   // Setup
   private fun setupSubtitlesOptions() {
-    // Disable MPV's automatic subtitle selection
-    // App will handle track selection manually via TrackSelector to respect user choices
-    MPVLib.setOptionString("slang", "")
-    MPVLib.setOptionString("sub-auto", "no")
+    val preferredLangs = subtitlesPreferences.preferredLanguages.get()
+    if (preferredLangs.isNotBlank()) {
+      MPVLib.setOptionString("slang", preferredLangs)
+      MPVLib.setPropertyString("slang", preferredLangs)
+    }
+
+    // Default to 'all' for discovery but let TrackSelector handle selection
+    MPVLib.setOptionString("sub-auto", "all")
     MPVLib.setOptionString("sub-file-paths", "")
-    MPVLib.setOptionString("subs-fallback", "no")
+    MPVLib.setOptionString("subs-fallback", "yes")
 
     val fontsDirPath = "${context.filesDir.path}/fonts/"
     MPVLib.setOptionString("sub-fonts-dir", fontsDirPath)
