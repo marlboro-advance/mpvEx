@@ -614,6 +614,16 @@ fun RenderPlayerButton(
       )
     }
 
+    PlayerButton.CUSTOM_SKIP -> {
+      val playerPreferences = org.koin.compose.koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
+      ControlsButton(
+        icon = Icons.Default.FastForward,
+        onClick = { viewModel.seekBy(playerPreferences.customSkipDuration.get()) },
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
     PlayerButton.SHUFFLE -> {
       // Only show shuffle button if there's a playlist (more than one video)
       if (viewModel.hasPlaylistSupport()) {

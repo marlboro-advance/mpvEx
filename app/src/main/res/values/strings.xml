@@ -123,6 +123,8 @@
   <string name="pref_player_orientation_sensor_landscape">Sensor landscape</string>
   <string name="pref_player_save_position_on_quit">Save position on quit</string>
   <string name="pref_player_double_tap_seek_duration">Double tap seek duration</string>
+  <string name="pref_player_custom_skip_duration_title">Custom skip duration</string>
+  <string name="pref_player_custom_skip_duration_summary">Duration to skip forward on custom skip button</string>
   <string name="pref_player_seeking_title">Seeking</string>
   <string name="pref_player_close_after_eof">Close after the end of playback</string>
   <string name="pref_player_remember_brightness">Remember display brightness</string>

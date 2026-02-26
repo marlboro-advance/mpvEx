@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.Flip
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.ZoomIn
+import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.runtime.Composable
@@ -49,6 +50,7 @@ enum class PlayerButton(
   MIRROR(Icons.Outlined.Flip),
   VERTICAL_FLIP(Icons.Outlined.Flip),
   AB_LOOP(Icons.Outlined.Repeat),
+  CUSTOM_SKIP(Icons.Outlined.FastForward),
   NONE(Icons.Outlined.Bookmarks),
 }
 
@@ -90,5 +92,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.MIRROR -> "Horizontal Flip"
     PlayerButton.VERTICAL_FLIP -> "Vertical Flip"
     PlayerButton.AB_LOOP -> "A-B Loop"
+    PlayerButton.CUSTOM_SKIP -> "Custom Skip"
     PlayerButton.NONE -> "None"
   }
