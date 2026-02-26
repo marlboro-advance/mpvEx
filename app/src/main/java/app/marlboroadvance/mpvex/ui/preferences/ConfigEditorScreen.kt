@@ -1,12 +1,17 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -26,15 +31,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.ui.components.SoraCodeEditor
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,8 +81,6 @@ data class ConfigEditorScreen(
       ConfigType.MPV_CONF   -> "Edit mpv.conf"
       ConfigType.INPUT_CONF -> "Edit input.conf"
     }
-    // File extension used by SoraCodeEditor (plain conf — no Lua grammar)
-    val fileExt = "conf"
 
     var configText       by remember { mutableStateOf(initialValue) }
     var hasUnsavedChanges by remember { mutableStateOf(false) }
@@ -192,15 +198,28 @@ data class ConfigEditorScreen(
         )
       },
     ) { padding ->
-      SoraCodeEditor(
-        value         = configText,
-        onValueChange = { configText = it; hasUnsavedChanges = true },
-        fileExtension = fileExt,
-        modifier      = Modifier
+      val scrollState = rememberScrollState()
+      Box(
+        modifier = Modifier
           .fillMaxSize()
           .padding(padding)
-          .imePadding(),
-      )
+          .imePadding()
+      ) {
+        BasicTextField(
+          value = configText,
+          onValueChange = { configText = it; hasUnsavedChanges = true },
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+          textStyle = TextStyle(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+          ),
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        )
+      }
     }
   }
 }

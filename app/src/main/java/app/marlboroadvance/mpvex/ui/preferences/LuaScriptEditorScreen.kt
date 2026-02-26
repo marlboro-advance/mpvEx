@@ -43,7 +43,12 @@ import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
-import app.marlboroadvance.mpvex.ui.components.SoraCodeEditor
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -396,24 +401,29 @@ data class LuaScriptEditorScreen(
         )
       }
     ) { padding ->
-      Column(
+      val scrollState = rememberScrollState()
+      Box(
         modifier = Modifier
           .fillMaxSize()
           .padding(padding)
           .imePadding()
       ) {
-        // Sora code editor — full-featured Lua editor with:
-        //  • TextMate syntax highlighting (One Dark theme, Lua grammar)
-        //  • Line numbers + auto-indent + bracket auto-pairs
-        //  • Lua symbol / keypad bar above the soft keyboard
-        //  • Autocomplete popup
-        SoraCodeEditor(
+        BasicTextField(
           value = scriptContent,
           onValueChange = {
             scriptContent = it
             hasUnsavedChanges = true
           },
-          modifier = Modifier.fillMaxSize(),
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+          textStyle = TextStyle(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+          ),
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         )
       }
     }

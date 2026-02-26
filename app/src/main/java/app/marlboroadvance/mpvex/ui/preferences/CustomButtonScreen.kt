@@ -73,7 +73,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.presentation.Screen
-import app.marlboroadvance.mpvex.ui.components.SoraCodeEditor
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -267,7 +272,6 @@ fun ButtonSlotCard(
     var draftStartup   by remember(button?.id) { mutableStateOf(button?.onStartup ?: "") }
     var draftEnabled   by remember(button?.id) { mutableStateOf(button?.enabled ?: true) }
 
-    // Which lua field is currently open in the Sora full-screen editor dialog
     var activeLuaField by remember { mutableStateOf<String?>(null) }
 
     val isPopulated = button != null
@@ -420,8 +424,7 @@ fun ButtonSlotCard(
             }
         }
     }
-
-    // ── Per-field Sora editor (full-screen dialog) ────────────────────────────
+    
     if (activeLuaField != null) {
         val fieldKey = activeLuaField!!
         val fieldLabel = when (fieldKey) {
@@ -488,18 +491,33 @@ fun ButtonSlotCard(
                             }
                         },
                     )
-                    SoraCodeEditor(
-                        value         = fieldValue,
-                        onValueChange = { newCode ->
-                            when (fieldKey) {
-                                "content"   -> draftContent   = newCode
-                                "longPress" -> draftLongPress = newCode
-                                "startup"   -> draftStartup   = newCode
-                            }
-                        },
-                        fileExtension = "lua",
-                        modifier      = Modifier.fillMaxSize(),
-                    )
+                    val dialogScrollState = rememberScrollState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .imePadding()
+                    ) {
+                        BasicTextField(
+                            value         = fieldValue,
+                            onValueChange = { newCode ->
+                                when (fieldKey) {
+                                    "content"   -> draftContent   = newCode
+                                    "longPress" -> draftLongPress = newCode
+                                    "startup"   -> draftStartup   = newCode
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(dialogScrollState)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            textStyle = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        )
+                    }
                 }
             }
         }
