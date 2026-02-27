@@ -62,6 +62,7 @@ fun FilePickerDialog(
   onFileSelected: (String) -> Unit,
   onPathChanged: ((String?) -> Unit)? = null,
   onSystemPickerRequest: () -> Unit,
+  matchToName: String? = null,
   allowedExtensions: List<String> = listOf(
     // Common & modern
     "srt", "vtt", "ass", "ssa",
@@ -125,16 +126,36 @@ fun FilePickerDialog(
   }
   
   // Get folders and allowed files
-  val (folders, files) = remember(selectedPath) {
+  val (folders, files) = remember(selectedPath, matchToName) {
     if (showStorageRoot) {
       Pair(emptyList<File>(), emptyList<File>())
     } else {
       val allFiles = currentDir?.listFiles { file -> !file.name.startsWith(".") } ?: emptyArray()
-      val dirs = allFiles.filter { it.isDirectory }.sortedBy { it.name.lowercase() }
+      
+      // Use NaturalOrderComparator for better sorting (e.g., Ep 2 < Ep 10)
+      val dirs = allFiles.filter { it.isDirectory }.sortedWith { f1, f2 -> 
+          app.marlboroadvance.mpvex.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT.compare(f1.name, f2.name)
+      }
+      
       val filteredFiles = allFiles.filter { file -> 
           !file.isDirectory && allowedExtensions.any { ext -> file.name.endsWith(ext, ignoreCase = true) } 
-      }.sortedBy { it.name.lowercase() }
-      Pair(dirs, filteredFiles)
+      }
+
+      // Final sorted files: matches first (alphabetical), then others (alphabetical)
+      val finalSortedFiles = filteredFiles.sortedWith { f1, f2 ->
+          val m1 = matchToName != null && f1.name.contains(matchToName, ignoreCase = true)
+          val m2 = matchToName != null && f2.name.contains(matchToName, ignoreCase = true)
+          
+          if (m1 && !m2) {
+              -1
+          } else if (!m1 && m2) {
+              1
+          } else {
+              app.marlboroadvance.mpvex.utils.sort.SortUtils.NaturalOrderComparator.DEFAULT.compare(f1.name, f2.name)
+          }
+      }
+      
+      Pair(dirs, finalSortedFiles)
     }
   }
 

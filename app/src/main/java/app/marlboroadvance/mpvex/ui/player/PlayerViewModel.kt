@@ -23,6 +23,7 @@ import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
 import app.marlboroadvance.mpvex.repository.wyzie.WyzieSearchRepository
 import app.marlboroadvance.mpvex.repository.wyzie.WyzieSubtitle
+import app.marlboroadvance.mpvex.utils.media.ChecksumUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import `is`.xyz.mpv.MPVLib
 import kotlinx.collections.immutable.persistentListOf
@@ -608,15 +609,20 @@ class PlayerViewModel(
       
       try {
         val sanitizedTitle = MediaInfoParser.parse(mediaTitle).title
+        val fullTitle = mediaTitle.substringBeforeLast(".")
+        val checksumTitle = ChecksumUtils.getCRC32(mediaTitle)
         val parentDir = DocumentFile.fromTreeUri(host.context, Uri.parse(saveFolderUri)) ?: return@launch
-        val movieDir = parentDir.findFile(sanitizedTitle) ?: return@launch
         
-        if (movieDir.isDirectory) {
-          movieDir.listFiles().forEach { file ->
-            if (file.isFile && isValidSubtitleFile(file.name ?: "")) {
-              withContext(Dispatchers.Main) {
-                // Don't auto-select during scan, just make available
-                addSubtitle(file.uri, select = false, silent = true)
+        // Scan potential folder names for compatibility: checksum, full, and sanitized
+        listOf(checksumTitle, fullTitle, sanitizedTitle).distinct().forEach { folderName ->
+          val movieDir = parentDir.findFile(folderName) ?: return@forEach
+          if (movieDir.isDirectory) {
+            movieDir.listFiles().forEach { file ->
+              if (file.isFile && isValidSubtitleFile(file.name ?: "")) {
+                withContext(Dispatchers.Main) {
+                  // Don't auto-select during scan, just make available
+                  addSubtitle(file.uri, select = false, silent = true)
+                }
               }
             }
           }

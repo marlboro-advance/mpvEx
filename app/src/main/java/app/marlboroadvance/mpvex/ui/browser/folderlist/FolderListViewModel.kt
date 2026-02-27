@@ -224,8 +224,8 @@ class FolderListViewModel(
 
             // Count new unplayed videos
             val newCount = videos.count { video ->
-              // Check if video was added within threshold days
-              val videoAge = currentTime - (video.dateAdded * 1000)
+              // Check if video was modified within threshold days
+              val videoAge = currentTime - (video.dateModified * 1000)
               val isRecent = videoAge <= thresholdMillis
 
               // Check if video has been played

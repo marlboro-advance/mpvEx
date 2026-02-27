@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.ui.preferences
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.documentfile.provider.DocumentFile
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -389,6 +390,11 @@ object SubtitlesPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              var showClearDialog by remember { mutableStateOf(false) }
+              val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+              PreferenceDivider()
+
               // Wyzie Sources
               MultiChoicePreference(
                 title = { Text("Subtitle Sources") },
@@ -501,7 +507,52 @@ object SubtitlesPreferencesScreen : Screen {
                   }
                 }
               }
-              
+
+              PreferenceDivider()
+
+              Preference(
+                title = { Text(stringResource(R.string.pref_subtitles_clear_downloads), color = MaterialTheme.colorScheme.error) },
+                summary = { Text(stringResource(R.string.pref_subtitles_clear_downloads_summary)) },
+                onClick = { showClearDialog = true },
+                enabled = subtitleSaveFolder.isNotBlank()
+              )
+
+              if (showClearDialog) {
+                AlertDialog(
+                  onDismissRequest = { showClearDialog = false },
+                  title = { Text(stringResource(R.string.pref_subtitles_clear_downloads)) },
+                  text = { Text(stringResource(R.string.pref_subtitles_clear_downloads_confirmation)) },
+                  confirmButton = {
+                    TextButton(
+                      onClick = {
+                        showClearDialog = false
+                        scope.launch(Dispatchers.IO) {
+                          runCatching {
+                            val uri = Uri.parse(subtitleSaveFolder)
+                            val folder = DocumentFile.fromTreeUri(context, uri)
+                            folder?.listFiles()?.forEach { it.delete() }
+                            withContext(Dispatchers.Main) {
+                              android.widget.Toast.makeText(context, R.string.toast_subtitles_cleared, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                          }.onFailure { e ->
+                            withContext(Dispatchers.Main) {
+                              android.widget.Toast.makeText(context, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                          }
+                        }
+                      }
+                    ) {
+                      Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                    }
+                  },
+                  dismissButton = {
+                    TextButton(onClick = { showClearDialog = false }) {
+                      Text(stringResource(android.R.string.cancel))
+                    }
+                  }
+                )
+              }
+
               PreferenceDivider()
               
               // Wyzie Tag

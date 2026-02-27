@@ -196,9 +196,9 @@ fun VideoCard(
           // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
           // Like MX Player: show NEW for videos added within threshold days that haven't been played
           if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
-            // Check if video is recently added (within threshold days)
+            // Check if video is recently modified (within threshold days)
             val currentTime = System.currentTimeMillis()
-            val videoAge = currentTime - (video.dateAdded * 1000) // dateAdded is in seconds
+            val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
             val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
 
             if (videoAge <= thresholdMillis) {
@@ -359,9 +359,9 @@ fun VideoCard(
                  )
             }
             
-            if (showDateChip && video.dateAdded > 0) {
+            if (showDateChip && video.dateModified > 0) {
               Text(
-                formatDate(video.dateAdded),
+                formatDate(video.dateModified),
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier
                   .background(
@@ -473,9 +473,9 @@ fun VideoCard(
           // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
           // Like MX Player: show NEW for videos added within threshold days that haven't been played
           if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
-            // Check if video is recently added (within threshold days)
+            // Check if video is recently modified (within threshold days)
             val currentTime = System.currentTimeMillis()
-            val videoAge = currentTime - (video.dateAdded * 1000) // dateAdded is in seconds
+            val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
             val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
 
             if (videoAge <= thresholdMillis) {
@@ -644,9 +644,9 @@ fun VideoCard(
               )
             }
             
-            if (showDateChip && video.dateAdded > 0) {
+            if (showDateChip && video.dateModified > 0) {
               Text(
-                formatDate(video.dateAdded),
+                formatDate(video.dateModified),
                 style = MaterialTheme.typography.labelSmall,
                 modifier =
                   Modifier

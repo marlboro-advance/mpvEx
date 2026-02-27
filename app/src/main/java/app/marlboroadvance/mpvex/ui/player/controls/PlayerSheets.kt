@@ -84,6 +84,12 @@ fun PlayerSheets(
       val subtitlesPreferences = koinInject<app.marlboroadvance.mpvex.preferences.SubtitlesPreferences>()
       val savedPickerPath = subtitlesPreferences.pickerPath.get()
 
+      val currentMediaTitle = viewModel.currentMediaTitle
+      val matchToName = if (currentMediaTitle.isNotBlank()) {
+          // Remove extension if present to improve matching
+          currentMediaTitle.substringBeforeLast(".")
+      } else null
+
       var showFilePicker by remember { mutableStateOf(false) }
 
       if (showFilePicker) {
@@ -113,7 +119,8 @@ fun PlayerSheets(
                       "*/*",
                     ),
                   )
-              }
+              },
+              matchToName = matchToName
           )
       }
 

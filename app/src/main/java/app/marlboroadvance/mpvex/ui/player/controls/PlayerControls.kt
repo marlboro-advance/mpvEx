@@ -673,7 +673,7 @@ fun PlayerControls(
                 end.linkTo(parent.end)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
-                verticalBias = 0.72f
+                verticalBias = 0.70f
                 width = Dimension.preferredWrapContent
                 height = Dimension.wrapContent
             }

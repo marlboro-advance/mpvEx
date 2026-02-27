@@ -195,6 +195,10 @@
   <string name="pref_subtitles_search_online">Online Subtitle Search…</string>
   <string name="pref_subtitles_subdl_languages">Subtitle Languages</string>
   <string name="all_languages">All (Selective Filtering)</string>
+  <string name="pref_subtitles_clear_downloads">Clear Subtitle Downloads</string>
+  <string name="pref_subtitles_clear_downloads_summary">Delete all files in the current save location</string>
+  <string name="pref_subtitles_clear_downloads_confirmation">Are you sure you want to delete all downloaded subtitles? This action cannot be undone.</string>
+  <string name="toast_subtitles_cleared">Subtitle downloads cleared</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>

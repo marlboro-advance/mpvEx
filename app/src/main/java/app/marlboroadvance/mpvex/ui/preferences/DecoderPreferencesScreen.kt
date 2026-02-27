@@ -103,14 +103,15 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val gpuNext by preferences.gpuNext.collectAsState()
+              val useVulkan by preferences.useVulkan.collectAsState() // Added to check Vulkan state
               SwitchPreference(
                 value = gpuNext,
                 onValueChange = { enabled ->
-                    if (enabled && !gpuNext) {
+                    if (enabled && !gpuNext && !useVulkan) { // Only show warning if Vulkan is disabled
                         showGpuNextWarning = true
                     } else {
                         preferences.gpuNext.set(enabled)
-                        if (enabled) {
+                        if (enabled && !useVulkan) { // Only disable Anime4K if Vulkan is disabled
                             preferences.enableAnime4K.set(false)
                         }
                     }
@@ -155,7 +156,7 @@ object DecoderPreferencesScreen : Screen {
                       confirmButton = {
                           Button(onClick = {
                               preferences.gpuNext.set(true)
-                              preferences.enableAnime4K.set(false)
+                              preferences.enableAnime4K.set(false) // Ensure Anime4K is disabled on confirmation
                               showGpuNextWarning = false
                           }) {
                               Text(stringResource(R.string.pref_decoder_gpu_next_enable_anyway))
@@ -171,7 +172,7 @@ object DecoderPreferencesScreen : Screen {
 
               PreferenceDivider()
 
-              val useVulkan by preferences.useVulkan.collectAsState()
+              // val useVulkan by preferences.useVulkan.collectAsState() // Moved up for gpuNext logic
               SwitchPreference(
                 value = useVulkan,
                 onValueChange = {
@@ -231,7 +232,7 @@ object DecoderPreferencesScreen : Screen {
                 value = enableAnime4K,
                 onValueChange = { enabled ->
                     preferences.enableAnime4K.set(enabled)
-                    if (enabled) {
+                    if (enabled && !useVulkan) { // Only disable GPU Next if Vulkan is disabled
                         preferences.gpuNext.set(false)
                     }
                 },

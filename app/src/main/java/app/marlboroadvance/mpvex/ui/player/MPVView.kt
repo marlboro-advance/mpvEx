@@ -227,6 +227,9 @@ class MPVView(
     if (preferredLangs.isNotBlank()) {
       MPVLib.setOptionString("alang", preferredLangs)
       MPVLib.setPropertyString("alang", preferredLangs)
+    }else{
+      MPVLib.setOptionString("alang", "")
+      MPVLib.setPropertyString("alang", "")
     }
 
     MPVLib.setOptionString("audio-delay", (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
@@ -245,10 +248,12 @@ class MPVView(
     if (preferredLangs.isNotBlank()) {
       MPVLib.setOptionString("slang", preferredLangs)
       MPVLib.setPropertyString("slang", preferredLangs)
+    }else{
+      MPVLib.setOptionString("slang", "")
+      MPVLib.setPropertyString("slang", "")
     }
 
-    // Default to 'all' for discovery but let TrackSelector handle selection
-    MPVLib.setOptionString("sub-auto", "all")
+    MPVLib.setOptionString("sub-auto", "exact")
     MPVLib.setOptionString("sub-file-paths", "")
     MPVLib.setOptionString("subs-fallback", "yes")
 
@@ -348,9 +353,11 @@ class MPVView(
       }
       
       // DEFENSIVE CHECK: Ensure mutual exclusion at initialization time
+      // Mutual exclusion only required for OpenGL
       val gpuNextActive = decoderPreferences.gpuNext.get()
-      if (gpuNextActive) {
-        return  // Abort shader loading to prevent incompatible state
+      val useVulkan = decoderPreferences.useVulkan.get()
+      if (gpuNextActive && !useVulkan) {
+        return
       }
       
       // Initialize shader files if needed - THIS IS CRITICAL!
