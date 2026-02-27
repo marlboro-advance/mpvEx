@@ -5,7 +5,7 @@
   <string name="generic_confirm">確認</string>
   <string name="generic_cancel">取消</string>
   <string name="generic_ok">確認</string>
-  <string name="generic_unit_ms">毫秒</string>
+  <string name="generic_unit_ms">ms</string>
   <string name="generic_disabled">已停用</string>
   <string name="pref_preferences">偏好設定</string>
   <string name="pref_appearance_title">外觀</string>
