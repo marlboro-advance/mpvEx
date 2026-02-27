@@ -124,7 +124,7 @@
   <string name="pref_player_save_position_on_quit">結束時儲存位置</string>
   <string name="pref_player_double_tap_seek_duration">輕觸兩下搜尋持續時間</string>
   <string name="pref_player_custom_skip_duration_title">自訂跳過時長</string>
-  <string name="pref_player_custom_skip_duration_summary">Duration to skip forward on custom skip button</string>
+  <string name="pref_player_custom_skip_duration_summary">自訂跳過按鈕的向前跳過時長</string>
   <string name="pref_player_seeking_title">搜尋</string>
   <string name="pref_player_close_after_eof">播放結束後關閉</string>
   <string name="pref_player_remember_brightness">記住顯示亮度</string>
