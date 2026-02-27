@@ -91,7 +91,6 @@ enum class Panels {
   SubtitleDelay,
   AudioDelay,
   VideoFilters,
-  LuaScripts,
 }
 
 sealed class PlayerUpdates {

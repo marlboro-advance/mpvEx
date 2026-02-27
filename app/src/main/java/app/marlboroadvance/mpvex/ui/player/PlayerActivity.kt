@@ -1571,7 +1571,7 @@ class PlayerActivity :
    */
   private fun handleConfigurationChange() {
     if (!isInPictureInPictureMode) {
-      viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
+      // Configuration changes don't affect aspect ratio
     } else {
       viewModel.hideControls()
     }
@@ -1768,7 +1768,12 @@ class PlayerActivity :
         Log.d(TAG, "video-params/aspect changed: $aspect")
         pipHelper.updatePictureInPictureParams()
         // Update orientation when video aspect ratio changes (fixes Video orientation mode)
-        if (playerPreferences.orientation.get() == PlayerOrientation.Video && aspect != null) {
+        // BUT: Don't update if aspect is being overridden (stretch/custom aspect mode)
+        // to prevent infinite orientation switching loop
+        val aspectOverride = MPVLib.getPropertyDouble("video-aspect-override") ?: -1.0
+        if (playerPreferences.orientation.get() == PlayerOrientation.Video && 
+            aspect != null && 
+            aspectOverride <= 0.0) {
           setOrientation()
         }
       }
@@ -1886,8 +1891,6 @@ class PlayerActivity :
     }
 
     applySubtitlePreferences()
-    viewModel.changeVideoAspect(playerPreferences.videoAspect.get(), showUpdate = false)
-    viewModel.restoreCustomAspectRatio()
 
     // Don't force media-title for m3u/m3u8 streams - let MPV provide it
     if (!isCurrentStreamM3U()) {

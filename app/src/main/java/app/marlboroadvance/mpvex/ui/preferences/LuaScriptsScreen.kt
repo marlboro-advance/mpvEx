@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -40,8 +41,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import android.content.Intent
+import java.io.File
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
@@ -128,6 +132,55 @@ object LuaScriptsScreen : Screen {
       preferences.selectedLuaScripts.set(newSelection)
     }
     
+    fun shareScript(scriptName: String) {
+      if (mpvConfStorageLocation.isBlank()) {
+        Toast.makeText(context, "No storage location configured", Toast.LENGTH_SHORT).show()
+        return
+      }
+      
+      runCatching {
+        val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
+        if (tree != null && tree.exists()) {
+          val scriptsDir = tree.listFiles().firstOrNull {
+            it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
+          } ?: tree
+          
+          val scriptFile = scriptsDir.listFiles().firstOrNull { 
+            it.isFile && it.name == scriptName 
+          }
+          
+          if (scriptFile != null) {
+            // Copy to cache directory for sharing
+            val cacheFile = File(context.cacheDir, scriptName)
+            context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+              cacheFile.outputStream().use { output ->
+                input.copyTo(output)
+              }
+            }
+            
+            val shareUri = FileProvider.getUriForFile(
+              context,
+              "${context.packageName}.provider",
+              cacheFile
+            )
+            
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+              type = "text/plain"
+              putExtra(Intent.EXTRA_STREAM, shareUri)
+              putExtra(Intent.EXTRA_SUBJECT, scriptName)
+              addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            
+            context.startActivity(Intent.createChooser(shareIntent, "Share script"))
+          } else {
+            Toast.makeText(context, "Script file not found", Toast.LENGTH_SHORT).show()
+          }
+        }
+      }.onFailure { e ->
+        Toast.makeText(context, "Error sharing script: ${e.message}", Toast.LENGTH_LONG).show()
+      }
+    }
+    
     Scaffold(
       topBar = {
         TopAppBar(
@@ -201,16 +254,27 @@ object LuaScriptsScreen : Screen {
                 )
               }
               
-              IconButton(
-                onClick = {
-                  backStack.add(LuaScriptEditorScreen(scriptName = scriptName))
+              Row {
+                IconButton(
+                  onClick = { shareScript(scriptName) }
+                ) {
+                  Icon(
+                    Icons.Default.Share,
+                    contentDescription = "Share",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
                 }
-              ) {
-                Icon(
-                  Icons.Default.Edit,
-                  contentDescription = "Edit",
-                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                IconButton(
+                  onClick = {
+                    backStack.add(LuaScriptEditorScreen(scriptName = scriptName))
+                  }
+                ) {
+                  Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
               }
             }
             HorizontalDivider(

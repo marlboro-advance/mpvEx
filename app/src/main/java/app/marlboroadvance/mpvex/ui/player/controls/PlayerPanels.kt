@@ -53,9 +53,6 @@ fun PlayerPanels(
       Panels.VideoFilters -> {
         VideoSettingsPanel(onDismissRequest)
       }
-      Panels.LuaScripts -> {
-        app.marlboroadvance.mpvex.ui.player.controls.components.panels.LuaScriptsPanel(onDismissRequest)
-      }
     }
   }
 }

@@ -263,6 +263,10 @@ class PlayerViewModel(
   private val _videoZoom = MutableStateFlow(0f)
   val videoZoom: StateFlow<Float> = _videoZoom.asStateFlow()
 
+  // Video aspect ratio (not persisted, resets to Fit for each video)
+  private val _videoAspect = MutableStateFlow(VideoAspect.Fit)
+  val videoAspect: StateFlow<VideoAspect> = _videoAspect.asStateFlow()
+
   // Timer
   private var timerJob: Job? = null
   private val _remainingTime = MutableStateFlow(0)
@@ -1116,8 +1120,8 @@ class PlayerViewModel(
       }
     }
 
-    // Save the preference
-    playerPreferences.videoAspect.set(aspect)
+    // Update the state
+    _videoAspect.value = aspect
 
     // Notify the UI
     if (showUpdate) {
@@ -1128,16 +1132,12 @@ class PlayerViewModel(
   fun setCustomAspectRatio(ratio: Double) {
     MPVLib.setPropertyDouble("panscan", 0.0)
     MPVLib.setPropertyDouble("video-aspect-override", ratio)
-    playerPreferences.currentAspectRatio.set(ratio.toFloat())
+    // Don't save custom aspect ratios - they should not persist between videos
     playerUpdate.value = PlayerUpdates.AspectRatio
   }
 
   fun restoreCustomAspectRatio() {
-    val savedRatio = playerPreferences.currentAspectRatio.get()
-    if (savedRatio > 0) {
-      MPVLib.setPropertyDouble("panscan", 0.0)
-      MPVLib.setPropertyDouble("video-aspect-override", savedRatio.toDouble())
-    }
+    // No longer used - custom aspect ratios are not persisted
   }
 
   // ==================== Screen Rotation ====================

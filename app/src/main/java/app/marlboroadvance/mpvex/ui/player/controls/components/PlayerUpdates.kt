@@ -5,7 +5,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,14 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
 import app.marlboroadvance.mpvex.ui.theme.spacing
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.widthIn
 
 @Composable
 fun PlayerUpdate(
@@ -44,7 +45,9 @@ fun PlayerUpdate(
       1.dp,
       MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
     ),
-    modifier = modifier.animateContentSize(),
+    modifier = modifier
+      .height(45.dp)
+      .animateContentSize(),
   ) {
     Box(
       modifier = Modifier.padding(
@@ -71,6 +74,7 @@ fun TextPlayerUpdate(
       fontWeight = FontWeight.Bold,
       textAlign = TextAlign.Center,
       color = MaterialTheme.colorScheme.onSurface,
+      style = MaterialTheme.typography.bodyMedium,
     )
   }
 }

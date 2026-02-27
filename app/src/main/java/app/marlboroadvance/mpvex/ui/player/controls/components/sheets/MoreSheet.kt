@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Timer
@@ -67,7 +66,6 @@ fun MoreSheet(
   onStartTimer: (Int) -> Unit,
   onDismissRequest: () -> Unit,
   onEnterFiltersPanel: () -> Unit,
-  onEnterLuaScriptsPanel: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -157,18 +155,6 @@ if (infoDialogData != null) {
             ) {
               Icon(imageVector = Icons.Default.Tune, contentDescription = null)
               Text(text = stringResource(id = R.string.player_sheets_filters_title))
-            }
-          }
-          val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
-          if (enableLuaScripts) {
-            TextButton(onClick = onEnterLuaScriptsPanel) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              ) {
-                Icon(imageVector = Icons.Default.Code, contentDescription = null)
-                Text(text = "Lua Scripts")
-              }
             }
           }
         }

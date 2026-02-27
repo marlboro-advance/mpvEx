@@ -103,6 +103,7 @@ import app.marlboroadvance.mpvex.ui.player.PlayerActivity
 import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.Sheets
+import app.marlboroadvance.mpvex.ui.player.VideoAspect
 import app.marlboroadvance.mpvex.ui.player.controls.components.BrightnessSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.CompactSpeedIndicator
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
@@ -302,6 +303,7 @@ fun PlayerControls(
         val seekbar = createRef()
         val (playerUpdates) = createRefs()
         val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
+        val customButtonsPortraitRef = createRef()
 
         val isBrightnessSliderShown by viewModel.isBrightnessSliderShown.collectAsState()
         val isVolumeSliderShown by viewModel.isVolumeSliderShown.collectAsState()
@@ -312,7 +314,7 @@ fun PlayerControls(
         val reduceMotion by playerPreferences.reduceMotion.collectAsState()
 
         val activity = LocalActivity.current as PlayerActivity
-        val aspect by playerPreferences.videoAspect.collectAsState()
+        val aspect by viewModel.videoAspect.collectAsState()
         val currentZoom by viewModel.videoZoom.collectAsState()
 
         val rawMediaTitle by MPVLib.propString["media-title"].collectAsState()
@@ -424,7 +426,7 @@ fun PlayerControls(
 
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
-        val aspectRatio by playerPreferences.videoAspect.collectAsState()
+        val aspectRatio by viewModel.videoAspect.collectAsState()
         val videoZoom by viewModel.videoZoom.collectAsState()
 
         LaunchedEffect(currentPlayerUpdate, aspectRatio, videoZoom) {
@@ -443,10 +445,18 @@ fun PlayerControls(
           enter = fadeIn(playerControlsEnterAnimationSpec()),
           exit = fadeOut(playerControlsExitAnimationSpec()),
           modifier =
-            Modifier.constrainAs(playerUpdates) {
-              linkTo(parent.start, parent.end)
-              top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
-            },
+            Modifier
+              .then(
+                if (showSystemStatusBar) {
+                  Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                } else {
+                  Modifier
+                }
+              )
+              .constrainAs(playerUpdates) {
+                linkTo(parent.start, parent.end)
+                top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
+              },
         ) {
           when (currentPlayerUpdate) {
             is PlayerUpdates.MultipleSpeed -> MultipleSpeedPlayerUpdate(currentSpeed = holdForMultipleSpeed)
@@ -491,7 +501,7 @@ fun PlayerControls(
               val zoomPercentage = (videoZoom * 100).toInt()
               TextPlayerUpdate(
                 text = String.format("Zoom:%3d%%", zoomPercentage), 
-                modifier = Modifier.width(160.dp),
+                modifier = Modifier, // Let content size determine width
               )
             }
 
@@ -555,7 +565,7 @@ fun PlayerControls(
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.constrainAs(customLeftButtonsRef) {
-                start.linkTo(parent.start, spacing.medium)
+                start.linkTo(parent.start, spacing.large)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
                 verticalBias = 0.65f
@@ -612,7 +622,7 @@ fun PlayerControls(
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.constrainAs(customRightButtonsRef) {
-                end.linkTo(parent.end, spacing.medium)
+                end.linkTo(parent.end, spacing.large)
                 top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
                 verticalBias = 0.65f
@@ -668,13 +678,11 @@ fun PlayerControls(
             visible = areButtonsVisible && isPortrait,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.constrainAs(createRef()) {
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                top.linkTo(parent.top)
-                bottom.linkTo(parent.bottom)
-                verticalBias = 0.70f
-                width = Dimension.preferredWrapContent
+            modifier = Modifier.constrainAs(customButtonsPortraitRef) {
+                start.linkTo(parent.start, spacing.large)
+                end.linkTo(parent.end, spacing.large)
+                bottom.linkTo(seekbar.top, spacing.medium)
+                width = Dimension.fillToConstraints
                 height = Dimension.wrapContent
             }
         ) {

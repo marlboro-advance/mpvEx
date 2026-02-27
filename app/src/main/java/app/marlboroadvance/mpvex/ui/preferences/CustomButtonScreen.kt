@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -33,9 +36,15 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -67,10 +76,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import java.io.File
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.presentation.Screen
 import androidx.compose.foundation.layout.imePadding
@@ -116,11 +133,57 @@ object CustomButtonScreen : Screen {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
+        val context = LocalContext.current
         val backstack = LocalBackStack.current
         val preferences = koinInject<PlayerPreferences>()
 
         // 8 slots — order = left 0-3, right 4-7
         val buttonSlots = remember { mutableStateListOf<CustomButton?>(*Array(8) { null }) }
+
+        // Import dialog state
+        var showImportDialog by remember { mutableStateOf(false) }
+        var importedSlots by remember { mutableStateOf<List<CustomButton?>>(emptyList()) }
+        var selectedImportSlots by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+        // Export launcher
+        val exportLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/xml")
+        ) { uri ->
+            uri?.let {
+                runCatching {
+                    val xmlContent = buildXmlExport(buttonSlots.toList())
+                    context.contentResolver.openOutputStream(it)?.use { output ->
+                        output.write(xmlContent.toByteArray())
+                    }
+                    Toast.makeText(context, "Buttons exported successfully", Toast.LENGTH_SHORT).show()
+                }.onFailure { e ->
+                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        // Import launcher
+        val importLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let {
+                runCatching {
+                    val xmlContent = context.contentResolver.openInputStream(it)?.use { input ->
+                        input.bufferedReader().readText()
+                    } ?: ""
+                    
+                    val parsed = parseXmlImport(xmlContent)
+                    importedSlots = parsed
+                    
+                    // Pre-select all non-null slots
+                    selectedImportSlots = parsed.indices.filter { index -> parsed[index] != null }.toSet()
+                    
+                    showImportDialog = true
+                }.onFailure { e ->
+                    Toast.makeText(context, "Failed to read file: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
 
         // Load saved data
         LaunchedEffect(Unit) {
@@ -242,8 +305,106 @@ object CustomButtonScreen : Screen {
                     }
                 }
 
+                // Import/Export section
+                item { 
+                    Spacer(Modifier.height(8.dp))
+                }
+                
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Import / Export",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            
+                            Text(
+                                text = "Backup or share all your custom buttons with their Lua code as an XML file",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { importLauncher.launch(arrayOf("text/xml", "application/xml")) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.FileUpload,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Import")
+                                }
+                                
+                                Button(
+                                    onClick = { exportLauncher.launch("custom_buttons_${System.currentTimeMillis()}.xml") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.FileDownload,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Export")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item { Spacer(Modifier.height(16.dp)) }
             }
+        }
+        
+        // Import selection dialog
+        if (showImportDialog) {
+            ImportSelectionScreen(
+                importedSlots = importedSlots,
+                currentSlots = buttonSlots.toList(),
+                selectedSlots = selectedImportSlots,
+                onSlotToggle = { slotIndex ->
+                    selectedImportSlots = if (selectedImportSlots.contains(slotIndex)) {
+                        selectedImportSlots - slotIndex
+                    } else {
+                        selectedImportSlots + slotIndex
+                    }
+                },
+                onConfirm = {
+                    selectedImportSlots.forEach { slotIndex ->
+                        if (slotIndex in importedSlots.indices) {
+                            buttonSlots[slotIndex] = importedSlots[slotIndex]
+                        }
+                    }
+                    Toast.makeText(context, "Imported ${selectedImportSlots.size} button(s)", Toast.LENGTH_SHORT).show()
+                    showImportDialog = false
+                    selectedImportSlots = emptySet()
+                },
+                onDismiss = {
+                    showImportDialog = false
+                    selectedImportSlots = emptySet()
+                }
+            )
         }
     }
 }
@@ -748,4 +909,268 @@ fun LuaEditorEntryCard(
             )
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Import Selection Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImportSelectionScreen(
+    importedSlots: List<CustomButton?>,
+    currentSlots: List<CustomButton?>,
+    selectedSlots: Set<Int>,
+    onSlotToggle: (Int) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "Select Buttons to Import",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = "Choose which buttons to import",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Cancel",
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = onConfirm,
+                        enabled = selectedSlots.isNotEmpty(),
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(40.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.FileDownload,
+                            contentDescription = "Import",
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 16.dp)
+        ) {
+            items(
+                items = importedSlots.mapIndexedNotNull { index, button -> 
+                    button?.let { index to it }
+                },
+                key = { (index, _) -> "import_button_$index" }
+            ) { (index, button) ->
+                val side = if (index < 4) "L${index + 1}" else "R${index - 3}"
+                val isSelected = selectedSlots.contains(index)
+                val willOverwrite = currentSlots.getOrNull(index) != null
+                val sideColor = if (index < 4) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.tertiary
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        else
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    border = if (isSelected) 
+                        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                    else null,
+                    onClick = { onSlotToggle(index) }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { onSlotToggle(index) }
+                        )
+                        
+                        Spacer(Modifier.width(12.dp))
+                        
+                        // Slot badge
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(sideColor.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = side,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = sideColor,
+                            )
+                        }
+                        
+                        Spacer(Modifier.width(16.dp))
+                        
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = button.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            if (button.content.isNotBlank()) {
+                                Text(
+                                    text = button.content.lines().first().take(50),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 12.sp,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (willOverwrite) {
+                                Spacer(Modifier.height(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "⚠",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "Will overwrite existing button",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// XML Import/Export helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun buildXmlExport(slots: List<CustomButton?>): String {
+    val sb = StringBuilder()
+    sb.appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+    sb.appendLine("<customButtons>")
+    
+    slots.forEachIndexed { index, button ->
+        if (button != null) {
+            sb.appendLine("  <button slot=\"$index\">")
+            sb.appendLine("    <id>${escapeXml(button.id)}</id>")
+            sb.appendLine("    <title>${escapeXml(button.title)}</title>")
+            sb.appendLine("    <enabled>${button.enabled}</enabled>")
+            sb.appendLine("    <content><![CDATA[${button.content}]]></content>")
+            sb.appendLine("    <longPressContent><![CDATA[${button.longPressContent}]]></longPressContent>")
+            sb.appendLine("    <onStartup><![CDATA[${button.onStartup}]]></onStartup>")
+            sb.appendLine("  </button>")
+        }
+    }
+    
+    sb.appendLine("</customButtons>")
+    return sb.toString()
+}
+
+private fun parseXmlImport(xmlContent: String): List<CustomButton?> {
+    val slots = MutableList<CustomButton?>(8) { null }
+    
+    // Simple XML parsing using regex (for basic structure)
+    val buttonPattern = """<button\s+slot="(\d+)">(.*?)</button>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val idPattern = """<id>(.*?)</id>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val titlePattern = """<title>(.*?)</title>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val enabledPattern = """<enabled>(.*?)</enabled>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val contentPattern = """<content><!\[CDATA\[(.*?)\]\]></content>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val longPressPattern = """<longPressContent><!\[CDATA\[(.*?)\]\]></longPressContent>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    val startupPattern = """<onStartup><!\[CDATA\[(.*?)\]\]></onStartup>""".toRegex(RegexOption.DOT_MATCHES_ALL)
+    
+    buttonPattern.findAll(xmlContent).forEach { buttonMatch ->
+        val slotIndex = buttonMatch.groupValues[1].toIntOrNull() ?: return@forEach
+        if (slotIndex !in 0..7) return@forEach
+        
+        val buttonXml = buttonMatch.groupValues[2]
+        
+        val id = idPattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: UUID.randomUUID().toString()
+        val title = titlePattern.find(buttonXml)?.groupValues?.get(1)?.let { unescapeXml(it) } ?: ""
+        val enabled = enabledPattern.find(buttonXml)?.groupValues?.get(1)?.toBoolean() ?: true
+        val content = contentPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+        val longPress = longPressPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+        val startup = startupPattern.find(buttonXml)?.groupValues?.get(1) ?: ""
+        
+        slots[slotIndex] = CustomButton(
+            id = id,
+            title = title,
+            content = content,
+            longPressContent = longPress,
+            onStartup = startup,
+            enabled = enabled
+        )
+    }
+    
+    return slots
+}
+
+private fun escapeXml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+}
+
+private fun unescapeXml(text: String): String {
+    return text
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&")
 }
