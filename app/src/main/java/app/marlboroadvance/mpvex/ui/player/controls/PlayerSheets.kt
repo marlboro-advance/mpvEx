@@ -32,6 +32,7 @@ import androidx.compose.runtime.collectAsState as composeCollectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import `is`.xyz.mpv.MPVLib
 
 @Composable
 fun PlayerSheets(
@@ -273,10 +274,11 @@ fun PlayerSheets(
         }
 
       // Get current aspect ratio from MPV (not persisted)
-      val currentAspectOverride by MPVLib.propDouble["video-aspect-override"].collectAsState()
+      val currentAspectOverride by MPVLib.propDouble["video-aspect-override"].composeCollectAsState(null)
+      val currentRatio = currentAspectOverride
 
       AspectRatioSheet(
-        currentRatio = currentAspectOverride,
+        currentRatio = currentRatio,
         customRatios = customRatios,
         onSelectRatio = { ratio ->
           viewModel.setCustomAspectRatio(ratio)
@@ -289,7 +291,7 @@ fun PlayerSheets(
           val toRemove = "${ratio.label}|${ratio.ratio}"
           playerPreferences.customAspectRatios.set(customRatiosSet - toRemove)
           // If the deleted ratio is currently active, reset to default
-          if (currentAspectOverride != null && kotlin.math.abs(currentAspectOverride!! - ratio.ratio) < 0.01) {
+          if (currentRatio != null && kotlin.math.abs(currentRatio - ratio.ratio) < 0.01) {
             viewModel.setCustomAspectRatio(-1.0)
           }
         },
