@@ -71,20 +71,7 @@ fun PermissionDeniedState(
   var showExplanationDialog by remember { mutableStateOf(false) }
 
   // Determine if we're using MANAGE_EXTERNAL_STORAGE or scoped storage permissions
-  val isPlayStoreBuild = remember {
-    // Check if MANAGE_EXTERNAL_STORAGE is available in the manifest
-    // Play Store builds remove this permission
-    try {
-      val packageInfo = context.packageManager.getPackageInfo(
-        context.packageName,
-        android.content.pm.PackageManager.GET_PERMISSIONS
-      )
-      val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
-      !permissions.contains(android.Manifest.permission.MANAGE_EXTERNAL_STORAGE)
-    } catch (e: Exception) {
-      false
-    }
-  }
+  val isPlayStoreBuild = remember { BuildConfig.SCOPED_STORAGE_ONLY }
 
   // Animated scale for the icon
   val infiniteTransition = rememberInfiniteTransition(label = "permission_icon")

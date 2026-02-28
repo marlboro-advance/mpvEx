@@ -347,7 +347,7 @@ object CustomButtonScreen : Screen {
                                     shape = RoundedCornerShape(12.dp),
                                 ) {
                                     Icon(
-                                        Icons.Default.FileUpload,
+                                        Icons.Default.FileDownload,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -361,7 +361,7 @@ object CustomButtonScreen : Screen {
                                     shape = RoundedCornerShape(12.dp),
                                 ) {
                                     Icon(
-                                        Icons.Default.FileDownload,
+                                        Icons.Default.FileUpload,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )

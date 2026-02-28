@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
@@ -167,7 +168,23 @@ object PermissionUtils {
     // Wrap permission state to consider MANAGE_EXTERNAL_STORAGE on Android 11+
     val effectivePermissionState =
       remember(permissionState.status, lifecycleTrigger) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        if (!BuildConfig.SCOPED_STORAGE_ONLY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          if (android.os.Environment.isExternalStorageManager()) {
+            object : PermissionState {
+              override val permission = permissionState.permission
+              override val status = PermissionStatus.Granted
+
+              override fun launchPermissionRequest() = permissionState.launchPermissionRequest()
+            }
+          } else {
+            object : PermissionState {
+              override val permission = permissionState.permission
+              override val status = PermissionStatus.Denied(false)
+
+              override fun launchPermissionRequest() = permissionState.launchPermissionRequest()
+            }
+          }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
           android.os.Environment.isExternalStorageManager()
         ) {
           object : PermissionState {
@@ -215,7 +232,7 @@ object PermissionUtils {
       videos: List<Video>,
     ): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
-        if (hasManageStoragePermission()) {
+        if (!BuildConfig.SCOPED_STORAGE_ONLY || hasManageStoragePermission()) {
           deleteVideosDirectly(videos)
         } else {
           deleteVideosScoped(context, videos)
@@ -337,7 +354,7 @@ object PermissionUtils {
       newDisplayName: String,
     ): Result<Unit> =
       withContext(Dispatchers.IO) {
-        if (hasManageStoragePermission()) {
+        if (!BuildConfig.SCOPED_STORAGE_ONLY || hasManageStoragePermission()) {
           renameVideoDirectly(context, video, newDisplayName)
         } else {
           renameVideoScoped(context, video, newDisplayName)

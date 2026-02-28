@@ -377,9 +377,11 @@ class PlayerViewModel(
 
   private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
   val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
+  private var customButtonsSetupJob: Job? = null
 
   private fun setupCustomButtons() {
-    viewModelScope.launch(Dispatchers.IO) {
+    customButtonsSetupJob?.cancel()
+    customButtonsSetupJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         val buttons = mutableListOf<CustomButtonState>()
         if (!advancedPreferences.enableLuaScripts.get()) {
@@ -424,12 +426,44 @@ class PlayerViewModel(
           
           val file = File(scriptsDir, "custombuttons.lua")
           file.writeText(scriptContent)
-          MPVLib.command("load-script", file.absolutePath)
+          val loaded = loadCustomButtonsScriptWithRetry(file)
+          if (!loaded) {
+            android.util.Log.w("PlayerViewModel", "custombuttons.lua did not confirm load after retries")
+          }
         }
       } catch (e: Exception) {
         android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
       }
     }
+  }
+
+  private suspend fun loadCustomButtonsScriptWithRetry(file: File): Boolean {
+    // Reset probe flag before attempting to load.
+    runCatching { MPVLib.setPropertyString("user-data/mpvex/custombuttons_loaded", "0") }
+
+    val retryDelaysMs = listOf(0L, 100L, 250L, 500L, 1000L)
+    for (delayMs in retryDelaysMs) {
+      if (delayMs > 0) delay(delayMs)
+
+      val commandOk =
+        runCatching {
+          MPVLib.command("load-script", file.absolutePath)
+          true
+        }.getOrElse {
+          android.util.Log.w("PlayerViewModel", "load-script retry failed: ${it.message}")
+          false
+        }
+
+      if (!commandOk) continue
+
+      // Give MPV a short window to execute script top-level code and set probe flag.
+      delay(80L)
+      val loaded =
+        runCatching { MPVLib.getPropertyString("user-data/mpvex/custombuttons_loaded") == "1" }
+          .getOrDefault(false)
+      if (loaded) return true
+    }
+    return false
   }
 
   fun callCustomButton(id: String) {
@@ -487,6 +521,9 @@ class PlayerViewModel(
         append("\n")
       }
     }
+
+    // Probe flag to confirm script load completion from Kotlin side.
+    append("mp.set_property_native('user-data/mpvex/custombuttons_loaded', '1')\n")
   }
 
   // Cached values

@@ -9,6 +9,7 @@ import android.os.StatFs
 import android.provider.MediaStore
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import app.marlboroadvance.mpvex.BuildConfig
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
@@ -80,9 +81,14 @@ object CopyPasteOps {
 
   /**
    * Check if we can use direct file operations
-   * Returns false in Play Store flavor on Android 11+ (requires SAF instead)
+   * Play Store flavor uses scoped/SAF path; other flavors keep classic direct file behavior.
    */
-  fun canUseDirectFileOperations(): Boolean = hasManageStoragePermission()
+  fun canUseDirectFileOperations(): Boolean =
+    if (BuildConfig.SCOPED_STORAGE_ONLY) {
+      hasManageStoragePermission()
+    } else {
+      true
+    }
 
   // ============================================================================
   // Operation Control

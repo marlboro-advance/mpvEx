@@ -37,6 +37,7 @@ android {
       dimension = "distribution"
       // Standard flavor includes all features
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
     }
     
     create("playstore") {
@@ -45,6 +46,7 @@ android {
       versionNameSuffix = "-playstore"
       // Play Store excludes update feature (handled by Play Store itself)
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "true")
       // Play Store supports all ABIs for maximum device compatibility
     }
     
@@ -54,6 +56,7 @@ android {
       versionNameSuffix = "-fdroid"
       // F-Droid flavor excludes update feature
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
+      buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       // F-Droid only needs ARM64-v8a
       ndk {
         abiFilters += "arm64-v8a"
