@@ -3,6 +3,8 @@ package app.marlboroadvance.mpvex.ui.browser.videolist
 import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -178,6 +180,34 @@ data class VideoListScreen(
     val operationType = remember { mutableStateOf<CopyPasteOps.OperationType?>(null) }
     val progressDialogOpen = rememberSaveable { mutableStateOf(false) }
     val operationProgress by CopyPasteOps.operationProgress.collectAsState()
+    val treePickerLauncher =
+      rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val selectedVideos = selectionManager.getSelectedItems()
+        if (selectedVideos.isEmpty() || operationType.value == null) return@rememberLauncherForActivityResult
+
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+          )
+        }
+
+        progressDialogOpen.value = true
+        coroutineScope.launch {
+          when (operationType.value) {
+            is CopyPasteOps.OperationType.Copy -> {
+              CopyPasteOps.copyFilesToTreeUri(context, selectedVideos, uri)
+            }
+
+            is CopyPasteOps.OperationType.Move -> {
+              CopyPasteOps.moveFilesToTreeUri(context, selectedVideos, uri)
+            }
+
+            else -> {}
+          }
+        }
+      }
 
     // Private space state
     val movingToPrivateSpace = rememberSaveable { mutableStateOf(false) }
@@ -333,36 +363,42 @@ data class VideoListScreen(
         )
         
         // Floating Material 3 Button Group overlay with animation
-        // Only show in standard/fdroid builds (not Play Store)
-        if (BuildConfig.ENABLE_UPDATE_FEATURE) {
-          AnimatedVisibility(
-            visible = showFloatingBottomBar,
-            enter = slideInVertically(
-              animationSpec = tween(durationMillis = animationDuration),
-              initialOffsetY = { fullHeight -> fullHeight }
-            ),
-            exit = slideOutVertically(
-              animationSpec = tween(durationMillis = animationDuration),
-              targetOffsetY = { fullHeight -> fullHeight }
-            ),
-            modifier = Modifier.align(Alignment.BottomCenter)
-          ) {
-            BrowserBottomBar(
-              isSelectionMode = true,
-              onCopyClick = {
-                operationType.value = CopyPasteOps.OperationType.Copy
+        // Play Store gating is intentionally bypassed here.
+        AnimatedVisibility(
+          visible = showFloatingBottomBar,
+          enter = slideInVertically(
+            animationSpec = tween(durationMillis = animationDuration),
+            initialOffsetY = { fullHeight -> fullHeight }
+          ),
+          exit = slideOutVertically(
+            animationSpec = tween(durationMillis = animationDuration),
+            targetOffsetY = { fullHeight -> fullHeight }
+          ),
+          modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+          BrowserBottomBar(
+            isSelectionMode = true,
+            onCopyClick = {
+              operationType.value = CopyPasteOps.OperationType.Copy
+              if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
-              },
-              onMoveClick = {
-                operationType.value = CopyPasteOps.OperationType.Move
+              } else {
+                treePickerLauncher.launch(null)
+              }
+            },
+            onMoveClick = {
+              operationType.value = CopyPasteOps.OperationType.Move
+              if (CopyPasteOps.canUseDirectFileOperations()) {
                 folderPickerOpen.value = true
-              },
-              onRenameClick = { renameDialogOpen.value = true },
-              onDeleteClick = { deleteDialogOpen.value = true },
-              onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-              showRename = selectionManager.isSingleSelection
-            )
-          }
+              } else {
+                treePickerLauncher.launch(null)
+              }
+            },
+            onRenameClick = { renameDialogOpen.value = true },
+            onDeleteClick = { deleteDialogOpen.value = true },
+            onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+            showRename = selectionManager.isSingleSelection
+          )
         }
       }
 
@@ -694,7 +730,7 @@ private fun VideoListContent(
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,
-                  bottom = if (showFloatingBottomBar && BuildConfig.ENABLE_UPDATE_FEATURE) 88.dp else 16.dp
+                  bottom = if (showFloatingBottomBar) 88.dp else 16.dp
                 ),
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -748,7 +784,7 @@ private fun VideoListContent(
                 contentPadding = PaddingValues(
                   start = 8.dp,
                   end = 8.dp,
-                  bottom = if (showFloatingBottomBar && BuildConfig.ENABLE_UPDATE_FEATURE) 88.dp else 16.dp
+                  bottom = if (showFloatingBottomBar) 88.dp else 16.dp
                 ),
             ) {
               items(

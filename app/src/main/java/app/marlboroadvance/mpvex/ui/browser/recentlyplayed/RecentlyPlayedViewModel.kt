@@ -14,6 +14,7 @@ import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 
 
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -320,7 +321,7 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
           // Delete from history database
           recentlyPlayedRepository.deleteByFilePath(video.path)
 
-          // If deleteFiles is true and it's a local file, delete the actual file from disk
+          // If deleteFiles is true and it's a local file, delete the actual file
           if (deleteFiles) {
             // Check if it's a local file (not a network URL)
             val isNetworkUri = video.path.startsWith("http://", ignoreCase = true) ||
@@ -329,14 +330,16 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
               video.path.startsWith("rtsp://", ignoreCase = true)
 
             if (!isNetworkUri) {
-              val file = File(video.path)
-              if (file.exists()) {
-                if (file.delete()) {
-                  Log.d("RecentlyPlayedViewModel", "Deleted file: ${video.path}")
-                } else {
-                  Log.w("RecentlyPlayedViewModel", "Failed to delete file: ${video.path}")
-                  failCount++
-                }
+              val (deleted, failed) =
+                PermissionUtils.StorageOps.deleteVideos(
+                  getApplication(),
+                  listOf(video),
+                )
+              if (deleted <= 0 || failed > 0) {
+                Log.w("RecentlyPlayedViewModel", "Failed to delete file: ${video.path}")
+                failCount++
+              } else {
+                Log.d("RecentlyPlayedViewModel", "Deleted file: ${video.path}")
               }
             }
           }

@@ -1,12 +1,17 @@
 package app.marlboroadvance.mpvex.utils.media
 
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.provider.MediaStore
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Handles copy and move operations for video files with progress tracking.
- * Requires MANAGE_EXTERNAL_STORAGE permission on Android 11+.
+ * Uses direct File API when available, otherwise scoped storage via MediaStore.
  */
 object CopyPasteOps {
   private const val TAG = "CopyPasteOps"
@@ -117,59 +122,53 @@ object CopyPasteOps {
           return@withContext Result.failure(IllegalArgumentException("No files to copy"))
         }
 
-        if (!hasManageStoragePermission()) {
-          return@withContext Result.failure(
-            SecurityException("MANAGE_EXTERNAL_STORAGE permission not granted"),
-          )
-        }
+        val copiedFilePaths =
+          if (canUseDirectFileOperations()) {
+            resetOperation()
 
-        resetOperation()
+            // Validate and prepare destination
+            val destDir =
+              prepareDestinationDirectory(destinationPath)
+                ?: return@withContext Result.failure(
+                  IOException("Failed to create destination directory: $destinationPath"),
+                )
 
-        // Validate and prepare destination
-        val destDir =
-          prepareDestinationDirectory(destinationPath)
-            ?: return@withContext Result.failure(
-              IOException("Failed to create destination directory: $destinationPath"),
-            )
+            // Filter valid source files
+            val validVideos =
+              videos.filter { video ->
+                val sourceFile = File(video.path)
+                if (!sourceFile.exists()) {
+                  Log.w(TAG, "Source file does not exist, skipping: ${video.path}")
+                  false
+                } else if (sourceFile.parent == destDir.absolutePath) {
+                  Log.w(TAG, "Source and destination are the same, skipping: ${video.displayName}")
+                  false
+                } else {
+                  true
+                }
+              }
 
-        // Filter valid source files
-        val validVideos =
-          videos.filter { video ->
-            val sourceFile = File(video.path)
-            if (!sourceFile.exists()) {
-              Log.w(TAG, "Source file does not exist, skipping: ${video.path}")
-              false
-            } else if (sourceFile.parent == destDir.absolutePath) {
-              Log.w(TAG, "Source and destination are the same, skipping: ${video.displayName}")
-              false
-            } else {
-              true
+            if (validVideos.isEmpty()) {
+              return@withContext Result.failure(
+                IllegalArgumentException("No valid files to copy"),
+              )
             }
+
+            // Check available disk space
+            val totalBytes = validVideos.sumOf { it.size }
+            if (!hasEnoughDiskSpace(destDir, totalBytes)) {
+              return@withContext Result.failure(
+                IOException("Not enough disk space. Required: ${formatBytes(totalBytes)}"),
+              )
+            }
+
+            performCopyOperation(validVideos, destDir, totalBytes)
+          } else {
+            performScopedCopyOperation(context, videos, destinationPath)
           }
 
-        if (validVideos.isEmpty()) {
-          return@withContext Result.failure(
-            IllegalArgumentException("No valid files to copy"),
-          )
-        }
-
-        // Check available disk space
-        val totalBytes = validVideos.sumOf { it.size }
-        if (!hasEnoughDiskSpace(destDir, totalBytes)) {
-          return@withContext Result.failure(
-            IOException("Not enough disk space. Required: ${formatBytes(totalBytes)}"),
-          )
-        }
-
-        // Perform copy operation
-        val copiedFilePaths = performCopyOperation(validVideos, destDir, totalBytes)
-
-        // Notify that media library has changed
         MediaLibraryEvents.notifyChanged()
-
-        // Trigger media scan
         triggerMediaScan(context, copiedFilePaths)
-
         Log.d(TAG, "Copy operation completed successfully. Copied ${copiedFilePaths.size} files")
         Result.success(Unit)
       } catch (e: Exception) {
@@ -201,57 +200,56 @@ object CopyPasteOps {
           return@withContext Result.failure(IllegalArgumentException("No files to move"))
         }
 
-        if (!hasManageStoragePermission()) {
-          return@withContext Result.failure(
-            SecurityException("MANAGE_EXTERNAL_STORAGE permission not granted"),
-          )
-        }
+        val movedFilePaths =
+          if (canUseDirectFileOperations()) {
+            resetOperation()
 
-        resetOperation()
+            // Validate and prepare destination
+            val destDir =
+              prepareDestinationDirectory(destinationPath)
+                ?: return@withContext Result.failure(
+                  IOException("Failed to create destination directory: $destinationPath"),
+                )
 
-        // Validate and prepare destination
-        val destDir =
-          prepareDestinationDirectory(destinationPath)
-            ?: return@withContext Result.failure(
-              IOException("Failed to create destination directory: $destinationPath"),
-            )
+            // Filter valid source files
+            val validVideos =
+              videos.filter { video ->
+                val sourceFile = File(video.path)
+                if (!sourceFile.exists()) {
+                  Log.w(TAG, "Source file does not exist, skipping: ${video.path}")
+                  false
+                } else if (sourceFile.parent == destDir.absolutePath) {
+                  Log.w(TAG, "Source and destination are the same, skipping: ${video.displayName}")
+                  false
+                } else {
+                  true
+                }
+              }
 
-        // Filter valid source files
-        val validVideos =
-          videos.filter { video ->
-            val sourceFile = File(video.path)
-            if (!sourceFile.exists()) {
-              Log.w(TAG, "Source file does not exist, skipping: ${video.path}")
-              false
-            } else if (sourceFile.parent == destDir.absolutePath) {
-              Log.w(TAG, "Source and destination are the same, skipping: ${video.displayName}")
-              false
-            } else {
-              true
+            if (validVideos.isEmpty()) {
+              return@withContext Result.failure(
+                IllegalArgumentException("No valid files to move"),
+              )
             }
+
+            // Check available disk space (only needed if move crosses filesystems)
+            val totalBytes = validVideos.sumOf { it.size }
+
+            // Perform move operation
+            val (movedPaths, historyUpdates) = performMoveOperation(validVideos, destDir, totalBytes)
+
+            // Update history for moved files
+            historyUpdates.forEach { (oldPath, newPath) ->
+              RecentlyPlayedOps.onVideoRenamed(oldPath, newPath)
+              PlaybackStateOps.onVideoRenamed(oldPath, newPath)
+            }
+            movedPaths
+          } else {
+            performScopedMoveOperation(context, videos, destinationPath)
           }
 
-        if (validVideos.isEmpty()) {
-          return@withContext Result.failure(
-            IllegalArgumentException("No valid files to move"),
-          )
-        }
-
-        // Check available disk space (only needed if move crosses filesystems)
-        val totalBytes = validVideos.sumOf { it.size }
-
-        // Perform move operation
-        val (movedFilePaths, historyUpdates) = performMoveOperation(validVideos, destDir, totalBytes)
-
-        // Update history for moved files
-        historyUpdates.forEach { (oldPath, newPath) ->
-          RecentlyPlayedOps.onVideoRenamed(oldPath, newPath)
-          PlaybackStateOps.onVideoRenamed(oldPath, newPath)
-        }
-
-        // Trigger media scan
+        MediaLibraryEvents.notifyChanged()
         triggerMediaScan(context, movedFilePaths)
-
         Log.d(TAG, "Move operation completed successfully. Moved ${movedFilePaths.size} files")
         Result.success(Unit)
       } catch (e: Exception) {
@@ -264,9 +262,414 @@ object CopyPasteOps {
       }
     }
 
+  /**
+   * Copy files to a SAF tree Uri (Play Store-safe, supports arbitrary user-picked folders).
+   */
+  suspend fun copyFilesToTreeUri(
+    context: Context,
+    videos: List<Video>,
+    destinationTreeUri: Uri,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        if (videos.isEmpty()) {
+          return@withContext Result.failure(IllegalArgumentException("No files to copy"))
+        }
+
+        resetOperation()
+        val copiedUris = performTreeCopyOperation(context, videos, destinationTreeUri)
+        MediaLibraryEvents.notifyChanged()
+        Log.d(TAG, "Copy (tree) completed successfully. Copied ${copiedUris.size} files")
+        Result.success(Unit)
+      } catch (e: Exception) {
+        Log.e(TAG, "Copy (tree) failed: ${e.message}", e)
+        _operationProgress.value =
+          _operationProgress.value.copy(
+            error = e.message ?: "Unknown error occurred",
+          )
+        Result.failure(e)
+      }
+    }
+
+  /**
+   * Move files to a SAF tree Uri (copy + delete source).
+   */
+  suspend fun moveFilesToTreeUri(
+    context: Context,
+    videos: List<Video>,
+    destinationTreeUri: Uri,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        if (videos.isEmpty()) {
+          return@withContext Result.failure(IllegalArgumentException("No files to move"))
+        }
+
+        resetOperation()
+        val copiedUris = performTreeCopyOperation(context, videos, destinationTreeUri)
+
+        val historyUpdates = mutableListOf<Pair<String, String>>()
+        videos.forEachIndexed { index, video ->
+          checkCancellation()
+          val (deleted, failed) = PermissionUtils.StorageOps.deleteVideos(context, listOf(video))
+          if (deleted <= 0 || failed > 0) {
+            throw IOException("Failed to delete source after move: ${video.displayName}")
+          }
+
+          val newPath = copiedUris.getOrNull(index)?.toString() ?: video.path
+          historyUpdates.add(video.path to newPath)
+        }
+
+        historyUpdates.forEach { (oldPath, newPath) ->
+          RecentlyPlayedOps.onVideoRenamed(oldPath, newPath)
+          PlaybackStateOps.onVideoRenamed(oldPath, newPath)
+        }
+
+        MediaLibraryEvents.notifyChanged()
+        Log.d(TAG, "Move (tree) completed successfully. Moved ${videos.size} files")
+        Result.success(Unit)
+      } catch (e: Exception) {
+        Log.e(TAG, "Move (tree) failed: ${e.message}", e)
+        _operationProgress.value =
+          _operationProgress.value.copy(
+            error = e.message ?: "Unknown error occurred",
+          )
+        Result.failure(e)
+      }
+    }
+
   // ============================================================================
   // Private Helper - Directory Operations
   // ============================================================================
+
+  private fun uniqueDocumentName(
+    parent: DocumentFile,
+    baseName: String,
+  ): String {
+    if (parent.findFile(baseName) == null) return baseName
+
+    val name = baseName.substringBeforeLast('.', baseName)
+    val extension = baseName.substringAfterLast('.', "")
+
+    for (counter in 1..MAX_FILENAME_ATTEMPTS) {
+      val candidate =
+        if (extension.isNotEmpty() && name != baseName) {
+          "${name}_$counter.$extension"
+        } else {
+          "${baseName}_$counter"
+        }
+      if (parent.findFile(candidate) == null) {
+        return candidate
+      }
+    }
+    throw IOException("Could not generate unique filename after $MAX_FILENAME_ATTEMPTS attempts")
+  }
+
+  private fun performTreeCopyOperation(
+    context: Context,
+    videos: List<Video>,
+    destinationTreeUri: Uri,
+  ): List<Uri> {
+    val destinationRoot =
+      DocumentFile.fromTreeUri(context, destinationTreeUri)
+        ?: throw IOException("Unable to access destination folder")
+
+    val totalBytes = videos.sumOf { it.size.coerceAtLeast(0L) }
+    val copiedUris = mutableListOf<Uri>()
+    var processedBytes = 0L
+
+    _operationProgress.value =
+      FileOperationProgress(
+        totalFiles = videos.size,
+        totalBytes = totalBytes,
+      )
+
+    videos.forEachIndexed { index, video ->
+      checkCancellation()
+      val uniqueName = uniqueDocumentName(destinationRoot, video.displayName)
+      val mime = video.mimeType.ifBlank { "video/*" }
+      val destFile =
+        destinationRoot.createFile(mime, uniqueName)
+          ?: throw IOException("Failed to create destination file for ${video.displayName}")
+
+      updateProgress(
+        currentFile = video.displayName,
+        currentFileIndex = index + 1,
+        totalFiles = videos.size,
+        currentFileProgress = 0f,
+        bytesProcessed = processedBytes,
+        totalBytes = totalBytes,
+      )
+
+      try {
+        context.contentResolver.openInputStream(video.uri).use { input ->
+          if (input == null) {
+            throw IOException("Could not open source stream for ${video.displayName}")
+          }
+          context.contentResolver.openOutputStream(destFile.uri, "w").use { output ->
+            if (output == null) {
+              throw IOException("Could not open destination stream for ${video.displayName}")
+            }
+
+            val buffer = ByteArray(BUFFER_SIZE)
+            var copiedForFile = 0L
+            var read: Int
+            while (input.read(buffer).also { read = it } != -1) {
+              checkCancellation()
+              output.write(buffer, 0, read)
+              copiedForFile += read
+              val progress = if (video.size > 0) copiedForFile.toFloat() / video.size else 0f
+              updateProgress(
+                currentFile = video.displayName,
+                currentFileIndex = index + 1,
+                totalFiles = videos.size,
+                currentFileProgress = progress.coerceIn(0f, 1f),
+                bytesProcessed = processedBytes + copiedForFile,
+                totalBytes = totalBytes,
+              )
+            }
+            output.flush()
+          }
+        }
+      } catch (e: Exception) {
+        destFile.delete()
+        throw e
+      }
+
+      copiedUris.add(destFile.uri)
+      processedBytes += video.size.coerceAtLeast(0L)
+      Log.d(TAG, "✓ Copied (tree): ${video.displayName} -> $uniqueName")
+    }
+
+    _operationProgress.value =
+      _operationProgress.value.copy(
+        isComplete = true,
+        overallProgress = 1f,
+        bytesProcessed = totalBytes,
+      )
+
+    return copiedUris
+  }
+
+  private fun toMediaStoreRelativePath(destinationPath: String): String? {
+    val primaryRoot = Environment.getExternalStorageDirectory().absolutePath
+    if (!destinationPath.startsWith(primaryRoot)) return null
+    val relative = destinationPath.removePrefix(primaryRoot).trimStart(File.separatorChar)
+    if (relative.isBlank()) return null
+    return if (relative.endsWith("/")) relative else "$relative/"
+  }
+
+  private fun resolveOutputPath(
+    relativePath: String,
+    displayName: String,
+  ): String = File(Environment.getExternalStorageDirectory(), relativePath + displayName).absolutePath
+
+  private fun uniqueDisplayNameForRelativePath(
+    context: Context,
+    baseDisplayName: String,
+    relativePath: String,
+  ): String {
+    val name = baseDisplayName.substringBeforeLast('.', baseDisplayName)
+    val extension = baseDisplayName.substringAfterLast('.', "")
+
+    fun candidateName(index: Int): String {
+      if (index == 0) return baseDisplayName
+      return if (extension.isNotEmpty() && name != baseDisplayName) {
+        "${name}_$index.$extension"
+      } else {
+        "${baseDisplayName}_$index"
+      }
+    }
+
+    for (index in 0..MAX_FILENAME_ATTEMPTS) {
+      val candidate = candidateName(index)
+      val projection = arrayOf(MediaStore.MediaColumns._ID)
+      val selection =
+        "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?"
+      val selectionArgs = arrayOf(relativePath, candidate)
+
+      val exists =
+        context.contentResolver
+          .query(
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            projection,
+            selection,
+            selectionArgs,
+            null,
+          )?.use { it.moveToFirst() } == true
+
+      if (!exists) return candidate
+    }
+
+    throw IOException("Could not generate unique filename after $MAX_FILENAME_ATTEMPTS attempts")
+  }
+
+  private fun performScopedCopyOperation(
+    context: Context,
+    videos: List<Video>,
+    destinationPath: String,
+  ): List<String> {
+    resetOperation()
+
+    val relativePath =
+      toMediaStoreRelativePath(destinationPath)
+        ?: throw IOException("Destination must be in primary shared storage for scoped copy")
+
+    val validVideos =
+      videos.filter { video ->
+        val sameDir = File(video.path).parent == destinationPath
+        if (sameDir) {
+          Log.w(TAG, "Source and destination are the same, skipping: ${video.displayName}")
+          false
+        } else {
+          true
+        }
+      }
+
+    if (validVideos.isEmpty()) {
+      throw IllegalArgumentException("No valid files to copy")
+    }
+
+    val totalBytes = validVideos.sumOf { it.size.coerceAtLeast(0L) }
+    val copiedFilePaths = mutableListOf<String>()
+    var processedBytes = 0L
+
+    _operationProgress.value =
+      FileOperationProgress(
+        totalFiles = validVideos.size,
+        totalBytes = totalBytes,
+      )
+
+    validVideos.forEachIndexed { index, video ->
+      checkCancellation()
+
+      val uniqueName = uniqueDisplayNameForRelativePath(context, video.displayName, relativePath)
+      val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+      val values =
+        ContentValues().apply {
+          put(MediaStore.MediaColumns.DISPLAY_NAME, uniqueName)
+          put(MediaStore.MediaColumns.MIME_TYPE, video.mimeType.ifBlank { "video/*" })
+          put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+          put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+      updateProgress(
+        currentFile = video.displayName,
+        currentFileIndex = index + 1,
+        totalFiles = validVideos.size,
+        currentFileProgress = 0f,
+        bytesProcessed = processedBytes,
+        totalBytes = totalBytes,
+      )
+
+      val insertedUri =
+        context.contentResolver.insert(collection, values)
+          ?: throw IOException("Failed to create destination item for ${video.displayName}")
+
+      try {
+        context.contentResolver.openInputStream(video.uri).use { input ->
+          if (input == null) {
+            throw IOException("Could not open source stream for ${video.displayName}")
+          }
+          context.contentResolver.openOutputStream(insertedUri, "w").use { output ->
+            if (output == null) {
+              throw IOException("Could not open destination stream for ${video.displayName}")
+            }
+
+            val buffer = ByteArray(BUFFER_SIZE)
+            var copiedForFile = 0L
+            var read: Int
+            while (input.read(buffer).also { read = it } != -1) {
+              checkCancellation()
+              output.write(buffer, 0, read)
+              copiedForFile += read
+              val progress = if (video.size > 0) copiedForFile.toFloat() / video.size else 0f
+              updateProgress(
+                currentFile = video.displayName,
+                currentFileIndex = index + 1,
+                totalFiles = validVideos.size,
+                currentFileProgress = progress.coerceIn(0f, 1f),
+                bytesProcessed = processedBytes + copiedForFile,
+                totalBytes = totalBytes,
+              )
+            }
+            output.flush()
+          }
+        }
+
+        ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }.also {
+          context.contentResolver.update(insertedUri, it, null, null)
+        }
+
+        val newPath = resolveOutputPath(relativePath, uniqueName)
+        copiedFilePaths.add(newPath)
+        processedBytes += video.size.coerceAtLeast(0L)
+        Log.d(TAG, "✓ Copied (scoped): ${video.displayName} -> $uniqueName")
+      } catch (e: Exception) {
+        context.contentResolver.delete(insertedUri, null, null)
+        throw e
+      }
+    }
+
+    _operationProgress.value =
+      _operationProgress.value.copy(
+        isComplete = true,
+        overallProgress = 1f,
+        bytesProcessed = totalBytes,
+      )
+
+    return copiedFilePaths
+  }
+
+  private suspend fun performScopedMoveOperation(
+    context: Context,
+    videos: List<Video>,
+    destinationPath: String,
+  ): List<String> {
+    val movedPaths = performScopedCopyOperation(context, videos, destinationPath)
+
+    val contentUrisToDelete =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        videos
+          .filter { it.uri.scheme == "content" }
+          .map { it.uri }
+      } else {
+        emptyList()
+      }
+
+    if (contentUrisToDelete.isNotEmpty()) {
+      val granted = PermissionUtils.requestScopedDeleteAccess(context, contentUrisToDelete)
+      if (!granted) {
+        throw IOException("Move cancelled: source delete permission denied")
+      }
+    }
+
+    videos.forEachIndexed { index, video ->
+      val deleted =
+        if (video.uri.scheme == "content") {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            true
+          } else {
+            context.contentResolver.delete(video.uri, null, null) > 0
+          }
+        } else {
+          val sourceFile = File(video.path)
+          !sourceFile.exists() || sourceFile.delete()
+        }
+
+      if (!deleted) {
+        throw IOException("Failed to delete source after move: ${video.displayName}")
+      }
+
+      val newPath = movedPaths.getOrNull(index)
+      if (newPath != null) {
+        RecentlyPlayedOps.onVideoRenamed(video.path, newPath)
+        PlaybackStateOps.onVideoRenamed(video.path, newPath)
+      }
+    }
+
+    return movedPaths
+  }
 
   private fun prepareDestinationDirectory(path: String): File? {
     return try {

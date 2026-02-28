@@ -1026,12 +1026,12 @@ class PlayerActivity :
   /**
    * Syncs shader files (.glsl, .hook, .comp) from the user's MPV directory.
    * Looks in shaders/ subfolder first (case-insensitive), falls back to root.
-   * Saves to shaders/user/ to avoid conflicts with built-in Anime4K shaders.
+   * Saves to shaders/ (same as non-Play Store) so Lua scripts can find them at ~~/shaders/
    */
   private fun syncShaders(tree: DocumentFile) {
-    val userShadersDir = File(filesDir, "shaders/user")
-    userShadersDir.mkdirs()
-    userShadersDir.listFiles()?.forEach { it.delete() }
+    // Use shaders/ directory directly for compatibility with existing Lua scripts
+    val shadersDir = File(filesDir, "shaders")
+    shadersDir.mkdirs()
 
     val shadersSubdir = findSubdirCaseInsensitive(tree, "shaders")
     val sourceDir = shadersSubdir ?: tree
@@ -1046,7 +1046,7 @@ class PlayerActivity :
 
       runCatching {
         contentResolver.openInputStream(file.uri)?.use { input ->
-          File(userShadersDir, name).outputStream().use { output ->
+          File(shadersDir, name).outputStream().use { output ->
             input.copyTo(output)
           }
           count++

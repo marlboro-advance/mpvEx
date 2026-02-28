@@ -252,14 +252,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
   // Update bottom bar visibility with optimized animation sequencing
   LaunchedEffect(isInSelectionMode, videoSelectionManager.isInSelectionMode, isMixedSelection) {
-    // In Play Store builds, never show floating bar and always keep bottom navigation visible
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      showFloatingBottomBar = false
-      showBottomNavigation = true
-      return@LaunchedEffect
-    }
-    
-    // Standard/F-Droid builds: Show floating bar and hide bottom navigation when appropriate
+    // Show floating bar and hide bottom navigation when appropriate.
+    // Play Store gating is intentionally bypassed here.
     val shouldShowFloatingBar = isInSelectionMode && videoSelectionManager.isInSelectionMode && !isMixedSelection
     
     if (shouldShowFloatingBar) {
@@ -334,6 +328,37 @@ fun FileSystemBrowserScreen(path: String? = null) {
         )
       }
       MediaUtils.playFile(it.toString(), context, "open_file")
+    }
+  }
+
+  // Tree picker for Play Store-safe copy/move destinations
+  val treePickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.OpenDocumentTree(),
+  ) { uri ->
+    if (uri == null) return@rememberLauncherForActivityResult
+    val selectedVideos = videoSelectionManager.getSelectedItems()
+    if (selectedVideos.isEmpty() || operationType.value == null) return@rememberLauncherForActivityResult
+
+    runCatching {
+      context.contentResolver.takePersistableUriPermission(
+        uri,
+        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+      )
+    }
+
+    progressDialogOpen.value = true
+    coroutineScope.launch {
+      when (operationType.value) {
+        is CopyPasteOps.OperationType.Copy -> {
+          CopyPasteOps.copyFilesToTreeUri(context, selectedVideos, uri)
+        }
+
+        is CopyPasteOps.OperationType.Move -> {
+          CopyPasteOps.moveFilesToTreeUri(context, selectedVideos, uri)
+        }
+
+        else -> {}
+      }
     }
   }
 
@@ -851,37 +876,43 @@ fun FileSystemBrowserScreen(path: String? = null) {
     }
 
     // Independent Floating Bottom Bar - positioned at absolute bottom
-    // Only show in standard/fdroid builds (not Play Store)
-    if (BuildConfig.ENABLE_UPDATE_FEATURE) {
-      AnimatedVisibility(
-        visible = showFloatingBottomBar,
-        enter = slideInVertically(
-          animationSpec = tween(durationMillis = animationDuration),
-          initialOffsetY = { fullHeight -> fullHeight }
-        ),
-        exit = slideOutVertically(
-          animationSpec = tween(durationMillis = animationDuration),
-          targetOffsetY = { fullHeight -> fullHeight }
-        ),
-        modifier = Modifier.align(Alignment.BottomCenter)
-      ) {
-        BrowserBottomBar(
-          isSelectionMode = true,
-          onCopyClick = {
-            operationType.value = CopyPasteOps.OperationType.Copy
+    // Play Store gating is intentionally bypassed here.
+    AnimatedVisibility(
+      visible = showFloatingBottomBar,
+      enter = slideInVertically(
+        animationSpec = tween(durationMillis = animationDuration),
+        initialOffsetY = { fullHeight -> fullHeight }
+      ),
+      exit = slideOutVertically(
+        animationSpec = tween(durationMillis = animationDuration),
+        targetOffsetY = { fullHeight -> fullHeight }
+      ),
+      modifier = Modifier.align(Alignment.BottomCenter)
+    ) {
+      BrowserBottomBar(
+        isSelectionMode = true,
+        onCopyClick = {
+          operationType.value = CopyPasteOps.OperationType.Copy
+          if (CopyPasteOps.canUseDirectFileOperations()) {
             folderPickerOpen.value = true
-          },
-          onMoveClick = {
-            operationType.value = CopyPasteOps.OperationType.Move
+          } else {
+            treePickerLauncher.launch(null)
+          }
+        },
+        onMoveClick = {
+          operationType.value = CopyPasteOps.OperationType.Move
+          if (CopyPasteOps.canUseDirectFileOperations()) {
             folderPickerOpen.value = true
-          },
-          onRenameClick = { renameDialogOpen.value = true },
-          onDeleteClick = { deleteDialogOpen.value = true },
-          onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
-          showRename = videoSelectionManager.isSingleSelection,
-          modifier = Modifier.padding(bottom = 0.dp) // Zero bottom padding - absolute bottom
-        )
-      }
+          } else {
+            treePickerLauncher.launch(null)
+          }
+        },
+        onRenameClick = { renameDialogOpen.value = true },
+        onDeleteClick = { deleteDialogOpen.value = true },
+        onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
+        showRename = videoSelectionManager.isSingleSelection,
+        modifier = Modifier.padding(bottom = 0.dp) // Zero bottom padding - absolute bottom
+      )
     }
 
     // Dialogs
