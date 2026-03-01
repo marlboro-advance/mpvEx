@@ -46,6 +46,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -378,6 +380,17 @@ class PlayerViewModel(
   private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
   val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
   private var customButtonsSetupJob: Job? = null
+  private val customButtonsLoadMutex = Mutex()
+  @Volatile
+  private var isMpvReadyForCustomButtons = false
+  @Volatile
+  private var customButtonsScriptPath: String? = null
+  private val customButtonsLoadedFlagProperty = "user-data/mpvex/custombuttons_loaded"
+
+  fun onMpvCoreInitialized() {
+    isMpvReadyForCustomButtons = true
+    reloadCustomButtonsScript("mpv_core_initialized")
+  }
 
   private fun setupCustomButtons() {
     customButtonsSetupJob?.cancel()
@@ -385,8 +398,10 @@ class PlayerViewModel(
       try {
         val buttons = mutableListOf<CustomButtonState>()
         if (!advancedPreferences.enableLuaScripts.get()) {
-            _customButtons.value = buttons
-            return@launch
+          _customButtons.value = buttons
+          customButtonsScriptPath = null
+          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
+          return@launch
         }
 
         val scriptContent = buildString {
@@ -416,6 +431,10 @@ class PlayerViewModel(
                }
             }
           }
+
+          if (buttons.isNotEmpty()) {
+            append("mp.set_property_native('$customButtonsLoadedFlagProperty', '1')\n")
+          }
         }
 
         _customButtons.value = buttons
@@ -426,10 +445,19 @@ class PlayerViewModel(
           
           val file = File(scriptsDir, "custombuttons.lua")
           file.writeText(scriptContent)
-          val loaded = loadCustomButtonsScriptWithRetry(file)
-          if (!loaded) {
-            android.util.Log.w("PlayerViewModel", "custombuttons.lua did not confirm load after retries")
+          customButtonsScriptPath = file.absolutePath
+
+          if (isMpvReadyForCustomButtons) {
+            val loaded = loadCustomButtonsScript(file)
+            if (!loaded) {
+              android.util.Log.w("PlayerViewModel", "Failed to load custombuttons.lua")
+            }
+          } else {
+            android.util.Log.d("PlayerViewModel", "Deferring custombuttons.lua load until MPV is ready")
           }
+        } else {
+          customButtonsScriptPath = null
+          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
         }
       } catch (e: Exception) {
         android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
@@ -437,33 +465,46 @@ class PlayerViewModel(
     }
   }
 
-  private suspend fun loadCustomButtonsScriptWithRetry(file: File): Boolean {
-    // Reset probe flag before attempting to load.
-    runCatching { MPVLib.setPropertyString("user-data/mpvex/custombuttons_loaded", "0") }
+  private fun reloadCustomButtonsScript(reason: String) {
+    if (!isMpvReadyForCustomButtons) return
 
-    val retryDelaysMs = listOf(0L, 100L, 250L, 500L, 1000L)
-    for (delayMs in retryDelaysMs) {
-      if (delayMs > 0) delay(delayMs)
+    viewModelScope.launch(Dispatchers.IO) {
+      customButtonsLoadMutex.withLock {
+        if (!advancedPreferences.enableLuaScripts.get()) return@withLock
 
-      val commandOk =
-        runCatching {
-          MPVLib.command("load-script", file.absolutePath)
-          true
-        }.getOrElse {
-          android.util.Log.w("PlayerViewModel", "load-script retry failed: ${it.message}")
-          false
+        val scriptPath = customButtonsScriptPath
+        if (scriptPath.isNullOrBlank()) return@withLock
+        if (isCustomButtonsScriptLoaded()) return@withLock
+
+        val file = File(scriptPath)
+        if (!file.exists()) {
+          android.util.Log.w("PlayerViewModel", "custombuttons.lua missing during $reason, rebuilding")
+          setupCustomButtons()
+          return@withLock
         }
 
-      if (!commandOk) continue
-
-      // Give MPV a short window to execute script top-level code and set probe flag.
-      delay(80L)
-      val loaded =
-        runCatching { MPVLib.getPropertyString("user-data/mpvex/custombuttons_loaded") == "1" }
-          .getOrDefault(false)
-      if (loaded) return true
+        val loaded = loadCustomButtonsScript(file)
+        if (!loaded) {
+          android.util.Log.w("PlayerViewModel", "custombuttons.lua load failed during $reason")
+        }
+      }
     }
-    return false
+  }
+
+  private fun isCustomButtonsScriptLoaded(): Boolean =
+    runCatching { MPVLib.getPropertyString(customButtonsLoadedFlagProperty) == "1" }
+      .getOrDefault(false)
+
+  private fun loadCustomButtonsScript(file: File): Boolean {
+    runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
+
+    return runCatching {
+      MPVLib.command("load-script", file.absolutePath)
+      true
+    }.getOrElse {
+      android.util.Log.w("PlayerViewModel", "load-script failed: ${it.message}")
+      false
+    }
   }
 
   fun callCustomButton(id: String) {
@@ -522,8 +563,6 @@ class PlayerViewModel(
       }
     }
 
-    // Probe flag to confirm script load completion from Kotlin side.
-    append("mp.set_property_native('user-data/mpvex/custombuttons_loaded', '1')\n")
   }
 
   // Cached values

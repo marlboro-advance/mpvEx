@@ -337,6 +337,7 @@ class PlayerActivity :
     setContentView(binding.root)
 
     setupMPV()
+    viewModel.onMpvCoreInitialized()
     MediaPlaybackService.createNotificationChannel(this)
     setupAudio()
     setupBackPressHandler()
