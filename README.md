@@ -51,7 +51,21 @@ For testing purposes only
 ---
 
 ## Showcase
-<img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/player.png" width="98%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/folderscreen.png" width="23.5%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/videoscreen.png" width="23.5%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/about.png" width="23.5%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/pip.png" width="23.5%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/framenavigation.png" width="48.5%" /> <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/chapters.png" width="48.5%" />
+<div class="image-row" align="center">
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/player.png" width="98%" />
+</div>
+
+<div class="image-row" align="center" justify-content="space-between">
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/folderscreen.png" width="23.5%"/>
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/videoscreen.png" width="23.5%"/>
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/about.png" width="23.5%"/>
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/pip.png" width="23.5%"/>
+</div>
+
+<div class="image-row" align="center">
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/framenavigation.png" width="48.5%" />
+  <img src="/fastlane/metadata/android/en-US/images/phoneScreenshots/chapters.png" width="48.5%" />
+</div>
 
 ---
 
