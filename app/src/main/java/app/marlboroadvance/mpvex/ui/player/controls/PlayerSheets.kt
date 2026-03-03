@@ -23,6 +23,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.OnlineSubtitleSearchSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AmbientSheet
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -341,7 +342,14 @@ fun PlayerSheets(
           isM3UPlaylist = isM3U,
           playerPreferences = playerPreferences,
         )
+      }
+    }
+
+    Sheets.AmbientConfig -> {
+      AmbientSheet(
+        viewModel = viewModel,
+        onDismissRequest = onDismissRequest
+      )
     }
   }
-}
 }
