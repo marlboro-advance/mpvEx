@@ -352,7 +352,8 @@ class PlayerViewModel(
   private var lastAmbientScaleX = -1.0
   private var lastAmbientScaleY = -1.0
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
-  private var ambientShaderSlot = 0
+  private var ambientShaderSeq = 0
+  private var ambientShaderFile: java.io.File? = null
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
@@ -2164,16 +2165,23 @@ class PlayerViewModel(
   /** Disables the ambient shader and resets video scale. Safe to call from any state. */
   private fun disableAmbientShader() {
     ambientDebounceJob?.cancel()
-    for (slot in 0..1) {
-      runCatching {
-        MPVLib.command("change-list", "glsl-shaders", "remove",
-          File(host.context.cacheDir, "ambient_${slot}.glsl").absolutePath)
-      }
+    ambientShaderFile?.let { file ->
+      runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", file.absolutePath) }
+      file.delete()
     }
-    ambientShaderSlot = 0
+    ambientShaderFile = null
     runCatching {
       MPVLib.setPropertyDouble("video-scale-x", 1.0)
       MPVLib.setPropertyDouble("video-scale-y", 1.0)
+    }
+  }
+
+  /** Called when the device orientation changes. Auto-disables ambient in portrait. */
+  fun onOrientationChanged(isPortrait: Boolean) {
+    if (isPortrait && _isAmbientEnabled.value) {
+      _isAmbientEnabled.value = false
+      disableAmbientShader()
+      playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: OFF (portrait)")
     }
   }
 
@@ -2316,15 +2324,16 @@ class PlayerViewModel(
         fadeCurve = curve, opacity = opacity
       )
 
-      // Alternate between two file paths so MPV always sees a new path,
-      // guaranteeing it re-reads the file contents from disk on every update.
-      val newSlot = 1 - ambientShaderSlot
-      val oldFile = File(host.context.cacheDir, "ambient_${ambientShaderSlot}.glsl")
-      val newFile = File(host.context.cacheDir, "ambient_${newSlot}.glsl")
+      // Each reload gets a unique filename so MPV never reuses a cached
+      // compiled shader — incrementing seq guarantees a fresh compile every time.
+      val newFile = File(host.context.cacheDir, "ambient_${++ambientShaderSeq}.glsl")
       newFile.writeText(shaderCode)
-      MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath)
+      ambientShaderFile?.let { oldFile ->
+        runCatching { MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath) }
+        oldFile.delete()
+      }
       MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
-      ambientShaderSlot = newSlot
+      ambientShaderFile = newFile
     }.onFailure { e ->
       Log.e(TAG, "Failed to update ambient stretch", e)
     }
