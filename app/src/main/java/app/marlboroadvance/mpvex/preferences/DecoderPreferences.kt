@@ -7,6 +7,7 @@ import app.marlboroadvance.mpvex.ui.player.Debanding
 class DecoderPreferences(
   preferenceStore: PreferenceStore,
 ) {
+  val profile = preferenceStore.getString("mpv_profile", "fast")
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
   val gpuNext = preferenceStore.getBoolean("gpu_next")
   val useVulkan = preferenceStore.getBoolean("use_vulkan", false)

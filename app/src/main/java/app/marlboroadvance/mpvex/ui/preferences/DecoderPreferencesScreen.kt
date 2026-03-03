@@ -41,6 +41,7 @@ import app.marlboroadvance.mpvex.preferences.DecoderPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.player.Debanding
+import app.marlboroadvance.mpvex.ui.player.MPVProfile
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.ui.preferences.VulkanUtils
 import kotlinx.serialization.Serializable
@@ -95,6 +96,23 @@ object DecoderPreferencesScreen : Screen {
 
           item {
             PreferenceCard {
+              val profile by preferences.profile.collectAsState()
+              val currentProfile = MPVProfile.fromValue(profile)
+              ListPreference(
+                value = currentProfile,
+                onValueChange = { preferences.profile.set(it.value) },
+                values = MPVProfile.entries,
+                title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
+                summary = {
+                  Text(
+                    currentProfile.displayName,
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
               SwitchPreference(
                 value = tryHWDecoding,
