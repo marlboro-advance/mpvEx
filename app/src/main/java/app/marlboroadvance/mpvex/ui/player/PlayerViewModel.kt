@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -313,6 +314,45 @@ class PlayerViewModel(
   // Vertical flip state
   private val _isVerticalFlipped = MutableStateFlow(false)
   val isVerticalFlipped: StateFlow<Boolean> = _isVerticalFlipped.asStateFlow()
+
+  // ==================== Ambience Mode ======================================
+  private val _isAmbientEnabled = MutableStateFlow(false)
+  val isAmbientEnabled: StateFlow<Boolean> = _isAmbientEnabled.asStateFlow()
+
+  private val _ambientBlurSamples = MutableStateFlow(playerPreferences.ambientBlurSamples.get())
+  val ambientBlurSamples: StateFlow<Int> = _ambientBlurSamples.asStateFlow()
+
+  private val _ambientMaxRadius = MutableStateFlow(playerPreferences.ambientMaxRadius.get())
+  val ambientMaxRadius: StateFlow<Float> = _ambientMaxRadius.asStateFlow()
+
+  private val _ambientGlowIntensity = MutableStateFlow(playerPreferences.ambientGlowIntensity.get())
+  val ambientGlowIntensity: StateFlow<Float> = _ambientGlowIntensity.asStateFlow()
+
+  private val _ambientSatBoost = MutableStateFlow(playerPreferences.ambientSatBoost.get())
+  val ambientSatBoost: StateFlow<Float> = _ambientSatBoost.asStateFlow()
+
+  private val _ambientDitherNoise = MutableStateFlow(playerPreferences.ambientDitherNoise.get())
+  val ambientDitherNoise: StateFlow<Float> = _ambientDitherNoise.asStateFlow()
+
+  private val _ambientBezelDepth = MutableStateFlow(playerPreferences.ambientBezelDepth.get())
+  val ambientBezelDepth: StateFlow<Float> = _ambientBezelDepth.asStateFlow()
+
+  private val _ambientVignetteStrength = MutableStateFlow(playerPreferences.ambientVignetteStrength.get())
+  val ambientVignetteStrength: StateFlow<Float> = _ambientVignetteStrength.asStateFlow()
+
+  private val _ambientWarmth = MutableStateFlow(playerPreferences.ambientWarmth.get())
+  val ambientWarmth: StateFlow<Float> = _ambientWarmth.asStateFlow()
+
+  private val _ambientFadeCurve = MutableStateFlow(playerPreferences.ambientFadeCurve.get())
+  val ambientFadeCurve: StateFlow<Float> = _ambientFadeCurve.asStateFlow()
+
+  private val _ambientOpacity = MutableStateFlow(playerPreferences.ambientOpacity.get())
+  val ambientOpacity: StateFlow<Float> = _ambientOpacity.asStateFlow()
+
+  private var lastAmbientScaleX = -1.0
+  private var lastAmbientScaleY = -1.0
+  private var ambientDebounceJob: kotlinx.coroutines.Job? = null
+  private var ambientShaderSlot = 0
 
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
@@ -2106,6 +2146,379 @@ class PlayerViewModel(
 
     playerUpdate.value = PlayerUpdates.ShowText(if (newState) "V-Flip On" else "V-Flip Off")
   }
+
+  // ==================== Ambient Mode Integration ====================
+
+  fun toggleAmbientMode() {
+    _isAmbientEnabled.value = !_isAmbientEnabled.value
+    if (_isAmbientEnabled.value) {
+      lastAmbientScaleX = -1.0 // Force rewrite
+      updateAmbientStretch()
+      playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: ON")
+    } else {
+      disableAmbientShader()
+      playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: OFF")
+    }
+  }
+
+  /** Disables the ambient shader and resets video scale. Safe to call from any state. */
+  private fun disableAmbientShader() {
+    ambientDebounceJob?.cancel()
+    for (slot in 0..1) {
+      runCatching {
+        MPVLib.command("change-list", "glsl-shaders", "remove",
+          File(host.context.cacheDir, "ambient_${slot}.glsl").absolutePath)
+      }
+    }
+    ambientShaderSlot = 0
+    runCatching {
+      MPVLib.setPropertyDouble("video-scale-x", 1.0)
+      MPVLib.setPropertyDouble("video-scale-y", 1.0)
+    }
+  }
+
+  /** Resets ambient mode to OFF when a new video file is loaded. */
+  fun resetAmbientMode() {
+    if (!_isAmbientEnabled.value) return
+    _isAmbientEnabled.value = false
+    disableAmbientShader()
+  }
+
+  fun updateAmbientParams(
+    blurSamples: Int = _ambientBlurSamples.value,
+    maxRadius: Float = _ambientMaxRadius.value,
+    glowIntensity: Float = _ambientGlowIntensity.value,
+    satBoost: Float = _ambientSatBoost.value,
+    ditherNoise: Float = _ambientDitherNoise.value,
+    bezelDepth: Float = _ambientBezelDepth.value,
+    vignetteStrength: Float = _ambientVignetteStrength.value,
+    warmth: Float = _ambientWarmth.value,
+    fadeCurve: Float = _ambientFadeCurve.value,
+    opacity: Float = _ambientOpacity.value
+  ) {
+    _ambientBlurSamples.value = blurSamples
+    _ambientMaxRadius.value = maxRadius
+    _ambientGlowIntensity.value = glowIntensity
+    _ambientSatBoost.value = satBoost
+    _ambientDitherNoise.value = ditherNoise
+    _ambientBezelDepth.value = bezelDepth
+    _ambientVignetteStrength.value = vignetteStrength
+    _ambientWarmth.value = warmth
+    _ambientFadeCurve.value = fadeCurve
+    _ambientOpacity.value = opacity
+
+    // Persist to preferences
+    playerPreferences.ambientBlurSamples.set(blurSamples)
+    playerPreferences.ambientMaxRadius.set(maxRadius)
+    playerPreferences.ambientGlowIntensity.set(glowIntensity)
+    playerPreferences.ambientSatBoost.set(satBoost)
+    playerPreferences.ambientDitherNoise.set(ditherNoise)
+    playerPreferences.ambientBezelDepth.set(bezelDepth)
+    playerPreferences.ambientVignetteStrength.set(vignetteStrength)
+    playerPreferences.ambientWarmth.set(warmth)
+    playerPreferences.ambientFadeCurve.set(fadeCurve)
+    playerPreferences.ambientOpacity.set(opacity)
+
+    // Debounce shader re-injection to avoid excessive GPU reloads
+    if (_isAmbientEnabled.value) {
+      ambientDebounceJob?.cancel()
+      ambientDebounceJob = viewModelScope.launch {
+        delay(150)
+        updateAmbientStretch()
+      }
+    }
+  }
+
+  /** Fast profile — low GPU cost, still visually solid. */
+  fun applyAmbientProfileFast() {
+    updateAmbientParams(
+      blurSamples = 16, maxRadius = 0.17f, glowIntensity = 1.4f,
+      satBoost = 1.2f, ditherNoise = 0.003f, bezelDepth = 0.018f,
+      vignetteStrength = 0.4f, warmth = 0.0f, fadeCurve = 1.6f, opacity = 1.0f
+    )
+  }
+
+  /** Balanced profile — good quality/performance trade-off for most devices. */
+  fun applyAmbientProfileBalanced() {
+    updateAmbientParams(
+      blurSamples = 24, maxRadius = 0.20f, glowIntensity = 1.45f,
+      satBoost = 1.25f, ditherNoise = 0.006f, bezelDepth = 0.022f,
+      vignetteStrength = 0.55f, warmth = 0.0f, fadeCurve = 1.7f, opacity = 1.0f
+    )
+  }
+
+  /** High Quality profile — maximum visual fidelity for high-end devices. */
+  fun applyAmbientProfileHighQuality() {
+    updateAmbientParams(
+      blurSamples = 48, maxRadius = 0.25f, glowIntensity = 1.5f,
+      satBoost = 1.3f, ditherNoise = 0.008f, bezelDepth = 0.02f,
+      vignetteStrength = 0.7f, warmth = 0.0f, fadeCurve = 1.8f, opacity = 1.0f
+    )
+  }
+
+  fun updateAmbientStretch() {
+    if (!_isAmbientEnabled.value) return
+
+    runCatching {
+      val osdW = MPVLib.getPropertyInt("osd-width") ?: 1920
+      val osdH = MPVLib.getPropertyInt("osd-height") ?: 1080
+
+      // Auto-disable in portrait mode (ambient only makes sense in landscape)
+      if (osdH > osdW) {
+        _isAmbientEnabled.value = false
+        disableAmbientShader()
+        playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: OFF (portrait)")
+        return
+      }
+
+      val vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
+      val vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()
+
+      if (osdW <= 0 || osdH <= 0 || vidW <= 0.0 || vidH <= 0.0) return
+
+      val screenAr = osdW.toDouble() / osdH.toDouble()
+      val vidAr    = vidW / vidH
+
+      // Scale the video to fill the screen — the shader remaps it back to the
+      // correct aspect ratio, so only the "overflow" area receives ambient glow.
+      val scaleX = if (screenAr > vidAr) screenAr / vidAr else 1.0
+      val scaleY = if (vidAr > screenAr) vidAr / screenAr else 1.0
+
+      if (Math.abs(scaleX - lastAmbientScaleX) > 0.001 ||
+          Math.abs(scaleY - lastAmbientScaleY) > 0.001) {
+        lastAmbientScaleX = scaleX
+        lastAmbientScaleY = scaleY
+        MPVLib.setPropertyDouble("video-scale-x", scaleX)
+        MPVLib.setPropertyDouble("video-scale-y", scaleY)
+      }
+
+      // ── Snapshot current parameter values ─────────────────────────────────
+      val sx      = lastAmbientScaleX
+      val sy      = lastAmbientScaleY
+      val samples = _ambientBlurSamples.value
+      val radius  = _ambientMaxRadius.value
+      val glow    = _ambientGlowIntensity.value
+      val sat     = _ambientSatBoost.value
+      val dither  = _ambientDitherNoise.value
+      val bezel   = _ambientBezelDepth.value
+      val vignette= _ambientVignetteStrength.value
+      val warmth  = _ambientWarmth.value
+      val curve   = _ambientFadeCurve.value
+      val opacity = _ambientOpacity.value
+
+      // ── Generate GLSL shader ───────────────────────────────────────────────
+      val shaderCode = buildAmbientShader(
+        sx = sx, sy = sy,
+        blurSamples = samples, maxRadius = radius,
+        glowIntensity = glow, satBoost = sat,
+        ditherNoise = dither, bezelDepth = bezel,
+        vignetteStrength = vignette, warmth = warmth,
+        fadeCurve = curve, opacity = opacity
+      )
+
+      // Alternate between two file paths so MPV always sees a new path,
+      // guaranteeing it re-reads the file contents from disk on every update.
+      val newSlot = 1 - ambientShaderSlot
+      val oldFile = File(host.context.cacheDir, "ambient_${ambientShaderSlot}.glsl")
+      val newFile = File(host.context.cacheDir, "ambient_${newSlot}.glsl")
+      newFile.writeText(shaderCode)
+      MPVLib.command("change-list", "glsl-shaders", "remove", oldFile.absolutePath)
+      MPVLib.command("change-list", "glsl-shaders", "append", newFile.absolutePath)
+      ambientShaderSlot = newSlot
+    }.onFailure { e ->
+      Log.e(TAG, "Failed to update ambient stretch", e)
+    }
+  }
+
+  /**
+   * Builds the True Ambient GLSL shader string with all parameters baked in
+   * as `#define` constants. The shader:
+   *   1. Detects the video region using aspect-ratio correction (SCALE_X/Y).
+   *   2. For interior pixels — returns the original (unscaled) video pixel.
+   *   3. For ambient pixels — samples the nearest video-edge with a
+   *      Fibonacci-spiral blur kernel and composites the glowing result.
+   */
+  private fun buildAmbientShader(
+    sx: Double, sy: Double,
+    blurSamples: Int, maxRadius: Float,
+    glowIntensity: Float, satBoost: Float,
+    ditherNoise: Float, bezelDepth: Float,
+    vignetteStrength: Float, warmth: Float,
+    fadeCurve: Float, opacity: Float
+  ): String = """
+//!HOOK OUTPUT
+//!BIND HOOKED
+//!DESC True Ambient Mode
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURATION  (all values injected at runtime — do not hand-edit)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Blur quality: number of spiral samples (higher = smoother, more GPU cost)
+#define BLUR_SAMPLES     $blurSamples
+
+// Maximum blur spread radius in normalised UV coordinates
+#define MAX_RADIUS       $maxRadius
+
+// Ambient brightness multiplier (1.0 = neutral)
+#define GLOW_INTENSITY   $glowIntensity
+
+// Saturation boost applied to the ambient glow (1.0 = neutral)
+#define SAT_BOOST        $satBoost
+
+// Width of the soft blend zone at the video edge (0 = hard cut)
+#define BEZEL_DEPTH      $bezelDepth
+
+// Anti-banding dither noise amplitude
+#define DITHER_NOISE     $ditherNoise
+
+// Corner vignette strength (0.0 = none, 1.0 = full darkening)
+#define VIGNETTE_STR     $vignetteStrength
+
+// Color temperature shift  (-1.0 = cooler/blue, 0.0 = neutral, +1.0 = warmer/orange)
+#define WARMTH           $warmth
+
+// Distance falloff power  (1.0 = linear, 2.0 = quadratic, higher = tighter glow)
+#define FADE_CURVE       $fadeCurve
+
+// Overall ambient opacity multiplier
+#define OPACITY          $opacity
+
+// Aspect-ratio correction factors derived from video / screen dimensions
+#define SCALE_X          $sx
+#define SCALE_Y          $sy
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const float PI  = 3.14159265358979;
+const float PHI = 1.61803398874989;   // Golden ratio — drives Fibonacci spiral
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITY FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Hash-based pseudo-random scalar in [0, 1]
+float rand(vec2 seed) {
+    return fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// BT.709 perceptual luminance
+float luma(vec3 rgb) {
+    return dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// Luma-preserving saturation adjustment
+vec3 adjust_saturation(vec3 rgb, float amount) {
+    return mix(vec3(luma(rgb)), rgb, amount);
+}
+
+// Kelvin-style warm / cool color temperature shift
+vec3 apply_warmth(vec3 rgb, float amount) {
+    rgb.r = clamp(rgb.r + amount * 0.060,  0.0, 1.0);
+    rgb.g = clamp(rgb.g + amount * 0.025,  0.0, 1.0);
+    rgb.b = clamp(rgb.b - amount * 0.080,  0.0, 1.0);
+    return rgb;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN HOOK
+// ─────────────────────────────────────────────────────────────────────────────
+
+vec4 hook() {
+    // Current pixel position in normalised screen space [0, 1]
+    vec2 uv = HOOKED_pos;
+
+    // Remap screen UV → original (pre-scale) video UV space.
+    // Pixels outside [0, 1] × [0, 1] are in the letterbox / pillarbox region.
+    vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
+
+    // Smooth edge mask: 1.0 inside video, 0.0 outside, soft blend at BEZEL_DEPTH.
+    // Guard against BEZEL_DEPTH = 0 which makes smoothstep undefined (edge0 >= edge1).
+    float bezel = max(BEZEL_DEPTH, 0.001);
+    vec2  edge_mask = smoothstep(0.0, bezel, video_uv)
+                    * smoothstep(0.0, bezel, 1.0 - video_uv);
+    float inside    = edge_mask.x * edge_mask.y;
+
+    // ── Early exit: solid video interior pixels ───────────────────────────────
+    if (inside > 0.999) {
+        return HOOKED_tex(video_uv);
+    }
+
+    // ── Ambient region: compute edge-directed glow ────────────────────────────
+
+    // Nearest point on the video border (clamped to [0, 1])
+    vec2  edge_origin = clamp(video_uv, 0.0, 1.0);
+
+    // Euclidean distance from this pixel to the video edge (used for fade-out).
+    // Constant 3.0 gives ~22 % brightness at half-radius and ~5 % at full-radius —
+    // visible glow across the whole pillarbox / letterbox area.
+    float edge_dist   = length(video_uv - edge_origin);
+    float edge_fade   = exp(-edge_dist * (3.0 / max(MAX_RADIUS, 0.001)));
+
+    // Per-pixel rotation jitter to avoid banding in the spiral pattern
+    float jitter    = rand(uv * HOOKED_size) * (PI * 2.0);
+    float angle_inc = PI * 2.0 / (PHI * PHI);  // ~2.399 rad — golden angle
+    float inv_n     = 1.0 / float(BLUR_SAMPLES);
+
+    // Aspect correction keeps the blur kernel circular in screen space
+    vec2 aspect_fix = vec2(HOOKED_size.y / HOOKED_size.x, 1.0);
+
+    vec3  acc_color  = vec3(0.0);
+    float acc_weight = 0.0;
+
+    // ── Fibonacci-spiral blur kernel ──────────────────────────────────────────
+    for (int i = 0; i < BLUR_SAMPLES; i++) {
+        float fi    = float(i) + 0.5;
+        float r     = sqrt(fi * inv_n) * MAX_RADIUS;
+        float theta = fi * angle_inc + jitter;
+
+        // Sample from the nearest video-edge origin, spreading outward.
+        // This ensures ambient colours come from the actual video edge.
+        vec2 offset     = vec2(cos(theta), sin(theta)) * r * aspect_fix;
+        vec2 sample_uv  = clamp(edge_origin + offset, 0.0, 1.0);
+        vec3 sample_rgb = HOOKED_tex(sample_uv).rgb;
+
+        // Weight = distance falloff × luminance bloom
+        // (brighter video pixels contribute more to the glow)
+        float dist_w = pow(max(1.0 / (1.0 + r * 40.0), 0.0), FADE_CURVE);
+        float luma_w = 1.0 + luma(sample_rgb) * 2.0;
+        float w      = dist_w * luma_w;
+
+        acc_color  += sample_rgb * w;
+        acc_weight += w;
+    }
+
+    // Normalise and apply global brightness
+    vec3 glow = (acc_color / max(acc_weight, 1e-5)) * GLOW_INTENSITY;
+
+    // ── Post-processing ───────────────────────────────────────────────────────
+
+    glow = adjust_saturation(glow, SAT_BOOST);
+    glow = apply_warmth(glow, WARMTH);
+
+    // Fade the glow out as distance from the video edge increases
+    glow *= edge_fade;
+
+    // Radial vignette: corners receive less ambient light
+    float vig_r = length(uv - 0.5) * 2.0;
+    glow *= mix(1.0, smoothstep(1.3, 0.1, vig_r), VIGNETTE_STR);
+
+    // Dither noise — breaks up colour banding in the gradient
+    float noise = rand(uv + vec2(fract(uv.x * 127.1), fract(uv.y * 311.7)));
+    glow = clamp(glow + DITHER_NOISE * (noise - 0.5), 0.0, 1.0);
+
+    // ── Compositing ───────────────────────────────────────────────────────────
+    // Blend ambient → video across the BEZEL_DEPTH soft zone.
+    // OPACITY scales only the rgb channels; alpha stays at 1.0 so the output
+    // remains fully opaque (multiplying vec4 by OPACITY would dim alpha too).
+    vec4 ambient_pixel = vec4(glow * OPACITY, 1.0);
+    vec4 video_pixel   = HOOKED_tex(video_uv);
+
+    return mix(ambient_pixel, video_pixel, inside);
+}
+  """.trimIndent()
 
   // ==================== Utility ====================
 
