@@ -158,42 +158,49 @@ private fun ZoomVideoSheet(
     )
 
     // Pan & Zoom toggle + action buttons
-    Row(
+    Column(
       modifier =
         Modifier
           .fillMaxWidth()
           .padding(horizontal = MaterialTheme.spacing.medium),
-      verticalAlignment = Alignment.CenterVertically,
+      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
       // Pan & Zoom toggle
-      Switch(
-        checked = panAndZoomEnabled,
-        onCheckedChange = onPanAndZoomToggle,
-      )
-      Spacer(modifier = Modifier.width(8.dp))
-      Text(
-        text = "Pan & Zoom",
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (panAndZoomEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-
-      Spacer(modifier = Modifier.weight(1f))
-
-      // Action buttons
-      OutlinedButton(
-        onClick = onSetAsDefault,
-        enabled = !isDefault,
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text(stringResource(R.string.set_as_default), style = MaterialTheme.typography.labelMedium)
+        Switch(
+          checked = panAndZoomEnabled,
+          onCheckedChange = onPanAndZoomToggle,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "Pan & Zoom",
+          style = MaterialTheme.typography.bodyMedium,
+          color = if (panAndZoomEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
 
-      Spacer(modifier = Modifier.width(8.dp))
-
-      Button(
-        onClick = onReset,
-        enabled = !isZero,
+      // Action buttons
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
+        OutlinedButton(
+          onClick = onSetAsDefault,
+          enabled = !isDefault,
+          modifier = Modifier.weight(1f),
+        ) {
+          Text(stringResource(R.string.set_as_default), style = MaterialTheme.typography.labelMedium)
+        }
+
+        Button(
+          onClick = onReset,
+          enabled = !isZero,
+          modifier = Modifier.weight(1f),
+        ) {
+          Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
+        }
       }
     }
   }
