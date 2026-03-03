@@ -100,8 +100,9 @@ enum class Sheets {
   More,
   VideoZoom,
   AspectRatios,
-  FrameNavigation,
   Playlist,
+  AmbientConfig,
+  FrameNavigation,
 }
 
 enum class Panels {
