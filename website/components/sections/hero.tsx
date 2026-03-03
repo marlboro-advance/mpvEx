@@ -135,7 +135,7 @@ export function HeroSection({
          variants={itemVariants}
          src="/player.png"
          alt="MpvEx Player Image"
-         className="mt-0 max-w-screen-md w-full rounded-lg shadow-lg"
+         className="mt-0 max-w-screen-md w-full mx-auto rounded-lg shadow-lg"
        >
      </motion.img>
 
