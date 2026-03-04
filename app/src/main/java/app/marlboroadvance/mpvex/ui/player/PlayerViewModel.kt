@@ -2301,10 +2301,26 @@ class PlayerViewModel(
       // Landscape mode: ambient glow goes on left/right (pillarbox)
       // Both are handled by the same scaleX/scaleY math below
 
-      val vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
-      val vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()
+      var vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
+      var vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()
+      val par  = MPVLib.getPropertyDouble("video-params/par") ?: 1.0
+      val rot  = MPVLib.getPropertyInt("video-params/rotate") ?: 0
+
+      // Intercept autocrop boundaries — if a crop is active, use the cropped dimensions
+      // so the shader's aspect-ratio math matches the actual visible video area
+      val crop = MPVLib.getPropertyString("video-crop") ?: ""
+      val cropMatch = Regex("""^(\d+)x(\d+)""").find(crop)
+      if (cropMatch != null) {
+        vidW = cropMatch.groupValues[1].toDouble()
+        vidH = cropMatch.groupValues[2].toDouble()
+      }
 
       if (osdW <= 0 || osdH <= 0 || vidW <= 0.0 || vidH <= 0.0) return
+
+      // Apply pixel aspect ratio (non-square pixels)
+      vidW *= par
+      // Swap dimensions for 90°/270° rotated videos (portrait shot stored as landscape)
+      if (rot == 90 || rot == 270) { val tmp = vidW; vidW = vidH; vidH = tmp }
 
       val screenAr = osdW.toDouble() / osdH.toDouble()
       val vidAr    = vidW / vidH
@@ -2465,15 +2481,9 @@ vec4 hook() {
     // Pixels outside [0, 1] × [0, 1] are in the letterbox / pillarbox region.
     vec2 video_uv = (uv - 0.5) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
-    // Smooth edge mask: 1.0 inside video, 0.0 outside, soft blend at BEZEL_DEPTH.
-    // Guard against BEZEL_DEPTH = 0 which makes smoothstep undefined (edge0 >= edge1).
-    float bezel = max(BEZEL_DEPTH, 0.001);
-    vec2  edge_mask = smoothstep(0.0, bezel, video_uv)
-                    * smoothstep(0.0, bezel, 1.0 - video_uv);
-    float inside    = edge_mask.x * edge_mask.y;
-
-    // ── Early exit: solid video interior pixels ───────────────────────────────
-    if (inside > 0.999) {
+    // ── Hard boundary: return video pixel directly — zero ambient bleeds in ──
+    if (video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
+        video_uv.y >= 0.0 && video_uv.y <= 1.0) {
         return HOOKED_tex(video_uv);
     }
 
@@ -2541,13 +2551,21 @@ vec4 hook() {
     glow = clamp(glow + DITHER_NOISE * (noise - 0.5), 0.0, 1.0);
 
     // ── Compositing ───────────────────────────────────────────────────────────
-    // Blend ambient → video across the BEZEL_DEPTH soft zone.
-    // OPACITY scales only the rgb channels; alpha stays at 1.0 so the output
-    // remains fully opaque (multiplying vec4 by OPACITY would dim alpha too).
-    vec4 ambient_pixel = vec4(glow * OPACITY, 1.0);
-    vec4 video_pixel   = HOOKED_tex(video_uv);
+    // Bezel blend: transition from the nearest video-edge pixel outward into
+    // the ambient glow. BEZEL_DEPTH is in video-UV units; the blend lives
+    // entirely in the ambient region so no glow ever bleeds into the video.
+    float bezel       = max(BEZEL_DEPTH, 0.001);
+    vec2  outside_dist = max(max(-video_uv, video_uv - vec2(1.0)), vec2(0.0));
+    float dist_to_edge = max(outside_dist.x, outside_dist.y);
+    float bezel_alpha  = smoothstep(0.0, bezel, dist_to_edge);
 
-    return mix(ambient_pixel, video_pixel, inside);
+    // At dist=0 (right at edge): show the video edge pixel → seamless join.
+    // At dist≥bezel: show full ambient glow.
+    // OPACITY scales only rgb; alpha stays 1.0 so the output stays opaque.
+    vec4 edge_pixel  = HOOKED_tex(edge_origin);
+    vec4 ambient_out = vec4(glow * OPACITY, 1.0);
+
+    return mix(edge_pixel, ambient_out, bezel_alpha);
 }
   """.trimIndent()
 
