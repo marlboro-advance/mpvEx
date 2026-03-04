@@ -66,6 +66,7 @@ fun MoreSheet(
   onStartTimer: (Int) -> Unit,
   onDismissRequest: () -> Unit,
   onEnterFiltersPanel: () -> Unit,
+  onAnime4KChanged: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -257,6 +258,8 @@ if (infoDialogData != null) {
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
+                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
+                    onAnime4KChanged()
                   }
                 }
               }
@@ -300,6 +303,8 @@ if (infoDialogData != null) {
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
+                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
+                    onAnime4KChanged()
                   }
                 }
               }
