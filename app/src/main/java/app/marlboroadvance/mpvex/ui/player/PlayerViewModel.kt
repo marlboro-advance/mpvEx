@@ -2308,7 +2308,7 @@ class PlayerViewModel(
 
       val screenAr = osdW.toDouble() / osdH.toDouble()
       val vidAr    = vidW / vidH
-
+      
       // Scale the video to fill the screen — the shader remaps it back to the
       // correct aspect ratio, so only the "overflow" area receives ambient glow.
       val scaleX = if (screenAr > vidAr) screenAr / vidAr else 1.0

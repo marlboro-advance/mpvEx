@@ -1,6 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -68,7 +70,17 @@ fun AmbientSheet(
                glowIntensity == 1.5f && satBoost == 1.3f &&
                fadeCurve == 1.8f && opacity == 1.0f
 
-    PlayerSheet(onDismissRequest = onDismissRequest) {
+    val configuration = LocalConfiguration.current
+    val customMaxHeight = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+        (configuration.screenHeightDp * 0.5f).dp
+    } else {
+        null
+    }
+
+    PlayerSheet(
+        onDismissRequest = onDismissRequest,
+        customMaxHeight = customMaxHeight
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
