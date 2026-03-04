@@ -2176,12 +2176,18 @@ class PlayerViewModel(
     }
   }
 
-  /** Called when the device orientation changes. Auto-disables ambient in portrait. */
+  /** Called when the device orientation changes. Refreshes ambient shader for new dimensions. */
   fun onOrientationChanged(isPortrait: Boolean) {
-    if (isPortrait && _isAmbientEnabled.value) {
-      _isAmbientEnabled.value = false
-      disableAmbientShader()
-      playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: OFF (portrait)")
+    if (_isAmbientEnabled.value) {
+      // Force shader refresh to adapt to new screen dimensions
+      lastAmbientScaleX = -1.0
+      lastAmbientScaleY = -1.0
+      // Small delay to let the new OSD dimensions settle
+      ambientDebounceJob?.cancel()
+      ambientDebounceJob = viewModelScope.launch {
+        delay(200)
+        updateAmbientStretch()
+      }
     }
   }
 
@@ -2190,6 +2196,26 @@ class PlayerViewModel(
     if (!_isAmbientEnabled.value) return
     _isAmbientEnabled.value = false
     disableAmbientShader()
+  }
+
+  /**
+   * Re-injects the ambient shader if ambient mode is currently ON.
+   * Called after Anime4K shader changes, since setPropertyString("glsl-shaders", ...)
+   * wipes ALL glsl-shaders including the ambient one.
+   */
+  fun restartAmbientIfActive() {
+    if (!_isAmbientEnabled.value) return
+    // The old ambient shader file was wiped by the glsl-shaders reset.
+    // Clean up our local reference without trying to remove from MPV.
+    ambientShaderFile?.delete()
+    ambientShaderFile = null
+    lastAmbientScaleX = -1.0  // Force rewrite
+    // Small delay to let Anime4K shaders settle
+    ambientDebounceJob?.cancel()
+    ambientDebounceJob = viewModelScope.launch {
+      delay(200)
+      updateAmbientStretch()
+    }
   }
 
   fun updateAmbientParams(
@@ -2240,8 +2266,8 @@ class PlayerViewModel(
   /** Fast profile — low GPU cost, still visually solid. */
   fun applyAmbientProfileFast() {
     updateAmbientParams(
-      blurSamples = 16, maxRadius = 0.17f, glowIntensity = 1.4f,
-      satBoost = 1.2f, ditherNoise = 0.003f, bezelDepth = 0.018f,
+      blurSamples = 16, maxRadius = 0.22f, glowIntensity = 1.4f,
+      satBoost = 1.2f, ditherNoise = 0.0f, bezelDepth = 0.0f,
       vignetteStrength = 0.4f, warmth = 0.0f, fadeCurve = 1.6f, opacity = 1.0f
     )
   }
@@ -2249,8 +2275,8 @@ class PlayerViewModel(
   /** Balanced profile — good quality/performance trade-off for most devices. */
   fun applyAmbientProfileBalanced() {
     updateAmbientParams(
-      blurSamples = 24, maxRadius = 0.20f, glowIntensity = 1.45f,
-      satBoost = 1.25f, ditherNoise = 0.006f, bezelDepth = 0.022f,
+      blurSamples = 24, maxRadius = 0.28f, glowIntensity = 1.45f,
+      satBoost = 1.25f, ditherNoise = 0.0f, bezelDepth = 0.0f,
       vignetteStrength = 0.55f, warmth = 0.0f, fadeCurve = 1.7f, opacity = 1.0f
     )
   }
@@ -2258,8 +2284,8 @@ class PlayerViewModel(
   /** High Quality profile — maximum visual fidelity for high-end devices. */
   fun applyAmbientProfileHighQuality() {
     updateAmbientParams(
-      blurSamples = 48, maxRadius = 0.25f, glowIntensity = 1.5f,
-      satBoost = 1.3f, ditherNoise = 0.008f, bezelDepth = 0.02f,
+      blurSamples = 48, maxRadius = 0.35f, glowIntensity = 1.5f,
+      satBoost = 1.3f, ditherNoise = 0.0f, bezelDepth = 0.0f,
       vignetteStrength = 0.7f, warmth = 0.0f, fadeCurve = 1.8f, opacity = 1.0f
     )
   }
@@ -2271,13 +2297,9 @@ class PlayerViewModel(
       val osdW = MPVLib.getPropertyInt("osd-width") ?: 1920
       val osdH = MPVLib.getPropertyInt("osd-height") ?: 1080
 
-      // Auto-disable in portrait mode (ambient only makes sense in landscape)
-      if (osdH > osdW) {
-        _isAmbientEnabled.value = false
-        disableAmbientShader()
-        playerUpdate.value = PlayerUpdates.ShowText("Ambience Mode: OFF (portrait)")
-        return
-      }
+      // Portrait mode: ambient glow goes on top/bottom (letterbox)
+      // Landscape mode: ambient glow goes on left/right (pillarbox)
+      // Both are handled by the same scaleX/scaleY math below
 
       val vidW = (MPVLib.getPropertyInt("video-params/w") ?: 1920).toDouble()
       val vidH = (MPVLib.getPropertyInt("video-params/h") ?: 1080).toDouble()

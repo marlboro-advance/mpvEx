@@ -160,8 +160,8 @@ fun AmbientSheet(
                 value = maxRadius,
                 onChange = { viewModel.updateAmbientParams(maxRadius = it) },
                 min = 0.05f,
-                max = 0.40f,
-                steps = 35,
+                max = 0.80f,
+                steps = 75,
                 icon = {
                     Icon(
                         imageVector = Icons.Outlined.Gradient,

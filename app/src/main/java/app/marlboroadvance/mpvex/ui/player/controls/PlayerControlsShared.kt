@@ -814,7 +814,6 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.AMBIENT_MODE -> {
-      if (!isPortrait) {
         val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
         @OptIn(ExperimentalFoundationApi::class)
         Surface(
@@ -851,7 +850,6 @@ fun RenderPlayerButton(
             )
           }
         }
-      }
     }
 
     PlayerButton.NONE -> { /* Do nothing */
