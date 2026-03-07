@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,21 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BlurOn
-import androidx.compose.material.icons.outlined.Brightness6
-import androidx.compose.material.icons.outlined.Grain
-import androidx.compose.material.icons.outlined.Gradient
-import androidx.compose.material.icons.outlined.Opacity
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.RoundedCorner
-import androidx.compose.material.icons.outlined.Thermostat
-import androidx.compose.material.icons.outlined.Vignette
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,11 +21,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.presentation.components.PlayerSheet
 import app.marlboroadvance.mpvex.presentation.components.SliderItem
+import app.marlboroadvance.mpvex.ui.icons.Icon as AppSymbolIcon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.theme.spacing
 
@@ -157,8 +147,8 @@ fun AmbientSheet(
                 min = 5,
                 max = 64,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.BlurOn,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.BlurOn,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -175,8 +165,8 @@ fun AmbientSheet(
                 max = 0.80f,
                 steps = 75,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Gradient,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Gradient,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -193,8 +183,8 @@ fun AmbientSheet(
                 max = 3.0f,
                 steps = 25,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Brightness6,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Brightness6,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -211,8 +201,8 @@ fun AmbientSheet(
                 max = 3.0f,
                 steps = 25,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.WbSunny,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.WbSunny,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -237,8 +227,8 @@ fun AmbientSheet(
                 max = 3.0f,
                 steps = 30,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Palette,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Palette,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -255,8 +245,8 @@ fun AmbientSheet(
                 max = 1.0f,
                 steps = 40,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Thermostat,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Thermostat,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -281,8 +271,8 @@ fun AmbientSheet(
                 max = 1.0f,
                 steps = 20,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Opacity,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Opacity,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -299,8 +289,8 @@ fun AmbientSheet(
                 max = 1.0f,
                 steps = 10,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Vignette,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Vignette,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -325,8 +315,8 @@ fun AmbientSheet(
                 max = 0.1f,
                 steps = 50,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.RoundedCorner,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.RoundedCorner,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
@@ -343,8 +333,8 @@ fun AmbientSheet(
                 max = 0.05f,
                 steps = 50,
                 icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Grain,
+                    AppSymbolIcon(
+                        imageVector = Icons.Default.Grain,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),

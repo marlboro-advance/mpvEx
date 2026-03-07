@@ -33,7 +33,7 @@ enum class PlayerButton(
   AB_LOOP(Icons.Outlined.Repeat),
   CUSTOM_SKIP(Icons.Outlined.FastForward),
   BACKGROUND_PLAYBACK(Icons.Outlined.Headset),
-  AMBIENT_MODE(Icons.Outlined.BlurOn),
+  AMBIENT_MODE(Icons.Outlined.BlurOff),
   NONE(Icons.Outlined.Bookmarks),
 }
 

@@ -36,10 +36,13 @@ object Icons {
     val Aperture = AppIcon(R.drawable.materialsymbols_ic_shutter_speed_rounded_filled)
     val AvTimer = AppIcon(R.drawable.materialsymbols_ic_av_timer_rounded_filled)
     val Block = AppIcon(R.drawable.materialsymbols_ic_block_rounded_filled)
+    val BlurOff = AppIcon(R.drawable.materialsymbols_ic_blur_off_rounded_filled)
+    val BlurOn = AppIcon(R.drawable.materialsymbols_ic_blur_on_rounded_filled)
     val Bookmarks = AppIcon(R.drawable.materialsymbols_ic_bookmarks_rounded_filled)
     val BorderColor = AppIcon(R.drawable.materialsymbols_ic_border_color_rounded_filled)
     val BorderStyle = AppIcon(R.drawable.materialsymbols_ic_border_style_rounded_filled)
     val BrandFamily = AppIcon(MaterialSymbols.RoundedFilled.Brand_family)
+    val Brightness6 = AppIcon(R.drawable.materialsymbols_ic_brightness_6_rounded_filled)
     val BrightnessHigh = AppIcon(R.drawable.materialsymbols_ic_brightness_high_rounded_filled)
     val BrightnessLow = AppIcon(R.drawable.materialsymbols_ic_brightness_empty_rounded_filled)
     val BrightnessMedium = AppIcon(R.drawable.materialsymbols_ic_brightness_medium_rounded_filled)
@@ -100,6 +103,7 @@ object Icons {
     val FrameInspect = AppIcon(R.drawable.materialsymbols_ic_frame_inspect_rounded_filled)
     val Gesture = AppIcon(R.drawable.materialsymbols_ic_gesture_rounded_filled)
     val Gradient = AppIcon(R.drawable.materialsymbols_ic_gradient_rounded_filled)
+    val Grain = AppIcon(R.drawable.materialsymbols_ic_grain_rounded_filled)
     val GridView = AppIcon(R.drawable.materialsymbols_ic_grid_view_rounded_filled)
     val Headset = AppIcon(R.drawable.materialsymbols_ic_headphones_rounded_filled)
     val History = AppIcon(R.drawable.materialsymbols_ic_history_2_rounded_filled)
@@ -122,6 +126,7 @@ object Icons {
     val MoreVert = AppIcon(R.drawable.materialsymbols_ic_more_vert_rounded_filled)
     val Movie = AppIcon(R.drawable.materialsymbols_ic_movie_rounded_filled)
     val NotInterested = AppIcon(R.drawable.materialsymbols_ic_block_rounded_filled)
+    val Opacity = AppIcon(R.drawable.materialsymbols_ic_opacity_rounded_filled)
     val Palette = AppIcon(R.drawable.materialsymbols_ic_palette_rounded_filled)
     val Pause = AppIcon(R.drawable.materialsymbols_ic_pause_rounded_filled)
     val PictureInPictureAlt = AppIcon(R.drawable.materialsymbols_ic_picture_in_picture_alt_rounded_filled)
@@ -141,6 +146,7 @@ object Icons {
     val RepeatOne = AppIcon(MaterialSymbols.RoundedFilled.Repeat_one)
     val ResetIso = AppIcon(MaterialSymbols.RoundedFilled.Reset_iso)
     val Restore = AppIcon(R.drawable.materialsymbols_ic_undo_rounded_filled)
+    val RoundedCorner = AppIcon(R.drawable.materialsymbols_ic_rounded_corner_rounded_filled)
     val ScreenRotation = AppIcon(R.drawable.materialsymbols_ic_screen_rotation_rounded_filled)
     val Screenshot = AppIcon(R.drawable.materialsymbols_ic_screenshot_rounded_filled)
     val SdCard = AppIcon(R.drawable.materialsymbols_ic_sd_card_rounded_filled)
@@ -159,6 +165,7 @@ object Icons {
     val Subtitles = AppIcon(R.drawable.materialsymbols_ic_subtitles_rounded_filled)
     val SwapVert = AppIcon(R.drawable.materialsymbols_ic_swap_vert_rounded_filled)
     val SystemUpdate = AppIcon(R.drawable.materialsymbols_ic_system_update_rounded_filled)
+    val Thermostat = AppIcon(R.drawable.materialsymbols_ic_thermostat_rounded_filled)
     val Timer = AppIcon(R.drawable.materialsymbols_ic_timer_rounded_filled)
     val Terminal = AppIcon(R.drawable.materialsymbols_ic_terminal_rounded_filled)
     val Title = AppIcon(R.drawable.materialsymbols_ic_title_rounded_filled)
@@ -171,6 +178,7 @@ object Icons {
     val ViewComfy = AppIcon(R.drawable.materialsymbols_ic_view_comfy_rounded_filled)
     val ViewList = AppIcon(R.drawable.materialsymbols_ic_view_list_rounded_filled)
     val ViewModule = AppIcon(R.drawable.materialsymbols_ic_view_module_rounded_filled)
+    val Vignette = AppIcon(R.drawable.materialsymbols_ic_vignette_rounded_filled)
     val ViewQuilt = AppIcon(R.drawable.materialsymbols_ic_view_quilt_rounded_filled)
     val VolumeDownAlt = AppIcon(R.drawable.materialsymbols_ic_volume_down_alt_rounded_filled)
     val VolumeDown = AppIcon(R.drawable.materialsymbols_ic_volume_down_rounded_filled)
@@ -180,6 +188,7 @@ object Icons {
     val RingVolume = AppIcon(R.drawable.materialsymbols_ic_ring_volume_rounded_filled)
     val Warning = AppIcon(R.drawable.materialsymbols_ic_warning_rounded_filled)
     val West = AppIcon(R.drawable.materialsymbols_ic_west_rounded_filled)
+    val WbSunny = AppIcon(R.drawable.materialsymbols_ic_wb_sunny_rounded_filled)
     val ZoomIn = AppIcon(R.drawable.materialsymbols_ic_zoom_in_rounded_filled)
     val ZoomOutMap = AppIcon(R.drawable.materialsymbols_ic_zoom_out_map_rounded_filled)
   }
@@ -196,10 +205,13 @@ object Icons {
     val AutoFixHigh = Shared.AutoFixHigh
     val Aperture = Shared.Aperture
     val AvTimer = Shared.AvTimer
+    val BlurOff = Shared.BlurOff
+    val BlurOn = Shared.BlurOn
     val Bookmarks = Shared.Bookmarks
     val BorderColor = Shared.BorderColor
     val BorderStyle = Shared.BorderStyle
     val BrandFamily = Shared.BrandFamily
+    val Brightness6 = Shared.Brightness6
     val BrightnessHigh = Shared.BrightnessHigh
     val BrightnessLow = Shared.BrightnessLow
     val BrightnessMedium = Shared.BrightnessMedium
@@ -241,6 +253,7 @@ object Icons {
     val FormatItalic = Shared.FormatItalic
     val FormatSize = Shared.FormatSize
     val Gradient = Shared.Gradient
+    val Grain = Shared.Grain
     val GridView = Shared.GridView
     val Headset = Shared.Headset
     val Home = Shared.Home
@@ -250,6 +263,7 @@ object Icons {
     val Memory = Shared.Memory
     val MoreVert = Shared.MoreVert
     val NotInterested = Shared.NotInterested
+    val Opacity = Shared.Opacity
     val Palette = Shared.Palette
     val Pause = Shared.Pause
     val PictureInPictureAlt = Shared.PictureInPictureAlt
@@ -258,6 +272,7 @@ object Icons {
     val Remove = Shared.Remove
     val RemoveCircle = Shared.RemoveCircle
     val ResetIso = Shared.ResetIso
+    val RoundedCorner = Shared.RoundedCorner
     val ScreenRotation = Shared.ScreenRotation
     val Screenshot = Shared.Screenshot
     val SdCard = Shared.SdCard
@@ -271,6 +286,7 @@ object Icons {
     val Slideshow = Shared.Slideshow
     val Speed = Shared.Speed
     val Subtitles = Shared.Subtitles
+    val Thermostat = Shared.Thermostat
     val Tune = Shared.Tune
     val Update = Shared.Update
     val Usb = Shared.Usb
@@ -279,6 +295,8 @@ object Icons {
     val VolumeOff = Shared.VolumeOff
     val VolumeUp = Shared.VolumeUp
     val ViewList = Shared.ViewList
+    val Vignette = Shared.Vignette
+    val WbSunny = Shared.WbSunny
     val ZoomIn = Shared.ZoomIn
     val ZoomOutMap = Shared.ZoomOutMap
   }
@@ -291,6 +309,7 @@ object Icons {
     val ArrowBack = Shared.ArrowBack
     val ArrowDropDown = Shared.ArrowDropDown
     val Block = Shared.Block
+    val BlurOn = Shared.BlurOn
     val CalendarToday = Shared.CalendarToday
     val Check = Shared.Check
     val CheckCircle = Shared.CheckCircle
@@ -350,6 +369,8 @@ object Icons {
     val AspectRatio = Shared.AspectRatio
     val Audiotrack = Shared.Audiotrack
     val Bookmarks = Shared.Bookmarks
+    val BlurOff = Shared.BlurOff
+    val BlurOn = Shared.BlurOn
     val BugReport = Shared.BugReport
     val Clear = Shared.Clear
     val Edit = Shared.Edit

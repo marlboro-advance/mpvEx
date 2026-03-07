@@ -817,7 +817,7 @@ fun RenderPlayerButton(
         ) {
           Box(contentAlignment = Alignment.Center) {
             AppSymbolIcon(
-              imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOn,
+              imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOff,
               contentDescription = "Ambience Mode",
               tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
               modifier = Modifier.size(24.dp)
