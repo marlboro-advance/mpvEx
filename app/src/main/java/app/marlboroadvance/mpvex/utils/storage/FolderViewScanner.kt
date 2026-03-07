@@ -21,10 +21,10 @@ import java.util.Locale
 object FolderViewScanner {
     private const val TAG = "FolderViewScanner"
     
-    // Smart cache with short TTL (30 seconds)
+    // Smart cache with short TTL (10 seconds)
     private var cachedFolderList: List<VideoFolder>? = null
     private var cacheTimestamp: Long = 0
-    private const val CACHE_TTL_MS = 30_000L // 30 seconds
+    private const val CACHE_TTL_MS = 10_000L // 10 seconds for faster refresh
     
     /**
      * Clear cache (call when media library changes)

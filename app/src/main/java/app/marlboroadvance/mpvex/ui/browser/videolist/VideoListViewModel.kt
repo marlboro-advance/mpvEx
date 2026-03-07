@@ -12,6 +12,7 @@ import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
+import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,9 +102,22 @@ class VideoListViewModel(
 
   override fun refresh() {
     Log.d(tag, "Hard refreshing video list for bucket: $bucketId")
+    
+    // Set loading state
+    _isLoading.value = true
+    
     // Clear cache to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    loadVideos()
+    FolderViewScanner.clearCache()
+    
+    // Trigger media scan before loading to ensure MediaStore is up-to-date
+    triggerMediaScan()
+    
+    // Wait a bit for MediaStore to update, then reload
+    viewModelScope.launch(Dispatchers.IO) {
+      delay(1500) // Give MediaStore time to index
+      loadVideos()
+    }
   }
 
   private fun loadVideos() {
@@ -233,18 +247,44 @@ class VideoListViewModel(
 
   private fun triggerMediaScan() {
     try {
-      // Trigger a comprehensive media scan
-      val externalStorage = android.os.Environment.getExternalStorageDirectory()
-
-      android.media.MediaScannerConnection.scanFile(
-        getApplication(),
-        arrayOf(externalStorage.absolutePath),
-        arrayOf("video/*"),
-      ) { path, uri ->
-        Log.d(tag, "Media scan completed for: $path -> $uri")
+      // Trigger a targeted media scan for the specific folder
+      val folder = File(bucketId)
+      
+      if (folder.exists() && folder.isDirectory) {
+        // Scan all video files in the folder
+        val videoFiles = folder.listFiles { file ->
+          file.isFile && file.extension.lowercase() in listOf(
+            "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpg", "mpeg", "ts", "m2ts"
+          )
+        }
+        
+        if (!videoFiles.isNullOrEmpty()) {
+          val filePaths = videoFiles.map { it.absolutePath }.toTypedArray()
+          
+          android.media.MediaScannerConnection.scanFile(
+            getApplication(),
+            filePaths,
+            null, // Let MediaScanner detect MIME types
+          ) { path, uri ->
+            Log.d(tag, "Media scan completed for: $path -> $uri")
+          }
+          
+          Log.d(tag, "Triggered media scan for ${filePaths.size} files in: $bucketId")
+        } else {
+          Log.d(tag, "No video files found in folder: $bucketId")
+        }
+      } else {
+        // Fallback to scanning external storage root
+        val externalStorage = android.os.Environment.getExternalStorageDirectory()
+        android.media.MediaScannerConnection.scanFile(
+          getApplication(),
+          arrayOf(externalStorage.absolutePath),
+          arrayOf("video/*"),
+        ) { path, uri ->
+          Log.d(tag, "Media scan completed for: $path -> $uri")
+        }
+        Log.d(tag, "Triggered media scan for: ${externalStorage.absolutePath}")
       }
-
-      Log.d(tag, "Triggered media scan for: ${externalStorage.absolutePath}")
     } catch (e: Exception) {
       Log.e(tag, "Failed to trigger media scan", e)
     }

@@ -280,6 +280,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Media scan receiver to detect when new videos are added -->
+        <receiver
+            android:name=".utils.media.MediaScanReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_SCANNER_FINISHED" />
+                <action android:name="android.intent.action.MEDIA_SCANNER_SCAN_FILE" />
+                <data android:scheme="file" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

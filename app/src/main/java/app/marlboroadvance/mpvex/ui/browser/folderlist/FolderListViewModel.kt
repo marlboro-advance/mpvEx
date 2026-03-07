@@ -14,6 +14,7 @@ import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
+import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -254,10 +255,43 @@ class FolderListViewModel(
 
   override fun refresh() {
     Log.d(TAG, "Hard refreshing folder list")
-    // Clear cache to force fresh data from filesystem
+    
+    // Set loading state
+    _isLoading.value = true
+    
+    // Clear all caches to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    // Force reload of folders
-    loadVideoFolders()
+    FolderViewScanner.clearCache()
+    
+    // Trigger media scan to ensure MediaStore is up-to-date
+    triggerMediaScan()
+    
+    // Wait for MediaStore to update, then reload
+    viewModelScope.launch(Dispatchers.IO) {
+      kotlinx.coroutines.delay(1500) // Give MediaStore time to index
+      loadVideoFolders()
+    }
+  }
+  
+  /**
+   * Trigger a comprehensive media scan to update MediaStore
+   */
+  private fun triggerMediaScan() {
+    try {
+      val externalStorage = android.os.Environment.getExternalStorageDirectory()
+      
+      android.media.MediaScannerConnection.scanFile(
+        getApplication(),
+        arrayOf(externalStorage.absolutePath),
+        null, // Let MediaScanner detect all media types
+      ) { path, uri ->
+        Log.d(TAG, "Media scan completed for: $path -> $uri")
+      }
+      
+      Log.d(TAG, "Triggered comprehensive media scan")
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to trigger media scan", e)
+    }
   }
 
   /**
