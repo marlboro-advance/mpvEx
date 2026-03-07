@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Headset
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -54,6 +55,7 @@ enum class PlayerButton(
   AB_LOOP(Icons.Outlined.Repeat),
   CUSTOM_SKIP(Icons.Outlined.FastForward),
   BACKGROUND_PLAYBACK(Icons.Outlined.Headset),
+  AMBIENT_MODE(Icons.Outlined.BlurOn),
   NONE(Icons.Outlined.Bookmarks),
 }
 
@@ -97,5 +99,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.AB_LOOP -> "A-B Loop"
     PlayerButton.CUSTOM_SKIP -> "Custom Skip"
     PlayerButton.BACKGROUND_PLAYBACK -> "Background Playback"
+    PlayerButton.AMBIENT_MODE -> "Ambience Mode"
     PlayerButton.NONE -> "None"
   }

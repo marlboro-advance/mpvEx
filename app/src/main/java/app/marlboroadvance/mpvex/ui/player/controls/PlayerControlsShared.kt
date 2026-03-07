@@ -50,6 +50,8 @@ import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -809,6 +811,45 @@ fun RenderPlayerButton(
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
       )
+    }
+
+    PlayerButton.AMBIENT_MODE -> {
+        val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
+        @OptIn(ExperimentalFoundationApi::class)
+        Surface(
+          shape = CircleShape,
+          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+          contentColor = if (isAmbientEnabled) {
+               MaterialTheme.colorScheme.primary
+            } else {
+               if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
+            },
+          border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+          modifier = Modifier
+            .size(buttonSize)
+            .clip(CircleShape)
+            .combinedClickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = ripple(bounded = true),
+              onClick = { 
+                clickEvent()
+                viewModel.toggleAmbientMode() 
+              },
+              onLongClick = {
+                clickEvent()
+                onOpenSheet(Sheets.AmbientConfig)
+              }
+            ),
+        ) {
+          Box(contentAlignment = Alignment.Center) {
+            Icon(
+              imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOn,
+              contentDescription = "Ambience Mode",
+              tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
+              modifier = Modifier.size(24.dp)
+            )
+          }
+        }
     }
 
     PlayerButton.NONE -> { /* Do nothing */
