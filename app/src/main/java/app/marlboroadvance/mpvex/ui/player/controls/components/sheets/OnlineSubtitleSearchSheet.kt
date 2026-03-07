@@ -76,12 +76,57 @@ fun OnlineSubtitleSearchSheet(
     onDismissRequest = onDismissRequest,
     header = {
       val keyboardController = LocalSoftwareKeyboardController.current
-      var searchQuery by remember { mutableStateOf("") }
       val mediaInfo = remember(mediaTitle) { MediaInfoParser.parse(mediaTitle) }
+      var searchQuery by remember { mutableStateOf(mediaInfo.title) }
+
+      // Build the detected info string for display
+      val detectedInfo = remember(mediaInfo) {
+        buildString {
+          append(mediaInfo.title)
+          if (mediaInfo.season != null || mediaInfo.episode != null) {
+            append(" • ")
+            if (mediaInfo.season != null) append("S${String.format("%02d", mediaInfo.season)}")
+            if (mediaInfo.episode != null) append("E${String.format("%02d", mediaInfo.episode)}")
+          }
+          mediaInfo.year?.let { append(" ($it)") }
+        }
+      }
+
+      // Auto-trigger search on open
+      LaunchedEffect(mediaInfo) {
+        if (mediaInfo.title.isNotBlank()) {
+          onSearchMedia(mediaInfo.title)
+        }
+      }
       
       Column(
         modifier = Modifier.padding(top = MaterialTheme.spacing.medium)
       ) {
+        // Detected info chip
+        if (detectedInfo.isNotBlank() && mediaInfo.title.isNotBlank()) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = MaterialTheme.spacing.medium)
+              .padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(
+              Icons.Default.AutoFixHigh,
+              contentDescription = null,
+              modifier = Modifier.size(14.dp),
+              tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+              text = detectedInfo,
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+              maxLines = 1,
+              modifier = Modifier.basicMarquee()
+            )
+          }
+        }
         OutlinedTextField(
           value = searchQuery,
           onValueChange = { 
