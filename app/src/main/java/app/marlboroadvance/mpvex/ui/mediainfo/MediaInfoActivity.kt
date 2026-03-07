@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.mediainfo
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -23,10 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -212,7 +211,7 @@ class MediaInfoActivity : ComponentActivity() {
           },
           navigationIcon = {
             IconButton(onClick = onBack) {
-              Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
+              Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
           },
           actions = {
@@ -533,3 +532,6 @@ class MediaInfoActivity : ComponentActivity() {
     }
   }
 }
+
+
+

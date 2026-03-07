@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,9 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreTime
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,7 +79,7 @@ fun AudioTracksSheet(
         onAddAudioTrack,
         actions = {
           IconButton(onClick = onOpenDelayPanel) {
-            Icon(Icons.Default.MoreTime, null)
+            Icon(Icons.Default.AvTimer, null)
           }
         },
       )
@@ -179,3 +179,6 @@ fun AudioTrackRow(
     )
   }
 }
+
+
+

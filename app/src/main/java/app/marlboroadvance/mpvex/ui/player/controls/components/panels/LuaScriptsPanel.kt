@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,9 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -212,3 +212,6 @@ fun LuaScriptsPanel(
         }
     }
 }
+
+
+

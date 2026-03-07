@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -10,11 +13,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -324,7 +322,7 @@ data class LuaScriptEditorScreen(
         navigationIcon = {
           IconButton(onClick = backStack::removeLastOrNull) {
             Icon(
-              Icons.AutoMirrored.Default.ArrowBack,
+              Icons.Default.ArrowBack,
               contentDescription = "Back",
               tint = MaterialTheme.colorScheme.secondary,
             )
@@ -446,3 +444,6 @@ data class LuaScriptEditorScreen(
     }
   }
 }
+
+
+

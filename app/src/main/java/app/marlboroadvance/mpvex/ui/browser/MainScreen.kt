@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -15,11 +18,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -199,13 +197,13 @@ object MainScreen : Screen {
               onClick = { selectedTab = 1 }
             )
             NavigationBarItem(
-              icon = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Playlists") },
+              icon = { Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlists") },
               label = { Text("Playlists") },
               selected = selectedTab == 2,
               onClick = { selectedTab = 2 }
             )
             NavigationBarItem(
-              icon = { Icon(Icons.Filled.Language, contentDescription = "Network") },
+              icon = { Icon(Icons.Filled.BringYourOwnIp, contentDescription = "Network") },
               label = { Text("Network") },
               selected = selectedTab == 3,
               onClick = { selectedTab = 3 }
@@ -297,3 +295,5 @@ object MainScreen : Screen {
 
 // CompositionLocal for navigation bar height
 val LocalNavigationBarHeight = compositionLocalOf { 0.dp }
+
+

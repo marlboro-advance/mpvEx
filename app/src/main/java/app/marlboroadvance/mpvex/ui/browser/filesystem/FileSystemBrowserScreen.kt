@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.filesystem
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -23,27 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
@@ -74,7 +60,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -723,13 +708,13 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   val imageVector by remember {
                     derivedStateOf {
                       if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.PlayArrow
-                    }
                   }
-                  Icon(
-                    painter = rememberVectorPainter(imageVector),
-                    contentDescription = null,
-                    modifier = Modifier.animateIcon({ checkedProgress }),
-                  )
+                }
+                Icon(
+                  imageVector = imageVector,
+                  contentDescription = null,
+                  modifier = Modifier.animateIcon({ checkedProgress }),
+                )
                 }
               }
             },
@@ -1619,7 +1604,7 @@ fun FileSystemSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
+      firstOptionIcon = Icons.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = true, // Always list mode
       onViewModeChange = { /* Disabled - do nothing */ },
@@ -1682,3 +1667,6 @@ fun FileSystemSortDialog(
     )
   )
 }
+
+
+

@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels.components
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
@@ -18,9 +21,6 @@ import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,7 +77,7 @@ fun MultiCardPanel(
           },
           navigationIcon = {
             IconButton(onClick = onDismissRequest) {
-              Icon(imageVector = Icons.AutoMirrored.Default.ArrowBack, contentDescription = null)
+              Icon(imageVector = Icons.Default.ArrowBack, contentDescription = null)
             }
           },
           colors = TopAppBarDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
@@ -128,3 +128,6 @@ fun MultiCardPanel(
     }
   }
 }
+
+
+

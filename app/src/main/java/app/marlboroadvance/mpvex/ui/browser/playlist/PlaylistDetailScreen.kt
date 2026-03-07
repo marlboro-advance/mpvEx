@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.playlist
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -20,16 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.PlaylistAdd
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -586,7 +579,7 @@ private fun PlaylistVideoListContent(
           verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
           Icon(
-            imageVector = Icons.AutoMirrored.Outlined.PlaylistAdd,
+            imageVector = Icons.Outlined.PlaylistAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -828,3 +821,6 @@ private fun getFileNameFromUri(context: android.content.Context, uri: Uri): Stri
     uri.lastPathSegment
   }
 }
+
+
+

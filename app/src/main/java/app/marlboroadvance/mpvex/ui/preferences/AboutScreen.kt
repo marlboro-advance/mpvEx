@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.widget.ImageView
@@ -23,13 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.CurrencyRupee
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -111,7 +107,7 @@ object AboutScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                imageVector = Icons.AutoMirrored.Default.ArrowBack, 
+                imageVector = Icons.Default.ArrowBack, 
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -499,7 +495,7 @@ object LibrariesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                imageVector = Icons.AutoMirrored.Default.ArrowBack, 
+                imageVector = Icons.Default.ArrowBack, 
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
               )
@@ -511,3 +507,6 @@ object LibrariesScreen : Screen {
     }
   }
 }
+
+
+

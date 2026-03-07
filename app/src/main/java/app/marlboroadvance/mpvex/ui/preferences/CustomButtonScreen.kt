@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -29,16 +32,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -243,7 +236,7 @@ object CustomButtonScreen : Screen {
                     navigationIcon = {
                         IconButton(onClick = backstack::removeLastOrNull) {
                             Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                Icons.Outlined.ArrowBack,
                                 contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
@@ -408,7 +401,6 @@ object CustomButtonScreen : Screen {
         }
     }
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Slot card — always expandable; top bar is clean, all editing happens inline
@@ -640,7 +632,7 @@ fun ButtonSlotCard(
                         },
                         navigationIcon = {
                             IconButton(onClick = { dismissAndSave() }) {
-                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
+                                Icon(Icons.Outlined.ArrowBack, "Back")
                             }
                         },
                         actions = {
@@ -946,7 +938,7 @@ fun ImportSelectionScreen(
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            Icons.Outlined.ArrowBack,
                             contentDescription = "Cancel",
                             tint = MaterialTheme.colorScheme.secondary,
                         )
@@ -1092,7 +1084,6 @@ fun ImportSelectionScreen(
     }
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // XML Import/Export helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1174,3 +1165,6 @@ private fun unescapeXml(text: String): String {
         .replace("&apos;", "'")
         .replace("&amp;", "&")
 }
+
+
+

@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,19 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ViewQuilt
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Gesture
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,7 +53,7 @@ object PreferencesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                Icons.AutoMirrored.Outlined.ArrowBack, 
+                Icons.Outlined.ArrowBack, 
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -149,7 +139,7 @@ object PreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.AutoMirrored.Outlined.ViewQuilt, 
+                    Icons.Default.GridView,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -177,7 +167,7 @@ object PreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.Outlined.PlayCircle, 
+                    Icons.Default.Slideshow,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -254,7 +244,7 @@ object PreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.Outlined.Memory, 
+                    Icons.Default.DeveloperBoard,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -324,7 +314,7 @@ object PreferencesScreen : Screen {
                 },
                 icon = { 
                   Icon(
-                    Icons.Outlined.Code, 
+                    Icons.Alternatives.AdvancedSettings,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                   ) 
@@ -359,3 +349,6 @@ object PreferencesScreen : Screen {
     }
   }
 }
+
+
+

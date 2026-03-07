@@ -1,16 +1,12 @@
 package app.marlboroadvance.mpvex.preferences
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
-import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
-import androidx.compose.material.icons.filled.FormatAlignCenter
-import androidx.compose.material.icons.filled.FormatAlignJustify
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import app.marlboroadvance.mpvex.preferences.preference.PreferenceStore
 import app.marlboroadvance.mpvex.preferences.preference.getEnum
 import app.marlboroadvance.mpvex.ui.player.controls.components.panels.SubtitlesBorderStyle
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 
 class SubtitlesPreferences(
   preferenceStore: PreferenceStore,
@@ -56,10 +52,10 @@ class SubtitlesPreferences(
 
 enum class SubtitleJustification(
   val value: String,
-  val icon: ImageVector,
+  val icon: AppIcon,
 ) {
-  Left("left", Icons.AutoMirrored.Default.FormatAlignLeft),
+  Left("left", Icons.Default.FormatAlignLeft),
   Center("center", Icons.Default.FormatAlignCenter),
-  Right("right", Icons.AutoMirrored.Default.FormatAlignRight),
+  Right("right", Icons.Default.FormatAlignRight),
   Auto("auto", Icons.Default.FormatAlignJustify),
 }

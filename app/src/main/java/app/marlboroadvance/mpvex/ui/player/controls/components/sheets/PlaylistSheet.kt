@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -25,10 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -833,7 +832,6 @@ fun PlaylistTrackGridItem(
   }
 }
 
-
 @Composable
 fun LoadingChip(
   width: androidx.compose.ui.unit.Dp,
@@ -882,3 +880,6 @@ fun LoadingChip(
       )
   )
 }
+
+
+

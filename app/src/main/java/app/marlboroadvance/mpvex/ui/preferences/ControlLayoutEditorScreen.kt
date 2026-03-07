@@ -2,7 +2,6 @@ package app.marlboroadvance.mpvex.ui.preferences
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -19,13 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.draw.rotate
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.RemoveCircle
-import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -47,6 +40,8 @@ import app.marlboroadvance.mpvex.preferences.allPlayerButtons
 import app.marlboroadvance.mpvex.preferences.preference.Preference
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.components.ConfirmDialog
+import app.marlboroadvance.mpvex.ui.icons.Icon as AppSymbolIcon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 import app.marlboroadvance.mpvex.ui.preferences.components.PlayerButtonChip
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import kotlinx.serialization.Serializable
@@ -187,12 +182,12 @@ data class ControlLayoutEditorScreen(
           title = { Text(text = title) },
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
-              Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+              AppSymbolIcon(Icons.Outlined.ArrowBack, contentDescription = "Back")
             }
           },
           actions = {
             IconButton(onClick = { showResetDialog = true }) {
-              Icon(Icons.Outlined.Restore, contentDescription = "Reset to default")
+              AppSymbolIcon(Icons.Default.Refresh, contentDescription = "Reset to default")
             }
           },
         )
@@ -254,7 +249,7 @@ data class ControlLayoutEditorScreen(
                              horizontalAlignment = Alignment.CenterHorizontally,
                              verticalArrangement = Arrangement.Center
                          ) {
-                             Icon(
+                             AppSymbolIcon(
                                  imageVector = Icons.Default.AddCircle,
                                  contentDescription = null,
                                  modifier = Modifier
@@ -439,7 +434,7 @@ private fun IconsLegend() {
                             Modifier
                         }
 
-                        Icon(
+                        AppSymbolIcon(
                             imageVector = button.icon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -460,5 +455,4 @@ private fun IconsLegend() {
         }
     }
 }
-
 

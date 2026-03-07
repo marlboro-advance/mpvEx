@@ -1,13 +1,10 @@
 package app.marlboroadvance.mpvex.presentation.components
+
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 import app.marlboroadvance.mpvex.ui.theme.spacing
 
 @Composable
@@ -34,8 +34,8 @@ fun OutlinedNumericChooser(
   min: Int = 0,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Remove,
-  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Add,
+  decreaseIcon: AppIcon = Icons.Filled.Remove,
+  increaseIcon: AppIcon = Icons.Filled.Add,
   valueFormatter: ((Int) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
@@ -97,8 +97,8 @@ fun OutlinedNumericChooser(
   min: Float = 0f,
   suffix: (@Composable () -> Unit)? = null,
   label: (@Composable () -> Unit)? = null,
-  decreaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Remove,
-  increaseIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Add,
+  decreaseIcon: AppIcon = Icons.Filled.Remove,
+  increaseIcon: AppIcon = Icons.Filled.Add,
   valueFormatter: ((Float) -> String)? = null,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }

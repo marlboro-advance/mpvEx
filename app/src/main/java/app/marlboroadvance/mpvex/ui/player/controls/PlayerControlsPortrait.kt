@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -12,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,7 +57,7 @@ fun TopPlayerControlsPortrait(
     ) {
       ControlsGroup {
         ControlsButton(
-          icon = Icons.AutoMirrored.Default.ArrowBack,
+          icon = Icons.Default.ArrowBack,
           onClick = onBackPress,
           color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         )
@@ -183,4 +184,6 @@ fun BottomPlayerControlsPortrait(
     }
   }
 }
+
+
 

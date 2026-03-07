@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -10,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DoubleArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -60,7 +61,6 @@ fun PlayerUpdate(
     }
   }
 }
-
 
 @Composable
 fun TextPlayerUpdate(
@@ -121,3 +121,6 @@ fun SeekPlayerUpdate(
     }
   }
 }
+
+
+

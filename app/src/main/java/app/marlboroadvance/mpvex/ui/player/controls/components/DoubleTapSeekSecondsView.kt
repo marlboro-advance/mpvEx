@@ -4,18 +4,17 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import app.marlboroadvance.mpvex.R
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 
 /**
  * View that shows the arrows animation when double tapping to seek
@@ -44,10 +43,14 @@ fun DoubleTapSeekTriangles(
     }
   }
 
-  val rotation = if (isForward) 0f else 180f
   Row(
     verticalAlignment = Alignment.CenterVertically,
-    modifier = modifier.rotate(rotation),
+    modifier =
+      if (isForward) {
+        modifier
+      } else {
+        modifier.scale(scaleX = -1f, scaleY = 1f)
+      },
   ) {
     DoubleTapArrow(alpha1.value)
     DoubleTapArrow(alpha2.value)
@@ -58,11 +61,11 @@ fun DoubleTapSeekTriangles(
 @Composable
 private fun DoubleTapArrow(alpha: Float) {
   Icon(
-    painter = painterResource(R.drawable.ic_play_seek_triangle),
+    imageVector = Icons.Default.PlayArrow,
     contentDescription = null,
     modifier =
       Modifier
-        .size(width = 16.dp, height = 20.dp)
+        .size(18.dp)
         .alpha(alpha = alpha),
     tint = Color.White,
   )

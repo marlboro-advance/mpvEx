@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,11 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,7 +95,7 @@ object SettingsSearchScreen : Screen {
                     navigationIcon = {
                         IconButton(onClick = backstack::removeLastOrNull) {
                             Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                Icons.Outlined.ArrowBack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
@@ -296,3 +294,6 @@ private fun SearchResultItem(
         }
     }
 }
+
+
+

@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.annotation.SuppressLint
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
@@ -12,14 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BorderColor
-import androidx.compose.material.icons.filled.BorderStyle
-import androidx.compose.material.icons.filled.FormatBold
-import androidx.compose.material.icons.filled.FormatClear
-import androidx.compose.material.icons.filled.FormatColorText
-import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
@@ -37,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -194,7 +188,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Icon(
-          painterResource(R.drawable.outline_brand_family_24),
+          Icons.Default.BrandFamily,
           null,
           modifier = Modifier.size(32.dp),
         )
@@ -261,7 +255,7 @@ fun SubtitleSettingsTypographyCard(modifier: Modifier = Modifier) {
           MPVLib.setPropertyInt("sub-shadow-offset", it)
         },
         max = 100,
-        icon = { Icon(painterResource(R.drawable.sharp_shadow_24), null) },
+        icon = { Icon(Icons.Default.Shadow, null) },
       )
     }
   }
@@ -287,3 +281,6 @@ enum class SubtitlesBorderStyle(
   OutlineAndShadow("outline-and-shadow", R.string.player_sheets_subtitles_border_style_outline_and_shadow),
   OpaqueBox("opaque-box", R.string.player_sheets_subtitles_border_style_opaque_box),
 }
+
+
+

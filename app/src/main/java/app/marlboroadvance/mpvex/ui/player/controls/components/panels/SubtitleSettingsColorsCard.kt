@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.panels
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,12 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BorderColor
-import androidx.compose.material.icons.filled.FormatColorFill
-import androidx.compose.material.icons.filled.FormatColorReset
-import androidx.compose.material.icons.filled.FormatColorText
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
@@ -225,3 +222,6 @@ fun SubtitlesColorPicker(
     )
   }
 }
+
+
+

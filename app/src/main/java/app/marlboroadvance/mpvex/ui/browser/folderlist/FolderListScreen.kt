@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.folderlist
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,27 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
@@ -72,7 +59,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -443,7 +429,7 @@ object FolderListScreen : Screen {
                   }
                 }
                 Icon(
-                  painter = rememberVectorPainter(imageVector),
+                  imageVector = imageVector,
                   contentDescription = null,
                   modifier = Modifier.animateIcon({ checkedProgress }),
                 )
@@ -956,7 +942,7 @@ private fun FolderSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
+      firstOptionIcon = Icons.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
@@ -1001,7 +987,6 @@ private fun FolderSortDialog(
     videoGridColumnSelector = videoGridColumnSelector,
   )
 }
-
 
 /**
  * Displays search results based on the user's layout preference (grid or list)
@@ -1168,3 +1153,6 @@ private suspend fun searchFoldersAndVideos(
   
   return results
 }
+
+
+

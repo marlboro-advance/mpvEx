@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components.sheets
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
@@ -14,13 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -533,7 +529,7 @@ private fun ControlButtons(
         )
       } else {
         Icon(
-          Icons.Default.CameraAlt,
+          Icons.Default.Aperture,
           contentDescription = null,
           modifier = Modifier.size(32.dp),
         )
@@ -722,3 +718,6 @@ private suspend fun takeSnapshot(
     }
   }
 }
+
+
+

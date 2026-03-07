@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.dialogs
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Environment
@@ -15,14 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.DriveFolderUpload
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.SdCard
-import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -428,7 +423,7 @@ private fun FileItem(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
-      imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+      imageVector = Icons.Filled.InsertDriveFile,
       contentDescription = null,
       tint = MaterialTheme.colorScheme.secondary,
       modifier = Modifier.size(28.dp),
@@ -466,7 +461,7 @@ private fun NavigationButtons(
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
       )
     ) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", modifier = Modifier.size(iconSize))
+      Icon(Icons.Filled.ArrowBack, "Back", modifier = Modifier.size(iconSize))
     }
   }
 
@@ -492,4 +487,6 @@ private fun NavigationButtons(
     Icon(Icons.Default.DriveFolderUpload, "System Picker", modifier = Modifier.size(iconSize))
   }
 }
+
+
 

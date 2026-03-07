@@ -11,20 +11,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.rotate
 import app.marlboroadvance.mpvex.preferences.PlayerButton
 import app.marlboroadvance.mpvex.preferences.getPlayerButtonLabel
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.player.controls.components.AbLoopIcon
 
 /**
  * A simple "Quick Settings" style chip for a player button.
@@ -35,7 +36,7 @@ fun PlayerButtonChip(
   button: PlayerButton,
   enabled: Boolean,
   onClick: (() -> Unit)? = null,
-  badgeIcon: ImageVector? = null,
+  badgeIcon: AppIcon? = null,
   badgeColor: Color? = null,
 ) {
   val label = getPlayerButtonLabel(button) // Kept for accessibility
@@ -103,11 +104,8 @@ fun PlayerButtonChip(
             }
           }
           PlayerButton.AB_LOOP -> {
-            Text(
-              text = "AB",
-              fontSize = 15.sp,
-              textAlign = TextAlign.Center,
-              fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            AbLoopIcon(
+              modifier = Modifier.size(36.dp),
             )
           }
           else -> {

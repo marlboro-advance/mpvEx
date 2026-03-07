@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,12 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DriveFileMove
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -92,7 +89,7 @@ fun BrowserBottomBar(
           )
         ) {
           Icon(
-            Icons.AutoMirrored.Filled.DriveFileMove, 
+            Icons.Filled.DriveFileMove, 
             contentDescription = "Move",
             modifier = Modifier.size(24.dp)
           )
@@ -121,7 +118,7 @@ fun BrowserBottomBar(
           colors = IconButtonDefaults.filledTonalIconButtonColors()
         ) {
           Icon(
-            Icons.AutoMirrored.Filled.PlaylistAdd, 
+            Icons.Filled.PlaylistAdd, 
             contentDescription = "Add to Playlist",
             modifier = Modifier.size(24.dp)
           )
@@ -146,3 +143,6 @@ fun BrowserBottomBar(
     }
   }
 }
+
+
+

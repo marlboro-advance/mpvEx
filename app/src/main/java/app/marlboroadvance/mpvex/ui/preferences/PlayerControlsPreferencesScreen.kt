@@ -1,6 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
-// import androidx.compose.material.icons.outlined.VideoLabel // No longer needed here
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -112,7 +111,7 @@ object PlayerControlsPreferencesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                Icons.AutoMirrored.Outlined.ArrowBack, 
+                Icons.Outlined.ArrowBack, 
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -397,3 +396,6 @@ object PlayerControlsPreferencesScreen : Screen {
     }
   }
 }
+
+
+

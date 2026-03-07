@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.player.controls.components
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -14,14 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeDown
-import androidx.compose.material.icons.automirrored.filled.VolumeMute
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.BrightnessLow
-import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -218,11 +213,11 @@ fun VolumeSlider(
       )
       Icon(
         when (percentage) {
-          0 -> Icons.AutoMirrored.Default.VolumeOff
-          in 0..30 -> Icons.AutoMirrored.Default.VolumeMute
-          in 30..60 -> Icons.AutoMirrored.Default.VolumeDown
-          in 60..100 -> Icons.AutoMirrored.Default.VolumeUp
-          else -> Icons.AutoMirrored.Default.VolumeOff
+          0 -> Icons.Default.VolumeOff
+          in 0..30 -> Icons.Default.VolumeMute
+          in 30..60 -> Icons.Default.VolumeDown
+          in 60..100 -> Icons.Default.VolumeUp
+          else -> Icons.Default.VolumeOff
         },
         contentDescription = null,
       )
@@ -265,3 +260,6 @@ val getVolumeSliderText: @Composable (Int, Int, Int, Int, Boolean) -> String =
       }
     }
   }
+
+
+

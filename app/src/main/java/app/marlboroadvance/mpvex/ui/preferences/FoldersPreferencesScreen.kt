@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.app.Application
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -16,12 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOff
-import androidx.compose.material.icons.filled.RemoveCircle
-import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -114,7 +111,7 @@ object FoldersPreferencesScreen : Screen {
                 modifier = Modifier.padding(horizontal = 2.dp),
               ) {
                 Icon(
-                  Icons.Outlined.Restore,
+                  Icons.Default.Clear,
                   contentDescription = stringResource(R.string.pref_folders_clear_all),
                   modifier = Modifier.size(28.dp),
                   tint = MaterialTheme.colorScheme.error,
@@ -487,4 +484,6 @@ private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder>
       context = context
     )
 }
+
+
 

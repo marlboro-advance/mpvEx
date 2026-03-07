@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.presentation.crash
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -27,9 +30,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -380,3 +380,6 @@ class CrashActivity : ComponentActivity() {
     }
   }
 }
+
+
+

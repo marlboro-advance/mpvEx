@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.playlist
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,12 +24,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -278,7 +275,7 @@ object PlaylistScreen : Screen {
               verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
               EmptyState(
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                icon = Icons.Outlined.PlaylistAdd,
                 title = "No playlists yet",
                 message = "Create a playlist or add one from an m3u URL",
               )
@@ -512,4 +509,6 @@ object PlaylistScreen : Screen {
       }
     }
   }
+
+
 

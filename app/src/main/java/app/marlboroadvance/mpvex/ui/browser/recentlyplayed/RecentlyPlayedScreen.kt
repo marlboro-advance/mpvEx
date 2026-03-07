@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.recentlyplayed
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,19 +19,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -51,7 +46,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -239,7 +233,7 @@ object RecentlyPlayedScreen : Screen {
                   }
                 }
                 Icon(
-                  painter = rememberVectorPainter(imageVector),
+                  imageVector = imageVector,
                   contentDescription = null,
                   modifier = Modifier.animateIcon({ checkedProgress }),
                 )
@@ -602,7 +596,7 @@ private fun RecentItemsContent(
                         }
                       }
                     },
-                    customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    customIcon = Icons.Filled.PlaylistPlay,
                     showDateModified = true,
                     isGridMode = true,
                   )
@@ -711,7 +705,7 @@ private fun RecentItemsContent(
                         }
                       }
                     },
-                    customIcon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    customIcon = Icons.Filled.PlaylistPlay,
                     showDateModified = true,
                     isGridMode = false,
                   )
@@ -724,4 +718,6 @@ private fun RecentItemsContent(
     }
   }
 }
+
+
 

@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CatchingPokemon
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ripple
@@ -22,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 import app.marlboroadvance.mpvex.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.marlboroadvance.mpvex.ui.theme.spacing
 import org.koin.compose.koinInject
@@ -35,7 +34,7 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ControlsButton(
-  icon: ImageVector,
+  icon: AppIcon,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   onLongClick: () -> Unit = {},

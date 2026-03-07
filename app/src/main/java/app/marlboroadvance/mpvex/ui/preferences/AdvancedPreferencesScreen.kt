@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
@@ -15,11 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -191,7 +189,7 @@ object AdvancedPreferencesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backStack::removeLastOrNull) {
               Icon(
-                Icons.AutoMirrored.Default.ArrowBack, 
+                Icons.Default.ArrowBack, 
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -742,3 +740,6 @@ object AdvancedPreferencesScreen : Screen {
 
 fun getSimplifiedPathFromUri(uri: String): String =
   Environment.getExternalStorageDirectory().canonicalPath + "/" + Uri.decode(uri).substringAfterLast(":")
+
+
+

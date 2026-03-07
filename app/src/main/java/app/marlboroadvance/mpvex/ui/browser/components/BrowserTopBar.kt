@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.components
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -7,23 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RemoveCircle
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SortByAlpha
-import androidx.compose.material.icons.filled.ViewComfy
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -238,7 +224,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.AutoMirrored.Filled.ArrowBack,
+            Icons.Filled.ArrowBack,
             contentDescription = stringResource(R.string.back),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -267,7 +253,7 @@ private fun NormalTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.Default.ViewComfy,
+            Icons.Filled.SortByAlpha,
             contentDescription = stringResource(R.string.sort),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -414,7 +400,7 @@ private fun SelectionTopBar(
           modifier = Modifier.padding(horizontal = 2.dp),
         ) {
           Icon(
-            Icons.AutoMirrored.Filled.PlaylistAdd,
+            Icons.Filled.PlaylistAdd,
             contentDescription = "Add to Playlist",
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.secondary,
@@ -512,3 +498,6 @@ private fun SelectionTopBar(
     modifier = modifier.clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
   )
 }
+
+
+

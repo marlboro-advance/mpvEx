@@ -1,45 +1,23 @@
 package app.marlboroadvance.mpvex.preferences
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.AspectRatio
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.Bookmarks
-import androidx.compose.material.icons.outlined.Camera
-import androidx.compose.material.icons.outlined.LockOpen
-import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PictureInPictureAlt
-import androidx.compose.material.icons.outlined.ScreenRotation
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Subtitles
-import androidx.compose.material.icons.outlined.Title
-import androidx.compose.material.icons.outlined.Flip
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.ZoomIn
-import androidx.compose.material.icons.outlined.FastForward
-import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.outlined.SwapVert
-import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.outlined.Headset
-import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.ImageVector
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 
 /**
  * Represents a customizable button in the player controls.
  * Now includes an icon for the preference UI.
  */
 enum class PlayerButton(
-  val icon: ImageVector,
+  val icon: AppIcon,
 ) {
-  BACK_ARROW(Icons.AutoMirrored.Outlined.ArrowBack),
+  BACK_ARROW(Icons.Outlined.ArrowBack),
   VIDEO_TITLE(Icons.Outlined.Title),
   BOOKMARKS_CHAPTERS(Icons.Outlined.Bookmarks),
   PLAYBACK_SPEED(Icons.Outlined.Speed),
-  DECODER(Icons.Outlined.Memory),
+  DECODER(Icons.Default.DeveloperBoard),
   SCREEN_ROTATION(Icons.Outlined.ScreenRotation),
-  FRAME_NAVIGATION(Icons.Outlined.Camera),
+  FRAME_NAVIGATION(Icons.Default.Screenshot),
   VIDEO_ZOOM(Icons.Outlined.ZoomIn),
   PICTURE_IN_PICTURE(Icons.Outlined.PictureInPictureAlt),
   ASPECT_RATIO(Icons.Outlined.AspectRatio),
@@ -48,7 +26,7 @@ enum class PlayerButton(
   SUBTITLES(Icons.Outlined.Subtitles),
   MORE_OPTIONS(Icons.Outlined.MoreVert),
   CURRENT_CHAPTER(Icons.Outlined.Bookmarks), // <-- CHANGED ICON
-  REPEAT_MODE(Icons.Outlined.Repeat),
+  REPEAT_MODE(Icons.Filled.Repeat),
   SHUFFLE(Icons.Outlined.Shuffle),
   MIRROR(Icons.Outlined.Flip),
   VERTICAL_FLIP(Icons.Outlined.Flip),

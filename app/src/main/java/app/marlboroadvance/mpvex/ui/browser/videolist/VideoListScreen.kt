@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.browser.videolist
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import android.os.Environment
 import androidx.activity.compose.BackHandler
@@ -26,17 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
@@ -114,7 +106,6 @@ import my.nanihadesuka.compose.ScrollbarSettings
 import org.koin.compose.koinInject
 import java.io.File
 import kotlin.math.roundToInt
-
 
 @Serializable
 data class VideoListScreen(
@@ -933,7 +924,7 @@ private fun VideoSortDialog(
       label = "Layout",
       firstOptionLabel = "List",
       secondOptionLabel = "Grid",
-      firstOptionIcon = Icons.AutoMirrored.Filled.ViewList,
+      firstOptionIcon = Icons.Filled.ViewList,
       secondOptionIcon = Icons.Filled.GridView,
       isFirstOptionSelected = mediaLayoutMode == MediaLayoutMode.LIST,
       onViewModeChange = { isFirstOption ->
@@ -984,3 +975,6 @@ private fun VideoSortDialog(
     videoGridColumnSelector = videoGridColumnSelector,
   )
 }
+
+
+

@@ -15,6 +15,7 @@ import android.util.Rational
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import app.marlboroadvance.mpvex.R
+import com.composables.icons.materialsymbols.roundedfilled.R as MaterialSymbolsR
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
@@ -136,9 +137,9 @@ class MPVPipHelper(
     return listOf(
       createRemoteAction("rewind", android.R.drawable.ic_media_rew, PIP_REWIND),
       if (isPlaying) {
-        createRemoteAction("pause", R.drawable.baseline_pause_24, PIP_PAUSE)
+        createRemoteAction("pause", MaterialSymbolsR.drawable.materialsymbols_ic_pause_rounded_filled, PIP_PAUSE)
       } else {
-        createRemoteAction("play", R.drawable.baseline_play_arrow_24, PIP_PLAY)
+        createRemoteAction("play", MaterialSymbolsR.drawable.materialsymbols_ic_play_arrow_rounded_filled, PIP_PLAY)
       },
       createRemoteAction("forward", android.R.drawable.ic_media_ff, PIP_FORWARD),
     )

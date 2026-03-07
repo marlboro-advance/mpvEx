@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,8 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -74,7 +75,7 @@ object DecoderPreferencesScreen : Screen {
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                Icons.AutoMirrored.Default.ArrowBack,
+                Icons.Default.ArrowBack,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -352,3 +353,6 @@ object VulkanUtils {
         }
     }
 }
+
+
+

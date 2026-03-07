@@ -1,5 +1,8 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.documentfile.provider.DocumentFile
@@ -17,12 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import app.marlboroadvance.mpvex.repository.wyzie.WyzieEncodings
 import app.marlboroadvance.mpvex.repository.wyzie.WyzieFormats
 import app.marlboroadvance.mpvex.repository.wyzie.WyzieSources
@@ -98,7 +95,7 @@ object SubtitlesPreferencesScreen : Screen {
               onClick = backstack::removeLastOrNull,
             ) {
               Icon(
-                Icons.AutoMirrored.Outlined.ArrowBack,
+                Icons.Outlined.ArrowBack,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.secondary,
               )
@@ -660,3 +657,6 @@ fun MultiChoicePreference(
     )
   }
 }
+
+
+

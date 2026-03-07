@@ -1,5 +1,9 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+import app.marlboroadvance.mpvex.ui.player.controls.components.AnimatedPlayPauseIcon
+
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -9,10 +13,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -25,7 +25,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,11 +45,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -76,7 +70,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -143,7 +136,6 @@ fun <T> playerControlsEnterAnimationSpec(): FiniteAnimationSpec<T> =
   )
 
 @OptIn(
-  ExperimentalAnimationGraphicsApi::class,
   ExperimentalMaterial3Api::class,
   ExperimentalMaterial3ExpressiveApi::class,
   ExperimentalFoundationApi::class,
@@ -800,7 +792,6 @@ fun PlayerControls(
             },
         ) {
           val showLoadingCircle by playerPreferences.showLoadingCircle.collectAsState()
-          val icon = AnimatedImageVector.animatedVectorResource(R.drawable.anim_play_to_pause)
           val interaction = remember { MutableInteractionSource() }
 
           when {
@@ -911,13 +902,12 @@ fun PlayerControls(
                         null
                       },
                   ) {
-                    Image(
-                      painter = rememberAnimatedVectorPainter(icon, paused == false),
+                    AnimatedPlayPauseIcon(
+                      isPlaying = paused == false,
                       modifier = Modifier
                         .fillMaxSize()
                         .padding(MaterialTheme.spacing.medium),
-                      contentDescription = null,
-                      colorFilter = ColorFilter.tint(LocalContentColor.current),
+                      tint = LocalContentColor.current,
                     )
                   }
 
@@ -1010,13 +1000,12 @@ fun PlayerControls(
                       null
                     },
                 ) {
-                  Image(
-                    painter = rememberAnimatedVectorPainter(icon, paused == false),
+                  AnimatedPlayPauseIcon(
+                    isPlaying = paused == false,
                     modifier = Modifier
                       .fillMaxSize()
                       .padding(MaterialTheme.spacing.medium),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(LocalContentColor.current),
+                    tint = LocalContentColor.current,
                   )
                 }
               }
@@ -1413,3 +1402,6 @@ fun PlayerControls(
     )
   }
 }
+
+
+

@@ -1,5 +1,9 @@
 package app.marlboroadvance.mpvex.ui.player.controls
 
+import app.marlboroadvance.mpvex.ui.icons.Icon as AppSymbolIcon
+import app.marlboroadvance.mpvex.ui.icons.Icons
+import app.marlboroadvance.mpvex.ui.player.controls.components.AbLoopIcon
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -23,38 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Camera
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.FitScreen
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PictureInPictureAlt
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOn
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.ScreenRotation
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.ShuffleOn
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOutMap
-import androidx.compose.material.icons.filled.Flip
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Headset
-import androidx.compose.material.icons.filled.BlurOn
-import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -107,7 +81,7 @@ fun RenderPlayerButton(
   when (button) {
     PlayerButton.BACK_ARROW -> {
       ControlsButton(
-        icon = Icons.AutoMirrored.Default.ArrowBack,
+        icon = Icons.Default.ArrowBack,
         onClick = onBackPress,
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.size(buttonSize),
@@ -228,7 +202,7 @@ fun RenderPlayerButton(
               vertical = MaterialTheme.spacing.small,
             ),
           ) {
-            Icon(
+            AppSymbolIcon(
               imageVector = Icons.Default.Speed,
               contentDescription = "Playback Speed",
               tint = MaterialTheme.colorScheme.primary,
@@ -353,7 +327,7 @@ fun RenderPlayerButton(
                   }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Icon(
+                  AppSymbolIcon(
                     imageVector = Icons.Default.FastRewind,
                     contentDescription = "Previous Frame",
                     tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
@@ -396,8 +370,8 @@ fun RenderPlayerButton(
                     ),
                 ) {
                   Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                      imageVector = Icons.Default.CameraAlt,
+                    AppSymbolIcon(
+                      imageVector = Icons.Default.Aperture,
                       contentDescription = "Take Screenshot",
                       tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
                       modifier = Modifier.size(20.dp),
@@ -419,7 +393,7 @@ fun RenderPlayerButton(
                   }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Icon(
+                  AppSymbolIcon(
                     imageVector = Icons.Default.FastForward,
                     contentDescription = "Next Frame",
                     tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
@@ -432,7 +406,7 @@ fun RenderPlayerButton(
         } else {
           // Collapsed: Show camera icon button
           ControlsButton(
-            icon = Icons.Default.Camera,
+            icon = Icons.Default.CameraAlt,
             onClick = viewModel::toggleFrameNavigationExpanded,
             onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
             color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
@@ -479,7 +453,7 @@ fun RenderPlayerButton(
               vertical = MaterialTheme.spacing.small,
             ),
           ) {
-            Icon(
+            AppSymbolIcon(
               imageVector = Icons.Default.ZoomIn,
               contentDescription = "Video Zoom",
               tint = MaterialTheme.colorScheme.primary,
@@ -596,9 +570,9 @@ fun RenderPlayerButton(
     PlayerButton.REPEAT_MODE -> {
       val repeatMode by viewModel.repeatMode.collectAsState()
       val icon = when (repeatMode) {
-        app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> Icons.Default.Repeat
-        app.marlboroadvance.mpvex.ui.player.RepeatMode.ONE -> Icons.Default.RepeatOne
-        app.marlboroadvance.mpvex.ui.player.RepeatMode.ALL -> Icons.Default.RepeatOn
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.OFF -> Icons.Filled.Repeat
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.ONE -> Icons.Filled.RepeatOne
+        app.marlboroadvance.mpvex.ui.player.RepeatMode.ALL -> Icons.Filled.RepeatOn
       }
       ControlsButton(
         icon = icon,
@@ -677,7 +651,7 @@ fun RenderPlayerButton(
           .clickable(onClick = viewModel::toggleVerticalFlip),
       ) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(
+          AppSymbolIcon(
             imageVector = Icons.Default.Flip,
             contentDescription = "Vertical Flip",
             tint = vFlipColor,
@@ -750,7 +724,7 @@ fun RenderPlayerButton(
                   }),
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Icon(
+                  AppSymbolIcon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Clear Loop",
                     tint = MaterialTheme.colorScheme.onSurface,
@@ -781,7 +755,7 @@ fun RenderPlayerButton(
             }
           }
         } else {
-          // Collapsed: Show "AB" text button
+          // Collapsed: Show the custom A-B loop icon
           Surface(
             shape = CircleShape,
             color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
@@ -792,11 +766,11 @@ fun RenderPlayerButton(
               .clickable(onClick = viewModel::toggleABLoopExpanded),
           ) {
             Box(contentAlignment = Alignment.Center) {
-              Text(
-                text = "AB",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+              AbLoopIcon(
+                modifier = Modifier.size(30.dp),
+                tint = if (loopA != null && loopB != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                isASet = loopA != null,
+                isBSet = loopB != null,
               )
             }
           }
@@ -842,7 +816,7 @@ fun RenderPlayerButton(
             ),
         ) {
           Box(contentAlignment = Alignment.Center) {
-            Icon(
+            AppSymbolIcon(
               imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOn,
               contentDescription = "Ambience Mode",
               tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
@@ -856,3 +830,4 @@ fun RenderPlayerButton(
     }
   }
 }
+

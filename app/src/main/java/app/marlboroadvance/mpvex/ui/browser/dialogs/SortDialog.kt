@@ -17,15 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -43,9 +37,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.marlboroadvance.mpvex.ui.icons.AppIcon
+import app.marlboroadvance.mpvex.ui.icons.Icon
+import app.marlboroadvance.mpvex.ui.icons.Icons
 
 @Composable
 fun SortDialog(
@@ -57,7 +53,7 @@ fun SortDialog(
   sortOrderAsc: Boolean,
   onSortOrderChange: (Boolean) -> Unit,
   types: List<String>,
-  icons: List<ImageVector>,
+  icons: List<AppIcon>,
   getLabelForType: (String, Boolean) -> Pair<String, String>,
   modifier: Modifier = Modifier,
   visibilityToggles: List<VisibilityToggle> = emptyList(),
@@ -171,8 +167,8 @@ data class ViewModeSelector(
   val label: String,
   val firstOptionLabel: String,
   val secondOptionLabel: String,
-  val firstOptionIcon: ImageVector,
-  val secondOptionIcon: ImageVector,
+  val firstOptionIcon: AppIcon,
+  val secondOptionIcon: AppIcon,
   val isFirstOptionSelected: Boolean,
   val onViewModeChange: (Boolean) -> Unit,
 )
@@ -194,7 +190,7 @@ private fun SortTypeSelector(
   sortType: String,
   onSortTypeChange: (String) -> Unit,
   types: List<String>,
-  icons: List<ImageVector>,
+  icons: List<AppIcon>,
   modifier: Modifier = Modifier,
 ) {
   Column(
