@@ -23,6 +23,7 @@ import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.PlaylistSh
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.SubtitlesSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.OnlineSubtitleSearchSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.VideoZoomSheet
+import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AmbientSheet
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -167,12 +168,20 @@ fun PlayerSheets(
         // Autocomplete & Series Selection
         mediaSearchResults = mediaResults.toImmutableList(),
         isSearchingMedia = isSearchingMedia,
-        onSearchMedia = { 
-          viewModel.searchMedia(it)
-          val mediaInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
-          val s = selectedSeason?.season_number
-          val e = selectedEpisode?.episode_number
-          viewModel.searchSubtitles(it, s, e)
+        onSearchMedia = { query ->
+          // Parse both the user's search query and the original filename
+          val queryInfo = MediaInfoParser.parse(query)
+          val fileInfo = MediaInfoParser.parse(viewModel.currentMediaTitle)
+          
+          // Use clean title from query for TMDB search (strip S01E05 noise)
+          val searchTitle = queryInfo.title.ifBlank { query }
+          viewModel.searchMedia(searchTitle)
+          
+          // Priority: TMDB selection > query parsed > file parsed
+          val s = selectedSeason?.season_number ?: queryInfo.season ?: fileInfo.season
+          val e = selectedEpisode?.episode_number ?: queryInfo.episode ?: fileInfo.episode
+          val y = queryInfo.year ?: fileInfo.year
+          viewModel.searchSubtitles(searchTitle, s, e, y)
         },
         onSelectMedia = { viewModel.selectMedia(it) },
         selectedTvShow = selectedTvShow,
@@ -228,6 +237,7 @@ fun PlayerSheets(
         onStartTimer = onStartSleepTimer,
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
+        onAnime4KChanged = { viewModel.restartAmbientIfActive() },
       )
     }
 
@@ -341,7 +351,14 @@ fun PlayerSheets(
           isM3UPlaylist = isM3U,
           playerPreferences = playerPreferences,
         )
+      }
+    }
+
+    Sheets.AmbientConfig -> {
+      AmbientSheet(
+        viewModel = viewModel,
+        onDismissRequest = onDismissRequest
+      )
     }
   }
-}
 }
