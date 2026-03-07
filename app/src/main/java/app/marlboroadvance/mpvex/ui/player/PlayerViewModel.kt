@@ -907,10 +907,10 @@ class PlayerViewModel(
   }
 
   // --- Subtitle Search ---
-  fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null) {
+  fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null, year: String? = null) {
      viewModelScope.launch {
          _isSearchingSub.value = true
-         wyzieRepository.search(query, season, episode)
+         wyzieRepository.search(query, season, episode, year)
              .onSuccess { results ->
                  _wyzieSearchResults.value = results
              }

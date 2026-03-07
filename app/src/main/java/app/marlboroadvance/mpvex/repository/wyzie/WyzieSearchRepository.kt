@@ -211,14 +211,22 @@ class WyzieSearchRepository(
     suspend fun search(
         query: String,
         season: Int? = null,
-        episode: Int? = null
+        episode: Int? = null,
+        year: String? = null
     ): Result<List<WyzieSubtitle>> = withContext(Dispatchers.IO) {
         try {
             var searchId = query
             if (!query.startsWith("tt", ignoreCase = true) && !query.all { it.isDigit() }) {
                 val tmdbResults = tmdbSearch(query)
                 if (tmdbResults.isNotEmpty()) {
-                    val result = tmdbResults[0]
+                    // If year is provided, prefer match with matching release year
+                    val result = if (year != null) {
+                        tmdbResults.firstOrNull { it.releaseYear == year }
+                            ?: tmdbResults.firstOrNull { it.releaseYear?.startsWith(year.take(3)) == true }
+                            ?: tmdbResults[0]
+                    } else {
+                        tmdbResults[0]
+                    }
                     searchId = result.id.toString()
                 } else {
                     return@withContext Result.failure(Exception("Could not find media ID for '$query'"))
