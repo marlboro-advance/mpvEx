@@ -328,7 +328,8 @@ class PlayerViewModel(
   val isVerticalFlipped: StateFlow<Boolean> = _isVerticalFlipped.asStateFlow()
 
   // ==================== Ambience Mode ======================================
-  private val _isAmbientEnabled = MutableStateFlow(false)
+  // Added Ambient Mode Persistant saved state call by @Chinna95P
+  private val _isAmbientEnabled = MutableStateFlow(playerPreferences.isAmbientEnabled.get())
   val isAmbientEnabled: StateFlow<Boolean> = _isAmbientEnabled.asStateFlow()
 
   private val _ambientBlurSamples = MutableStateFlow(playerPreferences.ambientBlurSamples.get())
@@ -2191,6 +2192,9 @@ class PlayerViewModel(
 
   fun toggleAmbientMode() {
     _isAmbientEnabled.value = !_isAmbientEnabled.value
+
+    // Save the Ambient Mode ON/OFF state permanently to preferences added by @Chinna95P
+    playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
       lastAmbientScaleX = -1.0 // Force rewrite
       updateAmbientStretch()
