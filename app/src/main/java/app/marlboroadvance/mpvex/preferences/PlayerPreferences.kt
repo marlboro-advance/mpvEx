@@ -85,4 +85,7 @@ class PlayerPreferences(
   val ambientEdgeSmooth = preferenceStore.getFloat("ambient_edge_smooth", 0.02f)
   val ambientFadeCurve = preferenceStore.getFloat("ambient_fade_curve", 1.5f)
   val ambientOpacity = preferenceStore.getFloat("ambient_opacity", 1.0f)
+  // NEW: Ambient Mode persistant value added by @Chinna95P
+  val isAmbientEnabled = preferenceStore.getBoolean("ambient_enabled", false)
+  
 }
