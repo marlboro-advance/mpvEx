@@ -840,16 +840,12 @@ fun RenderPlayerButton(
           modifier = Modifier
             .size(buttonSize)
             .clip(CircleShape)
-            .combinedClickable(
+            .clickable(
               interactionSource = remember { MutableInteractionSource() },
               indication = ripple(bounded = true),
               onClick = { 
                 clickEvent()
                 viewModel.toggleAmbientMode() 
-              },
-              onLongClick = {
-                clickEvent()
-                onOpenSheet(Sheets.AmbientConfig)
               }
             ),
         ) {
