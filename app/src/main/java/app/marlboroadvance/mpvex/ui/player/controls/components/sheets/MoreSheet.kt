@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -19,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -83,20 +81,6 @@ fun MoreSheet(
   
   val context = LocalContext.current
 val scope = rememberCoroutineScope()
-var infoDialogData by remember { mutableStateOf<Pair<String, String>?>(null) }
-
-if (infoDialogData != null) {
-    AlertDialog(
-        onDismissRequest = { },
-        title = { Text(infoDialogData!!.first) },
-        text = { Text(infoDialogData!!.second) },
-        confirmButton = {
-            TextButton(onClick = { infoDialogData = null }) {
-                Text(stringResource(R.string.generic_ok))
-            }
-        }
-    )
-}
 
   PlayerSheet(
     onDismissRequest,
@@ -160,19 +144,10 @@ if (infoDialogData != null) {
           }
         }
       }
-      SectionHeaderWithInfo(
-        title = stringResource(R.string.player_sheets_stats_page_title),
-        onInfoClick = {
-             val descResName = "player_sheets_stats_page_${statisticsPage}_desc"
-             val resId = context.resources.getIdentifier(descResName, "string", context.packageName)
-             val description = if (resId != 0) context.getString(resId) else ""
-             
-             // Title for dialog: "Page X" or "Direct Title"
-             val titleRes = if (statisticsPage == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip
-             val title = if (statisticsPage == 0) context.getString(titleRes) else context.getString(titleRes, statisticsPage)
-             
-             infoDialogData = Pair(context.getString(R.string.player_sheets_stats_page_title), "$title: $description")
-        }
+      Text(
+        text = stringResource(R.string.player_sheets_stats_page_title),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary
       )
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
@@ -436,31 +411,5 @@ fun TimePickerDialog(
   }
 
 
-@Composable
-fun SectionHeaderWithInfo(
-  title: String,
-  onInfoClick: () -> Unit,
-  modifier: Modifier = Modifier
-) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.Start,
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.titleMedium,
-      color = MaterialTheme.colorScheme.primary
-    )
-    Spacer(modifier = Modifier.width(8.dp))
-    IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
-      Icon(
-        imageVector = Icons.Outlined.Info,
-        contentDescription = "Info",
-        tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(16.dp)
-      )
-    }
-  }
-}
+
 

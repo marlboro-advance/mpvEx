@@ -757,7 +757,7 @@ fun RenderPlayerButton(
                   Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Clear Loop",
-                    tint = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp),
                   )
                 }
