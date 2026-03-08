@@ -2233,8 +2233,14 @@ class PlayerViewModel(
   /** Resets ambient mode to OFF when a new video file is loaded. */
   fun resetAmbientMode() {
     if (!_isAmbientEnabled.value) return
-    _isAmbientEnabled.value = false
+    
+    // Ambient Mode Persistent Fix for Next/Previous files by @Chinna95P
+    // DO NOT set _isAmbientEnabled.value = false
+    // Just temporarily remove the old shader and reset the scale 
+    // so the new video starts with a clean slate before recalculating.
     disableAmbientShader()
+    lastAmbientScaleX = -1.0
+    lastAmbientScaleY = -1.0
   }
 
   /**
