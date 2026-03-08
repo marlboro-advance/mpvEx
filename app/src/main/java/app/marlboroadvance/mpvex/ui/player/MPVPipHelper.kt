@@ -42,16 +42,6 @@ class MPVPipHelper(
     }
   }
 
-  fun onDestroy() {
-    // Ensure receiver is unregistered when activity is destroyed
-    unregisterPipReceiver()
-  }
-
-  fun onStop() {
-    // Keep receiver active while in PiP mode
-    // It will be unregistered when exiting PiP mode or when activity is destroyed
-  }
-
   @Suppress("UnspecifiedRegisterReceiverFlag")
   private fun registerPipReceiver() {
     pipReceiver =
@@ -187,5 +177,9 @@ class MPVPipHelper(
     }.onFailure {
       Log.e("MPVPipHelper", "Failed to enter PiP mode", it)
     }
+  }
+
+  fun onStop() {
+    unregisterPipReceiver()
   }
 }

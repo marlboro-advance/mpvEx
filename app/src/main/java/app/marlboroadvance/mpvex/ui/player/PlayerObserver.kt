@@ -2,15 +2,11 @@ package app.marlboroadvance.mpvex.ui.player
 
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
-import java.lang.ref.WeakReference
 
 class PlayerObserver(
-  activity: PlayerActivity,
+  private val activity: PlayerActivity,
 ) : MPVLib.EventObserver {
-  private val activityRef: WeakReference<PlayerActivity> = WeakReference(activity)
-
   override fun eventProperty(property: String) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property) }
   }
@@ -19,7 +15,6 @@ class PlayerObserver(
     property: String,
     value: Long,
   ) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
@@ -28,7 +23,6 @@ class PlayerObserver(
     property: String,
     value: Boolean,
   ) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
@@ -37,7 +31,6 @@ class PlayerObserver(
     property: String,
     value: String,
   ) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
@@ -46,7 +39,6 @@ class PlayerObserver(
     property: String,
     value: Double,
   ) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
@@ -56,13 +48,11 @@ class PlayerObserver(
     property: String,
     value: MPVNode,
   ) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.onObserverEvent(property, value) }
   }
 
   override fun event(eventId: Int, data: MPVNode) {
-    val activity = activityRef.get() ?: return
     if (activity.player.isExiting) return
     activity.runOnUiThread { activity.event(eventId) }
   }
