@@ -185,6 +185,18 @@ class PlayerViewModel(
         val dur = MPVLib.getPropertyDouble("duration")
         if (dur != null && dur > 0) {
             _preciseDuration.value = dur.toFloat()
+            
+            // --- AMBIENT FIX: Adapt shader to new file dimensions by @Chinna95P ---
+            if (_isAmbientEnabled.value) {
+                lastAmbientScaleX = -1.0 // Force a complete shader rewrite
+                ambientDebounceJob?.cancel()
+                ambientDebounceJob = viewModelScope.launch {
+                    // Slight delay ensures MPV's video-params (w/h/crop) are fully populated
+                    delay(250) 
+                    updateAmbientStretch()
+                }
+            }
+            // --------------------------------------------------------
         }
       }
     }
@@ -316,7 +328,8 @@ class PlayerViewModel(
   val isVerticalFlipped: StateFlow<Boolean> = _isVerticalFlipped.asStateFlow()
 
   // ==================== Ambience Mode ======================================
-  private val _isAmbientEnabled = MutableStateFlow(false)
+  // Added Ambient Mode Persistant saved state call by @Chinna95P
+  private val _isAmbientEnabled = MutableStateFlow(playerPreferences.isAmbientEnabled.get())
   val isAmbientEnabled: StateFlow<Boolean> = _isAmbientEnabled.asStateFlow()
 
   private val _ambientBlurSamples = MutableStateFlow(playerPreferences.ambientBlurSamples.get())
@@ -787,6 +800,33 @@ class PlayerViewModel(
       _externalSubtitles.clear()
       // Scan for previously downloaded/added subtitles
       scanLocalSubtitles(mediaTitle)
+
+      // --- ADDED: Reset visual states for the new file for Ambient Mode Function by @Chinna95P ---
+      
+      // 1. Reset Aspect Ratio UI state and MPV properties to "Fit"
+      _videoAspect.value = VideoAspect.Fit
+      _currentAspectRatio.value = -1.0
+      runCatching {
+        MPVLib.setPropertyDouble("panscan", 0.0)
+        MPVLib.setPropertyDouble("video-aspect-override", -1.0)
+      }
+
+      // 2. Reset Video Zoom
+      if (_videoZoom.value != 0f) {
+          _videoZoom.value = 0f
+          runCatching { MPVLib.setPropertyDouble("video-zoom", 0.0) }
+      }
+
+      // 3. Reset Video Pan
+      if (_videoPanX.value != 0f || _videoPanY.value != 0f) {
+          _videoPanX.value = 0f
+          _videoPanY.value = 0f
+          runCatching {
+              MPVLib.setPropertyDouble("video-pan-x", 0.0)
+              MPVLib.setPropertyDouble("video-pan-y", 0.0)
+          }
+      }
+      // ---------------------------------------------------
     }
   }
 
@@ -2152,6 +2192,9 @@ class PlayerViewModel(
 
   fun toggleAmbientMode() {
     _isAmbientEnabled.value = !_isAmbientEnabled.value
+
+    // Save the Ambient Mode ON/OFF state permanently to preferences added by @Chinna95P
+    playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
       lastAmbientScaleX = -1.0 // Force rewrite
       updateAmbientStretch()
@@ -2194,8 +2237,14 @@ class PlayerViewModel(
   /** Resets ambient mode to OFF when a new video file is loaded. */
   fun resetAmbientMode() {
     if (!_isAmbientEnabled.value) return
-    _isAmbientEnabled.value = false
+    
+    // Ambient Mode Persistent Fix for Next/Previous files by @Chinna95P
+    // DO NOT set _isAmbientEnabled.value = false
+    // Just temporarily remove the old shader and reset the scale 
+    // so the new video starts with a clean slate before recalculating.
     disableAmbientShader()
+    lastAmbientScaleX = -1.0
+    lastAmbientScaleY = -1.0
   }
 
   /**
