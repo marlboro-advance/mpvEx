@@ -228,6 +228,7 @@ class PlayerActivity :
   private var isReady = false // Single flag: true when video loaded and ready
   private var isUserFinishing = false
   private var isManualBackgroundPlayback = false // Track manual background playback trigger
+  private var wasInPipMode = false // Track if we were in PIP mode
   private var noisyReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
   private var savePlaybackStateJob: kotlinx.coroutines.Job? = null // Track ongoing save job
@@ -575,37 +576,24 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   override fun onDestroy() {
     Log.d(TAG, "PlayerActivity onDestroy")
-
+    
     runCatching {
-      // Only stop the service if we're not doing manual background playback
-      if ((isUserFinishing || isFinishing) && !isManualBackgroundPlayback) {
-        if (serviceBound) {
-          runCatching { unbindService(serviceConnection) }
-          serviceBound = false
-        }
-        stopService(Intent(this, MediaPlaybackService::class.java))
-        mediaPlaybackService = null
-      }
+      // Cancel any pending save operation first
+      savePlaybackStateJob?.cancel()
+      savePlaybackStateJob = null
 
-      // Wait for any pending save operation to complete before destroying MPV
-      // This prevents the race condition where the save coroutine tries to access
-      // MPV properties after MPVLib.destroy() has been called
-      savePlaybackStateJob?.let { job ->
-        Log.d(TAG, "Waiting for save playback state job to complete...")
-        runCatching {
-          // Use runBlocking to ensure we wait for the job to finish
-          // This is safe here as onDestroy is already on the main thread
-          kotlinx.coroutines.runBlocking {
-            job.join()
-          }
-        }
-        Log.d(TAG, "Save playback state job completed")
+      // CRITICAL: Stop background service FIRST before any other cleanup
+      // This ensures playback stops when closing PiP with X button
+      if (serviceBound) {
+        Log.d(TAG, "Service still bound in onDestroy, stopping it now")
+        endBackgroundPlayback()
       }
 
       cleanupMPV()
       cleanupAudio()
       cleanupReceivers()
       releaseMediaSession()
+      pipHelper.onDestroy()
     }.onFailure { e ->
       Log.e(TAG, "Error during onDestroy", e)
     }
@@ -617,9 +605,6 @@ class PlayerActivity :
     if (!mpvInitialized) return
 
     player.isExiting = true
-
-    // Stop media notification service when activity is destroyed
-    endBackgroundPlayback()
 
     // Don't cleanup MPV if we're doing manual background playback
     if (!isFinishing || isManualBackgroundPlayback) return
@@ -698,16 +683,27 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finish() {
     runCatching {
-      // Don't restore UI during normal finish to prevent flickering
-      // System will handle UI restoration automatically
       isReady = false
       
-      // Clean up service when finishing
-      if (serviceBound || mediaPlaybackService != null) {
-        endBackgroundPlayback()
+      // Pause playback if finishing from PIP
+      if (wasInPipMode) {
+        viewModel.pause()
+        isUserFinishing = true
       }
       
+      // Restore system UI and orientation
+      restoreSystemUI()
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+      
       setReturnIntent()
+      
+      // Clean up service with small delay for smooth UI transition
+      lifecycleScope.launch {
+        kotlinx.coroutines.delay(100)
+        if (serviceBound) {
+          endBackgroundPlayback()
+        }
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during finish", e)
     }
@@ -718,17 +714,22 @@ class PlayerActivity :
   @RequiresApi(Build.VERSION_CODES.P)
   override fun finishAndRemoveTask() {
     runCatching {
-      // Don't restore UI during normal finish to prevent flickering
-      // System will handle UI restoration automatically
       isReady = false
       isUserFinishing = true
       
-      // Clean up service when finishing
-      if (serviceBound || mediaPlaybackService != null) {
-        endBackgroundPlayback()
-      }
+      // Restore system UI and orientation
+      restoreSystemUI()
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
       
       setReturnIntent()
+      
+      // Clean up service with small delay for smooth UI transition
+      lifecycleScope.launch {
+        kotlinx.coroutines.delay(100)
+        if (serviceBound) {
+          endBackgroundPlayback()
+        }
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during finishAndRemoveTask", e)
     }
@@ -746,11 +747,15 @@ class PlayerActivity :
         noisyReceiverRegistered = false
       }
 
-      // Handle background playback based on preferences
       val shouldAllowBackgroundPlayback = isManualBackgroundPlayback || 
                                           audioPreferences.automaticBackgroundPlayback.get()
       
-      // Pause playback if background playback is not enabled and user is finishing
+      // Start notification when going to background (not in PIP, not finishing)
+      if (shouldAllowBackgroundPlayback && !isInPictureInPictureMode && !isFinishing && isReady && !serviceBound) {
+        startBackgroundPlayback()
+      }
+      
+      // Pause if background playback not enabled and finishing
       if (!shouldAllowBackgroundPlayback && (isUserFinishing || isFinishing)) {
         viewModel.pause()
       }
@@ -782,7 +787,11 @@ class PlayerActivity :
         }
       }
       
-      // Reset manual background playback flag when returning to foreground
+      // Stop notification when returning to foreground
+      if (serviceBound) {
+        endBackgroundPlayback()
+      }
+      
       isManualBackgroundPlayback = false
     }.onFailure { e ->
       Log.e(TAG, "Error during onStart", e)
@@ -1856,9 +1865,6 @@ class PlayerActivity :
       mediaIdentifier = getMediaIdentifier(intent, fileName)
     }
 
-    // Start media notification service (like YouTube - always show notification)
-    startBackgroundPlayback()
-
     // Reset AB loop values when video changes
     viewModel.clearABLoop()
 
@@ -2028,11 +2034,10 @@ class PlayerActivity :
               durationMs = durationMs,
             )
 
-            // Update background service if connected
+            // Update background service if connected (no thumbnail for network streams)
             if (serviceBound && mediaPlaybackService != null) {
               val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-              val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
-              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
+              mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = null)
             }
           }
 
@@ -2149,6 +2154,7 @@ class PlayerActivity :
    * Saves the current playback state to the database.
    *
    * Uses lifecycleScope to save state; cancels previous pending saves.
+   * The job is properly cancelled in onDestroy to prevent memory leaks.
    *
    * @param mediaTitle The title of the media being played
    */
@@ -2159,6 +2165,7 @@ class PlayerActivity :
     savePlaybackStateJob?.cancel()
 
     // Launch new save job and track it
+    // This job will be cancelled in onDestroy if still running
     savePlaybackStateJob = lifecycleScope.launch(Dispatchers.IO) {
       runCatching {
         val oldState = playbackStateRepository.getVideoDataByTitle(mediaIdentifier)
@@ -2544,8 +2551,29 @@ class PlayerActivity :
     runCatching {
       if (isInPictureInPictureMode) {
         enterPipUIMode()
+        wasInPipMode = true
+        // Start notification when entering PIP
+        if (!serviceBound && isReady) {
+          startBackgroundPlayback()
+        }
       } else {
+        // Exiting PIP
         exitPipUIMode()
+        
+        // Stop notification when exiting PIP
+        if (serviceBound) {
+          endBackgroundPlayback()
+        }
+        
+        // If X button was pressed, stop playback and finish the activity
+        if (wasInPipMode && isFinishing) {
+          viewModel.pause()
+          isUserFinishing = true
+          wasInPipMode = false
+          finish()
+        } else {
+          wasInPipMode = false
+        }
       }
     }.onFailure { e ->
       Log.e(TAG, "Error handling PiP mode change", e)
@@ -2874,6 +2902,29 @@ class PlayerActivity :
         mediaPlaybackService = binder.getService()
         serviceBound = true
         Log.d(TAG, "Service connected")
+        
+        // Update media info after service connects
+        lifecycleScope.launch(Dispatchers.IO) {
+          val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
+          val uri = extractUriFromIntent(intent)
+          val thumbnail = if (uri != null && !HttpUtils.isNetworkStream(uri)) {
+            runCatching { 
+              app.marlboroadvance.mpvex.utils.media.ThumbnailUtils.loadThumbnail(this@PlayerActivity, uri)
+            }.getOrNull()
+          } else {
+            null
+          }
+          
+          withContext(Dispatchers.Main) {
+            if (serviceBound) {
+              mediaPlaybackService?.setMediaInfo(
+                title = fileName.ifBlank { MPVLib.getPropertyString("media-title") ?: "Unknown Video" },
+                artist = artist,
+                thumbnail = thumbnail
+              )
+            }
+          }
+        }
       }
 
       override fun onServiceDisconnected(name: ComponentName?) {
@@ -2909,7 +2960,18 @@ class PlayerActivity :
     
     // Get media info before starting service
     val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
-    val thumbnail = runCatching { MPVLib.grabThumbnail(1080) }.getOrNull()
+    
+    // Load thumbnail from MediaStore for local files only (skip for network streams)
+    val uri = extractUriFromIntent(intent)
+    val thumbnail = if (uri != null && !HttpUtils.isNetworkStream(uri)) {
+      runCatching { 
+        kotlinx.coroutines.runBlocking {
+          app.marlboroadvance.mpvex.utils.media.ThumbnailUtils.loadThumbnail(this@PlayerActivity, uri)
+        }
+      }.getOrNull()
+    } else {
+      null // Don't load thumbnails for network streams
+    }
     
     // Pass media info via intent extras
     val intent = Intent(this, MediaPlaybackService::class.java).apply {
@@ -2947,7 +3009,6 @@ class PlayerActivity :
       serviceBound = false
     }
     
-    // Stop the service which will trigger its onDestroy and cleanup
     try {
       stopService(Intent(this, MediaPlaybackService::class.java))
       Log.d(TAG, "Stop service command sent")
@@ -3241,6 +3302,23 @@ class PlayerActivity :
         title = fileName,
         durationMs = durationMs,
       )
+      
+      // Update background service notification with new video info
+      if (serviceBound && mediaPlaybackService != null) {
+        val artist = runCatching { MPVLib.getPropertyString("metadata/artist") }.getOrNull() ?: ""
+        // Load thumbnail from MediaStore for local files only
+        val thumbnail = if (!HttpUtils.isNetworkStream(uri)) {
+          withContext(Dispatchers.IO) {
+            runCatching { 
+              app.marlboroadvance.mpvex.utils.media.ThumbnailUtils.loadThumbnail(this@PlayerActivity, uri)
+            }.getOrNull()
+          }
+        } else {
+          null
+        }
+        mediaPlaybackService?.setMediaInfo(title = fileName, artist = artist, thumbnail = thumbnail)
+      }
+      
       // Refresh playlist items to update the currently playing indicator
       viewModel.refreshPlaylistItems()
     }

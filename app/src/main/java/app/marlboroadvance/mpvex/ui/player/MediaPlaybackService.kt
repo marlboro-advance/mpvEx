@@ -42,6 +42,15 @@ class MediaPlaybackService :
 
     @Volatile
     internal var thumbnail: Bitmap? = null
+      set(value) {
+        // Recycle old bitmap before setting new one to prevent memory leaks
+        field?.let { oldBitmap ->
+          if (!oldBitmap.isRecycled) {
+            oldBitmap.recycle()
+          }
+        }
+        field = value
+      }
     
     @Volatile
     private var isServiceRunning = false
@@ -62,6 +71,19 @@ class MediaPlaybackService :
       (context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
         .createNotificationChannel(channel)
     }
+
+    /**
+     * Clears the static thumbnail to prevent memory leaks.
+     * Should be called when the thumbnail is no longer needed.
+     */
+    fun clearThumbnail() {
+      thumbnail?.let {
+        if (!it.isRecycled) {
+          it.recycle()
+        }
+      }
+      thumbnail = null
+    }
   }
 
   private val binder = MediaPlaybackBinder()
@@ -73,6 +95,9 @@ class MediaPlaybackService :
   private var paused = false
   private var lastNotificationUpdateTime = 0L
   private val notificationUpdateIntervalMs = 1000L // Update notification every 1 second
+  private var cachedNotification: Notification? = null
+  private var lastNotificationState = ""
+  private var isShuttingDown = false // Flag to prevent updates during shutdown
 
   inner class MediaPlaybackBinder : Binder() {
     fun getService() = this@MediaPlaybackService
@@ -111,26 +136,22 @@ class MediaPlaybackService :
     flags: Int,
     startId: Int,
   ): Int {
-    Log.d(TAG, "Service starting with startId: $startId")
+    Log.d(TAG, "Service starting")
 
-    // Handle media button events
     intent?.let {
       MediaButtonReceiver.handleIntent(mediaSession, it)
       
-      // Get media info from intent extras if available
       val title = it.getStringExtra("media_title")
       val artist = it.getStringExtra("media_artist")
       
       if (!title.isNullOrBlank()) {
         mediaTitle = title
         mediaArtist = artist ?: ""
-        Log.d(TAG, "Media info from intent: $mediaTitle")
       }
     }
 
-    // Fallback: Read current state from MPV if not provided via intent
     if (mediaTitle.isBlank()) {
-      mediaTitle = MPVLib.getPropertyString("media-title") ?: ""
+      mediaTitle = MPVLib.getPropertyString("media-title")?.takeIf { it.isNotBlank() } ?: "Loading..."
       mediaArtist = MPVLib.getPropertyString("metadata/artist") ?: ""
     }
     
@@ -138,21 +159,17 @@ class MediaPlaybackService :
 
     updateMediaSession()
 
-    // Always start as foreground service with notification (like YouTube)
     try {
-      val type =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-        } else {
-          0
-        }
+      val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+      } else {
+        0
+      }
       ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
-      Log.d(TAG, "Foreground service started successfully")
     } catch (e: Exception) {
       Log.e(TAG, "Error starting foreground service", e)
     }
 
-    // Return START_NOT_STICKY so service doesn't restart if killed
     return START_NOT_STICKY
   }
 
@@ -174,10 +191,15 @@ class MediaPlaybackService :
     artist: String,
     thumbnail: Bitmap? = null,
   ) {
+    val validTitle = title.ifBlank { 
+      MPVLib.getPropertyString("media-title")?.takeIf { it.isNotBlank() } ?: "Unknown Video"
+    }
+    
     MediaPlaybackService.thumbnail = thumbnail
-    mediaTitle = title
+    mediaTitle = validTitle
     mediaArtist = artist
-    updateMediaSession()
+    cachedNotification = null
+    updateMediaSession(forceNotificationUpdate = true)
   }
 
   private fun setupMediaSession() {
@@ -236,29 +258,33 @@ class MediaPlaybackService :
     sessionToken = mediaSession.sessionToken
   }
 
-  private fun updateMediaSession() {
+  private fun updateMediaSession(forceNotificationUpdate: Boolean = false) {
     try {
       // Ensure we have valid media title
       val title = mediaTitle.ifBlank { "Unknown Video" }
       
-      // Update metadata
-      val duration = runCatching { 
-        MPVLib.getPropertyDouble("duration")?.times(1000)?.toLong() 
-      }.getOrNull() ?: 0L
+      // Update metadata only if title or artist changed
+      val metadataChanged = forceNotificationUpdate
       
-      val metadataBuilder =
-        MediaMetadataCompat
-          .Builder()
-          .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-          .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, mediaArtist)
-          .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
-          .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+      if (metadataChanged) {
+        val duration = runCatching { 
+          MPVLib.getPropertyDouble("duration")?.times(1000)?.toLong() 
+        }.getOrNull() ?: 0L
+        
+        val metadataBuilder =
+          MediaMetadataCompat
+            .Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, mediaArtist)
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
 
-      thumbnail?.let {
-        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
-        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it)
+        thumbnail?.let {
+          metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
+          metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it)
+        }
+        mediaSession.setMetadata(metadataBuilder.build())
       }
-      mediaSession.setMetadata(metadataBuilder.build())
 
       // Update playback state
       val position = runCatching { 
@@ -282,8 +308,10 @@ class MediaPlaybackService :
           .build(),
       )
 
-      // Update notification
-      updateNotification()
+      // Only update notification if forced or state changed
+      if (forceNotificationUpdate) {
+        updateNotification()
+      }
     } catch (e: Exception) {
       Log.e(TAG, "Error updating MediaSession", e)
     }
@@ -291,8 +319,18 @@ class MediaPlaybackService :
 
   private fun updateNotification() {
     try {
+      if (isShuttingDown) return
+      
+      val currentState = "$mediaTitle|$mediaArtist|$paused"
+      if (currentState == lastNotificationState && cachedNotification != null) {
+        return
+      }
+      
+      lastNotificationState = currentState
+      cachedNotification = buildNotification()
+      
       val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-      notificationManager.notify(NOTIFICATION_ID, buildNotification())
+      notificationManager.notify(NOTIFICATION_ID, cachedNotification!!)
     } catch (e: Exception) {
       Log.e(TAG, "Error updating notification", e)
     }
@@ -351,6 +389,7 @@ class MediaPlaybackService :
       .setContentIntent(pendingIntent)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setOnlyAlertOnce(true)
+      .setSilent(true) // Prevent sound/vibration on updates
       .setOngoing(!paused)
       .addAction(previousAction)
       .addAction(playPauseAction)
@@ -377,9 +416,9 @@ class MediaPlaybackService :
     property: String,
     value: Boolean,
   ) {
-    if (property == "pause") {
+    if (property == "pause" && isServiceRunning) {
       paused = value
-      updateMediaSession()
+      updateMediaSession(forceNotificationUpdate = true)
     }
   }
 
@@ -389,14 +428,16 @@ class MediaPlaybackService :
   ) {
     when (property) {
       "media-title" -> {
-        if (value.isNotBlank()) {
+        if (value.isNotBlank() && value != mediaTitle) {
           mediaTitle = value
-          updateMediaSession()
+          updateMediaSession(forceNotificationUpdate = true)
         }
       }
       "metadata/artist" -> {
-        mediaArtist = value
-        updateMediaSession()
+        if (value != mediaArtist) {
+          mediaArtist = value
+          updateMediaSession(forceNotificationUpdate = true)
+        }
       }
     }
   }
@@ -406,11 +447,11 @@ class MediaPlaybackService :
     value: Double,
   ) {
     if (property == "time-pos") {
-      // Throttle notification updates to avoid excessive updates
+      // Only update playback state, don't rebuild notification for time updates
       val currentTime = System.currentTimeMillis()
       if (currentTime - lastNotificationUpdateTime >= notificationUpdateIntervalMs) {
         lastNotificationUpdateTime = currentTime
-        updateMediaSession()
+        updateMediaSession(forceNotificationUpdate = false)
       }
     }
   }
@@ -429,18 +470,17 @@ class MediaPlaybackService :
 
   override fun onDestroy() {
     try {
-      Log.d(TAG, "Service destroyed")
-
       isServiceRunning = false
+      isShuttingDown = true
       
-      // Remove MPV observer safely
-      try {
-        MPVLib.removeObserver(this)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error removing MPV observer", e)
+      // Stop MPV playback when service is destroyed
+      runCatching { 
+        MPVLib.setPropertyBoolean("pause", true)
+        Log.d(TAG, "Paused playback on service destroy")
       }
       
-      // Stop foreground and remove notification explicitly
+      runCatching { MPVLib.removeObserver(this) }
+      
       try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
           stopForeground(STOP_FOREGROUND_REMOVE)
@@ -452,26 +492,20 @@ class MediaPlaybackService :
         Log.e(TAG, "Error stopping foreground", e)
       }
       
-      // Cancel notification explicitly to ensure cleanup
-      try {
+      runCatching {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error canceling notification", e)
       }
       
-      // Release media session
-      try {
+      runCatching {
         mediaSession.isActive = false
         mediaSession.release()
-      } catch (e: Exception) {
-        Log.e(TAG, "Error releasing media session", e)
       }
       
-      // Clear thumbnail to prevent memory leak
-      thumbnail = null
+      // Clear thumbnail using the companion object method to ensure proper cleanup
+      clearThumbnail()
+      cachedNotification = null
       
-      Log.d(TAG, "Service cleanup completed")
       super.onDestroy()
     } catch (e: Exception) {
       Log.e(TAG, "Error in onDestroy", e)
@@ -480,17 +514,9 @@ class MediaPlaybackService :
   }
 
   override fun onTaskRemoved(rootIntent: Intent?) {
-    Log.d(TAG, "Task removed - killing playback and cleaning up service")
     try {
-      // Kill MPV playback immediately when task is removed
-      try {
-        MPVLib.command("quit")
-        Log.d(TAG, "MPV quit command sent")
-      } catch (e: Exception) {
-        Log.e(TAG, "Error sending quit command to MPV", e)
-      }
+      runCatching { MPVLib.command("quit") }
       
-      // Stop foreground and remove notification when task is removed
       try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
           stopForeground(STOP_FOREGROUND_REMOVE)
@@ -499,28 +525,22 @@ class MediaPlaybackService :
           stopForeground(true)
         }
       } catch (e: Exception) {
-        Log.e(TAG, "Error stopping foreground in onTaskRemoved", e)
+        Log.e(TAG, "Error stopping foreground", e)
       }
       
-      // Cancel notification explicitly
-      try {
+      runCatching {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
-      } catch (e: Exception) {
-        Log.e(TAG, "Error canceling notification in onTaskRemoved", e)
       }
       
-      // Clear thumbnail
-      thumbnail = null
+      // Clear thumbnail using the companion object method to ensure proper cleanup
+      clearThumbnail()
+      cachedNotification = null
       
-      // Stop the service which will trigger cleanup
       stopSelf()
-      
-      // Force kill the process to ensure everything stops
       android.os.Process.killProcess(android.os.Process.myPid())
     } catch (e: Exception) {
       Log.e(TAG, "Error in onTaskRemoved", e)
-      // Force kill even if there's an error
       android.os.Process.killProcess(android.os.Process.myPid())
     }
     super.onTaskRemoved(rootIntent)
