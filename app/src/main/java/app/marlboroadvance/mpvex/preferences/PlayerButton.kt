@@ -2,6 +2,7 @@ package app.marlboroadvance.mpvex.preferences
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Segment
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Bookmarks
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.Flip
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Segment
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Shuffle
@@ -52,7 +54,7 @@ enum class PlayerButton(
   SHUFFLE(Icons.Outlined.Shuffle),
   MIRROR(Icons.Outlined.Flip),
   VERTICAL_FLIP(Icons.Outlined.Flip),
-  AB_LOOP(Icons.Outlined.Repeat),
+  AB_LOOP(Icons.AutoMirrored.Outlined.Segment),
   CUSTOM_SKIP(Icons.Outlined.FastForward),
   BACKGROUND_PLAYBACK(Icons.Outlined.Headset),
   AMBIENT_MODE(Icons.Outlined.BlurOn),

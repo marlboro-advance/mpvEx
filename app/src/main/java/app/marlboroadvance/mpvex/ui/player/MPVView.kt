@@ -310,7 +310,8 @@ class MPVView(
     MPVLib.setOptionString("secondary-sub-border-style", borderStyle)
     MPVLib.setOptionString("secondary-sub-shadow-offset", shadowOffset)
     MPVLib.setOptionString("secondary-sub-scale", subScale)
-    MPVLib.setOptionString("secondary-sub-pos", subPos)
+    // Position secondary subtitle at top (10) instead of bottom to avoid overlap with primary
+    MPVLib.setOptionString("secondary-sub-pos", "10")
 
     val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
     MPVLib.setOptionString("sub-scale-by-window", scaleByWindow)
@@ -327,9 +328,10 @@ class MPVView(
         return
       }
       
-      // DEFENSIVE CHECK: Ensure mutual exclusion at initialization time
+      // Anime4K requires the legacy GPU path unless gpu-next is running on Vulkan.
       val gpuNextActive = decoderPreferences.gpuNext.get()
-      if (gpuNextActive) {
+      val useVulkan = decoderPreferences.useVulkan.get()
+      if (gpuNextActive && !useVulkan) {
         return  // Abort shader loading to prevent incompatible state
       }
       
@@ -364,10 +366,12 @@ class MPVView(
       val shaderChain = anime4kManager.getShaderChain(mode, quality)
       
       if (shaderChain.isNotEmpty()) {
-        // GPU optimizations for better performance
-        MPVLib.setOptionString("opengl-pbo", "yes")
+        // OpenGL-only tuning should not be pushed onto the Vulkan backend.
+        if (!useVulkan) {
+          MPVLib.setOptionString("opengl-pbo", "yes")
+          MPVLib.setOptionString("opengl-early-flush", "no")
+        }
         MPVLib.setOptionString("vd-lavc-dr", "yes")
-        MPVLib.setOptionString("opengl-early-flush", "no")
         
         // Apply shaders (MUST use setOptionString in initOptions!)
         MPVLib.setOptionString("glsl-shaders", shaderChain)
