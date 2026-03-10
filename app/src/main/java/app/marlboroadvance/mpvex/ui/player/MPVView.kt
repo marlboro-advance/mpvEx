@@ -310,7 +310,8 @@ class MPVView(
     MPVLib.setOptionString("secondary-sub-border-style", borderStyle)
     MPVLib.setOptionString("secondary-sub-shadow-offset", shadowOffset)
     MPVLib.setOptionString("secondary-sub-scale", subScale)
-    MPVLib.setOptionString("secondary-sub-pos", subPos)
+    // Position secondary subtitle at top (10) instead of bottom to avoid overlap with primary
+    MPVLib.setOptionString("secondary-sub-pos", "10")
 
     val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
     MPVLib.setOptionString("sub-scale-by-window", scaleByWindow)
