@@ -346,13 +346,17 @@ class PlayerViewModel(
         Triple(duration, loopA, loopB)
       }.collect { (duration, loopA, loopB) ->
         val videoDuration = duration ?: 0
-        // Use precise seeking for videos shorter than 2 minutes, or if AB loop is active, or if preference is enabled
-        val isLoopActive = loopA != null || loopB != null
-        val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
         
-        // Update hr-seek settings dynamically
-        MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
-        MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+        // Only override hr-seek when duration is actually known and stable
+        if (videoDuration > 0) {
+          // Use precise seeking for videos shorter than 2 minutes, or if AB loop is active, or if preference is enabled
+          val isLoopActive = loopA != null || loopB != null
+          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
+          
+          // Update hr-seek settings dynamically
+          MPVLib.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
+          MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
+        }
       }
     }
   }

@@ -114,6 +114,12 @@ class MPVView(
     if (decoderPreferences.useYUV420P.get()) {
       MPVLib.setOptionString("vf", "format=yuv420p")
     }
+    
+    // Cap demuxer cache for mobile to prevent memory issues
+    val cacheMegs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) 64 else 32
+    MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
+    MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
+    
     val logLevel = if (advancedPreferences.verboseLogging.get()) "v" else "warn"
     MPVLib.setOptionString("msg-level", "all=$logLevel")
 

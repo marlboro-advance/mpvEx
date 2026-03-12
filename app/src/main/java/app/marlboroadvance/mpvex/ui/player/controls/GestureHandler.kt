@@ -812,6 +812,7 @@ fun GestureHandler(
           var gestureType: String? = null
           var hasStartedSeeking = false
           var initialVideoPosition = 0f
+          var wasPlayerAlreadyPaused = false
           // Use the sensitivity preference instead of hardcoded value
           val seekSensitivity = horizontalSwipeSensitivity
           
@@ -840,6 +841,12 @@ fun GestureHandler(
                     gestureType = "horizontal_seek"
                     hasStartedSeeking = true
                     initialVideoPosition = position?.toFloat() ?: 0f
+                    
+                    // Pause before seeking to prevent decoder stalls
+                    wasPlayerAlreadyPaused = paused ?: false
+                    if (!wasPlayerAlreadyPaused) {
+                      viewModel.pause()
+                    }
                     
                     // Show seekbar and start seeking mode (same as seekbar scrubbing)
                     viewModel.showSeekBar()
@@ -893,6 +900,11 @@ fun GestureHandler(
 
           // Apply the final seek when gesture ends
           if (hasStartedSeeking) {
+            // Unpause if it wasn't paused before seeking
+            if (!wasPlayerAlreadyPaused) {
+              viewModel.unpause()
+            }
+            
             // Clear the horizontal seek update and hide seekbar after a short delay
             coroutineScope.launch {
               delay(300)
