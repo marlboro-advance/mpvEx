@@ -39,7 +39,6 @@ import app.marlboroadvance.mpvex.database.entities.PlaybackStateEntity
 import app.marlboroadvance.mpvex.databinding.PlayerLayoutBinding
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
-import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
@@ -138,11 +137,6 @@ class PlayerActivity :
    * Preferences for browser settings.
    */
   private val browserPreferences: BrowserPreferences by inject()
-
-  /**
-   * Preferences for appearance settings.
-   */
-  private val appearancePreferences: AppearancePreferences by inject()
 
   /**
    * Manager for file operations.
@@ -336,6 +330,9 @@ class PlayerActivity :
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     setContentView(binding.root)
+
+    // OPTIMIZATION: Set volume control stream so hardware buttons control media volume
+    volumeControlStream = AudioManager.STREAM_MUSIC
 
     setupMPV()
     MediaPlaybackService.createNotificationChannel(this)
@@ -564,6 +561,9 @@ class PlayerActivity :
     Log.d(TAG, "PlayerActivity onDestroy")
 
     runCatching {
+      // OPTIMIZATION: Prevent any further UI updates or callbacks
+      isReady = false
+
       // Only stop the service if we're not doing manual background playback
       if ((isUserFinishing || isFinishing) && !isManualBackgroundPlayback) {
         if (serviceBound) {
@@ -664,7 +664,12 @@ class PlayerActivity :
       val shouldPause = (!audioPreferences.automaticBackgroundPlayback.get() && !isManualBackgroundPlayback) || 
                         (isUserFinishing && !isManualBackgroundPlayback)
 
-      if (!isInPip && shouldPause) {
+      // OPTIMIZATION: Stop playback immediately if finishing to reduce cleanup overhead
+      if (isFinishing && !isManualBackgroundPlayback) {
+        viewModel.pause()
+        // Tell MPV to stop processing to reduce busywork during cleanup
+        MPVLib.command("stop")
+      } else if (!isInPip && shouldPause) {
         wasPlayingBeforePause = !(viewModel.paused ?: true)
         viewModel.pause()
       }
@@ -674,7 +679,10 @@ class PlayerActivity :
         restoreSystemUI()
       }
 
-      saveVideoPlaybackState(fileName)
+      // OPTIMIZATION: Only save if not finishing (onDestroy will handle final save)
+      if (!isFinishing) {
+        saveVideoPlaybackState(fileName)
+      }
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -702,7 +710,7 @@ class PlayerActivity :
     super.finish()
   }
 
-  @RequiresApi(Build.VERSION_CODES.P)
+  // finishAndRemoveTask() was added in API 21, but since our minSdk is 26, it's always available
   override fun finishAndRemoveTask() {
     runCatching {
       // Don't restore UI during normal finish to prevent flickering
@@ -1582,6 +1590,22 @@ class PlayerActivity :
         }
       }
     }
+  }
+
+  /**
+   * Observer callback for MPV property changes (String values).
+   *
+   * This method is called when an MPV property (with String value) changes.
+   * Extend this method to handle properties as needed.
+   *
+   * @param property The property name that changed
+   * @param value The new String value
+   */
+  internal fun onObserverEvent(
+    property: String,
+    value: String,
+  ) {
+    // Currently no String properties are handled
   }
 
   /**

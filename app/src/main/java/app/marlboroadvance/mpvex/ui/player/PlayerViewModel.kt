@@ -171,7 +171,7 @@ class PlayerViewModel(
         if (time != null) {
           _precisePosition.value = time.toFloat()
         }
-        delay(16) // ~60fps updates
+        delay(42) // ~24fps updates
       }
     }
 
