@@ -70,4 +70,13 @@ class PlayerPreferences(
 
   val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
 
+  // Persist aspect ratio setting (default to Fit)
+  val defaultVideoAspect = preferenceStore.getEnum("default_video_aspect", VideoAspect.Fit)
+  val defaultCustomAspectRatio = preferenceStore.getObject(
+    key = "default_custom_aspect_ratio",
+    defaultValue = -1.0,
+    serializer = { it.toString() },
+    deserializer = { it.toDoubleOrNull() ?: -1.0 }
+  )
+
 }
