@@ -825,41 +825,6 @@ fun RenderPlayerButton(
       )
     }
 
-    PlayerButton.AMBIENT_MODE -> {
-        val isAmbientEnabled by viewModel.isAmbientEnabled.collectAsState()
-        @OptIn(ExperimentalFoundationApi::class)
-        Surface(
-          shape = CircleShape,
-          color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-          contentColor = if (isAmbientEnabled) {
-               MaterialTheme.colorScheme.primary
-            } else {
-               if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
-            },
-          border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-          modifier = Modifier
-            .size(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = remember { MutableInteractionSource() },
-              indication = ripple(bounded = true),
-              onClick = { 
-                clickEvent()
-                viewModel.toggleAmbientMode() 
-              }
-            ),
-        ) {
-          Box(contentAlignment = Alignment.Center) {
-            Icon(
-              imageVector = if (isAmbientEnabled) Icons.Filled.BlurOn else Icons.Outlined.BlurOn,
-              contentDescription = "Ambience Mode",
-              tint = if (isAmbientEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
-              modifier = Modifier.size(24.dp)
-            )
-          }
-        }
-    }
-
     PlayerButton.NONE -> { /* Do nothing */
     }
   }

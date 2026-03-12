@@ -181,15 +181,6 @@ class PlayerViewModel(
         val dur = MPVLib.getPropertyDouble("duration")
         if (dur != null && dur > 0) {
             _preciseDuration.value = dur.toFloat()
-            
-            // --- AMBIENT FIX: Adapt shader to new file dimensions ---
-            ambientModeManager.resetAmbientMode()
-            viewModelScope.launch {
-                // Slight delay ensures MPV's video-params (w/h/crop) are fully populated
-                delay(250) 
-                ambientModeManager.updateAmbientStretch()
-            }
-            // --------------------------------------------------------
         }
       }
     }
@@ -320,18 +311,6 @@ class PlayerViewModel(
   private val _isVerticalFlipped = MutableStateFlow(false)
   val isVerticalFlipped: StateFlow<Boolean> = _isVerticalFlipped.asStateFlow()
 
-  // ==================== Ambience Mode ======================================
-  // Ambient mode manager handles all ambient mode functionality
-  private val ambientModeManager = AmbientModeManager(
-    playerPreferences = playerPreferences,
-    cacheDir = host.context.cacheDir,
-    scope = viewModelScope,
-    onShowText = { text -> playerUpdate.value = PlayerUpdates.ShowText(text) }
-  )
-
-  // Expose ambient mode state through the manager
-  val isAmbientEnabled: StateFlow<Boolean> = ambientModeManager.isAmbientEnabled
-
   init {
     // Track selection is now handled by TrackSelector in PlayerActivity
     
@@ -376,215 +355,6 @@ class PlayerViewModel(
         MPVLib.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
       }
     }
-    
-    
-    // Refresh custom buttons when Lua scripts are enabled/disabled or configuration changes
-    viewModelScope.launch {
-      combine(
-        advancedPreferences.enableLuaScripts.changes().drop(1),
-        playerPreferences.customButtons.changes().drop(1)
-      ) { _, _ -> }.collect {
-        setupCustomButtons()
-      }
-    }
-
-    setupCustomButtons()
-  }
-
-  // ==================== Custom Buttons ====================
-
-  data class CustomButtonState(
-    val id: String,
-    val label: String,
-    val isLeft: Boolean,
-  )
-
-  private val _customButtons = MutableStateFlow<List<CustomButtonState>>(emptyList())
-  val customButtons: StateFlow<List<CustomButtonState>> = _customButtons.asStateFlow()
-  private var customButtonsSetupJob: Job? = null
-  private val customButtonsLoadMutex = Mutex()
-  @Volatile
-  private var isMpvReadyForCustomButtons = false
-  @Volatile
-  private var customButtonsScriptPath: String? = null
-  private val customButtonsLoadedFlagProperty = "user-data/mpvex/custombuttons_loaded"
-
-  fun onMpvCoreInitialized() {
-    isMpvReadyForCustomButtons = true
-    reloadCustomButtonsScript("mpv_core_initialized")
-  }
-
-  private fun setupCustomButtons() {
-    customButtonsSetupJob?.cancel()
-    customButtonsSetupJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        val buttons = mutableListOf<CustomButtonState>()
-        if (!advancedPreferences.enableLuaScripts.get()) {
-          _customButtons.value = buttons
-          customButtonsScriptPath = null
-          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-          return@launch
-        }
-
-        val scriptContent = buildString {
-          val jsonString = playerPreferences.customButtons.get()
-          if (jsonString.isNotBlank()) {
-            try {
-               // Try new slot-based format first
-               val slotsData = json.decodeFromString<app.marlboroadvance.mpvex.ui.preferences.CustomButtonSlots>(jsonString)
-               slotsData.slots.forEachIndexed { index, btn ->
-                 if (btn != null && btn.enabled) {   // skip disabled buttons
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // Slots 0-3 are left, 4-7 are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               }
-            } catch (e: Exception) {
-               // Fallback to old format for backward compatibility
-               try {
-                 val customButtonsList = json.decodeFromString<List<app.marlboroadvance.mpvex.ui.preferences.CustomButton>>(jsonString)
-                 customButtonsList.forEachIndexed { index, btn ->
-                   val safeId = btn.id.replace("-", "_")
-                   val isLeft = index < 4 // First 4 are left buttons, rest are right
-                   processButton(btn.id, safeId, btn.title, btn.content, btn.longPressContent, btn.onStartup, isLeft, buttons)
-                 }
-               } catch (e2: Exception) {
-                 e2.printStackTrace()
-               }
-            }
-          }
-
-          if (buttons.isNotEmpty()) {
-            append("mp.set_property_native('$customButtonsLoadedFlagProperty', '1')\n")
-          }
-        }
-
-        _customButtons.value = buttons
-
-        if (scriptContent.isNotEmpty()) {
-          val scriptsDir = File(host.context.filesDir, "scripts")
-          if (!scriptsDir.exists()) scriptsDir.mkdirs()
-          
-          val file = File(scriptsDir, "custombuttons.lua")
-          file.writeText(scriptContent)
-          customButtonsScriptPath = file.absolutePath
-
-          if (isMpvReadyForCustomButtons) {
-            val loaded = loadCustomButtonsScript(file)
-            if (!loaded) {
-              android.util.Log.w("PlayerViewModel", "Failed to load custombuttons.lua")
-            }
-          } else {
-            android.util.Log.d("PlayerViewModel", "Deferring custombuttons.lua load until MPV is ready")
-          }
-        } else {
-          customButtonsScriptPath = null
-          runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-        }
-      } catch (e: Exception) {
-        android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
-      }
-    }
-  }
-
-  private fun reloadCustomButtonsScript(reason: String) {
-    if (!isMpvReadyForCustomButtons) return
-
-    viewModelScope.launch(Dispatchers.IO) {
-      customButtonsLoadMutex.withLock {
-        if (!advancedPreferences.enableLuaScripts.get()) return@withLock
-
-        val scriptPath = customButtonsScriptPath
-        if (scriptPath.isNullOrBlank()) return@withLock
-        if (isCustomButtonsScriptLoaded()) return@withLock
-
-        val file = File(scriptPath)
-        if (!file.exists()) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua missing during $reason, rebuilding")
-          setupCustomButtons()
-          return@withLock
-        }
-
-        val loaded = loadCustomButtonsScript(file)
-        if (!loaded) {
-          android.util.Log.w("PlayerViewModel", "custombuttons.lua load failed during $reason")
-        }
-      }
-    }
-  }
-
-  private fun isCustomButtonsScriptLoaded(): Boolean =
-    runCatching { MPVLib.getPropertyString(customButtonsLoadedFlagProperty) == "1" }
-      .getOrDefault(false)
-
-  private fun loadCustomButtonsScript(file: File): Boolean {
-    runCatching { MPVLib.setPropertyString(customButtonsLoadedFlagProperty, "0") }
-
-    return runCatching {
-      MPVLib.command("load-script", file.absolutePath)
-      true
-    }.getOrElse {
-      android.util.Log.w("PlayerViewModel", "load-script failed: ${it.message}")
-      false
-    }
-  }
-
-  fun callCustomButton(id: String) {
-    val safeId = id.replace("-", "_")
-    MPVLib.command("script-message", "call_button_$safeId")
-  }
-  
-  fun callCustomButtonLongPress(id: String) {
-    val safeId = id.replace("-", "_")
-    MPVLib.command("script-message", "call_button_long_$safeId")
-  }
-
-  private fun StringBuilder.processButton(
-    originalId: String,
-    safeId: String,
-    label: String,
-    command: String,
-    longPressCommand: String,
-    onStartup: String,
-    isLeft: Boolean,
-    uiList: MutableList<CustomButtonState>
-  ) {
-    if (label.isNotBlank()) {
-      uiList.add(CustomButtonState(originalId, label, isLeft))
-      
-      // On Startup Code
-      if (onStartup.isNotBlank()) {
-          append(onStartup)
-          append("\n")
-      }
-
-      // Click Handler
-      if (command.isNotBlank()) {
-        append(
-          """
-          function button_${safeId}()
-              ${command}
-          end
-          mp.register_script_message('call_button_${safeId}', button_${safeId})
-          """.trimIndent()
-        )
-        append("\n")
-      }
-      
-      // Long Press Handler
-      if (longPressCommand.isNotBlank()) {
-        append(
-          """
-          function button_long_${safeId}()
-              ${longPressCommand}
-          end
-          mp.register_script_message('call_button_long_${safeId}', button_long_${safeId})
-          """.trimIndent()
-        )
-        append("\n")
-      }
-    }
-
   }
 
   // Cached values
@@ -765,8 +535,6 @@ class PlayerViewModel(
       // Scan for previously downloaded/added subtitles
       scanLocalSubtitles(mediaTitle)
 
-      // --- ADDED: Reset visual states for the new file for Ambient Mode Function by @Chinna95P ---
-      
       // 1. Reset Aspect Ratio UI state and MPV properties to "Fit"
       _videoAspect.value = VideoAspect.Fit
       _currentAspectRatio.value = -1.0
@@ -1316,87 +1084,6 @@ class PlayerViewModel(
           ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
       }
-  }
-
-  // ==================== Lua Invocation Handling ====================
-
-  fun handleLuaInvocation(
-    property: String,
-    value: String,
-  ) {
-    val data = value.removeSurrounding("\"").ifEmpty { return }
-
-    when (property.substringAfterLast("/")) {
-      "show_text" -> playerUpdate.value = PlayerUpdates.ShowText(data)
-      "toggle_ui" -> handleToggleUI(data)
-      "show_panel" -> handleShowPanel(data)
-      "seek_to_with_text" -> {
-        val (seekValue, text) = data.split("|", limit = 2)
-        seekToWithText(seekValue.toInt(), text)
-      }
-      "seek_by_with_text" -> {
-        val (seekValue, text) = data.split("|", limit = 2)
-        seekByWithText(seekValue.toInt(), text)
-      }
-      "seek_by" -> seekByWithText(data.toInt(), null)
-      "seek_to" -> seekToWithText(data.toInt(), null)
-      "software_keyboard" -> handleSoftwareKeyboard(data)
-    }
-
-    MPVLib.setPropertyString(property, "")
-  }
-
-  private fun handleToggleUI(data: String) {
-    when (data) {
-      "show" -> showControls()
-      "toggle" -> if (controlsShown.value) hideControls() else showControls()
-      "hide" -> {
-        sheetShown.value = Sheets.None
-        panelShown.value = Panels.None
-        hideControls()
-      }
-    }
-  }
-
-  private fun handleShowPanel(data: String) {
-    when (data) {
-      "frame_navigation" -> {
-        sheetShown.value = Sheets.FrameNavigation
-      }
-      else -> {
-        panelShown.value =
-          when (data) {
-            "subtitle_settings" -> Panels.SubtitleSettings
-            "subtitle_delay" -> Panels.SubtitleDelay
-            "audio_delay" -> Panels.AudioDelay
-            "video_filters" -> Panels.VideoFilters
-            else -> Panels.None
-          }
-      }
-    }
-  }
-
-  private fun handleSoftwareKeyboard(data: String) {
-    when (data) {
-      "show" -> forceShowSoftwareKeyboard()
-      "hide" -> forceHideSoftwareKeyboard()
-      "toggle" ->
-        if (!inputMethodManager.isActive) {
-          forceShowSoftwareKeyboard()
-        } else {
-          forceHideSoftwareKeyboard()
-        }
-    }
-  }
-
-  @Suppress("DEPRECATION")
-  private fun forceShowSoftwareKeyboard() {
-    inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-  }
-
-  @Suppress("DEPRECATION")
-  private fun forceHideSoftwareKeyboard() {
-    inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0)
   }
 
   // ==================== Gesture Handling ====================
@@ -2152,18 +1839,6 @@ class PlayerViewModel(
     playerUpdate.value = PlayerUpdates.ShowText(if (newState) "V-Flip On" else "V-Flip Off")
   }
 
-  // ==================== Ambient Mode Integration ====================
-
-  fun toggleAmbientMode() = ambientModeManager.toggleAmbientMode()
-
-  fun onOrientationChanged(isPortrait: Boolean) = ambientModeManager.onOrientationChanged(isPortrait)
-
-  fun resetAmbientMode() = ambientModeManager.resetAmbientMode()
-
-  fun restartAmbientIfActive() = ambientModeManager.restartAmbientIfActive()
-
-  fun updateAmbientStretch() = ambientModeManager.updateAmbientStretch()
-
   // ==================== Utility ====================
 
   fun showToast(message: String) {
@@ -2172,7 +1847,6 @@ class PlayerViewModel(
 
   override fun onCleared() {
     super.onCleared()
-    ambientModeManager.cleanup()
   }
 }
 

@@ -233,7 +233,6 @@ val scope = rememberCoroutineScope()
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
                     onAnime4KChanged()
                   }
                 }
@@ -278,7 +277,6 @@ val scope = rememberCoroutineScope()
 
                     // Use setPropertyString for runtime changes
                     MPVLib.setPropertyString("glsl-shaders", if (shaderChain.isNotEmpty()) shaderChain else "")
-                    // Restart ambient mode if it was ON (Anime4K reset wiped it)
                     onAnime4KChanged()
                   }
                 }

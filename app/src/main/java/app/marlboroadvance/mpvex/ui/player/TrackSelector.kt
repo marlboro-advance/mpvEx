@@ -9,7 +9,6 @@ import kotlinx.coroutines.delay
 /**
  * Handles automatic track selection based on user preferences.
  * Combines an intelligent multi-pass Context Engine with optimized data structures.
- * Adapted from https://github.com/Chinna95P/mpv-anime-build/blob/main/scripts/track-selector.lua
  *
  * **Performance Optimization:**
  * To minimize expensive JNI calls to MPV, all track properties are read exactly once 

@@ -70,10 +70,4 @@ class PlayerPreferences(
 
   val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
 
-  // Custom Buttons - JSON List
-  val customButtons = preferenceStore.getString("custom_buttons_json", "[]")
-
-  // Ambience Mode
-  val isAmbientEnabled = preferenceStore.getBoolean("ambient_enabled", false)
-  
 }

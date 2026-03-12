@@ -153,7 +153,6 @@ Copy the contents of `keystore.txt` and paste it as the value for the `SIGNING_K
 - [mpvKt](https://github.com/abdallahmehiz/mpvKt)
 - [Next player](https://github.com/anilbeesetti/nextplayer)
 - [Gramophone](https://github.com/FoedusProgramme/Gramophone)
-- [Ambient-Mode](https://github.com/Chinna95P/mpv-anime-build/tree/android)
 
 ---
 

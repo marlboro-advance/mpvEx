@@ -500,13 +500,6 @@ object SearchablePreferences {
 
             // Advanced preferences
             add(SearchablePreference(
-                titleRes = R.string.pref_custom_lua_title,
-                summaryRes = R.string.pref_custom_lua_summary,
-                keywords = listOf("lua", "custom", "button", "code", "player", "overlay", "script"),
-                category = "Player",
-                screen = CustomButtonScreen,
-            ))
-            add(SearchablePreference(
                 titleRes = R.string.pref_advanced,
                 summaryRes = R.string.pref_advanced_summary,
                 keywords = listOf("advanced", "mpv", "config", "logs", "debug"),
@@ -542,20 +535,6 @@ object SearchablePreferences {
             add(SearchablePreference(
                 titleRes = R.string.pref_advanced_input_conf,
                 keywords = listOf("input", "conf", "keybindings", "shortcuts", "keys", "controls"),
-                category = "Advanced",
-                screen = AdvancedPreferencesScreen,
-            ))
-            add(SearchablePreference(
-                titleRes = R.string.pref_enable_lua_scripts_title,
-                summaryRes = R.string.pref_enable_lua_scripts_summary,
-                keywords = listOf("scripts", "lua", "enable", "load", "plugin"),
-                category = "Advanced",
-                screen = AdvancedPreferencesScreen,
-            ))
-            add(SearchablePreference(
-                titleRes = R.string.pref_manage_lua_scripts_title,
-                summaryRes = R.string.pref_manage_lua_scripts_summary,
-                keywords = listOf("scripts", "lua", "manage", "select", "plugin"),
                 category = "Advanced",
                 screen = AdvancedPreferencesScreen,
             ))
