@@ -102,14 +102,6 @@ fun PlayerButtonChip(
               )
             }
           }
-          PlayerButton.AB_LOOP -> {
-            Text(
-              text = "AB",
-              fontSize = 15.sp,
-              textAlign = TextAlign.Center,
-              fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            )
-          }
           else -> {
             // Default: Icon only
             Icon(

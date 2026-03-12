@@ -427,19 +427,13 @@ private fun IconsLegend() {
                         modifier = Modifier.wrapContentWidth()
                     ) {
                         if (button == PlayerButton.AB_LOOP) {
-                            // Show "AB" text instead of icon for AB_LOOP
-                            Box(
-                                modifier = Modifier.size(20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "AB",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                            }
+                            // Show Autorenew icon for AB_LOOP
+                            Icon(
+                                imageVector = button.icon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
                         } else {
                             val modifier = if (button == PlayerButton.VERTICAL_FLIP) {
                                 Modifier.rotate(90f)

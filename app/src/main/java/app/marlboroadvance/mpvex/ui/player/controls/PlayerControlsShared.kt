@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.outlined.BlurOn
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -68,6 +70,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -117,10 +121,20 @@ fun RenderPlayerButton(
     PlayerButton.VIDEO_TITLE -> {
       val playlistModeEnabled = viewModel.hasPlaylistSupport()
 
-      val titleInteractionSource = remember { MutableInteractionSource() }
-
       Surface(
-        shape = CircleShape,
+        modifier =
+          Modifier
+            .height(buttonSize)
+            .widthIn(max = 220.dp)
+            .clip(RoundedCornerShape(50))
+            .clickable(
+              enabled = playlistModeEnabled,
+              onClick = {
+                clickEvent()
+                onOpenSheet(Sheets.Playlist)
+              },
+            ),
+        shape = RoundedCornerShape(50),
         color =
           if (hideBackground) {
             Color.Transparent
@@ -141,44 +155,42 @@ fun RenderPlayerButton(
               MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
           },
-        modifier =
-          Modifier
-            .height(buttonSize)
-            .clip(CircleShape)
-            .clickable(
-              interactionSource = titleInteractionSource,
-              indication = ripple(
-                bounded = true,
-              ),
-              enabled = playlistModeEnabled,
-              onClick = {
-                clickEvent()
-                onOpenSheet(Sheets.Playlist)
-              },
-            ),
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
           modifier =
-            Modifier
-              .padding(
-                horizontal = MaterialTheme.spacing.extraSmall,
-                vertical = MaterialTheme.spacing.small,
-              ),
+            Modifier.padding(
+              horizontal = MaterialTheme.spacing.medium,
+              vertical = MaterialTheme.spacing.small,
+            ),
         ) {
           Text(
-            mediaTitle ?: "",
+            text = mediaTitle ?: "",
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f, fill = false),
           )
           viewModel.getPlaylistInfo()?.let { playlistInfo ->
             Text(
-              " • $playlistInfo",
+              text = Typography.bullet.toString(),
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
+              maxLines = 1,
+              color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+              overflow = TextOverflow.Clip,
+            )
+            Text(
+              text = playlistInfo,
+              textAlign = TextAlign.Center,
+              style = MaterialTheme.typography.bodyMedium,
               maxLines = 1,
               overflow = TextOverflow.Visible,
-              style = MaterialTheme.typography.bodySmall,
+              fontWeight = FontWeight.ExtraBold,
+              color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
             )
           }
         }
@@ -300,6 +312,7 @@ fun RenderPlayerButton(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
           )
         }
       }
@@ -789,7 +802,7 @@ fun RenderPlayerButton(
             }
           }
         } else {
-          // Collapsed: Show "AB" text button
+          // Collapsed: Show Autorenew icon
           Surface(
             shape = CircleShape,
             color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
@@ -800,15 +813,15 @@ fun RenderPlayerButton(
               .clickable(onClick = viewModel::toggleABLoopExpanded),
           ) {
             Box(contentAlignment = Alignment.Center) {
-              Text(
-                text = "AB",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = if (loopA != null && loopB != null) {
+              Icon(
+                imageVector = Icons.Outlined.Autorenew,
+                contentDescription = "AB Loop",
+                tint = if (loopA != null && loopB != null) {
                   MaterialTheme.colorScheme.primary
                 } else {
                   if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface
                 },
+                modifier = Modifier.size(24.dp),
               )
             }
           }
