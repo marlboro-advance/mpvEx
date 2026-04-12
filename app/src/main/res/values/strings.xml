@@ -198,6 +198,9 @@
   <string name="pref_subtitles_clear_downloads_summary">Delete all files in the current save location</string>
   <string name="pref_subtitles_clear_downloads_confirmation">Are you sure you want to delete all downloaded subtitles? This action cannot be undone.</string>
   <string name="toast_subtitles_cleared">Subtitle downloads cleared</string>
+  <string name="pref_wyzie_api_key_title">Wyzie API Key</string>
+  <string name="pref_wyzie_api_key_summary">Required to use sub.wyzie.io subtitle search. Get a free key at sub.wyzie.io/redeem</string>
+  <string name="pref_wyzie_api_key_placeholder">wyzie-abc123xyz</string>
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Preferred languages, audio channels, pitch correction</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>

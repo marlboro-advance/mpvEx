@@ -649,7 +649,7 @@ class PlayerViewModel(
           _mediaSearchResults.value = results
         }
         .onFailure {
-          // Silent failure for autocomplete, or optionally show toast(if someone is reading this if u need u can impelmen this in future )
+          // Silent failure for autocomplete
         }
       _isSearchingMedia.value = false
     }
@@ -720,6 +720,10 @@ class PlayerViewModel(
 
   // --- Subtitle Search ---
   fun searchSubtitles(query: String, season: Int? = null, episode: Int? = null, year: String? = null) {
+    if (subtitlesPreferences.wyzieApiKey.get().isBlank()) {
+      showToast("Wyzie API key not set. Go to Settings → Subtitles to add your free key from sub.wyzie.io/redeem")
+      return
+    }
      viewModelScope.launch {
          _isSearchingSub.value = true
          wyzieRepository.search(query, season, episode, year)

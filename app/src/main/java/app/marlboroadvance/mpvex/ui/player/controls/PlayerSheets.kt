@@ -124,6 +124,8 @@ fun PlayerSheets(
           )
       }
 
+      val subtitlesPreferencesForApiCheck = koinInject<app.marlboroadvance.mpvex.preferences.SubtitlesPreferences>()
+
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
         onToggleSubtitle = onToggleSubtitle,
@@ -132,7 +134,13 @@ fun PlayerSheets(
         onRemoveSubtitle = onRemoveSubtitle,
         onOpenSubtitleSettings = { onOpenPanel(Panels.SubtitleSettings) },
         onOpenSubtitleDelay = { onOpenPanel(Panels.SubtitleDelay) },
-        onOpenOnlineSearch = { onShowSheet(Sheets.OnlineSubtitleSearch) },
+        onOpenOnlineSearch = {
+          if (subtitlesPreferencesForApiCheck.wyzieApiKey.get().isBlank()) {
+            viewModel.showToast("Wyzie API key not set. Add your key in Settings → Subtitles → Wyzie API Key")
+          } else {
+            onShowSheet(Sheets.OnlineSubtitleSearch)
+          }
+        },
         onDismissRequest = onDismissRequest
       )
     }

@@ -450,6 +450,13 @@ object SearchablePreferences {
                 category = "Subtitles",
                 screen = SubtitlesPreferencesScreen,
             ))
+            add(SearchablePreference(
+                titleRes = R.string.pref_wyzie_api_key_title,
+                summaryRes = R.string.pref_wyzie_api_key_summary,
+                keywords = listOf("wyzie", "api", "key", "subtitle", "search", "token", "auth"),
+                category = "Subtitles",
+                screen = SubtitlesPreferencesScreen,
+            ))
 
             // Audio preferences
             add(SearchablePreference(

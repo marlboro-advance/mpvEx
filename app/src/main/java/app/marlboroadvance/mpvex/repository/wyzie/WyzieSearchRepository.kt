@@ -206,7 +206,7 @@ class WyzieSearchRepository(
     private val json: Json,
     private val preferences: SubtitlesPreferences
 ) {
-    private val baseUrl = "https://sub.wyzie.ru"
+    private val baseUrl = "https://sub.wyzie.io"
 
     suspend fun search(
         query: String,
@@ -306,6 +306,7 @@ class WyzieSearchRepository(
     ): List<WyzieSubtitle> {
         fun encode(s: String) = URLEncoder.encode(s, "UTF-8")
         
+        val apiKey = preferences.wyzieApiKey.get()
         val url = StringBuilder("$baseUrl/search?id=${encode(id)}")
             .apply {
                 if (season != null && episode != null) {
@@ -327,23 +328,26 @@ class WyzieSearchRepository(
 
                 append("&unzip=true")
                 hi?.let { append("&hi=$it") }
+                if (apiKey.isNotBlank()) append("&key=${encode(apiKey)}")
             }.toString()
 
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             val responseBodyString = response.body?.string() ?: ""
             if (!response.isSuccessful) {
+                // Invalid or missing API key
+                if (response.code == 401 || response.code == 403) {
+                    throw IOException("Invalid Wyzie API key. Check your key in Settings → Subtitles.")
+                }
                 // Wyzie API returns 400 when no subtitles are found for valid parameters
                 if (response.code == 400 && responseBodyString.contains("No subtitles found", ignoreCase = true)) {
                     return emptyList()
                 }
-                
                 if (response.code == 400 && responseBodyString.contains("season and episode", ignoreCase = true)) {
                     throw IOException("Please select both a Season and an Episode.")
                 }
-                val errorMsg = "Search failed: HTTP ${response.code} for URL: $url | Body: $responseBodyString"
-                Log.e("WyzieSearchRepository", errorMsg)
-                throw IOException(errorMsg)
+                Log.e("WyzieSearchRepository", "Search failed: HTTP ${response.code} | Body: $responseBodyString")
+                throw IOException("Search failed (HTTP ${response.code}). Please try again.")
             }
             return try {
                 json.decodeFromString<List<WyzieSubtitle>>(responseBodyString)
@@ -407,7 +411,9 @@ class WyzieSearchRepository(
 
     suspend fun getTvShowDetails(id: Int): Result<WyzieTvShowDetails> = withContext(Dispatchers.IO) {
         try {
-            val url = "$baseUrl/api/tmdb/tv/$id"
+            val apiKey = preferences.wyzieApiKey.get()
+            val keyParam = if (apiKey.isNotBlank()) "?key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
+            val url = "$baseUrl/api/tmdb/tv/$id$keyParam"
             val request = Request.Builder().url(url).build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Failed to get TV show details: ${response.code}")
@@ -422,7 +428,9 @@ class WyzieSearchRepository(
 
     suspend fun getSeasonEpisodes(id: Int, season: Int): Result<List<WyzieEpisode>> = withContext(Dispatchers.IO) {
         try {
-            val url = "$baseUrl/api/tmdb/tv/$id/$season"
+            val apiKey = preferences.wyzieApiKey.get()
+            val keyParam = if (apiKey.isNotBlank()) "?key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
+            val url = "$baseUrl/api/tmdb/tv/$id/$season$keyParam"
             val request = Request.Builder().url(url).build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Failed to get season episodes: ${response.code}")
@@ -436,10 +444,15 @@ class WyzieSearchRepository(
     }
 
     private fun tmdbSearch(query: String): List<WyzieTmdbResult> {
-        val url = "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}"
+        val apiKey = preferences.wyzieApiKey.get()
+        val keyParam = if (apiKey.isNotBlank()) "&key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
+        val url = "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}$keyParam"
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("TMDb search failed: ${response.code}")
+            if (response.code == 401 || response.code == 403) {
+                throw IOException("Invalid Wyzie API key. Check your key in Settings → Subtitles.")
+            }
+            if (!response.isSuccessful) throw IOException("Media search failed (HTTP ${response.code}). Please try again.")
             val body = response.body?.string() ?: throw IOException("Empty body")
             return json.decodeFromString<WyzieTmdbResponse>(body).results
         }

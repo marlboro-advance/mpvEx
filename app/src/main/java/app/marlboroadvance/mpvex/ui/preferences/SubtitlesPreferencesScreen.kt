@@ -158,6 +158,7 @@ object SubtitlesPreferencesScreen : Screen {
         val wyzieSources by preferences.wyzieSources.collectAsState()
         val wyzieFormats by preferences.wyzieFormats.collectAsState()
         val wyzieEncodings by preferences.wyzieEncodings.collectAsState()
+        val wyzieApiKey by preferences.wyzieApiKey.collectAsState()
 
         val saveLocationPicker =
           rememberLauncherForActivityResult(
@@ -364,6 +365,42 @@ object SubtitlesPreferencesScreen : Screen {
 
           item {
             PreferenceCard {
+              // API Key
+              TextFieldPreference(
+                value = wyzieApiKey,
+                onValueChange = preferences.wyzieApiKey::set,
+                textToValue = { it },
+                title = { Text(stringResource(R.string.pref_wyzie_api_key_title)) },
+                summary = {
+                  if (wyzieApiKey.isNotBlank()) {
+                    Text(
+                      "•".repeat(minOf(wyzieApiKey.length, 16)),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  } else {
+                    Text(
+                      stringResource(R.string.pref_wyzie_api_key_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
+                },
+                textField = { value, onValueChange, _ ->
+                  Column {
+                    Text(stringResource(R.string.pref_wyzie_api_key_summary))
+                    Spacer(modifier = Modifier.size(8.dp))
+                    TextField(
+                      value,
+                      onValueChange,
+                      modifier = Modifier.fillMaxWidth(),
+                      placeholder = { Text(stringResource(R.string.pref_wyzie_api_key_placeholder)) },
+                      singleLine = true,
+                    )
+                  }
+                },
+              )
+
+              PreferenceDivider()
+
               // Location display
               Box(
                 modifier = Modifier
@@ -570,12 +607,12 @@ object SubtitlesPreferencesScreen : Screen {
                   color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                  text = "sub.wyzie.ru",
+                  text = "sub.wyzie.io",
                   style = MaterialTheme.typography.bodySmall,
                   color = MaterialTheme.colorScheme.primary,
                   fontWeight = FontWeight.Bold,
                   modifier = Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sub.wyzie.ru"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sub.wyzie.io"))
                     context.startActivity(intent)
                   }
                 )
