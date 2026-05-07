@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 fun SeekbarWithTimers(
   position: Float,
   duration: Float,
+  remaining: Float,
   onValueChange: (Float) -> Unit,
   onValueChangeFinished: () -> Unit,
   timersInverted: Pair<Boolean, Boolean>,
@@ -254,7 +255,7 @@ fun SeekbarWithTimers(
   }
 
     VideoTimer(
-      value = if (timersInverted.second) position - duration else duration,
+      value = if (timersInverted.second) -remaining else duration,
       isInverted = timersInverted.second,
       onClick = {
         clickEvent()
@@ -756,6 +757,7 @@ private fun PreviewSeekBar() {
   SeekbarWithTimers(
     position = 30f,
     duration = 180f,
+    remaining= 150f,
     onValueChange = {},
     onValueChangeFinished = {},
     timersInverted = Pair(false, true),

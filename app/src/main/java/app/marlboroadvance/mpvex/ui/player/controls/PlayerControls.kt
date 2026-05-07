@@ -890,12 +890,14 @@ fun PlayerControls(
               },
         ) {
           val invertDuration by playerPreferences.invertDuration.collectAsState()
+          val remaining by MPVLib.propFloat["playtime-remaining"].collectAsState()
           val seekbarStyle by appearancePreferences.seekbarStyle.collectAsState()
           var wasPlayerAlreadyPaused by remember { mutableStateOf(false) }
 
           SeekbarWithTimers(
             position = precisePosition,
             duration = if (preciseDuration > 0) preciseDuration else duration?.toFloat() ?: 0f,
+            remaining = remaining?.toFloat() ?: 0f,
             onValueChange = {
               if (!isSeeking) {
                 // First drag frame - pause playback
