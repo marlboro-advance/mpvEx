@@ -49,61 +49,101 @@ fun TopPlayerControlsPortrait(
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   viewModel: PlayerViewModel,
+  isTranslatingSub: Boolean = false,
+  isRealtimeSubsActive: Boolean = false,
+  realtimeSubsLanguage: String = "",
+  translationStatus: String = "",
+  translatingTrackName: String = "",
 ) {
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val clickEvent = LocalPlayerButtonsClickEvent.current
 
-  Row(
+  Column(
     modifier = Modifier
       .fillMaxWidth()
       .padding(top = MaterialTheme.spacing.medium)
       .padding(horizontal = MaterialTheme.spacing.medium),
-    verticalAlignment = Alignment.CenterVertically,
   ) {
-    ControlsGroup {
-      ControlsButton(
-        icon = Icons.Default.ArrowBack,
-        onClick = onBackPress,
-        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(45.dp),
-      )
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      ControlsGroup {
+        ControlsButton(
+          icon = Icons.Default.ArrowBack,
+          onClick = onBackPress,
+          color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(45.dp),
+        )
 
-      val titleInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-
-      Surface(
-        shape = CircleShape,
-        color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
-        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        onClick = {
-          clickEvent()
-          onOpenSheet(Sheets.Playlist)
-        },
-        enabled = playlistModeEnabled,
-        border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
-        modifier = Modifier
-          .padding(start = 4.dp)
-          .height(45.dp),
-      ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier.padding(horizontal = 14.dp),
+        Column(
+          modifier = Modifier.padding(start = 4.dp),
         ) {
-          Text(
-            mediaTitle ?: "",
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f, fill = false),
-          )
-          viewModel.getPlaylistInfo()?.let { playlistInfo ->
-            Text(
-              " • $playlistInfo",
-              maxLines = 1,
-              style = MaterialTheme.typography.bodySmall,
-              color = LocalContentColor.current.copy(alpha = 0.7f),
-            )
+          val titleInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+
+          Surface(
+            shape = CircleShape,
+            color = if (hideBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.55f),
+            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            onClick = {
+              clickEvent()
+              onOpenSheet(Sheets.Playlist)
+            },
+            enabled = playlistModeEnabled,
+            border = if (hideBackground) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+            modifier = Modifier.height(45.dp),
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(horizontal = 14.dp),
+            ) {
+              Text(
+                mediaTitle ?: "",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f, fill = false),
+              )
+              viewModel.getPlaylistInfo()?.let { playlistInfo ->
+                Text(
+                  " • $playlistInfo",
+                  maxLines = 1,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
+              }
+            }
           }
         }
+      }
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+      visible = isTranslatingSub || isRealtimeSubsActive,
+      enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+      exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it },
+    ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 14.dp, top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Icon(
+          imageVector = Icons.Default.Translate,
+          contentDescription = null,
+          modifier = Modifier.size(14.dp),
+          tint = MaterialTheme.colorScheme.tertiary,
+        )
+        Text(
+          text = if (isRealtimeSubsActive) {
+            "Real-time subs: ${realtimeSubsLanguage.ifBlank { "?" }} ${translationStatus.ifBlank { "" }}"
+          } else {
+            "Translating ${translatingTrackName.ifBlank { "subs" }} ${translationStatus.ifBlank { "" }}"
+          },
+          style = MaterialTheme.typography.labelSmall,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          color = MaterialTheme.colorScheme.tertiary,
+        )
       }
     }
   }

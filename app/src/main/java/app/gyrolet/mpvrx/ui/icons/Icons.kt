@@ -15,6 +15,7 @@ import com.composables.icons.materialsymbols.roundedfilled.Repeat_one
 import com.composables.icons.materialsymbols.roundedfilled.Reset_iso
 import com.composables.icons.materialsymbols.roundedfilled.Shadow
 import com.composables.icons.materialsymbols.roundedfilled.Sort_by_alpha
+import com.composables.icons.materialsymbols.roundedfilled.Translate
 
 @Suppress("MemberVisibilityCanBePrivate")
 object Icons {
@@ -123,7 +124,7 @@ object Icons {
     val KeyboardArrowUp = AppIcon(R.drawable.materialsymbols_ic_keyboard_arrow_up_rounded_filled)
     val Language = AppIcon(R.drawable.materialsymbols_ic_language_rounded_filled)
     val Link = AppIcon(R.drawable.materialsymbols_ic_link_rounded_filled)
-    val Translate = AppIcon(AppR.drawable.translate_24)
+    val Translate = AppIcon(MaterialSymbols.RoundedFilled.Translate)
     val LinkOff = AppIcon(R.drawable.materialsymbols_ic_link_off_rounded_filled)
     val Lock = AppIcon(R.drawable.materialsymbols_ic_lock_rounded_filled)
     val LockOpen = AppIcon(R.drawable.materialsymbols_ic_lock_open_rounded_filled)

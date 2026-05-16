@@ -12,13 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -29,7 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AiProvider
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -54,11 +62,19 @@ fun SubtitlesSheet(
   onOpenOnlineSearch: () -> Unit,
   onDismissRequest: () -> Unit,
   onTranslateSubtitle: (TrackNode, String) -> Unit,
+  onGenerateSubtitle: () -> Unit,
+  onCancelTranslation: () -> Unit,
   isTranslating: Boolean,
   translationProgress: Float,
+  translationStatus: String,
   translationEnabled: Boolean,
+  isGeneratingSubtitles: Boolean,
+  subtitleGenerationProgress: Float,
+  subtitleGenerationStatus: String,
   translatingTrackId: Int? = null,
   translatingTrackName: String = "",
+  provider: AiProvider = AiProvider.GEMINI,
+  autoTranslateLanguages: String = "",
   modifier: Modifier = Modifier,
 ) {
   val items = remember(tracks) {
@@ -78,36 +94,96 @@ fun SubtitlesSheet(
     list.toImmutableList()
   }
 
-  val languages = remember {
+  val isOnlineProvider = provider != AiProvider.LOCAL
+
+  val configuredLanguages = remember(autoTranslateLanguages) {
+    autoTranslateLanguages.split(",").filter { it.isNotBlank() }
+  }
+
+  val allLanguages = remember {
     listOf(
-      "English", "Spanish", "French", "German", "Japanese", 
-      "Korean", "Chinese", "Arabic", "Hindi", "Portuguese"
+      "Afrikaans", "Arabic", "Bengali", "Bulgarian", "Catalan",
+      "Chinese (Simplified)", "Chinese (Traditional)", "Croatian", "Czech",
+      "Danish", "Dutch", "English", "Estonian", "Finnish", "French",
+      "German", "Greek", "Gujarati", "Hebrew", "Hindi", "Hungarian",
+      "Indonesian", "Italian", "Japanese", "Kannada", "Korean", "Latvian",
+      "Lithuanian", "Malay", "Malayalam", "Marathi", "Norwegian", "Persian",
+      "Polish", "Portuguese", "Punjabi", "Romanian", "Russian", "Serbian",
+      "Slovak", "Slovenian", "Spanish", "Swahili", "Swedish", "Tamil",
+      "Telugu", "Thai", "Turkish", "Ukrainian", "Urdu", "Vietnamese"
     )
   }
+
+  val codeToName = remember {
+    mapOf(
+      "en" to "English", "es" to "Spanish", "fr" to "French", "de" to "German",
+      "it" to "Italian", "pt" to "Portuguese", "ru" to "Russian", "zh" to "Chinese (Simplified)",
+      "ja" to "Japanese", "ko" to "Korean", "ar" to "Arabic", "hi" to "Hindi",
+      "bn" to "Bengali", "vi" to "Vietnamese", "te" to "Telugu", "ta" to "Tamil",
+      "ur" to "Urdu", "tr" to "Turkish", "pl" to "Polish", "uk" to "Ukrainian",
+      "nl" to "Dutch", "el" to "Greek", "hu" to "Hungarian", "sv" to "Swedish",
+      "cs" to "Czech", "ro" to "Romanian", "da" to "Danish", "fi" to "Finnish",
+      "no" to "Norwegian", "he" to "Hebrew", "id" to "Indonesian", "th" to "Thai",
+      "ms" to "Malay", "fa" to "Persian", "sk" to "Slovak", "bg" to "Bulgarian",
+      "hr" to "Croatian", "sr" to "Serbian", "sl" to "Slovenian", "et" to "Estonian",
+      "lv" to "Latvian", "lt" to "Lithuanian", "af" to "Afrikaans", "sw" to "Swahili",
+    )
+  }
+
+  var langSearch by remember { mutableStateOf("") }
   var showLanguagePicker by remember { androidx.compose.runtime.mutableStateOf<TrackNode?>(null) }
 
   if (showLanguagePicker != null) {
+    val languagesToShow = remember(configuredLanguages, langSearch) {
+      val source = if (configuredLanguages.size >= 2) {
+        configuredLanguages.mapNotNull { codeToName[it] }
+      } else {
+        allLanguages
+      }
+      if (langSearch.isBlank()) source
+      else source.filter { it.contains(langSearch, ignoreCase = true) }
+    }
     androidx.compose.material3.AlertDialog(
-      onDismissRequest = { showLanguagePicker = null },
+      onDismissRequest = {
+        showLanguagePicker = null
+        langSearch = ""
+      },
       title = { Text("Translate to...") },
       text = {
-        LazyColumn {
-          items(languages) { lang ->
-            Text(
-              text = lang,
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                  onTranslateSubtitle(showLanguagePicker!!, lang)
-                  showLanguagePicker = null
-                }
-                .padding(MaterialTheme.spacing.medium)
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+          OutlinedTextField(
+            value = langSearch,
+            onValueChange = { langSearch = it },
+            placeholder = { Text("Search language…") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+          )
+          LazyColumn(modifier = Modifier.height(280.dp)) {
+            items(languagesToShow) { lang ->
+              Text(
+                text = lang,
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable {
+                    onTranslateSubtitle(showLanguagePicker!!, lang)
+                    showLanguagePicker = null
+                    langSearch = ""
+                  }
+                  .padding(MaterialTheme.spacing.medium)
+              )
+            }
+            if (languagesToShow.isEmpty()) {
+              item { Text("No languages found", color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(MaterialTheme.spacing.medium)) }
+            }
           }
         }
       },
       confirmButton = {
-        androidx.compose.material3.TextButton(onClick = { showLanguagePicker = null }) {
+        androidx.compose.material3.TextButton(onClick = {
+          showLanguagePicker = null
+          langSearch = ""
+        }) {
           Text("Cancel")
         }
       }
@@ -123,6 +199,11 @@ fun SubtitlesSheet(
           IconButton(onClick = onOpenOnlineSearch) {
             Icon(Icons.Default.Search, null)
           }
+          if (isOnlineProvider) {
+            IconButton(onClick = onGenerateSubtitle) {
+              Icon(Icons.Default.Subtitles, "Generate subtitles")
+            }
+          }
           IconButton(onClick = onOpenSubtitleSettings) {
             Icon(Icons.Default.Palette, null)
           }
@@ -133,17 +214,56 @@ fun SubtitlesSheet(
       )
 
       if (isTranslating) {
+        Column(
+          modifier = Modifier.padding(start = MaterialTheme.spacing.medium, end = MaterialTheme.spacing.medium, top = MaterialTheme.spacing.small),
+          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(
+              "${translationStatus.ifBlank { "Translating" }} ${translatingTrackName}... ${(translationProgress * 100).toInt()}%",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.weight(1f),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+            FilledTonalIconButton(
+              onClick = onCancelTranslation,
+              modifier = Modifier.size(36.dp),
+              colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+              ),
+            ) {
+              Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Cancel translation",
+                modifier = Modifier.size(20.dp),
+              )
+            }
+          }
+          LinearProgressIndicator(
+            progress = { translationProgress },
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
+      }
+
+      if (isGeneratingSubtitles) {
         androidx.compose.foundation.layout.Column(
           modifier = Modifier.padding(MaterialTheme.spacing.medium),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
         ) {
           Text(
-            "Translating ${translatingTrackName}... ${(translationProgress * 100).toInt()}%",
+            "${subtitleGenerationStatus.ifBlank { "Generating subtitles" }}... ${(subtitleGenerationProgress * 100).toInt()}%",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary
           )
-          androidx.compose.material3.LinearProgressIndicator(
-            progress = { translationProgress },
+          LinearProgressIndicator(
+            progress = { subtitleGenerationProgress },
             modifier = Modifier.fillMaxWidth(),
           )
         }
@@ -160,8 +280,17 @@ fun SubtitlesSheet(
                 isExternal = track.external == true,
                 onToggle = { onToggleSubtitle(track.id) },
                 onRemove = { onRemoveSubtitle(track.id) },
-                onTranslate = { if (translationEnabled) showLanguagePicker = track },
-                translationEnabled = translationEnabled,
+                onTranslate = {
+                  if (translationEnabled && isOnlineProvider) {
+                    if (configuredLanguages.size == 1) {
+                      val langName = codeToName[configuredLanguages.first()] ?: configuredLanguages.first()
+                      onTranslateSubtitle(track, langName)
+                    } else {
+                      showLanguagePicker = track
+                    }
+                  }
+                },
+                translationEnabled = translationEnabled && isOnlineProvider,
                 isCurrentlyTranslating = track.id == translatingTrackId,
               )
             }

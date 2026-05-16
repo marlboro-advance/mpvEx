@@ -100,6 +100,8 @@ fun FolderCard(
     }
   }
 
+  val cardShape = RoundedCornerShape(16.dp)
+
   Card(
     modifier = modifier
       .fillMaxWidth()
@@ -107,6 +109,7 @@ fun FolderCard(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
+    shape = cardShape,
     colors = CardDefaults. cardColors(containerColor = Color. Transparent),
   ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -116,6 +119,7 @@ fun FolderCard(
             Modifier
               .matchParentSize()
               .padding(selectionInset)
+              .clip(cardShape)
               .background(selectionContainerColor),
         )
       }

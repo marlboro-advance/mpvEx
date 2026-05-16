@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -45,89 +46,129 @@ fun TopLeftPlayerControlsLandscape(
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   viewModel: PlayerViewModel,
+  isTranslatingSub: Boolean = false,
+  isRealtimeSubsActive: Boolean = false,
+  realtimeSubsLanguage: String = "",
+  translationStatus: String = "",
+  translatingTrackName: String = "",
 ) {
   val playlistModeEnabled = viewModel.hasPlaylistSupport()
   val clickEvent = LocalPlayerButtonsClickEvent.current
 
-  Row(
+  Column(
     modifier = Modifier.width(IntrinsicSize.Max),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
   ) {
-    ControlsButton(
-      icon = Icons.Default.ArrowBack,
-      onClick = onBackPress,
-      color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-      modifier = Modifier.size(45.dp),
-    )
-
-    val titleInteractionSource = remember { MutableInteractionSource() }
-
-    Box(
-      modifier =
-        Modifier
-          .height(45.dp)
-          .clip(CircleShape)
-          .clickable(
-            interactionSource = titleInteractionSource,
-            indication = ripple(bounded = true),
-            enabled = playlistModeEnabled,
-            onClick = {
-              clickEvent()
-              onOpenSheet(Sheets.Playlist)
-            },
-          ),
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
-      Surface(
-        shape = CircleShape,
-        color =
-          if (hideBackground) {
-            Color.Transparent
-          } else {
-            MaterialTheme.colorScheme.surfaceContainer.copy(
-              alpha = 0.55f,
-            )
-          },
-        contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border =
-          if (hideBackground) {
-            null
-          } else {
-            BorderStroke(
-              1.dp,
-              MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-          },
-      ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
+      ControlsButton(
+        icon = Icons.Default.ArrowBack,
+        onClick = onBackPress,
+        color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.size(45.dp),
+      )
+
+      Column {
+        val titleInteractionSource = remember { MutableInteractionSource() }
+
+        Box(
           modifier =
             Modifier
-              .padding(
-                start = MaterialTheme.spacing.medium,
-                end = MaterialTheme.spacing.medium,
-                top = MaterialTheme.spacing.small,
-                bottom = MaterialTheme.spacing.small,
+              .height(45.dp)
+              .clip(CircleShape)
+              .clickable(
+                interactionSource = titleInteractionSource,
+                indication = ripple(bounded = true),
+                enabled = playlistModeEnabled,
+                onClick = {
+                  clickEvent()
+                  onOpenSheet(Sheets.Playlist)
+                },
               ),
         ) {
-          Text(
-            mediaTitle ?: "",
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f, fill = false),
-          )
-          viewModel.getPlaylistInfo()?.let { playlistInfo ->
-            Text(
-              " • $playlistInfo",
-              maxLines = 1,
-              overflow = TextOverflow.Visible,
-              style = MaterialTheme.typography.bodySmall,
-            )
+          Surface(
+            shape = CircleShape,
+            color =
+              if (hideBackground) {
+                Color.Transparent
+              } else {
+                MaterialTheme.colorScheme.surfaceContainer.copy(
+                  alpha = 0.55f,
+                )
+              },
+            contentColor = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border =
+              if (hideBackground) {
+                null
+              } else {
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+              },
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier =
+                Modifier
+                  .padding(
+                    start = MaterialTheme.spacing.medium,
+                    end = MaterialTheme.spacing.medium,
+                    top = MaterialTheme.spacing.small,
+                    bottom = MaterialTheme.spacing.small,
+                  ),
+            ) {
+              Text(
+                mediaTitle ?: "",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f, fill = false),
+              )
+              viewModel.getPlaylistInfo()?.let { playlistInfo ->
+                Text(
+                  " • $playlistInfo",
+                  maxLines = 1,
+                  overflow = TextOverflow.Visible,
+                  style = MaterialTheme.typography.bodySmall,
+                )
+              }
+            }
           }
         }
+      }
+    }
+
+    androidx.compose.animation.AnimatedVisibility(
+      visible = isTranslatingSub || isRealtimeSubsActive,
+      enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+      exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it },
+    ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = MaterialTheme.spacing.medium, top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Icon(
+          imageVector = Icons.Default.Translate,
+          contentDescription = null,
+          modifier = Modifier.size(14.dp),
+          tint = MaterialTheme.colorScheme.tertiary,
+        )
+        Text(
+          text = if (isRealtimeSubsActive) {
+            "Real-time subs: ${realtimeSubsLanguage.ifBlank { "?" }} ${translationStatus.ifBlank { "" }}"
+          } else {
+            "Translating ${translatingTrackName.ifBlank { "subs" }} ${translationStatus.ifBlank { "" }}"
+          },
+          style = MaterialTheme.typography.labelSmall,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          color = MaterialTheme.colorScheme.tertiary,
+        )
       }
     }
   }

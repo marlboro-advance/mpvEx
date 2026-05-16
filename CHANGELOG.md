@@ -2,6 +2,16 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 1.3.6
+
+- **Six AI providers, one gorgeous settings page** — OpenAI, Anthropic, OpenRouter, and Together joined Groq and Gemini in a completely redesigned UI. Every provider gets its own API key, every single model is visible (free ones get a bold green badge), and the new searchable model picker sorts free models to the top. The offline model experience got a premium card-based overhaul too — tiers, speed/translation badges, device recommendations, DeepSeek-R1 support, reasoning toggles, and a benchmark button for downloaded models. One-tap download, delete, and switch between models without ever leaving the screen.
+
+- **Subtitle translation** — SUPPORTS ASS Subs Translation tooooooooo..... , you can now configure your target languages once in settings. One language means one tap to translate. Two or more means a clean picker showing only the languages you chose. Translation progress appears right on the video screen (even with the sheet closed), partially translated subs survive restarts, and a red X lets you cancel mid-translation instantly. When using local models, the system automatically picks the best downloaded model for each language, keeps it warm between chunks, and never runs two local AI jobs at once.
+
+- **Generate subtitles from video audio** — **_(EXPERIMENTAL)_** This is work in progress might not work Don't baby Cry that this shit aint working ,i ain't getting paid enough to implement this whole heartedly , so what it does is -> one tap generates subtitles using the audio you're already playing. Media3 extraction feeds Groq, Gemini, or offline Whisper, and the resulting SRT/VTT saves automatically.
+
+- **Smarter AI across the board** — reasoning tags are automatically stripped from final results, token limits prevent stalls in heavy tasks, and every AI feature (rename, formatting, translation) comes with customizable prompts that fall back gracefully to built-in instructions.
+
 ## 1.3.5
 
 - **Removed Play Store and F-Droid build variants** — streamlined to a single `standard` flavor with full update support and all features enabled.

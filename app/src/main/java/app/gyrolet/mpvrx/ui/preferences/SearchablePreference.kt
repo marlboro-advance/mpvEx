@@ -699,7 +699,7 @@ object SearchablePreferences {
                 summary = "Root folder — auto-creates Subtitles/ and Fonts/ subdirs",
                 keywords = listOf("base", "storage", "root", "folder", "subtitles", "fonts", "directory"),
                 category = "Storage",
-                screen = FoldersPreferencesScreen,
+                screen = AdvancedPreferencesScreen,
             ))
             add(SearchablePreference(
                 titleRes = R.string.pref_advanced_mpv_conf_storage_location,
@@ -786,6 +786,85 @@ object SearchablePreferences {
                 keywords = listOf("logs", "debug", "dump", "share", "export"),
                 category = "Advanced",
                 screen = AdvancedPreferencesScreen,
+            ))
+
+            // AI / Intelligence
+            add(SearchablePreference(
+                title = "AI Integration",
+                summary = "AI-powered rename, subtitle formatting, speech-to-text, subtitle translation, offline models",
+                keywords = listOf("ai", "gemini", "groq", "openai", "anthropic", "together", "openrouter", "machine learning", "intelligence"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "AI Provider",
+                summary = "Choose Gemini, Groq, OpenAI, Anthropic, OpenRouter, Together, or offline local models",
+                keywords = listOf("provider", "gemini", "groq", "openai", "anthropic", "together", "openrouter", "local", "offline", "api"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "API Key Configuration",
+                summary = "Enter and verify your AI provider API key",
+                keywords = listOf("api key", "key", "authentication", "token", "verify", "gemini", "groq", "openai"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "AI Model Selection",
+                summary = "Fetch and select which AI model to use",
+                keywords = listOf("model", "llm", "gemini", "gpt", "claude", "mixtral", "deepseek", "selection"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "Show AI Reasoning (Thinking)",
+                summary = "Show the model's internal thought process for supported models",
+                keywords = listOf("reasoning", "thinking", "thought", "chain of thought", "cot", "explanation"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "AI-Powered Rename",
+                summary = "Use AI to generate clean filenames for bulk rename operations",
+                keywords = listOf("rename", "bulk", "filename", "clean", "ai", "organize"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "AI Subtitle Search Formatting",
+                summary = "Auto-format video titles for Wyzie/SubHub subtitle search",
+                keywords = listOf("subtitle", "search", "format", "wyzie", "subhub", "title"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "Speech-to-Text",
+                summary = "Configure STT provider, real-time model, audio language, and output format",
+                keywords = listOf("speech", "stt", "transcription", "whisper", "audio", "language", "voice", "speech to text"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "Subtitle Translation",
+                summary = "Translate external subtitles using AI with auto-translate target languages",
+                keywords = listOf("translation", "translate", "subtitle", "language", "auto", "target"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "Custom AI Prompts",
+                summary = "Override default instructions for rename, translation, and formatting tasks",
+                keywords = listOf("prompt", "custom", "instructions", "override", "rename", "translate", "format"),
+                category = "AI",
+                screen = AiIntegrationScreen,
+            ))
+            add(SearchablePreference(
+                title = "Offline AI Models",
+                summary = "Download and manage local LLMs for fully offline AI features",
+                keywords = listOf("offline", "local", "model", "download", "llm", "huggingface", "gguf", "quantized"),
+                category = "AI",
+                screen = AiIntegrationScreen,
             ))
 
             // About

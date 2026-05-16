@@ -805,8 +805,8 @@ private fun VideoListContent(
                   end = 8.dp,
                   bottom = if (showFloatingBottomBar) 88.dp else 16.dp
                 ),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-              verticalArrangement = Arrangement.spacedBy(8.dp),
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
+              verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
             items(
               count = videosWithInfo.size,

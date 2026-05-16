@@ -1,6 +1,5 @@
 package app.gyrolet.mpvrx.repository.ai
 
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -13,62 +12,63 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 @Serializable
-private data class GroqModel(
+private data class OpenAiModel(
   val id: String,
-  val owned_by: String? = null,
 )
 
 @Serializable
-private data class GroqModelListResponse(
-  val data: List<GroqModel> = emptyList(),
+private data class OpenAiModelListResponse(
+  val data: List<OpenAiModel> = emptyList(),
 )
 
 @Serializable
-private data class GroqMessage(
+private data class OpenAiMessage(
   val role: String,
   val content: String,
 )
 
 @Serializable
-private data class GroqChoice(
-  val message: GroqMessage? = null,
+private data class OpenAiChoice(
+  val message: OpenAiMessage? = null,
 )
 
 @Serializable
-private data class GroqUsage(
-  @SerialName("prompt_tokens")
-  val promptTokens: Int = 0,
-  @SerialName("completion_tokens")
-  val completionTokens: Int = 0,
+private data class OpenAiUsage(
+  @SerialName("prompt_tokens") val promptTokens: Int = 0,
+  @SerialName("completion_tokens") val completionTokens: Int = 0,
 )
 
 @Serializable
-private data class GroqResponse(
-  val choices: List<GroqChoice>? = null,
-  val usage: GroqUsage? = null,
+private data class OpenAiResponse(
+  val choices: List<OpenAiChoice>? = null,
+  val usage: OpenAiUsage? = null,
 )
 
 @Serializable
-private data class GroqErrorBody(
-  val error: GroqErrorDetail? = null,
-)
+private data class OpenAiErrorBody(val error: OpenAiErrorDetail? = null)
 
 @Serializable
-private data class GroqErrorDetail(
-  val message: String? = null,
+private data class OpenAiErrorDetail(val message: String? = null)
+
+@Serializable
+private data class OpenAiChatRequest(
+  val model: String,
+  val messages: List<OpenAiMessage>,
+  val temperature: Double = 0.3,
+  @SerialName("max_tokens") val maxTokens: Int = 200,
 )
 
-class GroqClient(
+class OpenAiClient(
   private val client: OkHttpClient,
   private val json: Json,
 ) : AiClient {
   companion object {
-    private const val TAG = "GroqClient"
-    private const val BASE_URL = "https://api.groq.com/openai/v1"
+    private const val TAG = "OpenAiClient"
+    private const val BASE_URL = "https://api.openai.com/v1"
     private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
     val FREE_MODEL_PREFIXES = listOf(
-      "whisper", "distil-whisper", "llama", "gemma", "mixtral", "deepseek",
+      "gpt-4o-mini", "gpt-4o-realtime", "o1-mini", "o3-mini",
     )
   }
 
@@ -90,23 +90,17 @@ class GroqClient(
       val response = apiClient.newCall(request).execute()
       val body = response.body.string()
 
-      if (!response.isSuccessful) {
-        val errorMsg = parseError(body)
-        throw Exception("Groq API error ${response.code}: $errorMsg")
-      }
+      if (!response.isSuccessful) throw Exception("OpenAI API error ${response.code}: ${parseError(body)}")
 
-      val parsed = json.decodeFromString<GroqModelListResponse>(body)
-      parsed.data
-        .filter { !it.id.startsWith("gpt") && !it.id.startsWith("dall-e") && !it.id.startsWith("tts") && !it.id.startsWith("stt") }
-        .map {
-          val isFree = FREE_MODEL_PREFIXES.any { prefix -> it.id.startsWith(prefix, ignoreCase = true) }
-          val displayName = if (it.owned_by != null) "${it.id} (${it.owned_by})" else it.id
-          AiModelInfo(
-            id = it.id,
-            displayName = displayName,
-            isFree = isFree,
-          )
-        }
+      val parsed = json.decodeFromString<OpenAiModelListResponse>(body)
+      parsed.data.map { model ->
+        val isFree = FREE_MODEL_PREFIXES.any { model.id.startsWith(it, ignoreCase = true) }
+        AiModelInfo(
+          id = model.id,
+          displayName = model.id,
+          isFree = isFree,
+        )
+      }
     }
   }
 
@@ -119,10 +113,7 @@ class GroqClient(
         .build()
 
       val response = apiClient.newCall(request).execute()
-      if (!response.isSuccessful) {
-        val body = response.body.string()
-        throw Exception("Invalid API key: ${response.code} $body")
-      }
+      if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
       "API key verified successfully"
     }
   }
@@ -136,12 +127,12 @@ class GroqClient(
   ): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
       val requestBody = json.encodeToString(
-        GroqChatRequest.serializer(),
-        GroqChatRequest(
+        OpenAiChatRequest.serializer(),
+        OpenAiChatRequest(
           model = model,
           messages = listOf(
-            GroqMessage(role = "system", content = instruction),
-            GroqMessage(role = "user", content = userInput),
+            OpenAiMessage(role = "system", content = instruction),
+            OpenAiMessage(role = "user", content = userInput),
           ),
           temperature = options.temperature,
           maxTokens = options.maxTokens,
@@ -157,35 +148,18 @@ class GroqClient(
       val response = apiClient.newCall(request).execute()
       val body = response.body.string()
 
-      if (!response.isSuccessful) {
-        val errorMsg = parseError(body)
-        throw Exception("Groq generate error ${response.code}: $errorMsg")
-      }
+      if (!response.isSuccessful) throw Exception("OpenAI generate error ${response.code}: ${parseError(body)}")
 
-      val parsed = json.decodeFromString<GroqResponse>(body)
-      val text = parsed.choices
-        ?.firstOrNull()
-        ?.message
-        ?.content
-        ?.trim()
-
-      text ?: throw Exception("No response from Groq")
+      val parsed = json.decodeFromString<OpenAiResponse>(body)
+      parsed.choices?.firstOrNull()?.message?.content?.trim()
+        ?: throw Exception("No response from OpenAI")
     }
   }
 
   private fun parseError(body: String): String = try {
-    val error = json.decodeFromString<GroqErrorBody>(body)
+    val error = json.decodeFromString<OpenAiErrorBody>(body)
     error.error?.message ?: body
   } catch (_: Exception) {
     body.take(200)
   }
 }
-
-@Serializable
-private data class GroqChatRequest(
-  val model: String,
-  val messages: List<GroqMessage>,
-  val temperature: Double = 0.3,
-  @SerialName("max_tokens")
-  val maxTokens: Int = 200,
-)

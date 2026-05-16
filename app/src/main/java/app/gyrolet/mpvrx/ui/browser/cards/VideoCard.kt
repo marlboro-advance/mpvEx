@@ -124,6 +124,8 @@ fun VideoCard(
   val showSizeChip = overrideShowSizeChip ?: resolvedUiConfig.showSizeChip
   val showResolutionChip = overrideShowResolutionChip ?: resolvedUiConfig.showResolutionChip
 
+  val cardShape = RoundedCornerShape(16.dp)
+
   Card(
     modifier = modifier
       .then(
@@ -133,6 +135,7 @@ fun VideoCard(
         onClick = onClick,
         onLongClick = onLongClick,
       ),
+    shape = cardShape,
     colors = CardDefaults. cardColors(containerColor = Color. Transparent),
   ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -142,6 +145,7 @@ fun VideoCard(
             Modifier
               .matchParentSize()
               .padding(selectionInset)
+              .clip(cardShape)
               .background(selectionContainerColor),
         )
       }

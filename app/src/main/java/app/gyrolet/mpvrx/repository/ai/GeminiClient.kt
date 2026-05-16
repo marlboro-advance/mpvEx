@@ -47,12 +47,17 @@ private data class GeminiResponse(
 class GeminiClient(
   private val client: OkHttpClient,
   private val json: Json,
-) {
+) : AiClient {
   companion object {
     private const val TAG = "GeminiClient"
     private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
     private const val MODELS_URL = "$BASE_URL/models"
     private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+
+    val FREE_MODEL_PREFIXES = listOf(
+      "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash",
+      "gemini-1.5-pro", "learnlm", "gemma",
+    )
   }
 
   private val apiClient: OkHttpClient =
@@ -62,7 +67,7 @@ class GeminiClient(
       .writeTimeout(60, TimeUnit.SECONDS)
       .build()
 
-  suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
+  override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
     runCatching {
       val request = Request.Builder()
         .url("$MODELS_URL?key=$apiKey&pageSize=100")
@@ -79,18 +84,20 @@ class GeminiClient(
 
       val parsed = json.decodeFromString<GeminiModelListResponse>(body)
       parsed.models
-        .filter { it.name.contains("gemini") }
+        .filter { it.name.contains("gemini") || it.name.contains("gemma") || it.name.contains("learnlm") }
         .map {
           val id = it.name.removePrefix("models/")
+          val isFree = FREE_MODEL_PREFIXES.any { prefix -> id.startsWith(prefix, ignoreCase = true) }
           AiModelInfo(
             id = id,
             displayName = it.displayName ?: id,
+            isFree = isFree,
           )
         }
     }
   }
 
-  suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
+  override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
       val request = Request.Builder()
         .url("$MODELS_URL?key=$apiKey&pageSize=1")
@@ -106,11 +113,12 @@ class GeminiClient(
     }
   }
 
-  suspend fun generateContent(
+  override suspend fun generateContent(
     apiKey: String,
     model: String,
     instruction: String,
     userInput: String,
+    options: AiGenerationOptions,
   ): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
       val requestBody = json.encodeToString(
@@ -125,8 +133,8 @@ class GeminiClient(
             ),
           ),
           generationConfig = GeminiGenerationConfig(
-            temperature = 0.3,
-            maxOutputTokens = 200,
+            temperature = options.temperature,
+            maxOutputTokens = options.maxTokens,
           ),
         ),
       )

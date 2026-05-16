@@ -194,7 +194,7 @@ object PreferencesScreen : Screen {
             PreferenceCard {
               Preference(
                 title = { Text("AI Integration") },
-                summary = { Text("AI-powered rename, subtitle formatting (Gemini/Groq)", color = MaterialTheme.colorScheme.outline) },
+                summary = { Text("AI rename, subtitle translation, speech-to-text, offline models (Gemini/Groq/OpenAI)", color = MaterialTheme.colorScheme.outline) },
                 icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 onClick = { backstack.add(AiIntegrationScreen) },
               )

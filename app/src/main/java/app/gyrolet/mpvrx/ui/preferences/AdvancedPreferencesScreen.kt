@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.util.fastJoinToString
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
@@ -49,7 +50,9 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.FoldersPreferences
 import app.gyrolet.mpvrx.preferences.SettingsManager
+import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
@@ -82,6 +85,8 @@ object AdvancedPreferencesScreen : Screen {
     val backStack = LocalBackStack.current
     val preferences = koinInject<AdvancedPreferences>()
     val settingsManager = koinInject<SettingsManager>()
+    val foldersPreferences = koinInject<FoldersPreferences>()
+    val subtitlesPreferences = koinInject<SubtitlesPreferences>()
     val scope = rememberCoroutineScope()
     var showImportDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -135,6 +140,28 @@ object AdvancedPreferencesScreen : Screen {
               },
             )
           }
+        }
+      }
+
+    val baseStorageFolder by foldersPreferences.baseStorageFolder.collectAsState()
+
+    val storageRootPicker =
+      rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+      ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        context.contentResolver.takePersistableUriPermission(
+          uri,
+          Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        )
+        val uriString = uri.toString()
+        foldersPreferences.baseStorageFolder.set(uriString)
+        preferences.mpvConfStorageUri.set(uriString)
+        subtitlesPreferences.subtitleSaveFolder.set(uriString)
+        subtitlesPreferences.fontsFolder.set(uriString)
+        val root = DocumentFile.fromTreeUri(context, uri) ?: return@rememberLauncherForActivityResult
+        listOf("fonts", "Subtitles", "scripts", "script-opts", "shaders").forEach { name ->
+          if (root.findFile(name) == null) root.createDirectory(name)
         }
       }
 
@@ -261,6 +288,46 @@ object AdvancedPreferencesScreen : Screen {
                   importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
                 },
               )
+            }
+          }
+          
+          // Storage Root Section
+          item {
+            PreferenceSectionHeader(title = "Storage Root")
+          }
+          
+          item {
+            PreferenceCard {
+              Preference(
+                title = { Text("Base Storage Folder") },
+                summary = {
+                  Text(
+                    text = if (baseStorageFolder.isNotEmpty())
+                      getSimplifiedStoragePath(baseStorageFolder)
+                    else
+                      "Tap to select — creates Subtitles/, Fonts/, scripts/ subdirs",
+                    color = MaterialTheme.colorScheme.outline,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                  )
+                },
+                icon = { Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                onClick = { storageRootPicker.launch(null) },
+              )
+              
+              if (baseStorageFolder.isNotEmpty()) {
+                PreferenceDivider()
+                Preference(
+                  title = { Text("Clear Storage Root") },
+                  icon = { Icon(Icons.Default.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                  onClick = {
+                    foldersPreferences.baseStorageFolder.set("")
+                    preferences.mpvConfStorageUri.set("")
+                    subtitlesPreferences.subtitleSaveFolder.set("")
+                    subtitlesPreferences.fontsFolder.set("")
+                  },
+                )
+              }
             }
           }
           

@@ -126,10 +126,16 @@ fun PlayerSheets(
 
       val isTranslating by viewModel.isTranslatingSub.composeCollectAsState()
       val translationProgress by viewModel.translationProgress.composeCollectAsState()
+      val translationStatus by viewModel.translationStatus.composeCollectAsState()
       val translatingTrackId by viewModel.translatingTrackId.composeCollectAsState()
       val translatingTrackName by viewModel.translatingTrackName.composeCollectAsState()
+      val isGeneratingSubtitles by viewModel.isGeneratingSubtitles.composeCollectAsState()
+      val subtitleGenerationProgress by viewModel.subtitleGenerationProgress.composeCollectAsState()
+      val subtitleGenerationStatus by viewModel.subtitleGenerationStatus.composeCollectAsState()
       val aiPreferences = koinInject<app.gyrolet.mpvrx.preferences.AiPreferences>()
       val translationEnabled by aiPreferences.subtitleTranslationEnabled.collectAsState()
+      val provider by aiPreferences.provider.collectAsState()
+      val autoTranslateLanguages by aiPreferences.autoTranslateLanguages.collectAsState()
 
       SubtitlesSheet(
         tracks = subtitles.toImmutableList(),
@@ -142,11 +148,19 @@ fun PlayerSheets(
         onOpenOnlineSearch = { onShowSheet(Sheets.OnlineSubtitleSearch) },
         onDismissRequest = onDismissRequest,
         onTranslateSubtitle = { track, lang -> viewModel.translateSubtitle(track, lang) },
+        onGenerateSubtitle = { viewModel.generateSubtitles("", "") },
+        onCancelTranslation = { viewModel.cancelTranslation() },
         isTranslating = isTranslating,
         translationProgress = translationProgress,
+        translationStatus = translationStatus,
         translationEnabled = translationEnabled,
+        isGeneratingSubtitles = isGeneratingSubtitles,
+        subtitleGenerationProgress = subtitleGenerationProgress,
+        subtitleGenerationStatus = subtitleGenerationStatus,
         translatingTrackId = translatingTrackId,
         translatingTrackName = translatingTrackName,
+        provider = provider,
+        autoTranslateLanguages = autoTranslateLanguages,
       )
     }
 

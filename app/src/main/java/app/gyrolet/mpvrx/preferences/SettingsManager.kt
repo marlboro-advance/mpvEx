@@ -124,6 +124,14 @@ class SettingsManager(
   }
 
 
+  private fun sanitizeXmlValue(value: String): String {
+    return value.filter { c ->
+      c.code == 0x9 || c.code == 0xA || c.code == 0xD ||
+        (c.code in 0x20..0xD7FF) ||
+        (c.code in 0xE000..0xFFFD)
+    }
+  }
+
   private fun writePreference(
     serializer: XmlSerializer,
     key: String,
@@ -135,7 +143,7 @@ class SettingsManager(
     when (value) {
       is String -> {
         serializer.attribute(null, ATTR_TYPE, TYPE_STRING)
-        serializer.attribute(null, ATTR_VALUE, value)
+        serializer.attribute(null, ATTR_VALUE, sanitizeXmlValue(value))
       }
       is Int -> {
         serializer.attribute(null, ATTR_TYPE, TYPE_INT)
@@ -158,8 +166,8 @@ class SettingsManager(
         val stringSet = value as? Set<String>
         if (stringSet != null) {
           serializer.attribute(null, ATTR_TYPE, TYPE_STRING_SET)
-          // Encode string set by joining with separator
-          serializer.attribute(null, ATTR_VALUE, stringSet.joinToString(STRING_SET_SEPARATOR))
+          val sanitizedSet = stringSet.map { sanitizeXmlValue(it) }
+          serializer.attribute(null, ATTR_VALUE, sanitizedSet.joinToString(STRING_SET_SEPARATOR))
         }
       }
     }
@@ -174,13 +182,13 @@ class SettingsManager(
   ) {
     serializer.startTag(null, TAG_NETWORK_CONNECTION)
     serializer.attribute(null, "id", connection.id.toString())
-    serializer.attribute(null, "name", connection.name)
+    serializer.attribute(null, "name", sanitizeXmlValue(connection.name))
     serializer.attribute(null, "protocol", connection.protocol.name)
-    serializer.attribute(null, "host", connection.host)
+    serializer.attribute(null, "host", sanitizeXmlValue(connection.host))
     serializer.attribute(null, "port", connection.port.toString())
-    serializer.attribute(null, "username", connection.username)
-    serializer.attribute(null, "password", connection.password)
-    serializer.attribute(null, "path", connection.path)
+    serializer.attribute(null, "username", sanitizeXmlValue(connection.username))
+    serializer.attribute(null, "password", sanitizeXmlValue(connection.password))
+    serializer.attribute(null, "path", sanitizeXmlValue(connection.path))
     serializer.attribute(null, "isAnonymous", connection.isAnonymous.toString())
     serializer.attribute(null, "lastConnected", connection.lastConnected.toString())
     serializer.attribute(null, "autoConnect", connection.autoConnect.toString())

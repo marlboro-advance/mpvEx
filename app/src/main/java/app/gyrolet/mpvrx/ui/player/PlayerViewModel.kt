@@ -30,6 +30,7 @@ import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
+import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
@@ -134,12 +135,15 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val aiPreferences: app.gyrolet.mpvrx.preferences.AiPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
   private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
+  private val subtitleGenerationService: SubtitleGenerationService by inject()
+  private val realtimeSubtitleService: app.gyrolet.mpvrx.repository.ai.RealtimeSubtitleService by inject()
   private val wyzieRepository: WyzieSearchRepository by inject()
   private val onlineSubtitleOrchestrator: OnlineSubtitleOrchestrator by inject()
   private val introDbRepository: IntroDbRepository by inject()
@@ -174,6 +178,30 @@ class PlayerViewModel(
 
   private val _translationProgress = MutableStateFlow(0f)
   val translationProgress: StateFlow<Float> = _translationProgress.asStateFlow()
+
+  private val _translationStatus = MutableStateFlow("")
+  val translationStatus: StateFlow<String> = _translationStatus.asStateFlow()
+
+  private val _isGeneratingSubtitles = MutableStateFlow(false)
+  val isGeneratingSubtitles: StateFlow<Boolean> = _isGeneratingSubtitles.asStateFlow()
+
+  private val _subtitleGenerationProgress = MutableStateFlow(0f)
+  val subtitleGenerationProgress: StateFlow<Float> = _subtitleGenerationProgress.asStateFlow()
+
+  private val _subtitleGenerationStatus = MutableStateFlow("")
+  val subtitleGenerationStatus: StateFlow<String> = _subtitleGenerationStatus.asStateFlow()
+
+  private val _isRealtimeSubsActive = MutableStateFlow(false)
+  val isRealtimeSubsActive: StateFlow<Boolean> = _isRealtimeSubsActive.asStateFlow()
+
+  private val _realtimeSubsLanguage = MutableStateFlow("")
+  val realtimeSubsLanguage: StateFlow<String> = _realtimeSubsLanguage.asStateFlow()
+
+  private val _realtimeSubsProgress = MutableStateFlow(0f)
+  val realtimeSubsProgress: StateFlow<Float> = _realtimeSubsProgress.asStateFlow()
+
+  private var realtimeSubsJob: Job? = null
+  private var realtimeSrtFile: java.io.File? = null
 
   private var playlistMetadataJob: Job? = null
   private var controlsVisibleForPolling = false
@@ -1265,6 +1293,8 @@ class PlayerViewModel(
     }
   }
 
+  private var translationJob: Job? = null
+
   fun translateSubtitle(track: TrackNode, targetLanguage: String) {
     val externalPath = track.externalFilename ?: return
     val uriString = mpvPathToUriMap[externalPath] ?: externalPath
@@ -1276,11 +1306,13 @@ class PlayerViewModel(
       Uri.parse(uriString)
     }
 
-    viewModelScope.launch(Dispatchers.IO) {
+    translationJob?.cancel()
+    translationJob = viewModelScope.launch(Dispatchers.IO) {
       _isTranslatingSub.value = true
       _translatingTrackId.value = track.id
       _translatingTrackName.value = getFileNameFromUri(uri)?.let { it.substringBeforeLast(".") }?.lowercase() ?: "subtitle"
       _translationProgress.value = 0f
+      _translationStatus.value = "Preparing translation"
 
       try {
         val content = host.context.contentResolver.openInputStream(uri)?.use {
@@ -1291,7 +1323,11 @@ class PlayerViewModel(
         val extension = originalFileName.substringAfterLast('.', "srt")
 
         val result = aiService.translateSubtitle(content, targetLanguage, extension) { progress ->
-          _translationProgress.value = progress
+          _translationProgress.value = progress.progress
+          _translationStatus.value = buildString {
+            append(if (progress.isResuming) "Resuming" else "Translating")
+            append(" ${progress.completedChunks}/${progress.totalChunks}")
+          }
         }
 
         result.onSuccess { translatedContent ->
@@ -1319,9 +1355,152 @@ class PlayerViewModel(
         _translatingTrackId.value = null
         _translatingTrackName.value = ""
         _translationProgress.value = 0f
+        _translationStatus.value = ""
+        translationJob = null
       }
     }
   }
+
+  fun cancelTranslation() {
+    translationJob?.cancel()
+    translationJob = null
+    _isTranslatingSub.value = false
+    _translatingTrackId.value = null
+    _translatingTrackName.value = ""
+    _translationProgress.value = 0f
+    _translationStatus.value = ""
+    val cacheDir = java.io.File(host.context.filesDir, "ai_translation_cache")
+    if (cacheDir.exists()) {
+      cacheDir.listFiles()?.forEach { it.delete() }
+      cacheDir.delete()
+    }
+    showToast("Translation cancelled")
+  }
+
+  fun generateSubtitles(language: String, outputFormat: String = "srt") {
+    val videoUri = currentVideoUriForSubtitleGeneration()
+    if (videoUri == null) {
+      showToast("Could not find current video path")
+      return
+    }
+
+    val actualLanguage = if (language.isBlank()) aiPreferences.sttLanguage.get().ifBlank { "en" } else language
+    val actualFormat = if (outputFormat.isBlank()) aiPreferences.subtitleGenerationOutputFormat.get() else outputFormat
+
+    viewModelScope.launch(Dispatchers.IO) {
+      _isGeneratingSubtitles.value = true
+      _subtitleGenerationProgress.value = 0f
+      _subtitleGenerationStatus.value = "Preparing audio"
+
+      try {
+        val result = subtitleGenerationService.generateSubtitles(
+          videoUri = videoUri,
+          language = actualLanguage,
+          outputFormat = actualFormat,
+        ) { progress ->
+          _subtitleGenerationProgress.value = progress.progress
+          _subtitleGenerationStatus.value = progress.stage
+        }
+
+        result.onSuccess { generated ->
+          val baseName = currentMediaTitle.substringBeforeLast(".").ifBlank { "generated-subtitles" }
+          val newFileName = "${baseName}.${language}.AI.${generated.extension}"
+          val savedUri = saveTranslatedSubtitle(videoUri, newFileName, generated.extension, language, generated.content)
+            ?: throw Exception("Could not save generated subtitles")
+          withContext(Dispatchers.Main) {
+            addSubtitle(savedUri, select = true)
+            showToast("Generated subtitles: $newFileName")
+          }
+        }.onFailure { error ->
+          withContext(Dispatchers.Main) {
+            showToast("Subtitle generation failed: ${error.message}")
+          }
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          showToast("Subtitle generation error: ${e.message}")
+        }
+      } finally {
+        _isGeneratingSubtitles.value = false
+        _subtitleGenerationProgress.value = 0f
+        _subtitleGenerationStatus.value = ""
+      }
+    }
+  }
+
+  private fun currentVideoUriForSubtitleGeneration(): Uri? {
+    val media = host.currentMediaLookupHint()?.takeIf { it.isNotBlank() } ?: return null
+    return if (media.startsWith("/")) File(media).toUri() else Uri.parse(media)
+  }
+
+  fun startRealtimeSubtitles(language: String) {
+    val videoUri = currentVideoUriForSubtitleGeneration()
+    if (videoUri == null) {
+      showToast("Could not find current video path")
+      return
+    }
+    val videoDurationMs = (_preciseDuration.value * 1000f).toLong()
+    if (videoDurationMs <= 0) {
+      showToast("Video duration unknown")
+      return
+    }
+
+    realtimeSrtFile = java.io.File.createTempFile("realtime_subs_", ".srt", host.context.cacheDir)
+
+    _isRealtimeSubsActive.value = true
+    _realtimeSubsLanguage.value = language
+    _realtimeSubsProgress.value = 0f
+
+    realtimeSubtitleService.start(
+      videoUri = videoUri,
+      videoDurationMs = videoDurationMs,
+      language = language,
+      scope = viewModelScope,
+      onProgress = { progress ->
+        _realtimeSubsProgress.value = progress.chunkIndex.toFloat() / progress.totalChunks.coerceAtLeast(1)
+        _translationStatus.value = "Chunk ${progress.chunkIndex + 1}/${progress.totalChunks}"
+      },
+      onNewContent = { srtContent ->
+        realtimeSrtFile?.writeText(srtContent)
+        val srtPath = realtimeSrtFile?.absolutePath ?: return@start
+        if (realtimeSrtFileAdded) {
+          MPVLib.command("sub-reload", srtPath)
+        } else {
+          MPVLib.command("sub-add", srtPath, "select")
+          realtimeSrtFileAdded = true
+        }
+      },
+      onComplete = {
+        _isRealtimeSubsActive.value = false
+        _realtimeSubsLanguage.value = ""
+        _realtimeSubsProgress.value = 0f
+        _translationStatus.value = ""
+        realtimeSrtFile = null
+        showToast("Real-time subtitles complete")
+      },
+      onError = { error ->
+        _isRealtimeSubsActive.value = false
+        _realtimeSubsLanguage.value = ""
+        _realtimeSubsProgress.value = 0f
+        _translationStatus.value = ""
+        showToast("Real-time subtitles error: $error")
+      },
+    )
+  }
+
+  fun stopRealtimeSubtitles() {
+    realtimeSubtitleService.stop()
+    _isRealtimeSubsActive.value = false
+    _realtimeSubsLanguage.value = ""
+    _realtimeSubsProgress.value = 0f
+    _translationStatus.value = ""
+    realtimeSrtFile?.delete()
+    realtimeSrtFile = null
+    realtimeSrtFileAdded = false
+    showToast("Real-time subtitles stopped")
+  }
+
+  private var realtimeSrtFileAdded = false
 
   private fun saveTranslatedSubtitle(
     originalUri: Uri,
@@ -1799,6 +1978,12 @@ class PlayerViewModel(
         val end = chapters.getOrNull(index + 1)?.start?.toDouble() ?: durationSec
         val normalizedEnd = end.coerceAtMost(durationSec)
         if (normalizedEnd - start < 5.0) return@mapIndexedNotNull null
+        val durationFraction = start / durationSec
+        when (type) {
+          SkipSegmentType.INTRO -> if (durationFraction > 0.5) return@mapIndexedNotNull null
+          SkipSegmentType.OUTRO -> if (durationFraction < 0.4) return@mapIndexedNotNull null
+          else -> {}
+        }
         SkipSegment(type = type, startSeconds = start, endSeconds = normalizedEnd, source = "chapter")
       }
 
@@ -1819,7 +2004,7 @@ class PlayerViewModel(
         when {
           keyword.matches(Regex("""[a-z0-9]+""")) -> {
             normalizedLatin.contains(Regex("""(?:^|\s)${Regex.escape(keyword)}(?:\s|$)""")) ||
-              compactLatin.contains(keyword)
+              (keyword.length >= 4 && compactLatin.contains(keyword))
           }
           else -> compactRaw.contains(keyword.replace(" ", ""))
         }

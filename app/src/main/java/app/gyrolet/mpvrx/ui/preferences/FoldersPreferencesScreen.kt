@@ -158,23 +158,6 @@ object FoldersPreferencesScreen : Screen {
       ) {
         if (!selectionState.isInSelectionMode) {
 
-          // ── Storage Root ──────────────────────────────────────────────
-          PreferenceSectionHeader(title = "Storage Root")
-
-          StorageRootPickerCard(
-            currentPath = baseStorageFolder,
-            onPickClick = { storageRootPicker.launch(null) },
-            onClearClick = {
-              preferences.baseStorageFolder.set("")
-              advancedPreferences.mpvConfStorageUri.set("")
-              subtitlesPreferences.subtitleSaveFolder.set("")
-              subtitlesPreferences.fontsFolder.set("")
-            },
-          )
-
-          Spacer(modifier = Modifier.height(8.dp))
-          Spacer(modifier = Modifier.height(8.dp))
-
           // ── Media Library ─────────────────────────────────────────────
           PreferenceSectionHeader(title = "Media Library")
 
@@ -501,7 +484,7 @@ private fun AddFolderDialog(
 }
 
 @Composable
-private fun StorageRootPickerCard(
+internal fun StorageRootPickerCard(
   currentPath: String,
   onPickClick: () -> Unit,
   onClearClick: () -> Unit,
@@ -557,7 +540,7 @@ private fun StorageRootPickerCard(
   }
 }
 
-private fun getSimplifiedStoragePath(uriString: String): String = try {
+internal fun getSimplifiedStoragePath(uriString: String): String = try {
   Uri.decode(uriString).substringAfterLast(':').ifEmpty { uriString }
 } catch (_: Exception) {
   uriString

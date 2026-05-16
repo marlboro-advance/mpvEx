@@ -17,8 +17,8 @@ android {
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
-    versionCode = 135
-    versionName = "1.3.5"
+    versionCode = 136
+    versionName = "1.3.6"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -103,6 +103,7 @@ android {
     }
     jniLibs {
       useLegacyPackaging = true
+      pickFirsts += "**/libc++_shared.so"
     }
   }
 
@@ -205,6 +206,8 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
+  implementation("com.llamatik:library:1.4.0")
+  
   implementation(files("libs/mpvlib.aar"))
 
   // Network protocol libraries

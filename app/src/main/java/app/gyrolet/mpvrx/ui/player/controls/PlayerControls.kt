@@ -511,6 +511,15 @@ fun PlayerControls(
 
         val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
         val currentPlayerUpdate by viewModel.playerUpdate.collectAsState()
+        val isTranslatingSub by viewModel.isTranslatingSub.collectAsState()
+        val translationProgress by viewModel.translationProgress.collectAsState()
+        val translationStatus by viewModel.translationStatus.collectAsState()
+        val translatingTrackName by viewModel.translatingTrackName.collectAsState()
+        val isRealtimeSubsActive by viewModel.isRealtimeSubsActive.collectAsState()
+        val realtimeSubsLanguage by viewModel.realtimeSubsLanguage.collectAsState()
+        val isGeneratingSubtitles by viewModel.isGeneratingSubtitles.collectAsState()
+        val subtitleGenerationProgress by viewModel.subtitleGenerationProgress.collectAsState()
+        val subtitleGenerationStatus by viewModel.subtitleGenerationStatus.collectAsState()
 
         // Overlay visibility — Groups 2 & 5
         val showHoldSpeedOverlay by playerPreferences.showHoldSpeedOverlay.collectAsState()
@@ -700,6 +709,8 @@ fun PlayerControls(
             else -> {}
           }
         }
+
+
 
         val areButtonsVisible = controlsShown && !areControlsLocked && !areSlidersShown
         val leftCustomButtons = remember(customButtons) { customButtons.filter { it.isLeft } }
@@ -1334,6 +1345,11 @@ fun PlayerControls(
               onBackPress = onBackPress,
               onOpenSheet = onOpenSheet,
               viewModel = viewModel,
+              isTranslatingSub = isTranslatingSub,
+              isRealtimeSubsActive = isRealtimeSubsActive,
+              realtimeSubsLanguage = realtimeSubsLanguage,
+              translationStatus = translationStatus,
+              translatingTrackName = translatingTrackName,
             )
           } else {
             TopLeftPlayerControlsLandscape(
@@ -1342,6 +1358,11 @@ fun PlayerControls(
               onBackPress = onBackPress,
               onOpenSheet = onOpenSheet,
               viewModel = viewModel,
+              isTranslatingSub = isTranslatingSub,
+              isRealtimeSubsActive = isRealtimeSubsActive,
+              realtimeSubsLanguage = realtimeSubsLanguage,
+              translationStatus = translationStatus,
+              translatingTrackName = translatingTrackName,
             )
           }
         }

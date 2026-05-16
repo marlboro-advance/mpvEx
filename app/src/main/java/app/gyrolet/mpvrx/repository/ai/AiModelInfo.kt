@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class AiModelInfo(
   val id: String,
   val displayName: String,
+  val isFree: Boolean = false,
 )
