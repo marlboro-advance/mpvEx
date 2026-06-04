@@ -251,7 +251,7 @@
   <string name="anime4k_quality_fast">Быстрый</string>
   <string name="anime4k_quality_balanced">Сбалансированный</string>
   <string name="anime4k_quality_high">Высокий</string>
-  <string name="pref_about_title">О проигрывателе</string>
+  <string name="pref_about_title">О медиаплеере</string>
   <string name="pref_about_summary">Благодарности, лицензии</string>
   <string name="pref_about_oss_libraries">Библиотеки</string>
   <string name="pref_about_donate_title">Пожертвовать</string>
