@@ -68,6 +68,10 @@ class FileSystemBrowserViewModel(
   private val _videoFilesWithPlayback = MutableStateFlow<Map<Long, Float>>(emptyMap())
   val videoFilesWithPlayback: StateFlow<Map<Long, Float>> = _videoFilesWithPlayback.asStateFlow()
 
+  // Set of completely watched videos.
+  private val _watchedVideoIds = MutableStateFlow<Set<Long>>(emptySet())
+  val watchedVideoIds: StateFlow<Set<Long>> = _watchedVideoIds.asStateFlow()
+
   // Loading state - similar to Fossify's showProgressBar/hideProgressBar
   private val _isLoading = MutableStateFlow(false)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -429,6 +433,7 @@ class FileSystemBrowserViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
       val playbackMap = mutableMapOf<Long, Float>()
+      val watchedIds = mutableSetOf<Long>()
 
       Log.d(TAG, "Loading playback info for ${videoFiles.size} videos")
 
@@ -447,10 +452,14 @@ class FileSystemBrowserViewModel(
           if (progressValue in 0.01f..0.99f) {
             playbackMap[video.id] = progressValue
           }
+
+          val isWatched = playbackState != null
+          if (isWatched) watchedIds.add(video.id)
         }
       }
 
       _videoFilesWithPlayback.value = playbackMap
+      _watchedVideoIds.value = watchedIds
       Log.d(TAG, "Loaded playback info for ${playbackMap.size} videos with progress")
     }
   }

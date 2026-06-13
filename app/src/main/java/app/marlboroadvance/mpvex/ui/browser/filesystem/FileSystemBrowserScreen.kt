@@ -180,6 +180,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val playlistMode by playerPreferences.playlistMode.collectAsState()
   val itemsWereDeletedOrMoved by viewModel.itemsWereDeletedOrMoved.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
+  val recentlyPlayedFilePath by viewModel.recentlyPlayedFilePath.collectAsState()
+  val watchedVideoIds by viewModel.watchedVideoIds.collectAsState()
 
   // Use standalone local states instead of CompositionLocal to avoid scroll issues with predictive back gesture
   val listState = remember { LazyListState() }
@@ -809,6 +811,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 itemsWereDeletedOrMoved = itemsWereDeletedOrMoved,
                 showSubtitleIndicator = showSubtitleIndicator,
                 navigationBarHeight = navigationBarHeight,
+                recentlyPlayedFilePath = recentlyPlayedFilePath,
+                watchedVideoIds = watchedVideoIds,
                 onRefresh = { viewModel.refresh() },
                 onFolderClick = { folder ->
                   if (isInSelectionMode) {
@@ -1152,6 +1156,8 @@ private fun FileSystemBrowserContent(
   playlistMode: Boolean,
   itemsWereDeletedOrMoved: Boolean,
   showSubtitleIndicator: Boolean,
+  recentlyPlayedFilePath: String?,
+  watchedVideoIds: Set<Long>,
   navigationBarHeight: Dp,
   onRefresh: suspend () -> Unit,
   onFolderClick: (FileSystemItem.Folder) -> Unit,
@@ -1306,7 +1312,11 @@ private fun FileSystemBrowserContent(
               FolderCard(
                 folder = folderModel,
                 isSelected = folderSelectionManager.isSelected(folder),
-                isRecentlyPlayed = false,
+                isRecentlyPlayed = recentlyPlayedFilePath?.let {
+                    java.io.File(it).canonicalPath.startsWith(
+                        java.io.File(folder.path).canonicalPath
+                    )
+                } ?: false,
                 onClick = { onFolderClick(folder) },
                 onLongClick = { onFolderLongClick(folder) },
                 onThumbClick = if (tapThumbnailToSelect) {
@@ -1326,7 +1336,10 @@ private fun FileSystemBrowserContent(
               VideoCard(
                 video = videoFile.video,
                 progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-                isRecentlyPlayed = false,
+                isRecentlyPlayed = recentlyPlayedFilePath?.let {
+                    java.io.File(it).canonicalPath == java.io.File(videoFile.video.path).canonicalPath
+                } ?: false,
+                isWatched = watchedVideoIds.contains(videoFile.video.id),
                 isSelected = videoSelectionManager.isSelected(videoFile.video),
                 onClick = { onVideoClick(videoFile.video) },
                 onLongClick = { onVideoLongClick(videoFile.video) },
