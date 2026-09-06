@@ -3204,7 +3204,9 @@ class PlayerActivity :
   /**
    * Generate a unique identifier for this media for playback state/history.
    *
-   * For local/offline files, uses fileName (display name or path).
+   * For local/offline files, uses fileName plus a hash of the file's stable full
+   * path so that two files with the same name in different directories get
+   * distinct playback histories.
    * For network streams via proxy (SMB/WebDAV/FTP), uses the stable network file path from intent extras.
    * For other network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
@@ -3228,8 +3230,11 @@ class PlayerActivity :
     return if (uri != null && (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms")) {
       // For remote protocols: hash the URI so position is per-episode or per-stream.
       "${fileName}_${uri.toString().hashCode()}"
+    } else if (uri != null) {
+      // For local/file/content uris: include the full path so same-named files
+      // in different directories don't collide.
+      localMediaIdentifier(uri, fileName)
     } else {
-      // For local/file uris and unknown: just use fileName.
       fileName
     }
   }
@@ -3237,16 +3242,97 @@ class PlayerActivity :
   /**
    * Generate a unique identifier for this media from a URI and name.
    *
-   * For local/offline files, uses fileName (display name or path).
+   * For local/offline files, uses fileName plus a hash of the file's stable full
+   * path so that same-named files in different directories are distinct.
    * For network URIs (http/https/rtmp/etc.), uses a hash of the URI string to distinguish different streams.
    */
   private fun getMediaIdentifierFromUri(uri: Uri, fileName: String): String {
     return if (uri.scheme?.startsWith("http") == true || uri.scheme == "rtmp" || uri.scheme == "ftp" || uri.scheme == "rtsp" || uri.scheme == "mms") {
       "${fileName}_${uri.toString().hashCode()}"
     } else {
-      fileName
+      localMediaIdentifier(uri, fileName)
     }
   }
+
+  /**
+   * Builds a stable, directory-aware identifier for a local file URI.
+   *
+   * The identifier combines the display name with a hash of the file's full path
+   * so that two files with the same name in different folders resolve to
+   * different playback-history keys. The path is resolved to a value that stays
+   * stable across app launches (unlike a temporary file descriptor).
+   */
+  private fun localMediaIdentifier(uri: Uri, fileName: String): String {
+    val stablePath = resolveStableLocalPath(uri)
+    return if (stablePath.isNullOrBlank()) {
+      // Fallback: keep the previous filename-only behavior if we can't resolve a path.
+      fileName
+    } else {
+      "${fileName}_${stablePath.hashCode()}"
+    }
+  }
+
+  /**
+   * Resolves a stable, persistent path string for a local file URI, including its
+   * directory. Returns null if no stable path can be determined.
+   *
+   * - file:// -> the URI path (already the full filesystem path)
+   * - content:// -> the real filesystem path via MediaStore DATA, falling back to
+   *   RELATIVE_PATH + DISPLAY_NAME, then the URI string itself.
+   *
+   * Note: [Uri.resolveUri] is intentionally NOT used here because it returns a
+   * temporary /proc/self/fd file descriptor for content URIs, which changes every
+   * session and would not be a stable key.
+   */
+  private fun resolveStableLocalPath(uri: Uri): String? = runCatching {
+    when (uri.scheme) {
+      "file" -> uri.path
+      "content" -> {
+        contentResolver.query(
+          uri,
+          arrayOf(MediaStore.MediaColumns.DATA),
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          if (cursor.moveToFirst()) {
+            val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+            if (columnIndex != -1) cursor.getString(columnIndex) else null
+          } else {
+            null
+          }
+        }?.takeIf { it.isNotBlank() } ?: resolveRelativeContentPath(uri) ?: uri.toString()
+      }
+
+      else -> uri.toString()
+    }
+  }.onFailure { e ->
+    Log.e(TAG, "Error resolving stable local path for $uri", e)
+  }.getOrNull()
+
+  /**
+   * Fallback for content URIs where MediaStore DATA is unavailable (e.g. on newer
+   * Android versions): builds a stable path from RELATIVE_PATH + DISPLAY_NAME.
+   */
+  private fun resolveRelativeContentPath(uri: Uri): String? = runCatching {
+    contentResolver.query(
+      uri,
+      arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.DISPLAY_NAME),
+      null,
+      null,
+      null,
+    )?.use { cursor ->
+      if (cursor.moveToFirst()) {
+        val relIdx = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+        val nameIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+        val relative = if (relIdx != -1) cursor.getString(relIdx) else null
+        val name = if (nameIdx != -1) cursor.getString(nameIdx) else null
+        if (!relative.isNullOrBlank() && !name.isNullOrBlank()) "$relative$name" else null
+      } else {
+        null
+      }
+    }
+  }.getOrNull()
 
   private fun generatePlaylistFromFolder(currentPath: String) {
     lifecycleScope.launch(Dispatchers.IO) {
