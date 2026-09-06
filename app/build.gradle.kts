@@ -33,6 +33,7 @@ android {
   productFlavors {
     create("standard") {
       dimension = "distribution"
+      isDefault = true
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
     }
