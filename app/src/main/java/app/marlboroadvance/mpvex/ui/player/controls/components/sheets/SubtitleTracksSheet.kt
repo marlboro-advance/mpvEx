@@ -32,7 +32,6 @@ fun SubtitlesSheet(
   onOpenSubtitleSettings: () -> Unit,
   onOpenSubtitleDelay: () -> Unit,
   onRemoveSubtitle: (Int) -> Unit,
-  onOpenOnlineSearch: () -> Unit,
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier
 ) {
@@ -63,9 +62,6 @@ fun SubtitlesSheet(
         stringResource(R.string.player_sheets_add_ext_sub),
         onAddSubtitle,
         actions = {
-          IconButton(onClick = onOpenOnlineSearch) {
-            Icon(Icons.Default.Search, null)
-          }
           IconButton(onClick = onOpenSubtitleSettings) {
             Icon(Icons.Default.Palette, null)
           }
