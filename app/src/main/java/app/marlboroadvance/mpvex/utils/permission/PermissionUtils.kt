@@ -27,6 +27,7 @@ import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.PlaybackStateOps
+import app.marlboroadvance.mpvex.utils.media.VideoDeletionReconciler
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.PermissionStatus
@@ -235,7 +236,7 @@ object PermissionUtils {
     ): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
         if (!BuildConfig.SCOPED_STORAGE_ONLY || hasManageStoragePermission()) {
-          deleteVideosDirectly(videos)
+          deleteVideosDirectly(context, videos)
         } else {
           deleteVideosScoped(context, videos)
         }
@@ -244,18 +245,16 @@ object PermissionUtils {
     /**
      * Delete videos using direct file operations (requires MANAGE_EXTERNAL_STORAGE on Android 11+)
      */
-    private suspend fun deleteVideosDirectly(videos: List<Video>): Pair<Int, Int> =
+    private suspend fun deleteVideosDirectly(context: Context, videos: List<Video>): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
-        var deleted = 0
         var failed = 0
+        val deletedVideos = mutableListOf<Video>()
 
         for (video in videos) {
           try {
             val file = File(video.path)
             if (file.exists() && file.delete()) {
-              deleted++
-              RecentlyPlayedOps.onVideoDeleted(video.path)
-              PlaybackStateOps.onVideoDeleted(video.path)
+              deletedVideos += video
               Log.d(TAG, "✓ Deleted: ${video.displayName}")
             } else {
               failed++
@@ -267,13 +266,39 @@ object PermissionUtils {
           }
         }
 
-        // Notify that media library has changed
-        if (deleted > 0) {
-          MediaLibraryEvents.notifyChanged()
-        }
+        finalizeDeletion(context, deletedVideos)
 
-        Pair(deleted, failed)
+        Pair(deletedVideos.size, failed)
       }
+
+    /**
+     * Shared post-delete step: reconciles all app data (history, playback state,
+     * metadata cache, playlist items, thumbnails), tells MediaStore the files are
+     * gone to close the stale-listing window, and broadcasts the library change.
+     */
+    private suspend fun finalizeDeletion(context: Context, deletedVideos: List<Video>) {
+      if (deletedVideos.isEmpty()) return
+
+      // Clean up all references to the deleted files.
+      runCatching { VideoDeletionReconciler.onVideosDeleted(deletedVideos) }
+        .onFailure { Log.w(TAG, "Post-delete reconciliation failed", it) }
+
+      // Ask MediaStore to re-index the deleted paths so they don't linger in
+      // scan results until Android notices on its own.
+      val paths = deletedVideos.mapNotNull { it.path.takeIf { p -> p.isNotBlank() } }
+      if (paths.isNotEmpty()) {
+        runCatching {
+          android.media.MediaScannerConnection.scanFile(
+            context,
+            paths.toTypedArray(),
+            null,
+            null,
+          )
+        }.onFailure { Log.w(TAG, "Media scan after delete failed: ${it.message}") }
+      }
+
+      MediaLibraryEvents.notifyChanged()
+    }
 
     /**
      * Delete videos via scoped storage (Play Store flavor / no MANAGE_EXTERNAL_STORAGE)
@@ -283,8 +308,8 @@ object PermissionUtils {
       videos: List<Video>,
     ): Pair<Int, Int> =
       withContext(Dispatchers.IO) {
-        var deleted = 0
         var failed = 0
+        val deletedVideos = mutableListOf<Video>()
 
         val contentVideos = videos.filter { it.uri.scheme == "content" }
         val fileVideos = videos.filter { it.uri.scheme != "content" }
@@ -293,9 +318,7 @@ object PermissionUtils {
           val granted = requestDeleteAccess(context, contentVideos.map { it.uri })
           if (granted) {
             contentVideos.forEach { video ->
-              deleted++
-              RecentlyPlayedOps.onVideoDeleted(video.path)
-              PlaybackStateOps.onVideoDeleted(video.path)
+              deletedVideos += video
               Log.d(TAG, "✓ Deleted (scoped request): ${video.displayName}")
             }
           } else {
@@ -307,9 +330,7 @@ object PermissionUtils {
             try {
               val rows = context.contentResolver.delete(video.uri, null, null)
               if (rows > 0) {
-                deleted++
-                RecentlyPlayedOps.onVideoDeleted(video.path)
-                PlaybackStateOps.onVideoDeleted(video.path)
+                deletedVideos += video
                 Log.d(TAG, "✓ Deleted (scoped): ${video.displayName}")
               } else {
                 failed++
@@ -326,9 +347,7 @@ object PermissionUtils {
           try {
             val file = File(video.path)
             if (!file.exists() || file.delete()) {
-              deleted++
-              RecentlyPlayedOps.onVideoDeleted(video.path)
-              PlaybackStateOps.onVideoDeleted(video.path)
+              deletedVideos += video
               Log.d(TAG, "✓ Deleted (file fallback): ${video.displayName}")
             } else {
               failed++
@@ -340,11 +359,9 @@ object PermissionUtils {
           }
         }
 
-        if (deleted > 0) {
-          MediaLibraryEvents.notifyChanged()
-        }
+        finalizeDeletion(context, deletedVideos)
 
-        Pair(deleted, failed)
+        Pair(deletedVideos.size, failed)
       }
 
     /**

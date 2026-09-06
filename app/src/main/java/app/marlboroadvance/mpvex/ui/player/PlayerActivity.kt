@@ -401,6 +401,15 @@ class PlayerActivity :
     // Set HTTP headers (including referer) BEFORE playing the file
     setHttpHeadersFromExtras(intent.extras)
 
+    // Guard against opening a local file that was deleted (e.g. externally)
+    // before it was launched. Avoids a blank/stuck player with no feedback.
+    val initialUri = extractUriFromIntent(intent)
+    if (initialUri != null && isLocalFileMissing(initialUri)) {
+      viewModel.showToast(getString(app.marlboroadvance.mpvex.R.string.toast_file_no_longer_exists))
+      finishAndRemoveTask()
+      return
+    }
+
     getPlayableUri(intent)?.let(player::playFile)
 
     // Only set orientation immediately if NOT in Video mode
@@ -2990,6 +2999,22 @@ class PlayerActivity :
     }
 
     val uri = playlist[index]
+
+    // Skip playlist items whose local file was deleted (e.g. externally) so we
+    // don't get stuck on a missing file. Advance to the next playable item,
+    // or finish if there's nothing left.
+    if (isLocalFileMissing(uri)) {
+      Log.w(TAG, "Skipping missing playlist item at index $index: $uri")
+      viewModel.showToast(getString(app.marlboroadvance.mpvex.R.string.toast_file_no_longer_exists))
+      val nextIndex = index + 1
+      if (nextIndex < playlist.size) {
+        loadPlaylistItemInternal(nextIndex)
+      } else if (playerPreferences.closeAfterReachingEndOfVideo.get()) {
+        finishAndRemoveTask()
+      }
+      return
+    }
+
     val playableUri = uri.openContentFd(this) ?: uri.toString()
 
     // Update playlist index
@@ -3268,7 +3293,8 @@ class PlayerActivity :
       // Fallback: keep the previous filename-only behavior if we can't resolve a path.
       fileName
     } else {
-      "${fileName}_${stablePath.hashCode()}"
+      // Delegate to the shared helper so deletion/rename cleanup keys match exactly.
+      app.marlboroadvance.mpvex.utils.media.MediaIdentifier.forLocalPath(stablePath)
     }
   }
 
@@ -3333,6 +3359,30 @@ class PlayerActivity :
       }
     }
   }.getOrNull()
+
+  /**
+   * Returns true only when the given URI points at a LOCAL file that no longer
+   * exists on disk. Network streams, content URIs we can't resolve to a path,
+   * and existing files all return false (we don't want false positives that
+   * would block legitimate playback).
+   */
+  private fun isLocalFileMissing(uri: Uri): Boolean {
+    // Never treat network streams as "missing".
+    if (uri.scheme?.startsWith("http") == true ||
+      uri.scheme == "rtmp" || uri.scheme == "rtsp" ||
+      uri.scheme == "mms" || uri.scheme == "ftp" || uri.scheme == "ftps"
+    ) {
+      return false
+    }
+
+    val path = when (uri.scheme) {
+      "file" -> uri.path
+      "content" -> resolveStableLocalPath(uri)?.takeIf { it.startsWith("/") }
+      else -> uri.path?.takeIf { it.startsWith("/") }
+    } ?: return false
+
+    return runCatching { !File(path).exists() }.getOrDefault(false)
+  }
 
   private fun generatePlaylistFromFolder(currentPath: String) {
     lifecycleScope.launch(Dispatchers.IO) {

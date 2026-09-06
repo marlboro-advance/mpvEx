@@ -344,6 +344,7 @@
   <string name="timer_title">Sleep timer</string>
   <string name="timer_remaining">%s remaining</string>
   <string name="toast_sleep_timer_ended">Sleep timer ended</string>
+  <string name="toast_file_no_longer_exists">File no longer exists</string>
   <string name="volume_slider_absolute_value" translatable="false">%d</string>
   <string name="github_repo_url" translatable="false">https://github.com/marlboro-advance/mpvex</string>
   <string name="swap_the_volume_and_brightness_slider">Swap volume and brightness slider</string>

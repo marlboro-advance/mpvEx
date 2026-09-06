@@ -269,7 +269,10 @@ object FolderListScreen : Screen {
     DisposableEffect(lifecycleOwner) {
       val observer = LifecycleEventObserver { _, event ->
         if (event == Lifecycle.Event.ON_RESUME) {
-          viewModel.recalculateNewVideoCounts()
+          // Full refresh (like the video/filesystem screens) so folders that were
+          // emptied or deleted externally reconcile with the filesystem, not just
+          // recalculating new-video counts on stale data.
+          viewModel.refresh()
         }
       }
       lifecycleOwner.lifecycle.addObserver(observer)

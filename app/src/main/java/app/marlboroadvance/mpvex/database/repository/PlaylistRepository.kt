@@ -105,6 +105,30 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     }
   }
 
+  /**
+   * Removes any playlist items (across all playlists) that reference the given
+   * file path. Called when a video is deleted so playlists don't keep dangling
+   * entries. Returns the number of removed items.
+   */
+  suspend fun removeItemsByFilePath(filePath: String): Int {
+    if (filePath.isBlank()) return 0
+    return playlistDao.deleteItemsByFilePath(filePath)
+  }
+
+  /**
+   * Removes any playlist items (across all playlists) referencing any of the
+   * given file paths. Returns the number of removed items.
+   */
+  suspend fun removeItemsByFilePaths(filePaths: List<String>): Int {
+    if (filePaths.isEmpty()) return 0
+    var removed = 0
+    // Chunk to stay under SQLite's variable limit (999).
+    filePaths.chunked(900).forEach { chunk ->
+      removed += playlistDao.deleteItemsByFilePaths(chunk)
+    }
+    return removed
+  }
+
   fun observePlaylistItems(playlistId: Int): Flow<List<PlaylistItemEntity>> =
     playlistDao.observePlaylistItems(playlistId)
 

@@ -72,6 +72,21 @@ interface PlaylistDao {
   @Query("DELETE FROM PlaylistItemEntity WHERE playlistId = :playlistId")
   suspend fun deleteAllItemsFromPlaylist(playlistId: Int)
 
+  /**
+   * Removes every playlist item (across all playlists) that points at the given
+   * file path. Used to clean up dangling entries when a video file is deleted.
+   * Returns the number of rows removed.
+   */
+  @Query("DELETE FROM PlaylistItemEntity WHERE filePath = :filePath")
+  suspend fun deleteItemsByFilePath(filePath: String): Int
+
+  /**
+   * Removes every playlist item (across all playlists) whose file path is in the
+   * given list. Returns the number of rows removed.
+   */
+  @Query("DELETE FROM PlaylistItemEntity WHERE filePath IN (:filePaths)")
+  suspend fun deleteItemsByFilePaths(filePaths: List<String>): Int
+
   @Query("UPDATE PlaylistItemEntity SET position = :newPosition WHERE id = :itemId")
   suspend fun updateItemPosition(itemId: Int, newPosition: Int)
 
