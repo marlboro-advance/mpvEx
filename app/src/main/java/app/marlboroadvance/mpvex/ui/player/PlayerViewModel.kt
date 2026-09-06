@@ -561,46 +561,19 @@ class PlayerViewModel(
       // Find the subtitle track info before removing
       val tracks = subtitleTracks.value
       val trackToRemove = tracks.firstOrNull { it.id == id }
-      
-      // If it's external, physically delete the file if we can find its URI
+
+      // Removing an external subtitle only detaches it from the player and stops
+      // tracking it. It must NOT delete the underlying file from disk: external
+      // subtitles are user-provided (e.g. downloaded with another app), so
+      // deleting them would cause unexpected data loss.
       if (trackToRemove?.external == true && trackToRemove.externalFilename != null) {
         val mpvPath = trackToRemove.externalFilename
         val originalUriString = mpvPathToUriMap[mpvPath] ?: mpvPath
-        val uri = Uri.parse(originalUriString)
-        
-        val deleted = deleteSubtitleFile(uri)
-        
-        if (deleted) {
-          _externalSubtitles.remove(originalUriString)
-          mpvPathToUriMap.remove(mpvPath)
-          withContext(Dispatchers.Main) {
-            showToast("Subtitle deleted")
-          }
-        }
+        _externalSubtitles.remove(originalUriString)
+        mpvPathToUriMap.remove(mpvPath)
       }
-      
-        MPVLib.command("sub-remove", id.toString())
-    }
-  }
 
-  // --- Local Subtitle File Management ---
-
-  /**
-   * Physically deletes a local (external) subtitle file when the user removes an
-   * external subtitle track. Handles both content:// (SAF) and file:// URIs.
-   */
-  private suspend fun deleteSubtitleFile(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-    try {
-      val file = if (uri.scheme == "content") {
-        DocumentFile.fromSingleUri(host.context, uri)
-      } else {
-        DocumentFile.fromFile(File(uri.path ?: uri.toString()))
-      }
-      if (file == null || !file.exists()) return@withContext false
-      file.delete()
-    } catch (e: Exception) {
-      android.util.Log.e("PlayerViewModel", "Delete subtitle file failed", e)
-      false
+      MPVLib.command("sub-remove", id.toString())
     }
   }
 
