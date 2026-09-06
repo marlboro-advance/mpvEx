@@ -31,7 +31,10 @@ fun ChaptersSheet(
 ) {
   val listState = rememberLazyListState()
 
-  LaunchedEffect(currentChapter, chapters) {
+  // Scroll to the current chapter only once, when the sheet is first shown, so it
+  // starts in view. Re-running on every currentChapter change would yank the list
+  // (e.g. jumping back to the top) when the user taps a chapter and it seeks.
+  LaunchedEffect(Unit) {
     val index = chapters.indexOf(currentChapter)
     if (index >= 0) {
       listState.scrollToItem(index)
