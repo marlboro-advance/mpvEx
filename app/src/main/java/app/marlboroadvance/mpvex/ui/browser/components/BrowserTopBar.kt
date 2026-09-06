@@ -288,7 +288,7 @@ private fun NormalTopBar(
         }
       }
     },
-    modifier = modifier,
+    modifier = modifier.clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)),
   )
 }
 
@@ -509,6 +509,6 @@ private fun SelectionTopBar(
         }
       }
     },
-    modifier = modifier.clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
+    modifier = modifier.clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)),
   )
 }
