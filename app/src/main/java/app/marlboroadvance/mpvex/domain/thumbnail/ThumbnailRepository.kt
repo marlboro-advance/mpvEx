@@ -188,33 +188,6 @@ class ThumbnailRepository(
     }
   }
 
-  /**
-   * Removes cached thumbnails (memory + disk) for a single video.
-   *
-   * Call this when a video is deleted so its cached thumbnail doesn't linger on
-   * disk. Because thumbnail keys are derived from the video's file metadata
-   * (size/dateModified/duration for local files, path for network), this needs
-   * the [Video] object; a bare path is not enough to reconstruct the key.
-   */
-  fun removeFromCache(video: Video) {
-    // Remove the disk file for this video's disk key.
-    runCatching {
-      val diskFile = File(diskDir, keyToFileName(diskKey(video)))
-      if (diskFile.exists()) diskFile.delete()
-    }
-
-    // Remove any in-memory cache entries whose key belongs to this video.
-    val baseKey = videoBaseKey(video)
-    synchronized(memoryCache) {
-      memoryCache.snapshot().keys
-        .filter { it.startsWith(baseKey) }
-        .forEach { memoryCache.remove(it) }
-    }
-
-    // Drop any per-video tracking so a re-added file starts fresh.
-    useMediaStoreForVideo.remove(baseKey)
-  }
-
   fun startFolderThumbnailGeneration(
     folderId: String,
     videos: List<Video>,

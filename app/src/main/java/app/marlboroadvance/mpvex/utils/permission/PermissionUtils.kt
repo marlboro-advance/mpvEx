@@ -273,7 +273,7 @@ object PermissionUtils {
 
     /**
      * Shared post-delete step: reconciles all app data (history, playback state,
-     * metadata cache, playlist items, thumbnails), tells MediaStore the files are
+     * metadata cache, playlist items), tells MediaStore the files are
      * gone to close the stale-listing window, and broadcasts the library change.
      */
     private suspend fun finalizeDeletion(context: Context, deletedVideos: List<Video>) {

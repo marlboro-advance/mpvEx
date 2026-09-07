@@ -4,7 +4,6 @@ import android.util.Log
 import app.marlboroadvance.mpvex.database.repository.PlaylistRepository
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.domain.media.model.Video
-import app.marlboroadvance.mpvex.domain.thumbnail.ThumbnailRepository
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,43 +18,29 @@ import org.koin.java.KoinJavaComponent.inject
  * - Playback/resume state ([PlaybackStateOps])
  * - Cached extracted metadata ([VideoMetadataCacheRepository])
  * - Playlist items referencing the file ([PlaylistRepository])
- * - Cached thumbnails ([ThumbnailRepository]) when a [Video] is available
  *
- * Used by the in-app delete pipeline (which has full [Video] objects) and by the
- * external-delete reconciliation sweep (which only has paths).
+ * Used by the in-app delete pipeline and by the external-delete reconciliation sweep.
  */
 object VideoDeletionReconciler {
   private const val TAG = "VideoDeletionReconciler"
 
   private val playlistRepository: PlaylistRepository by inject(PlaylistRepository::class.java)
   private val metadataCache: VideoMetadataCacheRepository by inject(VideoMetadataCacheRepository::class.java)
-  private val thumbnailRepository: ThumbnailRepository by inject(ThumbnailRepository::class.java)
 
   /**
-   * Reconciles all app data after a set of videos was deleted. Prefer this
-   * overload for in-app deletion since the [Video] objects allow thumbnail
-   * cache cleanup too.
+   * Reconciles all app data after a set of videos was deleted.
    */
   suspend fun onVideosDeleted(videos: List<Video>) {
     if (videos.isEmpty()) return
     withContext(Dispatchers.IO) {
       val paths = videos.map { it.path }.filter { it.isNotBlank() }
-
       cleanupByPaths(paths)
-
-      // Thumbnails require the Video object (keys derive from file metadata).
-      videos.forEach { video ->
-        runCatching { thumbnailRepository.removeFromCache(video) }
-          .onFailure { Log.w(TAG, "Thumbnail cleanup failed for ${video.path}", it) }
-      }
     }
   }
 
   /**
    * Reconciles all app data for deleted files identified only by path (e.g. an
-   * external delete detected during a sweep). Thumbnail cache is not touched
-   * here because the thumbnail key cannot be reconstructed from a path alone;
-   * those linger harmlessly and are cleared by [ThumbnailRepository.clearThumbnailCache].
+   * external delete detected during a sweep).
    */
   suspend fun onVideoPathsDeleted(paths: List<String>) {
     val nonBlank = paths.filter { it.isNotBlank() }
