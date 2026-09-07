@@ -279,6 +279,20 @@ object FolderListScreen : Screen {
       onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // When the user navigates back from VideoListScreen (or any child screen),
+    // the backstack shrinks and this screen reappears. The Activity lifecycle
+    // does NOT fire ON_RESUME in this case (all screens are in the same Activity),
+    // so we watch backstack.size directly and recalculate new-video counts
+    // immediately so folder badges reflect videos played during the last session.
+    val backstackSize = backstack.size
+    LaunchedEffect(backstackSize) {
+      // Only recalculate when we're at the top (FolderListScreen is visible),
+      // i.e., when the count drops back to 1 (just MainScreen + FolderList).
+      // Using > 0 guard to avoid running on initial composition before any
+      // child screens have been pushed.
+      viewModel.recalculateNewVideoCounts()
+    }
+
     // Optimized back handler for immediate response
     val shouldHandleBack = selectionManager.isInSelectionMode || isSearching || isFabExpanded.value
     androidx.activity.compose.BackHandler(enabled = shouldHandleBack) {

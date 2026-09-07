@@ -12,6 +12,7 @@ import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
+import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
@@ -232,7 +233,7 @@ class FolderListViewModel(
 
               // Check if video has been played
               // A video is considered "played" if it has any playback state
-              val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+              val playbackState = playbackStateRepository.getVideoDataByTitle(MediaIdentifier.forLocalPath(video.path))
               val isUnplayed = playbackState == null
 
               isRecent && isUnplayed

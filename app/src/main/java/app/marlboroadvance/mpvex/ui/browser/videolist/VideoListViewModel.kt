@@ -10,6 +10,7 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
+import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
@@ -201,7 +202,7 @@ class VideoListViewModel(
   private suspend fun loadPlaybackInfo(videos: List<Video>) {
     val videosWithInfo =
       videos.map { video ->
-        val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+        val playbackState = playbackStateRepository.getVideoDataByTitle(MediaIdentifier.forLocalPath(video.path))
         val watchedThreshold = browserPreferences.watchedThreshold.get()
 
         // Calculate watch progress (0.0 to 1.0)
@@ -218,10 +219,19 @@ class VideoListViewModel(
           null
         }
 
-        // Check if video is old and unplayed
-        // Video is old if it's been more than threshold days since it was added/modified
-        // Video is unplayed if there's no playback state record
-        val isOldAndUnplayed = playbackState == null
+        // Check if video is "new" (recently added) and unplayed.
+        // A video qualifies if:
+        //   1. It has no playback state (never been played), AND
+        //   2. It was added/modified within the configured threshold days.
+        val isUnplayed = playbackState == null
+        val isOldAndUnplayed = if (isUnplayed) {
+          val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
+          val thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L
+          val videoAge = System.currentTimeMillis() - (video.dateModified * 1000L)
+          videoAge <= thresholdMillis
+        } else {
+          false
+        }
 
         val isWatched = if (playbackState != null && video.duration > 0) {
            val durationSeconds = video.duration / 1000

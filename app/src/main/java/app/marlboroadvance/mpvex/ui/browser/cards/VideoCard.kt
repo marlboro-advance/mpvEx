@@ -84,7 +84,6 @@ fun VideoCard(
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
-  val unplayedOldVideoDays by appearancePreferences.unplayedOldVideoDays.collectAsState()
   val maxLines = if (unlimitedNameLines) Int.MAX_VALUE else 2
   
   // Use override parameters if provided, otherwise use preferences
@@ -193,32 +192,26 @@ fun VideoCard(
             )
           }
 
-          // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
-          // Like MX Player: show NEW for videos added within threshold days that haven't been played
+          // Show "NEW" label for recently added unplayed videos if enabled (top-left corner).
+          // The age + unplayed check is already resolved by the ViewModel (isOldAndUnplayed),
+          // so we only need to check the preference toggle here.
           if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
-            // Check if video is recently modified (within threshold days)
-            val currentTime = System.currentTimeMillis()
-            val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
-            val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
-
-            if (videoAge <= thresholdMillis) {
-              Box(
-                modifier =
-                  Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFD32F2F)) // Warning red color
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-              ) {
-                Text(
-                  text = stringResource(R.string.video_label_new),
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                  ),
-                  color = Color.White,
-                )
-              }
+            Box(
+              modifier =
+                Modifier
+                  .align(Alignment.TopStart)
+                  .padding(6.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .background(Color(0xFFD32F2F)) // Warning red color
+                  .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+              Text(
+                text = stringResource(R.string.video_label_new),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                ),
+                color = Color.White,
+              )
             }
           }
 
@@ -470,32 +463,26 @@ fun VideoCard(
             )
           }
 
-          // Show "NEW" label for recently added unplayed videos if enabled (top-left corner)
-          // Like MX Player: show NEW for videos added within threshold days that haven't been played
+          // Show "NEW" label for recently added unplayed videos if enabled (top-left corner).
+          // The age + unplayed check is already resolved by the ViewModel (isOldAndUnplayed),
+          // so we only need to check the preference toggle here.
           if (showUnplayedOldVideoLabel && isOldAndUnplayed) {
-            // Check if video is recently modified (within threshold days)
-            val currentTime = System.currentTimeMillis()
-            val videoAge = currentTime - (video.dateModified * 1000) // dateModified is in seconds
-            val thresholdMillis = unplayedOldVideoDays * 24 * 60 * 60 * 1000L
-
-            if (videoAge <= thresholdMillis) {
-              Box(
-                modifier =
-                  Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFD32F2F)) // Warning red color
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-              ) {
-                Text(
-                  text = stringResource(R.string.video_label_new),
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                  ),
-                  color = Color.White,
-                )
-              }
+            Box(
+              modifier =
+                Modifier
+                  .align(Alignment.TopStart)
+                  .padding(6.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .background(Color(0xFFD32F2F)) // Warning red color
+                  .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+              Text(
+                text = stringResource(R.string.video_label_new),
+                style = MaterialTheme.typography.labelSmall.copy(
+                  fontWeight = FontWeight.Bold,
+                ),
+                color = Color.White,
+              )
             }
           }
 
