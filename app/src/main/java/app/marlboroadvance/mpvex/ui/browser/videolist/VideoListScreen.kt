@@ -606,7 +606,7 @@ private fun VideoListContent(
       }
     }
 
-    videosWithInfo.isEmpty() && !isLoading && videosWereDeletedOrMoved -> {
+    videosWithInfo.isEmpty() && !isLoading -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

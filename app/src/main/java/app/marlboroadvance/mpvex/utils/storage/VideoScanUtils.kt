@@ -2,21 +2,16 @@ package app.marlboroadvance.mpvex.utils.storage
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.os.storage.StorageManager
-import android.os.storage.StorageVolume
 import android.provider.MediaStore
 import android.util.Log
 import app.marlboroadvance.mpvex.domain.media.model.Video
+import app.marlboroadvance.mpvex.utils.media.MediaFormatUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
-import kotlin.math.log10
-import kotlin.math.pow
 
 /**
  * Video Scanning Utilities
@@ -78,8 +73,9 @@ object VideoScanUtils {
             MediaStore.Video.Media.HEIGHT
         )
         
+        val normalizedFolder = folderPath.trimEnd('/')
         val selection = "${MediaStore.Video.Media.DATA} LIKE ?"
-        val selectionArgs = arrayOf("$folderPath/%")
+        val selectionArgs = arrayOf("$normalizedFolder/%")
         
         try {
             context.contentResolver.query(
@@ -105,7 +101,7 @@ object VideoScanUtils {
                     val file = File(path)
                     
                     // Only direct children
-                    if (file.parent != folderPath) continue
+                    if (file.parent?.trimEnd('/') != normalizedFolder) continue
                     if (!file.exists()) continue
                     
                     val id = cursor.getLong(idColumn)
@@ -157,7 +153,7 @@ object VideoScanUtils {
     /**
      * Scan videos from filesystem (fallback)
      */
-    private fun scanVideosFromFileSystem(
+    private suspend fun scanVideosFromFileSystem(
         context: Context,
         folder: File,
         videosMap: MutableMap<String, Video>
@@ -220,7 +216,7 @@ object VideoScanUtils {
     /**
      * Extracts video metadata using MediaInfo library
      */
-    fun extractVideoMetadata(
+    suspend fun extractVideoMetadata(
         context: Context,
         file: File,
     ): VideoMetadata {
@@ -231,9 +227,7 @@ object VideoScanUtils {
         
         try {
             val uri = Uri.fromFile(file)
-            val result = runBlocking {
-                MediaInfoOps.extractBasicMetadata(context, uri, file.name)
-            }
+            val result = MediaInfoOps.extractBasicMetadata(context, uri, file.name)
             
             result.onSuccess { metadata ->
                 duration = metadata.durationMs
@@ -252,216 +246,9 @@ object VideoScanUtils {
         return VideoMetadata(duration, mimeType, width, height)
     }
     
-    // Formatting utilities
-    
-    private fun formatDuration(durationMs: Long): String {
-        if (durationMs <= 0) return "0s"
-        
-        val seconds = durationMs / 1000
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-        
-        return when {
-            hours > 0 -> String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, secs)
-            minutes > 0 -> String.format(Locale.getDefault(), "%d:%02d", minutes, secs)
-            else -> "${secs}s"
-        }
-    }
-    
-    private fun formatFileSize(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt()
-        return String.format(
-            Locale.getDefault(),
-            "%.1f %s",
-            bytes / 1024.0.pow(digitGroups.toDouble()),
-            units[digitGroups]
-        )
-    }
-    
-    private fun formatResolution(width: Int, height: Int): String {
-        if (width <= 0 || height <= 0) return "--"
-        
-        return when {
-            width >= 7680 || height >= 4320 -> "4320p"
-            width >= 3840 || height >= 2160 -> "2160p"
-            width >= 2560 || height >= 1440 -> "1440p"
-            width >= 1920 || height >= 1080 -> "1080p"
-            width >= 1280 || height >= 720 -> "720p"
-            width >= 854 || height >= 480 -> "480p"
-            width >= 640 || height >= 360 -> "360p"
-            width >= 426 || height >= 240 -> "240p"
-            else -> "${height}p"
-        }
-    }
+    // Formatting utilities delegate to MediaFormatUtils
+    private fun formatDuration(durationMs: Long): String = MediaFormatUtils.formatDuration(durationMs)
+    private fun formatFileSize(bytes: Long): String = MediaFormatUtils.formatFileSize(bytes)
+    private fun formatResolution(width: Int, height: Int): String = MediaFormatUtils.formatResolution(width, height)
 }
 
-/**
- * File Type Utilities
- * Handles file type detection
- */
-object FileTypeUtils {
-
-  // Video file extensions
-    val VIDEO_EXTENSIONS = setOf(
-        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "3g2",
-        "mpg", "mpeg", "m2v", "ogv", "ts", "mts", "m2ts", "vob", "divx", "xvid",
-        "f4v", "rm", "rmvb", "asf"
-    )
-
-  /**
-     * Checks if a file is a video based on extension
-     */
-    fun isVideoFile(file: File): Boolean {
-        val extension = file.extension.lowercase(Locale.getDefault())
-        return VIDEO_EXTENSIONS.contains(extension)
-    }
-
-  /**
-     * Gets MIME type from file extension
-     */
-    fun getMimeTypeFromExtension(extension: String): String =
-        when (extension.lowercase()) {
-            "mp4" -> "video/mp4"
-            "mkv" -> "video/x-matroska"
-            "avi" -> "video/x-msvideo"
-            "mov" -> "video/quicktime"
-            "webm" -> "video/webm"
-            "flv" -> "video/x-flv"
-            "wmv" -> "video/x-ms-wmv"
-            "m4v" -> "video/x-m4v"
-            "3gp" -> "video/3gpp"
-            "mpg", "mpeg" -> "video/mpeg"
-            else -> "video/*"
-        }
-}
-
-/**
- * File Filter Utilities
- * Handles file and folder filtering logic
- */
-object FileFilterUtils {
-    private const val TAG = "FileFilterUtils"
-
-    // Folders to skip during scanning (system/cache folders)
-    private val SKIP_FOLDERS = setOf(
-        // System & OS Junk
-        "android", "data", "obb", "system", "lost.dir", ".android_secure", "android_secure",
-
-        // Hidden & Temp Files
-        ".thumbnails", "thumbnails", "thumbs", ".thumbs",
-        ".cache", "cache", "temp", "tmp", ".temp", ".tmp",
-
-        // Trash & Recycle Bins
-        ".trash", "trash", ".trashbin", ".trashed", "recycle", "recycler",
-
-        // App Clutters
-        "log", "logs", "backup", "backups",
-        "stickers", "whatsapp stickers", "telegram stickers"
-    )
-
-    /**
-     * Checks if a folder contains a .nomedia file
-     */
-    fun hasNoMediaFile(folder: File): Boolean {
-        if (!folder.isDirectory || !folder.canRead()) {
-            return false
-        }
-
-        return try {
-            val noMediaFile = File(folder, ".nomedia")
-            noMediaFile.exists()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error checking for .nomedia file in: ${folder.absolutePath}", e)
-            false
-        }
-    }
-
-    /**
-     * Checks if a folder should be skipped during scanning
-     */
-    fun shouldSkipFolder(folder: File): Boolean {
-        if (hasNoMediaFile(folder)) {
-            return true
-        }
-
-        val name = folder.name.lowercase()
-        val isHidden = name.startsWith(".")
-        return isHidden || SKIP_FOLDERS.contains(name)
-    }
-
-    /**
-     * Checks if a file should be skipped during file listing
-     */
-    fun shouldSkipFile(file: File): Boolean {
-        return file.name.startsWith(".")
-    }
-}
-
-/**
- * Storage Volume Utilities
- * Handles storage volume detection and management
- */
-object StorageVolumeUtils {
-    private const val TAG = "StorageVolumeUtils"
-
-    /**
-     * Gets all mounted storage volumes
-     */
-    fun getAllStorageVolumes(context: Context): List<StorageVolume> =
-        try {
-            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-            storageManager.storageVolumes.filter { volume ->
-                volume.state == Environment.MEDIA_MOUNTED ||
-                    (getVolumePath(volume)?.let { path -> File(path).exists() } == true)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting storage volumes", e)
-            emptyList()
-        }
-
-    /**
-     * Gets non-primary (external) storage volumes (SD cards, USB OTG)
-     */
-    fun getExternalStorageVolumes(context: Context): List<StorageVolume> =
-        getAllStorageVolumes(context).filter { !it.isPrimary }
-
-  /**
-     * Gets the physical path of a storage volume
-     */
-    fun getVolumePath(volume: StorageVolume): String? {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val directory = volume.directory
-                if (directory != null) {
-                    return directory.absolutePath
-                }
-            }
-
-            val method = volume.javaClass.getMethod("getPath")
-            val path = method.invoke(volume) as? String
-            if (path != null) {
-                return path
-            }
-
-            volume.uuid?.let { uuid ->
-                val possiblePaths = listOf(
-                    "/storage/$uuid",
-                    "/mnt/media_rw/$uuid",
-                )
-                for (possiblePath in possiblePaths) {
-                    if (File(possiblePath).exists()) {
-                        return possiblePath
-                    }
-                }
-            }
-
-            return null
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not get volume path", e)
-            return null
-        }
-    }
-}

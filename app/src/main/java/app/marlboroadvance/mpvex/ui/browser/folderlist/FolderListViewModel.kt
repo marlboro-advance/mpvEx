@@ -15,7 +15,7 @@ import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
-import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
+import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -262,7 +262,6 @@ class FolderListViewModel(
     
     // Clear all caches to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    FolderViewScanner.clearCache()
     
     // Trigger media scan to ensure MediaStore is up-to-date
     triggerMediaScan()
@@ -341,9 +340,10 @@ class FolderListViewModel(
 
         Log.d(TAG, "Fast scan completed: found ${fastFolders.size} folders")
 
-        // EDGE CASE: Empty result when we had data (permissions revoked?)
-        if (fastFolders.isEmpty() && hasExistingData) {
-             Log.w(TAG, "Scan returned empty when we had data - possible permission issue")
+        // EDGE CASE: Empty result when we had data AND storage permission was actually revoked
+        val hasPermission = PermissionUtils.hasStoragePermission(getApplication<Application>())
+        if (fastFolders.isEmpty() && hasExistingData && !hasPermission) {
+             Log.w(TAG, "Scan returned empty because storage permission was revoked")
              // Keep existing data, don't clear
              _isLoading.value = false
              _scanStatus.value = null

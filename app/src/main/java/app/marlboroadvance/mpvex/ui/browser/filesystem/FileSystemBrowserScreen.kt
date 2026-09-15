@@ -387,72 +387,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
   LaunchedEffect(searchQuery, isSearching, isAtRoot, items) {
     if (isSearching && searchQuery.isNotBlank()) {
       isSearchLoading = true
-      coroutineScope.launch {
-        try {
-          val results = if (isAtRoot) {
-            // At storage roots - search across all storage volumes AND their parent directories
-            val allResults = mutableListOf<FileSystemItem>()
-            
-            // Get unique parent directories from storage volumes
-            val parentDirectories = items.filterIsInstance<FileSystemItem.Folder>()
-              .map { it.path }
-              .mapNotNull { path ->
-                // Extract parent directory (e.g., /storage/emulated/0 from /storage/emulated/0/DCIM)
-                val parentPath = java.io.File(path).parent
-                parentPath
-              }
-              .distinct()
-            
-            // Search in parent directories (like /storage/emulated/0) directly
-            parentDirectories.forEach { parentPath ->
-              try {
-                Log.d("FileSystemBrowserScreen", "Searching in parent directory: $parentPath")
-                val parentResults = app.marlboroadvance.mpvex.ui.browser.filesystem.searchRecursively(context, parentPath, searchQuery)
-                Log.d("FileSystemBrowserScreen", "Found ${parentResults.size} results in parent $parentPath")
-                allResults.addAll(parentResults)
-              } catch (e: Exception) {
-                Log.e("FileSystemBrowserScreen", "Error searching parent directory $parentPath", e)
-              }
-            }
-            
-            // Also search in the storage volume folders themselves (existing behavior)
-            items.filterIsInstance<FileSystemItem.Folder>().forEach { storageVolume ->
-              try {
-                Log.d("FileSystemBrowserScreen", "Searching in storage volume: ${storageVolume.path}")
-                val rootResults = app.marlboroadvance.mpvex.ui.browser.filesystem.searchRecursively(context, storageVolume.path, searchQuery)
-                Log.d("FileSystemBrowserScreen", "Found ${rootResults.size} results in ${storageVolume.path}")
-                allResults.addAll(rootResults)
-              } catch (e: Exception) {
-                Log.e("FileSystemBrowserScreen", "Error searching volume ${storageVolume.path}", e)
-              }
-            }
-            
-            // Remove duplicates based on file path
-            val uniqueResults = allResults.distinctBy { item ->
-              when (item) {
-                is FileSystemItem.VideoFile -> item.video.path
-                is FileSystemItem.Folder -> item.path
-              }
-            }
-            
-            Log.d("FileSystemBrowserScreen", "Total search results after deduplication: ${uniqueResults.size}")
-            uniqueResults
-          } else if (currentPath != null) {
-            // In a specific directory - search from there
-            Log.d("FileSystemBrowserScreen", "Searching in directory: $currentPath")
-            val results = app.marlboroadvance.mpvex.ui.browser.filesystem.searchRecursively(context, currentPath, searchQuery)
-            Log.d("FileSystemBrowserScreen", "Found ${results.size} results in $currentPath")
-            results
-          } else {
-            emptyList()
-          }
-          searchResults = results
-        } catch (e: Exception) {
-          Log.e("FileSystemBrowserScreen", "Error during search", e)
-          searchResults = emptyList()
-        } finally {
-          isSearchLoading = false
-        }
+      try {
+        searchResults = viewModel.search(context, searchQuery)
+      } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e("FileSystemBrowserScreen", "Error during search", e)
+        searchResults = emptyList()
+      } finally {
+        isSearchLoading = false
       }
     } else {
       searchResults = emptyList()
@@ -603,7 +546,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
                     // Get all videos recursively from selected folders
                     val videosFromFolders = selectedFolders.flatMap { folder ->
-                      collectVideosRecursively(context, folder.path)
+                      viewModel.collectVideosRecursively(context, folder.path)
                     }
 
                     // Combine and share all videos
@@ -618,7 +561,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   coroutineScope.launch {
                     val selectedFolders = folderSelectionManager.getSelectedItems()
                     val videosFromFolders = selectedFolders.flatMap { folder ->
-                      collectVideosRecursively(context, folder.path)
+                      viewModel.collectVideosRecursively(context, folder.path)
                     }
                     if (videosFromFolders.isNotEmpty()) {
                       MediaUtils.shareVideos(context, videosFromFolders)
@@ -641,7 +584,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
 
                     // Get all videos recursively from selected folders
                     val videosFromFolders = selectedFolders.flatMap { folder ->
-                      collectVideosRecursively(context, folder.path)
+                      viewModel.collectVideosRecursively(context, folder.path)
                     }
 
                     // Combine and play all videos as playlist
@@ -660,7 +603,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   coroutineScope.launch {
                     val selectedFolders = folderSelectionManager.getSelectedItems()
                     val videosFromFolders = selectedFolders.flatMap { folder ->
-                      collectVideosRecursively(context, folder.path)
+                      viewModel.collectVideosRecursively(context, folder.path)
                     }
                     if (videosFromFolders.isNotEmpty()) {
                       playVideosAsPlaylist(context, videosFromFolders)
@@ -1032,90 +975,6 @@ fun FileSystemBrowserScreen(path: String? = null) {
 }
 
 /**
- * Recursively searches for files matching the query in a directory and its subdirectories
- */
-suspend fun searchRecursively(
-  context: Context,
-  directoryPath: String,
-  query: String,
-): List<FileSystemItem> {
-  val results = mutableListOf<FileSystemItem>()
-  
-  try {
-    Log.d("FileSystemBrowserScreen", "Scanning directory: $directoryPath for query: $query")
-    // Scan the current directory
-    val items = app.marlboroadvance.mpvex.repository.MediaFileRepository
-      .scanDirectory(context, directoryPath, showAllFileTypes = false)
-      .getOrNull() ?: emptyList()
-
-    Log.d("FileSystemBrowserScreen", "Found ${items.size} items in $directoryPath")
-
-    // Filter items that match the search query (case-insensitive)
-    items.forEach { item ->
-      when (item) {
-        is FileSystemItem.VideoFile -> {
-          if (item.video.displayName.contains(query, ignoreCase = true)) {
-            Log.d("FileSystemBrowserScreen", "Found matching video: ${item.video.displayName}")
-            results.add(item)
-          }
-        }
-        is FileSystemItem.Folder -> {
-          if (item.name.contains(query, ignoreCase = true)) {
-            Log.d("FileSystemBrowserScreen", "Found matching folder: ${item.name}")
-            results.add(item)
-          }
-          // Recursively search in subdirectories
-          try {
-            val subResults = searchRecursively(context, item.path, query)
-            results.addAll(subResults)
-          } catch (e: Exception) {
-            Log.e("FileSystemBrowserScreen", "Error searching subdirectory ${item.path}", e)
-          }
-        }
-      }
-    }
-    
-    Log.d("FileSystemBrowserScreen", "Returning ${results.size} results from $directoryPath")
-  } catch (e: Exception) {
-    Log.e("FileSystemBrowserScreen", "Error searching directory $directoryPath", e)
-  }
-
-  return results
-}
-
-/**
- * Recursively collects all videos from a folder and its subfolders
- */
-private suspend fun collectVideosRecursively(
-  context: Context,
-  folderPath: String,
-): List<app.marlboroadvance.mpvex.domain.media.model.Video> {
-  val videos = mutableListOf<app.marlboroadvance.mpvex.domain.media.model.Video>()
-
-  try {
-    // Scan the current directory using MediaFileRepository
-    val items = app.marlboroadvance.mpvex.repository.MediaFileRepository
-      .scanDirectory(context, folderPath, showAllFileTypes = false)
-      .getOrNull() ?: emptyList()
-
-    // Add videos from current folder
-    items.filterIsInstance<FileSystemItem.VideoFile>().forEach { videoFile ->
-      videos.add(videoFile.video)
-    }
-
-    // Recursively scan subfolders
-    items.filterIsInstance<FileSystemItem.Folder>().forEach { folder ->
-      val subVideos = collectVideosRecursively(context, folder.path)
-      videos.addAll(subVideos)
-    }
-  } catch (e: Exception) {
-    Log.e("FileSystemBrowserScreen", "Error collecting videos from $folderPath", e)
-  }
-
-  return videos
-}
-
-/**
  * Plays a list of videos as a playlist
  */
 private fun playVideosAsPlaylist(
@@ -1229,7 +1088,7 @@ private fun FileSystemBrowserContent(
       }
     }
 
-    items.isEmpty() && itemsWereDeletedOrMoved && !isAtRoot -> {
+    items.isEmpty() && !isLoading && !isAtRoot -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,

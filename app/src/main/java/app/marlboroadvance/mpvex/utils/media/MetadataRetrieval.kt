@@ -7,6 +7,7 @@ import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepositor
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -250,7 +251,7 @@ object MetadataRetrieval {
             }
 
             val videoFiles = directory.listFiles()?.filter { file ->
-                file.isFile && file.extension.lowercase() in VIDEO_EXTENSIONS
+                file.isFile && FileTypeUtils.isVideoFile(file)
             } ?: emptyList()
 
             if (videoFiles.isEmpty()) {
@@ -316,50 +317,8 @@ object MetadataRetrieval {
         }
     }
 
-    // Helper: Video file extensions
-    private val VIDEO_EXTENSIONS = setOf(
-        "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v",
-        "3gp", "3g2", "mpg", "mpeg", "m2v", "ogv", "ts", "mts",
-        "m2ts", "vob", "divx", "xvid", "f4v", "rm", "rmvb", "asf"
-    )
-
-    // Formatting utilities
-    private fun formatDuration(durationMs: Long): String {
-        if (durationMs <= 0) return "0s"
-
-        val seconds = durationMs / 1000
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-
-        return when {
-            hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, secs)
-            minutes > 0 -> String.format("%d:%02d", minutes, secs)
-            else -> "${secs}s"
-        }
-    }
-
-    private fun formatResolutionWithFps(width: Int, height: Int, fps: Float): String {
-        val baseResolution = formatResolution(width, height)
-        if (baseResolution == "--" || fps <= 0f) return baseResolution
-
-        val fpsFormatted = fps.toInt().toString()
-        return "$baseResolution@$fpsFormatted"
-    }
-
-    private fun formatResolution(width: Int, height: Int): String {
-        if (width <= 0 || height <= 0) return "--"
-
-        return when {
-            width >= 7680 || height >= 4320 -> "4320p"
-            width >= 3840 || height >= 2160 -> "2160p"
-            width >= 2560 || height >= 1440 -> "1440p"
-            width >= 1920 || height >= 1080 -> "1080p"
-            width >= 1280 || height >= 720 -> "720p"
-            width >= 854 || height >= 480 -> "480p"
-            width >= 640 || height >= 360 -> "360p"
-            width >= 426 || height >= 240 -> "240p"
-            else -> "${height}p"
-        }
-    }
+    // Formatting utilities delegate to MediaFormatUtils
+    private fun formatDuration(durationMs: Long): String = MediaFormatUtils.formatDuration(durationMs)
+    private fun formatResolutionWithFps(width: Int, height: Int, fps: Float): String =
+        MediaFormatUtils.formatResolutionWithFps(width, height, fps)
 }

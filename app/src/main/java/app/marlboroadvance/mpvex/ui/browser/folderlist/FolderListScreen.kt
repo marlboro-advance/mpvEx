@@ -633,7 +633,7 @@ private fun FolderListContent(
 ) {
   val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
   val showLoading = isLoading && !hasCompletedInitialLoad
-  val showEmpty = folders.isEmpty() && hasCompletedInitialLoad && !foldersWereDeleted
+  val showEmpty = folders.isEmpty() && !isLoading && (hasCompletedInitialLoad || foldersWereDeleted)
 
   // Scrollbar alpha animation
   val isAtTop by remember {

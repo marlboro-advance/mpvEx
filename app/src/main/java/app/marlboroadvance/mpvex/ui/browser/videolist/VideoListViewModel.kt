@@ -13,7 +13,7 @@ import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
 import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
-import app.marlboroadvance.mpvex.utils.storage.FolderViewScanner
+import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,7 +109,6 @@ class VideoListViewModel(
     
     // Clear cache to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    FolderViewScanner.clearCache()
     
     // Trigger media scan before loading to ensure MediaStore is up-to-date
     triggerMediaScan()
@@ -263,9 +262,7 @@ class VideoListViewModel(
       if (folder.exists() && folder.isDirectory) {
         // Scan all video files in the folder
         val videoFiles = folder.listFiles { file ->
-          file.isFile && file.extension.lowercase() in listOf(
-            "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpg", "mpeg", "ts", "m2ts"
-          )
+          file.isFile && FileTypeUtils.isVideoFile(file)
         }
         
         if (!videoFiles.isNullOrEmpty()) {

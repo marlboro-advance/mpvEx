@@ -136,6 +136,21 @@ object PermissionUtils {
     }
 
   /**
+   * Checks whether storage permission is currently granted.
+   */
+  fun hasStoragePermission(context: Context): Boolean {
+    if (!BuildConfig.SCOPED_STORAGE_ONLY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      if (android.os.Environment.isExternalStorageManager()) {
+        return true
+      }
+    }
+    return androidx.core.content.ContextCompat.checkSelfPermission(
+      context,
+      getStoragePermission(),
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+  }
+
+  /**
    * Creates a permission state for storage access.
    */
   @OptIn(ExperimentalPermissionsApi::class)
