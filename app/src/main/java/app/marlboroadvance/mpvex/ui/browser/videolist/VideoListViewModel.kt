@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -102,21 +103,27 @@ class VideoListViewModel(
   }
 
   override fun refresh() {
-    Log.d(tag, "Hard refreshing video list for bucket: $bucketId")
-    
-    // Set loading state
+    Log.d(tag, "Refreshing video list for bucket: $bucketId")
     _isLoading.value = true
-    
-    // Clear cache to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    
-    // Trigger media scan before loading to ensure MediaStore is up-to-date
-    triggerMediaScan()
-    
-    // Wait a bit for MediaStore to update, then reload
     viewModelScope.launch(Dispatchers.IO) {
-      delay(1500) // Give MediaStore time to index
+      triggerMediaScan()
       loadVideos()
+    }
+  }
+
+  /**
+   * Fast refresh of playback state (watch progress, watched status)
+   * without clearing cache, rescanning disk, or showing a loading indicator.
+   */
+  fun refreshPlaybackInfo() {
+    viewModelScope.launch(Dispatchers.IO) {
+      val currentVideos = _videos.value
+      if (currentVideos.isNotEmpty()) {
+        loadPlaybackInfo(currentVideos)
+      } else {
+        loadVideos()
+      }
     }
   }
 
@@ -254,7 +261,7 @@ class VideoListViewModel(
     _videosWithPlaybackInfo.value = videosWithInfo
   }
 
-  private fun triggerMediaScan() {
+  private suspend fun triggerMediaScan() = withContext(Dispatchers.IO) {
     try {
       // Trigger a targeted media scan for the specific folder
       val folder = File(bucketId)

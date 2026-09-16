@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -255,20 +256,11 @@ class FolderListViewModel(
   }
 
   override fun refresh() {
-    Log.d(TAG, "Hard refreshing folder list")
-    
-    // Set loading state
+    Log.d(TAG, "Refreshing folder list")
     _isLoading.value = true
-    
-    // Clear all caches to force fresh data from filesystem
     MediaFileRepository.clearCache()
-    
-    // Trigger media scan to ensure MediaStore is up-to-date
-    triggerMediaScan()
-    
-    // Wait for MediaStore to update, then reload
     viewModelScope.launch(Dispatchers.IO) {
-      kotlinx.coroutines.delay(1500) // Give MediaStore time to index
+      triggerMediaScan()
       loadVideoFolders()
     }
   }
@@ -276,7 +268,7 @@ class FolderListViewModel(
   /**
    * Trigger a comprehensive media scan to update MediaStore
    */
-  private fun triggerMediaScan() {
+  private suspend fun triggerMediaScan() = withContext(Dispatchers.IO) {
     try {
       val externalStorage = android.os.Environment.getExternalStorageDirectory()
       

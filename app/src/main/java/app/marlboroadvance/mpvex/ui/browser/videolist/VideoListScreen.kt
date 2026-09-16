@@ -240,12 +240,17 @@ data class VideoListScreen(
       selectionManager.clear()
     }
 
-    // Listen for lifecycle resume events and refresh videos when coming into focus
+    // Listen for lifecycle resume events to refresh playback progress when returning from player
     DisposableEffect(lifecycleOwner) {
+      var isFirstResume = true
       val observer =
         LifecycleEventObserver { _, event ->
           if (event == Lifecycle.Event.ON_RESUME) {
-            viewModel.refresh()
+            if (isFirstResume) {
+              isFirstResume = false
+            } else {
+              viewModel.refreshPlaybackInfo()
+            }
           }
         }
       lifecycleOwner.lifecycle.addObserver(observer)

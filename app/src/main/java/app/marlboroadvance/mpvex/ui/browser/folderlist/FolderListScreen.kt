@@ -267,12 +267,17 @@ object FolderListScreen : Screen {
 
     // Lifecycle observer for refresh
     DisposableEffect(lifecycleOwner) {
+      var isFirstResume = true
       val observer = LifecycleEventObserver { _, event ->
         if (event == Lifecycle.Event.ON_RESUME) {
-          // Full refresh (like the video/filesystem screens) so folders that were
-          // emptied or deleted externally reconcile with the filesystem, not just
-          // recalculating new-video counts on stale data.
-          viewModel.refresh()
+          if (isFirstResume) {
+            isFirstResume = false
+          } else {
+            // Full refresh (like the video/filesystem screens) so folders that were
+            // emptied or deleted externally reconcile with the filesystem, not just
+            // recalculating new-video counts on stale data.
+            viewModel.refresh()
+          }
         }
       }
       lifecycleOwner.lifecycle.addObserver(observer)
