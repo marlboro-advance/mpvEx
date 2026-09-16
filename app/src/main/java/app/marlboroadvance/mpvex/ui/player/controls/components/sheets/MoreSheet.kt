@@ -19,7 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -162,7 +162,7 @@ val scope = rememberCoroutineScope()
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
           Icon(
-            imageVector = Icons.Outlined.Lightbulb,
+            imageVector = Icons.Outlined.BlurOn,
             contentDescription = null,
             tint = if (ambientMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
           )

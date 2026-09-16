@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -70,7 +70,7 @@ fun AmbientModeSheet(
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
           Icon(
-            imageVector = Icons.Outlined.Lightbulb,
+            imageVector = Icons.Outlined.BlurOn,
             contentDescription = null,
             tint = if (ambientMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(28.dp),
