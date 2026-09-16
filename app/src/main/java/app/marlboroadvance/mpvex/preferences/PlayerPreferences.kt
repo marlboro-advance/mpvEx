@@ -79,4 +79,7 @@ class PlayerPreferences(
     deserializer = { it.toDoubleOrNull() ?: -1.0 }
   )
 
+  // YouTube-like Ambient Mode
+  val ambientMode = preferenceStore.getBoolean("ambient_mode", true)
+  val ambientModeIntensity = preferenceStore.getFloat("ambient_mode_intensity", 0.6f)
 }

@@ -157,6 +157,9 @@ class PlayerActivity :
    */
   val player by lazy { binding.player }
 
+  override val surfaceView: android.view.SurfaceView
+    get() = player
+
   // ==================== State Management ====================
 
   /**
@@ -2365,6 +2368,7 @@ class PlayerActivity :
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 
     pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
+    viewModel.ambientModeManager.onPipModeChanged(isInPictureInPictureMode)
 
     binding.controls.alpha = if (isInPictureInPictureMode) 0f else 1f
 

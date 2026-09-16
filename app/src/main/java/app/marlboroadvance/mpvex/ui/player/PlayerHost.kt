@@ -20,6 +20,7 @@ interface PlayerHost {
   val hostWindowManager: WindowManager
   val hostContentResolver: ContentResolver
   var hostRequestedOrientation: Int
+  val surfaceView: android.view.SurfaceView? get() = null
   
   fun requestAudioFocus(): Boolean
   fun abandonAudioFocus()

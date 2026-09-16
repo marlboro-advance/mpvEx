@@ -191,6 +191,50 @@ object PlayerPreferencesScreen : Screen {
               )
             }
           }
+
+          // Ambient Mode Section
+          item {
+            PreferenceSectionHeader(title = stringResource(R.string.pref_ambient_mode))
+          }
+
+          item {
+            PreferenceCard {
+              val ambientMode by preferences.ambientMode.collectAsState()
+              SwitchPreference(
+                value = ambientMode,
+                onValueChange = preferences.ambientMode::set,
+                title = { Text(stringResource(R.string.pref_ambient_mode)) },
+                summary = {
+                  Text(
+                    text = stringResource(R.string.pref_ambient_mode_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              if (ambientMode) {
+                PreferenceDivider()
+
+                val ambientModeIntensity by preferences.ambientModeIntensity.collectAsState()
+                SliderPreference(
+                  value = ambientModeIntensity,
+                  onValueChange = preferences.ambientModeIntensity::set,
+                  sliderValue = ambientModeIntensity,
+                  onSliderValueChange = preferences.ambientModeIntensity::set,
+                  valueRange = 0.2f..1.0f,
+                  valueSteps = 7,
+                  title = { Text(stringResource(R.string.pref_ambient_mode_intensity)) },
+                  summary = {
+                    Text(
+                      "${(ambientModeIntensity * 100).roundToInt()}%",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
+            }
+          }
+
           // Seeking Section
           item {
             PreferenceSectionHeader(title = stringResource(R.string.pref_player_seeking_title))

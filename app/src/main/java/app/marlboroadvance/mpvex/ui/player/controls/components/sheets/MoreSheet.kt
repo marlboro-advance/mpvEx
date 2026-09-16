@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -26,7 +28,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
@@ -70,7 +74,9 @@ fun MoreSheet(
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val decoderPreferences = koinInject<DecoderPreferences>()
   val anime4kManager = koinInject<Anime4KManager>()
-  koinInject<PlayerPreferences>()
+  val playerPreferences = koinInject<PlayerPreferences>()
+  val ambientMode by playerPreferences.ambientMode.collectAsState()
+  val ambientModeIntensity by playerPreferences.ambientModeIntensity.collectAsState()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   
   val enableAnime4K by decoderPreferences.enableAnime4K.collectAsState()
@@ -144,6 +150,65 @@ val scope = rememberCoroutineScope()
           }
         }
       }
+
+      // Ambient Mode Controls
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          Icon(
+            imageVector = Icons.Outlined.Lightbulb,
+            contentDescription = null,
+            tint = if (ambientMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Column {
+            Text(
+              text = stringResource(R.string.pref_ambient_mode),
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+              text = stringResource(R.string.pref_ambient_mode_summary),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.outline,
+            )
+          }
+        }
+        Switch(
+          checked = ambientMode,
+          onCheckedChange = { playerPreferences.ambientMode.set(it) },
+        )
+      }
+      if (ambientMode) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+          Text(
+            text = stringResource(R.string.pref_ambient_mode_intensity),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.widthIn(min = 90.dp),
+          )
+          Slider(
+            value = ambientModeIntensity,
+            onValueChange = { playerPreferences.ambientModeIntensity.set(it) },
+            valueRange = 0.2f..1.0f,
+            modifier = Modifier.weight(1f),
+          )
+          Text(
+            text = "${(ambientModeIntensity * 100).toInt()}%",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
+          )
+        }
+      }
+
       Text(
         text = stringResource(R.string.player_sheets_stats_page_title),
         style = MaterialTheme.typography.titleMedium,
