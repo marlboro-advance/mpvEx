@@ -93,7 +93,7 @@ fun PlayerSheets(
       if (showFilePicker) {
           app.marlboroadvance.mpvex.ui.browser.dialogs.FilePickerDialog(
               isOpen = true,
-              currentPath = savedPickerPath ?: android.os.Environment.getExternalStorageDirectory().absolutePath,
+              currentPath = savedPickerPath.ifBlank { android.os.Environment.getExternalStorageDirectory().absolutePath },
               onDismiss = { showFilePicker = false },
               onPathChanged = { path ->
                   if (path != null) {

@@ -1,4 +1,4 @@
-﻿package app.marlboroadvance.mpvex.ui.player
+package app.marlboroadvance.mpvex.ui.player
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -439,6 +439,7 @@ class PlayerActivity :
         val updatedConfiguration = Configuration(originalConfiguration).apply { fontScale = 1f }
         val configurationContext = newBase.createConfigurationContext(updatedConfiguration)
         val configurationDisplayMetrics = configurationContext.resources.displayMetrics
+        @Suppress("DEPRECATION")
         configurationDisplayMetrics.scaledDensity = updatedConfiguration.fontScale * configurationDisplayMetrics.density
         configurationContext
       }
@@ -811,6 +812,7 @@ class PlayerActivity :
 
     // Set status bar color for when it will be shown (with controls)
     if (playerPreferences.showSystemStatusBar.get()) {
+      @Suppress("DEPRECATION")
       window.statusBarColor = android.graphics.Color.parseColor("#80000000") // Semi-transparent black
     }
 

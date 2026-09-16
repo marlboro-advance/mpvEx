@@ -121,7 +121,8 @@ class UpdateManager(
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-        val responseBody = response.body?.string() ?: throw IOException("Empty body")
+        val responseBody = response.body.string()
+        if (responseBody.isEmpty()) throw IOException("Empty body")
         json.decodeFromString<Release>(responseBody)
     }
 
@@ -200,7 +201,7 @@ class UpdateManager(
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-        val body = response.body ?: throw IOException("Empty body")
+        val body = response.body
         val contentLength = body.contentLength()
         val inputStream = body.byteStream()
         val outputStream = FileOutputStream(destination)

@@ -20,8 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
@@ -1048,8 +1048,8 @@ fun CombiningChevronsAnimation(
     Row(modifier = modifier) {
         Box {
              // Static Chevron
-             Icon(
-                imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+              Icon(
+                imageVector = if (isRight) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(48.dp)
@@ -1088,7 +1088,7 @@ fun MovingChevron(
     val alpha = 1f - progress.value
     
     Icon(
-        imageVector = if (isRight) Icons.Filled.KeyboardArrowRight else Icons.Filled.KeyboardArrowLeft,
+        imageVector = if (isRight) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
         contentDescription = null,
         tint = Color.White,
         modifier = Modifier

@@ -9,6 +9,7 @@ import org.apache.commons.net.ftp.FTP
 import org.apache.commons.net.ftp.FTPClient
 import org.apache.commons.net.ftp.FTPReply
 import java.io.InputStream
+import java.time.Duration
 
 class FtpClient(private val connection: NetworkConnection) : NetworkClient {
   private var ftpClient: FTPClient? = null
@@ -23,12 +24,12 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         // Increase timeouts to prevent broken pipe
         client.setConnectTimeout(15000) // 15 seconds
-        client.setDataTimeout(60000) // 60 seconds
+        client.setDataTimeout(Duration.ofSeconds(60)) // 60 seconds
         client.setDefaultTimeout(60000) // 60 seconds default
-        client.controlKeepAliveTimeout = 300 // 5 minutes keep-alive
+        client.setControlKeepAliveTimeout(Duration.ofSeconds(300)) // 5 minutes keep-alive
 
         // Enable keep-alive to prevent connection drops
-        client.setControlKeepAliveReplyTimeout(10000) // 10 seconds for keep-alive replies
+        client.setControlKeepAliveReplyTimeout(Duration.ofSeconds(10)) // 10 seconds for keep-alive replies
 
         // Connect to server
         client.connect(connection.host, connection.port)
@@ -185,10 +186,10 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
 
         // Increase timeouts to prevent broken pipe during streaming
         streamClient.setConnectTimeout(15000) // 15 seconds
-        streamClient.setDataTimeout(120000) // 120 seconds (2 minutes) for video streaming
+        streamClient.setDataTimeout(Duration.ofSeconds(120)) // 120 seconds (2 minutes) for video streaming
         streamClient.setDefaultTimeout(120000)
-        streamClient.controlKeepAliveTimeout = 600 // 10 minutes keep-alive
-        streamClient.setControlKeepAliveReplyTimeout(15000)
+        streamClient.setControlKeepAliveTimeout(Duration.ofSeconds(600)) // 10 minutes keep-alive
+        streamClient.setControlKeepAliveReplyTimeout(Duration.ofSeconds(15))
 
         // Connect to server
         streamClient.connect(connection.host, connection.port)

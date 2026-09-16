@@ -226,6 +226,7 @@ class MediaPlaybackService :
         )
 
         // Set flags to handle media buttons and transport controls
+        @Suppress("DEPRECATION")
         setFlags(
           MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
             MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS,

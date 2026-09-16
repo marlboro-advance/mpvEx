@@ -14,6 +14,7 @@ class MediaScanReceiver : BroadcastReceiver() {
         private const val TAG = "MediaScanReceiver"
     }
 
+    @Suppress("DEPRECATION")
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) return
 

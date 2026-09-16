@@ -246,8 +246,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
           }
 
           is app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.WebDavClient -> {
-            val webDavClient =
-              streamInfo.client as app.marlboroadvance.mpvex.ui.browser.networkstreaming.clients.WebDavClient
+            val webDavClient = streamInfo.client
             if (!webDavClient.isConnected()) {
               webDavClient.connect().getOrThrow()
             }
@@ -509,8 +508,8 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
     // Set UTF-8 encoding for proper handling of non-English characters
     ftpClient.controlEncoding = "UTF-8"
     ftpClient.setConnectTimeout(10000)
-    ftpClient.setDataTimeout(30000)
-    ftpClient.controlKeepAliveTimeout = 300
+    ftpClient.setDataTimeout(java.time.Duration.ofSeconds(30))
+    ftpClient.setControlKeepAliveTimeout(java.time.Duration.ofSeconds(300))
 
     try {
       // Connect
@@ -662,11 +661,7 @@ class NetworkStreamingProxy private constructor() : NanoHTTPD("127.0.0.1", 0) {
         return null
       }
 
-      val rawStream = response.body?.byteStream()
-      if (rawStream == null) {
-        response.close()
-        return null
-      }
+      val rawStream = response.body.byteStream()
 
       // Wrap stream to handle cleanup
       val wrappedStream = object : java.io.InputStream() {
