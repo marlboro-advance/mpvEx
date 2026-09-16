@@ -851,6 +851,9 @@ fun RenderPlayerButton(
         icon = PlayerButton.AMBIENT_MODE.icon,
         onClick = {
           clickEvent()
+          onOpenSheet(Sheets.AmbientMode)
+        },
+        onLongClick = {
           playerPreferences.ambientMode.set(!ambientModeEnabled)
         },
         color = if (ambientModeEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),

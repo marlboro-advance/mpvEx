@@ -101,6 +101,7 @@ enum class Sheets {
   AspectRatios,
   Playlist,
   FrameNavigation,
+  AmbientMode,
 }
 
 enum class Panels {
