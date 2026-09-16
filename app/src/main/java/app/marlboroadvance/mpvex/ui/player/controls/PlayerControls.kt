@@ -104,7 +104,6 @@ import app.marlboroadvance.mpvex.ui.player.PlayerUpdates
 import app.marlboroadvance.mpvex.ui.player.PlayerViewModel
 import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.VideoAspect
-import app.marlboroadvance.mpvex.ui.player.ambient.AmbientModeGlow
 import app.marlboroadvance.mpvex.ui.player.controls.components.BrightnessSlider
 import app.marlboroadvance.mpvex.ui.player.controls.components.CompactSpeedIndicator
 import app.marlboroadvance.mpvex.ui.player.controls.components.ControlsButton
@@ -258,24 +257,6 @@ fun PlayerControls(
     if (controlsShown && !areControlsLocked) .8f else 0f,
     animationSpec = playerControlsExitAnimationSpec(),
     label = "controls_transparent_overlay",
-  )
-
-  val ambientModeEnabled by playerPreferences.ambientMode.collectAsState()
-  val ambientModeIntensity by playerPreferences.ambientModeIntensity.collectAsState()
-  val ambientColors by viewModel.ambientColors.collectAsState()
-  val currentAspectRatio by viewModel.currentAspectRatio.collectAsState()
-  val videoAspectMode by viewModel.videoAspect.collectAsState()
-  val rawAspect by MPVLib.propDouble["video-params/aspect"].collectAsState()
-
-  val effectiveAspect = if (currentAspectRatio > 0.001) currentAspectRatio else (rawAspect ?: -1.0)
-  val isCropMode = videoAspectMode == VideoAspect.Crop
-
-  AmbientModeGlow(
-    ambientColors = ambientColors,
-    enabled = ambientModeEnabled,
-    intensity = ambientModeIntensity,
-    videoAspect = if (effectiveAspect > 0.001) effectiveAspect else null,
-    isCropMode = isCropMode,
   )
 
   GestureHandler(

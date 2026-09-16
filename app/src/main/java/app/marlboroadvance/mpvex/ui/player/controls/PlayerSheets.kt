@@ -13,7 +13,6 @@ import app.marlboroadvance.mpvex.ui.player.Panels
 import app.marlboroadvance.mpvex.ui.player.Sheets
 import app.marlboroadvance.mpvex.ui.player.TrackNode
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AspectRatioSheet
-import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AmbientModeSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.AudioTracksSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.ChaptersSheet
 import app.marlboroadvance.mpvex.ui.player.controls.components.sheets.DecodersSheet
@@ -177,12 +176,6 @@ fun PlayerSheets(
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
         onAnime4KChanged = { },
-      )
-    }
-
-    Sheets.AmbientMode -> {
-      AmbientModeSheet(
-        onDismissRequest = onDismissRequest,
       )
     }
 

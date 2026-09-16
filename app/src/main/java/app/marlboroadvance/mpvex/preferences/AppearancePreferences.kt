@@ -39,7 +39,7 @@ class AppearancePreferences(
   val topRightControls =
     preferenceStore.getString(
       "top_right_controls",
-      "CURRENT_CHAPTER,DECODER,AUDIO_TRACK,SUBTITLES,AMBIENT_MODE,MORE_OPTIONS",
+      "CURRENT_CHAPTER,DECODER,AUDIO_TRACK,SUBTITLES,MORE_OPTIONS",
     )
 
   val bottomRightControls =
@@ -57,28 +57,14 @@ class AppearancePreferences(
   val portraitBottomControls =
     preferenceStore.getString(
       "portrait_bottom_controls",
-      "SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,AMBIENT_MODE,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
+      "SCREEN_ROTATION,DECODER,AUDIO_TRACK,SUBTITLES,BOOKMARKS_CHAPTERS,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,REPEAT_MODE,SHUFFLE,VIDEO_ZOOM,FRAME_NAVIGATION,ASPECT_RATIO,PICTURE_IN_PICTURE,LOCK_CONTROLS,MORE_OPTIONS",
     )
 
   fun parseButtons(
     csv: String,
     usedButtons: MutableSet<PlayerButton>,
-  ): List<PlayerButton> {
-    val effectiveCsv = if (!csv.contains("AMBIENT_MODE")) {
-      if (csv.contains("SUBTITLES,MORE_OPTIONS")) {
-        csv.replace("SUBTITLES,MORE_OPTIONS", "SUBTITLES,AMBIENT_MODE,MORE_OPTIONS")
-      } else if (csv.contains("SUBTITLES")) {
-        csv.replace("SUBTITLES", "SUBTITLES,AMBIENT_MODE")
-      } else if (csv.contains("MORE_OPTIONS")) {
-        csv.replace("MORE_OPTIONS", "AMBIENT_MODE,MORE_OPTIONS")
-      } else {
-        csv
-      }
-    } else {
-      csv
-    }
-
-    return effectiveCsv
+  ): List<PlayerButton> =
+    csv
       .splitToSequence(',')
       .map { it.trim().uppercase() }
       .mapNotNull { name ->
@@ -90,7 +76,6 @@ class AppearancePreferences(
       }.filter { it != PlayerButton.NONE }
       .filter { usedButtons.add(it) }
       .toList()
-  }
 }
 
 @Composable

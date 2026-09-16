@@ -63,7 +63,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -840,23 +839,6 @@ fun RenderPlayerButton(
         icon = Icons.Default.Headset,
         onClick = { activity.triggerBackgroundPlayback() },
         color = if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.size(buttonSize),
-      )
-    }
-
-    PlayerButton.AMBIENT_MODE -> {
-      val playerPreferences = org.koin.compose.koinInject<app.marlboroadvance.mpvex.preferences.PlayerPreferences>()
-      val ambientModeEnabled by playerPreferences.ambientMode.collectAsState()
-      ControlsButton(
-        icon = PlayerButton.AMBIENT_MODE.icon,
-        onClick = {
-          clickEvent()
-          onOpenSheet(Sheets.AmbientMode)
-        },
-        onLongClick = {
-          playerPreferences.ambientMode.set(!ambientModeEnabled)
-        },
-        color = if (ambientModeEnabled) MaterialTheme.colorScheme.primary else (if (hideBackground) controlColor else MaterialTheme.colorScheme.onSurface),
         modifier = Modifier.size(buttonSize),
       )
     }

@@ -21,7 +21,6 @@ import app.marlboroadvance.mpvex.preferences.AudioPreferences
 import app.marlboroadvance.mpvex.preferences.GesturePreferences
 import app.marlboroadvance.mpvex.preferences.PlayerPreferences
 import app.marlboroadvance.mpvex.preferences.SubtitlesPreferences
-import app.marlboroadvance.mpvex.ui.player.ambient.AmbientModeManager
 import app.marlboroadvance.mpvex.utils.media.ChecksumUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoParser
 import `is`.xyz.mpv.MPVLib
@@ -117,14 +116,6 @@ class PlayerViewModel(
   val currentVolume = MutableStateFlow(host.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
   private val volumeBoostCap by MPVLib.propInt["volume-max"].collectAsState(viewModelScope)
 
-  val ambientModeManager =
-    AmbientModeManager(
-      scope = viewModelScope,
-      playerPreferences = playerPreferences,
-      surfaceViewProvider = { host.surfaceView },
-    )
-  val ambientColors = ambientModeManager.ambientColors
-
   init {
     // Poll precise position only when playing
     viewModelScope.launch {
@@ -144,13 +135,6 @@ class PlayerViewModel(
         if (dur != null && dur > 0) {
             _preciseDuration.value = dur.toFloat()
         }
-      }
-    }
-
-    // Wire playback state to ambient mode sampling
-    viewModelScope.launch {
-      MPVLib.propBoolean["pause"].collect { isPaused ->
-        ambientModeManager.onPlaybackStateChanged(isPaused == true)
       }
     }
   }
