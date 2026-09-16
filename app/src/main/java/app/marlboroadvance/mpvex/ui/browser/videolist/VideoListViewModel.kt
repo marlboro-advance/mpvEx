@@ -60,6 +60,9 @@ class VideoListViewModel(
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+  private val _hasCompletedInitialLoad = MutableStateFlow(false)
+  val hasCompletedInitialLoad: StateFlow<Boolean> = _hasCompletedInitialLoad.asStateFlow()
+
   // Track if items were deleted/moved leaving folder empty
   private val _videosWereDeletedOrMoved = MutableStateFlow(false)
   val videosWereDeletedOrMoved: StateFlow<Boolean> = _videosWereDeletedOrMoved.asStateFlow()
@@ -183,9 +186,19 @@ class VideoListViewModel(
           previousVideoCount = retryVideoList.size
 
           _videos.value = retryVideoList
-          loadPlaybackInfo(retryVideoList)
+          if (retryVideoList.isNotEmpty()) {
+            _videosWithPlaybackInfo.value = retryVideoList.map { VideoWithPlaybackInfo(it) }
+            _hasCompletedInitialLoad.value = true
+            _isLoading.value = false
+            loadPlaybackInfo(retryVideoList)
+          } else {
+            _videosWithPlaybackInfo.value = emptyList()
+          }
         } else {
           _videos.value = videoList
+          _videosWithPlaybackInfo.value = videoList.map { VideoWithPlaybackInfo(it) }
+          _hasCompletedInitialLoad.value = true
+          _isLoading.value = false
           loadPlaybackInfo(videoList)
         }
       } catch (e: Exception) {
@@ -194,6 +207,7 @@ class VideoListViewModel(
         _videosWithPlaybackInfo.value = emptyList()
       } finally {
         _isLoading.value = false
+        _hasCompletedInitialLoad.value = true
       }
     }
   }
