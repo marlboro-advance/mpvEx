@@ -7,11 +7,12 @@ plugins {
   alias(libs.plugins.kotlinx.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
+  alias(libs.plugins.aboutlibraries)
 }
 
 android {
   namespace = "app.marlboroadvance.mpvex"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "app.marlboroadvance.mpvex"
@@ -195,6 +196,7 @@ dependencies {
 
   implementation(libs.seeker)
   implementation(libs.compose.prefs)
+  implementation(libs.aboutlibraries.compose.m3)
 
   implementation(libs.accompanist.permissions)
 

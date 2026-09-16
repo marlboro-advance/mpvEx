@@ -56,6 +56,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.marlboroadvance.mpvex.BuildConfig
@@ -64,6 +65,8 @@ import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity.Companion.collectDeviceInfo
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
 import app.marlboroadvance.mpvex.utils.update.UpdateViewModel
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import com.mikepenz.aboutlibraries.ui.compose.produceLibraries
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 
@@ -485,21 +488,25 @@ object LibrariesScreen : Screen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
+    val context = LocalContext.current
+    val libraries by produceLibraries {
+      context.resources.openRawResource(R.raw.aboutlibraries).bufferedReader().use { it.readText() }
+    }
     Scaffold(
       topBar = {
         TopAppBar(
-          title = { 
+          title = {
             Text(
               text = stringResource(id = R.string.pref_about_oss_libraries),
               style = MaterialTheme.typography.headlineSmall,
               fontWeight = FontWeight.ExtraBold,
               color = MaterialTheme.colorScheme.primary,
-            ) 
+            )
           },
           navigationIcon = {
             IconButton(onClick = backstack::removeLastOrNull) {
               Icon(
-                imageVector = Icons.AutoMirrored.Default.ArrowBack, 
+                imageVector = Icons.AutoMirrored.Default.ArrowBack,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
               )
@@ -508,6 +515,13 @@ object LibrariesScreen : Screen {
         )
       },
     ) { paddingValues ->
+      LibrariesContainer(
+        libraries = libraries,
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+      )
     }
   }
 }

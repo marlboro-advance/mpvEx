@@ -13,3 +13,4 @@ app/release
 /app/standard/
 /app/fdroid/
 /app/playstore/
+.kotlin/
