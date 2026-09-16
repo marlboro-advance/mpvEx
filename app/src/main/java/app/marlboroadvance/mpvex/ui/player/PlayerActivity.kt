@@ -1998,14 +1998,22 @@ class PlayerActivity :
         val duration = viewModel.duration ?: 0
         val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
 
+        val currentSid = player.sid
+        val currentSecondarySid = player.secondarySid
+        val (effectiveSid, effectiveSecondarySid) = if (currentSid <= 0 && currentSecondarySid > 0) {
+          currentSecondarySid to -1
+        } else {
+          currentSid to currentSecondarySid
+        }
+
         playbackStateRepository.upsert(
           PlaybackStateEntity(
             mediaTitle = mediaIdentifier,
             lastPosition = lastPosition,
             playbackSpeed = MPVLib.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
             videoZoom = MPVLib.getPropertyDouble("video-zoom")?.toFloat() ?: 0f,
-            sid = player.sid,
-            secondarySid = player.secondarySid,
+            sid = effectiveSid,
+            secondarySid = effectiveSecondarySid,
             subDelay = ((MPVLib.getPropertyDouble("sub-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
             subSpeed = MPVLib.getPropertyDouble("sub-speed") ?: DEFAULT_SUB_SPEED,
             aid = player.aid,
@@ -2110,11 +2118,16 @@ class PlayerActivity :
     if (state.sid > 0) {
       player.sid = state.sid
       Log.d(TAG, "Restored primary subtitle track: ${state.sid} (user selection)")
-    }
-
-    if (state.secondarySid > 0) {
-      player.secondarySid = state.secondarySid
-      Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+      if (state.secondarySid > 0 && state.secondarySid != state.sid) {
+        player.secondarySid = state.secondarySid
+        Log.d(TAG, "Restored secondary subtitle track: ${state.secondarySid} (user selection)")
+      } else {
+        player.secondarySid = -1
+      }
+    } else if (state.secondarySid > 0) {
+      player.sid = state.secondarySid
+      player.secondarySid = -1
+      Log.d(TAG, "Promoted saved secondary subtitle track ${state.secondarySid} to primary: single subtitle must stay at bottom")
     }
 
     if (state.aid > 0) {

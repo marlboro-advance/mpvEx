@@ -573,8 +573,31 @@ class PlayerViewModel(
   }
 
 
+  fun getPrimarySubtitleId(): Int =
+    MPVLib.getPropertyString("sid")?.toIntOrNull() ?: 0
+
+  fun getSecondarySubtitleId(): Int =
+    MPVLib.getPropertyString("secondary-sid")?.toIntOrNull() ?: 0
+
   fun removeSubtitle(id: Int) {
     viewModelScope.launch(Dispatchers.IO) {
+      val primarySid = getPrimarySubtitleId()
+      val secondarySid = getSecondarySubtitleId()
+
+      // If removing the primary subtitle while a secondary subtitle is active,
+      // promote secondary to primary so the remaining subtitle stays at the bottom.
+      // Must clear secondary-sid FIRST so mpv does not reject assigning that track to sid.
+      if (id == primarySid) {
+        if (secondarySid > 0 && secondarySid != id) {
+          MPVLib.setPropertyString("secondary-sid", "no")
+          MPVLib.setPropertyInt("sid", secondarySid)
+        } else {
+          MPVLib.setPropertyString("sid", "no")
+        }
+      } else if (id == secondarySid) {
+        MPVLib.setPropertyString("secondary-sid", "no")
+      }
+
       // Find the subtitle track info before removing
       val tracks = subtitleTracks.value
       val trackToRemove = tracks.firstOrNull { it.id == id }
@@ -595,21 +618,68 @@ class PlayerViewModel(
   }
 
   fun toggleSubtitle(id: Int) {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
 
     when {
-      id == primarySid -> MPVLib.setPropertyString("sid", "no")
-      id == secondarySid -> MPVLib.setPropertyString("secondary-sid", "no")
-      primarySid <= 0 -> MPVLib.setPropertyInt("sid", id)
-      secondarySid <= 0 -> MPVLib.setPropertyInt("secondary-sid", id)
-      else -> MPVLib.setPropertyInt("sid", id)
+      id == primarySid -> {
+        // User disabled the primary subtitle while a secondary subtitle is active:
+        // Promote secondary to primary so the single remaining subtitle is positioned at the bottom.
+        // MUST clear secondary-sid FIRST so mpv does not reject assigning it to sid.
+        if (secondarySid > 0 && secondarySid != id) {
+          MPVLib.setPropertyString("secondary-sid", "no")
+          MPVLib.setPropertyInt("sid", secondarySid)
+        } else {
+          MPVLib.setPropertyString("sid", "no")
+        }
+      }
+      id == secondarySid -> {
+        // User disabled the secondary subtitle (top). Primary stays at bottom.
+        MPVLib.setPropertyString("secondary-sid", "no")
+      }
+      primarySid <= 0 -> {
+        if (secondarySid > 0) {
+          if (secondarySid == id) {
+            MPVLib.setPropertyString("secondary-sid", "no")
+            MPVLib.setPropertyInt("sid", id)
+          } else {
+            val prevSecondary = secondarySid
+            MPVLib.setPropertyString("secondary-sid", "no")
+            MPVLib.setPropertyInt("sid", prevSecondary)
+            MPVLib.setPropertyInt("secondary-sid", id)
+          }
+        } else {
+          MPVLib.setPropertyInt("sid", id)
+        }
+      }
+      secondarySid <= 0 -> {
+        if (primarySid != id) {
+          MPVLib.setPropertyInt("secondary-sid", id)
+        }
+      }
+      else -> {
+        // Both slots occupied; replace primary subtitle
+        MPVLib.setPropertyInt("sid", id)
+      }
+    }
+  }
+
+  /**
+   * Ensures that if only one subtitle track is active, it is always the primary
+   * subtitle (`sid`), which is positioned at the bottom of the screen.
+   */
+  fun normalizeSubtitles() {
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
+    if (primarySid <= 0 && secondarySid > 0) {
+      MPVLib.setPropertyString("secondary-sid", "no")
+      MPVLib.setPropertyInt("sid", secondarySid)
     }
   }
 
   fun isSubtitleSelected(id: Int): Boolean {
-    val primarySid = MPVLib.getPropertyInt("sid") ?: 0
-    val secondarySid = MPVLib.getPropertyInt("secondary-sid") ?: 0
+    val primarySid = getPrimarySubtitleId()
+    val secondarySid = getSecondarySubtitleId()
     return (id == primarySid && primarySid > 0) || (id == secondarySid && secondarySid > 0)
   }
 

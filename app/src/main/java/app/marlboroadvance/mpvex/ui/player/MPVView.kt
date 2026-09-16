@@ -86,7 +86,7 @@ class MPVView(
       property: KProperty<*>,
       value: Int,
     ) {
-      if (value == -1) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
+      if (value <= 0) MPVLib.setPropertyString(name, "no") else MPVLib.setPropertyInt(name, value)
     }
   }
 
