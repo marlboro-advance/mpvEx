@@ -152,16 +152,20 @@ data class VideoListScreen(
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
     val sortedVideosWithInfo =
       remember(videos, videosWithPlaybackInfo, videoSortType, videoSortOrder) {
-        val infoById = videosWithPlaybackInfo.associateBy { it.video.id }
-        val baseVideos = if (videosWithPlaybackInfo.isNotEmpty()) {
-          videosWithPlaybackInfo.map { it.video }
+        if (videos.isEmpty() && videosWithPlaybackInfo.isEmpty()) {
+          emptyList()
         } else {
-          videos
-        }
-        val sortedVideos = SortUtils.sortVideos(baseVideos, videoSortType, videoSortOrder)
-        // Maintain the playback info mapping — O(1) lookup per item
-        sortedVideos.map { video ->
-          infoById[video.id] ?: VideoWithPlaybackInfo(video)
+          val infoById = videosWithPlaybackInfo.associateBy { it.video.id }
+          val baseVideos = if (videosWithPlaybackInfo.isNotEmpty()) {
+            videosWithPlaybackInfo.map { it.video }
+          } else {
+            videos
+          }
+          val sortedVideos = SortUtils.sortVideos(baseVideos, videoSortType, videoSortOrder)
+          // Maintain the playback info mapping — O(1) lookup per item
+          sortedVideos.map { video ->
+            infoById[video.id] ?: VideoWithPlaybackInfo(video)
+          }
         }
       }
 

@@ -16,6 +16,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -194,39 +195,41 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ) {
-    val filteredVideos = if (appearancePreferences.showNetworkThumbnails.get()) {
-      videos
-    } else {
-      videos.filterNot { isNetworkUrl(it.path) }
-    }
+    if (videos.isEmpty()) return
     
-    if (filteredVideos.isEmpty()) return
-    
-    folderJobs.entries.removeAll { !it.value.isActive }
-    
-    if (folderJobs.size >= maxconcurrentfolders && !folderJobs.containsKey(folderId)) {
-      folderJobs.entries.firstOrNull()?.let { (oldestId, job) ->
-        job.cancel()
-        folderJobs.remove(oldestId)
-        folderStates.remove(oldestId)
-      }
-    }
-    
-    val signature = folderSignature(filteredVideos, widthPx, heightPx)
-    val state =
-      folderStates.compute(folderId) { _, existing ->
-        if (existing == null || existing.signature != signature) {
-          FolderState(signature = signature, nextIndex = 0)
-        } else {
-          existing
-        }
-      }!!
-
     folderJobs.remove(folderId)?.cancel()
     folderJobs[folderId] =
-      repositoryScope.launch {
+      repositoryScope.launch(Dispatchers.Default) {
+        val filteredVideos = if (appearancePreferences.showNetworkThumbnails.get()) {
+          videos
+        } else {
+          videos.filterNot { isNetworkUrl(it.path) }
+        }
+
+        if (filteredVideos.isEmpty() || !isActive) return@launch
+
+        folderJobs.entries.removeAll { !it.value.isActive }
+
+        if (folderJobs.size >= maxconcurrentfolders && !folderJobs.containsKey(folderId)) {
+          folderJobs.entries.firstOrNull()?.let { (oldestId, job) ->
+            job.cancel()
+            folderJobs.remove(oldestId)
+            folderStates.remove(oldestId)
+          }
+        }
+
+        val signature = folderSignature(filteredVideos, widthPx, heightPx)
+        val state =
+          folderStates.compute(folderId) { _, existing ->
+            if (existing == null || existing.signature != signature) {
+              FolderState(signature = signature, nextIndex = 0)
+            } else {
+              existing
+            }
+          }!!
+
         var i = state.nextIndex
-        while (i < filteredVideos.size) {
+        while (i < filteredVideos.size && isActive) {
           val video = filteredVideos[i]
           getThumbnail(video, widthPx, heightPx)
           i++

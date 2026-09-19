@@ -54,21 +54,17 @@ class VideoListViewModel(
   private val recentlyPlayedRepository: app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository by inject()
   // Using MediaFileRepository singleton directly
 
-  // In-memory or disk cached videos available immediately on instantiation
-  private val initialCached = loadCachedVideos()
-
-  private val _videos = MutableStateFlow<List<Video>>(initialCached)
+  // StateFlows initialized with empty state (0ms on Main Thread)
+  private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> = _videos.asStateFlow()
 
-  private val _videosWithPlaybackInfo = MutableStateFlow<List<VideoWithPlaybackInfo>>(
-    initialCached.map { VideoWithPlaybackInfo(it) }
-  )
+  private val _videosWithPlaybackInfo = MutableStateFlow<List<VideoWithPlaybackInfo>>(emptyList())
   val videosWithPlaybackInfo: StateFlow<List<VideoWithPlaybackInfo>> = _videosWithPlaybackInfo.asStateFlow()
 
-  private val _isLoading = MutableStateFlow(initialCached.isEmpty())
+  private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-  private val _hasCompletedInitialLoad = MutableStateFlow(initialCached.isNotEmpty())
+  private val _hasCompletedInitialLoad = MutableStateFlow(false)
   val hasCompletedInitialLoad: StateFlow<Boolean> = _hasCompletedInitialLoad.asStateFlow()
 
   // Track if items were deleted/moved leaving folder empty
@@ -104,18 +100,27 @@ class VideoListViewModel(
   private val tag = "VideoListViewModel"
 
   init {
-    previousVideoCount = initialCached.size
+    viewModelScope.launch(Dispatchers.IO) {
+      // 1. Asynchronously load high-speed streaming JSON cache on IO dispatcher (takes only 1-3ms, completely off Main Thread)
+      val entry = VideoStatCache.load(getApplication(), bucketId)
 
-    if (initialCached.isNotEmpty()) {
-      // Fast load watch progress for cached videos immediately
-      viewModelScope.launch(Dispatchers.IO) {
-        loadPlaybackInfo(initialCached)
+      if (entry != null && entry.videos.isNotEmpty()) {
+        val cached = entry.videos
+        cachedFolderLastModified = entry.folderLastModified
+        previousVideoCount = cached.size
+        _videos.value = cached
+        _videosWithPlaybackInfo.value = cached.map { VideoWithPlaybackInfo(it) }
+        _hasCompletedInitialLoad.value = true
+        _isLoading.value = false
+
+        // Load playback info for cached items immediately in background
+        loadPlaybackInfo(cached)
+
+        // Silently refresh in background
+        loadVideos(isBackgroundRefresh = true)
+      } else {
+        loadVideos(isBackgroundRefresh = false)
       }
-
-      // Silently refresh in the background to sync with MediaStore
-      loadVideos(isBackgroundRefresh = true)
-    } else {
-      loadVideos(isBackgroundRefresh = false)
     }
 
     // Listen for global media library changes and refresh silently in background
@@ -127,15 +132,6 @@ class VideoListViewModel(
   }
 
   private var cachedFolderLastModified: Long = 0L
-
-  private fun loadCachedVideos(): List<Video> {
-    val entry = VideoStatCache.load(getApplication(), bucketId)
-    if (entry != null && entry.videos.isNotEmpty()) {
-      cachedFolderLastModified = entry.folderLastModified
-      return entry.videos
-    }
-    return emptyList()
-  }
 
   override fun refresh() {
     Log.d(tag, "Refreshing video list for bucket: $bucketId")
