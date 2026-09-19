@@ -1526,12 +1526,18 @@ fun FileSystemSortDialog(
       VisibilityToggle(
         label = "Framerate",
         checked = showFramerateInResolution,
-        onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+        onCheckedChange = {
+          browserPreferences.showFramerateInResolution.set(it)
+          app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents.notifyChanged()
+        },
       ),
       VisibilityToggle(
         label = "Subtitle",
         checked = showSubtitleIndicator,
-        onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
+        onCheckedChange = {
+          browserPreferences.showSubtitleIndicator.set(it)
+          app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents.notifyChanged()
+        },
       ),
       VisibilityToggle(
         label = "Progress Bar",

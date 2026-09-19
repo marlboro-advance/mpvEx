@@ -427,6 +427,7 @@ data class VideoListScreen(
         sortOrder = videoSortOrder,
         onSortTypeChange = { browserPreferences.videoSortType.set(it) },
         onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
+        onRefresh = { viewModel.refresh() },
       )
 
       // Delete Dialog
@@ -852,6 +853,7 @@ private fun VideoSortDialog(
   sortOrder: SortOrder,
   onSortTypeChange: (VideoSortType) -> Unit,
   onSortOrderChange: (SortOrder) -> Unit,
+  onRefresh: () -> Unit = {},
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val videoGridColumnsPortrait by browserPreferences.videoGridColumnsPortrait.collectAsState()
@@ -973,7 +975,11 @@ private fun VideoSortDialog(
         VisibilityToggle(
           label = "Subtitle Indicator",
           checked = showSubtitleIndicator,
-          onCheckedChange = { browserPreferences.showSubtitleIndicator.set(it) },
+          onCheckedChange = {
+            browserPreferences.showSubtitleIndicator.set(it)
+            app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents.notifyChanged()
+            onRefresh()
+          },
         ),
         VisibilityToggle(
           label = "Full Name",
@@ -993,7 +999,11 @@ private fun VideoSortDialog(
         VisibilityToggle(
           label = "Framerate",
           checked = showFramerateInResolution,
-          onCheckedChange = { browserPreferences.showFramerateInResolution.set(it) },
+          onCheckedChange = {
+            browserPreferences.showFramerateInResolution.set(it)
+            app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents.notifyChanged()
+            onRefresh()
+          },
         ),
         VisibilityToggle(
           label = "Date",

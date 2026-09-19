@@ -129,7 +129,7 @@ class VideoListViewModel(
     // Listen for global media library changes and refresh silently in background
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
-        loadVideos(isBackgroundRefresh = true)
+        refresh()
       }
     }
   }
@@ -137,6 +137,7 @@ class VideoListViewModel(
   override fun refresh() {
     Log.d(tag, "Refreshing video list for bucket: $bucketId")
     cachedFolderLastModified = 0L // Force full stat refresh
+    VideoStatCache.invalidate(bucketId)
     _isLoading.value = true
     viewModelScope.launch(Dispatchers.IO) {
       triggerMediaScan()
@@ -226,11 +227,10 @@ class VideoListViewModel(
         val needsEnrichment = mutableListOf<Video>()
         val reconciledVideos = videoList.map { scanned ->
           val cached = existingMap[scanned.path]
+          val hasFps = cached != null && (cached.fps > 0f || (cached.width > 0 && cached.resolution.contains("@")))
           val isCachedEnriched = cached != null && (
-            cached.fps > 0f ||
-            (cached.width > 0 && cached.resolution.contains("@")) ||
-            cached.hasEmbeddedSubtitles ||
-            cached.subtitleCodec.isNotEmpty()
+            (!browserPreferences.showFramerateInResolution.get() || hasFps) &&
+            (!browserPreferences.showSubtitleIndicator.get() || cached.hasEmbeddedSubtitles || cached.subtitleCodec.isNotEmpty() || hasFps)
           )
           if (cached != null && cached.size == scanned.size && cached.dateModified == scanned.dateModified && (!needsMetadata || isCachedEnriched)) {
             // Unchanged file with complete metadata: reuse cached metadata directly

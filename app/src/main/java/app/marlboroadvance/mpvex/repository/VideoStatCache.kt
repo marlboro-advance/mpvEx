@@ -62,6 +62,16 @@ object VideoStatCache {
     }
   }
 
+  fun invalidate(bucketId: String) {
+    folderStatTimestamps.remove(bucketId)
+    memCache.remove(bucketId)
+  }
+
+  fun clear() {
+    folderStatTimestamps.clear()
+    memCache.clear()
+  }
+
   /**
    * Fast check if the folder's filesystem lastModified matches the cached stat timestamp.
    * Returns true if timestamps match and are non-zero.
