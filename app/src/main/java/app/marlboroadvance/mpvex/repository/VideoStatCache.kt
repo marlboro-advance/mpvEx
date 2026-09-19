@@ -34,8 +34,11 @@ object VideoStatCache {
     val videos: List<Video>,
   )
 
-  // Ultra-compact in-memory map storing only the 64-bit folder stat timestamps
+  // Ultra-compact in-memory map storing folder stat timestamps
   private val folderStatTimestamps = ConcurrentHashMap<String, Long>()
+
+  // Instant in-memory cache for parsed entries (0ms access)
+  private val memCache = ConcurrentHashMap<String, VideoStatEntry>()
 
   private fun getCacheDir(context: Context): File {
     val dir = File(context.filesDir, CACHE_DIR_NAME)
@@ -51,6 +54,15 @@ object VideoStatCache {
   }
 
   /**
+   * Preload folder cache in background so it's ready in memory before user taps.
+   */
+  fun preload(context: Context, bucketId: String) {
+    if (!memCache.containsKey(bucketId)) {
+      load(context, bucketId)
+    }
+  }
+
+  /**
    * Fast check if the folder's filesystem lastModified matches the cached stat timestamp.
    * Returns true if timestamps match and are non-zero.
    */
@@ -61,9 +73,12 @@ object VideoStatCache {
   }
 
   /**
-   * Load cached videos and folder stat timestamp using high-speed streaming [JsonReader].
+   * Load cached videos and folder stat timestamp.
+   * Returns immediately from in-memory cache if available (0ms), otherwise streams from disk JSON.
    */
   fun load(context: Context, bucketId: String): VideoStatEntry? {
+    memCache[bucketId]?.let { return it }
+
     val file = getCacheFile(context, bucketId)
     if (!file.exists() || file.length() == 0L) return null
 
@@ -96,7 +111,9 @@ object VideoStatCache {
               folderStatTimestamps[bucketId] = folderLastModified
             }
 
-            VideoStatEntry(folderLastModified, videos)
+            val entry = VideoStatEntry(folderLastModified, videos)
+            memCache[bucketId] = entry
+            entry
           }
         }
       }
@@ -111,6 +128,7 @@ object VideoStatCache {
    */
   fun save(context: Context, bucketId: String, folderLastModified: Long, videos: List<Video>) {
     folderStatTimestamps[bucketId] = folderLastModified
+    memCache[bucketId] = VideoStatEntry(folderLastModified, videos)
     val cacheFile = getCacheFile(context, bucketId)
     val tempFile = File(cacheFile.parentFile, "${cacheFile.name}.tmp")
 

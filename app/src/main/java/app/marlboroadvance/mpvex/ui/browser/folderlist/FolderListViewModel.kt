@@ -133,6 +133,11 @@ class FolderListViewModel(
 
         // Save to cache for next app launch (save unfiltered list)
         saveFoldersToCache(_allVideoFolders.value)
+
+        // Preload video cache in background so tapping any folder is instant 0ms
+        for (folder in filteredFolders) {
+          app.marlboroadvance.mpvex.repository.VideoStatCache.preload(getApplication(), folder.bucketId)
+        }
       }
     }
   }
@@ -153,6 +158,9 @@ class FolderListViewModel(
           viewModelScope.launch(Dispatchers.IO) {
             _allVideoFolders.value = folders
             _hasCompletedInitialLoad.value = true
+            for (folder in folders) {
+              app.marlboroadvance.mpvex.repository.VideoStatCache.preload(getApplication(), folder.bucketId)
+            }
           }
         }
       } catch (e: Exception) {
