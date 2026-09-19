@@ -34,7 +34,7 @@ class ThumbnailRepository(
     ) 
   }
   private val diskCacheDimension = 1024
-  private val diskJpegQuality = 100
+  private val diskJpegQuality = 85
   private val memoryCache: LruCache<String, Bitmap>
   private val diskDir: File = File(context.filesDir, "thumbnails").apply { mkdirs() }
   private val ongoingOperations = ConcurrentHashMap<String, Deferred<Bitmap?>>()
@@ -92,7 +92,7 @@ class ThumbnailRepository(
       val deferred =
         async {
           try {
-            loadFromDisk(video)?.let { thumbnail ->
+            loadFromDisk(video, widthPx)?.let { thumbnail ->
               memoryCache.put(key, thumbnail)
               _thumbnailReadyKeys.tryEmit(key)
               return@async thumbnail
@@ -151,7 +151,7 @@ class ThumbnailRepository(
       
       val key = thumbnailKey(video, widthPx, heightPx)
       synchronized(memoryCache) { memoryCache.get(key) }?.let { return@withContext it }
-      loadFromDisk(video)?.let { thumbnail ->
+      loadFromDisk(video, widthPx)?.let { thumbnail ->
         synchronized(memoryCache) { memoryCache.put(key, thumbnail) }
         return@withContext thumbnail
       }
@@ -272,13 +272,25 @@ class ThumbnailRepository(
     }
   }
 
-  private fun loadFromDisk(video: Video): Bitmap? {
+  private fun loadFromDisk(video: Video, targetWidthPx: Int = 0): Bitmap? {
     val diskFile = File(diskDir, keyToFileName(diskKey(video)))
     if (!diskFile.exists()) return null
     return runCatching {
       val options =
         BitmapFactory.Options().apply {
-          inPreferredConfig = Bitmap.Config.ARGB_8888
+          inPreferredConfig = Bitmap.Config.RGB_565
+          if (targetWidthPx > 0) {
+            inJustDecodeBounds = true
+            BitmapFactory.decodeFile(diskFile.absolutePath, this)
+            var sampleSize = 1
+            var w = outWidth
+            while (w / 2 >= targetWidthPx) {
+              w /= 2
+              sampleSize *= 2
+            }
+            inSampleSize = sampleSize
+            inJustDecodeBounds = false
+          }
         }
       BitmapFactory.decodeFile(diskFile.absolutePath, options)
     }.getOrNull()

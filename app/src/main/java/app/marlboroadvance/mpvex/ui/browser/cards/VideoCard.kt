@@ -49,6 +49,7 @@ import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import androidx.compose.foundation.combinedClickable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -143,6 +144,7 @@ fun VideoCard(
         // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
         LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
           if (thumbnail == null && showThumbnails) {
+            delay(150)
             thumbnail =
               withContext(Dispatchers.IO) {
                 if (allowThumbnailGeneration) {
@@ -414,6 +416,7 @@ fun VideoCard(
         // Optional immediate generation (used on screens that don't run folder-wide sequential generation).
         LaunchedEffect(thumbnailKey, allowThumbnailGeneration, showThumbnails) {
           if (thumbnail == null && showThumbnails) {
+            delay(150)
             thumbnail =
               withContext(Dispatchers.IO) {
                 if (allowThumbnailGeneration) {

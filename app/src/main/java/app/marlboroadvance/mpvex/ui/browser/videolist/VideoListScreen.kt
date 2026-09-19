@@ -599,6 +599,7 @@ private fun VideoListContent(
 
   LaunchedEffect(folderId, showVideoThumbnails, videosWithInfo.size, thumbWidthPx, thumbHeightPx) {
     if (showVideoThumbnails && videosWithInfo.isNotEmpty()) {
+      kotlinx.coroutines.delay(350)
       thumbnailRepository.startFolderThumbnailGeneration(
         folderId = folderId,
         videos = videosWithInfo.map { it.video },
