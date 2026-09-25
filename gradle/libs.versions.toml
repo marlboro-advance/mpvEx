@@ -17,6 +17,7 @@ sardineAndroid = "0.8"
 reorderable = "3.0.0"
 aboutLibraries = "15.1.1"
 mpv-android = "1.0.0"
+mediainfo-android = "1.0.1"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -42,7 +43,7 @@ androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runt
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version = "1.1.0" }
 seeker = "com.github.abdallahmehiz:seeker:2.0.1"
-mediainfo-lib = "com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix"
+mediainfo-lib = { module = "io.github.marlboro-advance:mediainfo-android", version.ref = "mediainfo-android" }
 mpv-android = { module = "io.github.marlboro-advance:mpv-android", version.ref = "mpv-android" }
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
