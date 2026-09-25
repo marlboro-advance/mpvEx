@@ -20,7 +20,6 @@ object MediaInfoOps {
     block: (MediaInfo) -> T,
   ): T {
     val mi = MediaInfo()
-    var pfd: ParcelFileDescriptor? = null
     try {
       val scheme = uri.scheme?.lowercase()
       when {
@@ -30,10 +29,12 @@ object MediaInfoOps {
           mi.Open(url = url, headers = headers, filename = effectiveName)
         }
         scheme == "content" -> {
-          pfd = context.contentResolver.openFileDescriptor(uri, "r")
+          val pfd = context.contentResolver.openFileDescriptor(uri, "r")
             ?: throw java.io.FileNotFoundException("Could not open file descriptor for $uri")
+          // Detach fd so Android's fdsan relinquishes ownership before native libmediainfo closes it
+          val fd = pfd.detachFd()
           val effectiveName = if (fileName.isNotEmpty()) fileName else (uri.lastPathSegment ?: "")
-          mi.Open(pfd.fd, effectiveName)
+          mi.Open(fd, effectiveName)
         }
         scheme == "file" || scheme == null -> {
           val path = uri.path ?: uri.toString()
@@ -47,9 +48,6 @@ object MediaInfoOps {
     } finally {
       try {
         mi.Close()
-      } catch (_: Exception) {}
-      try {
-        pfd?.close()
       } catch (_: Exception) {}
     }
   }
