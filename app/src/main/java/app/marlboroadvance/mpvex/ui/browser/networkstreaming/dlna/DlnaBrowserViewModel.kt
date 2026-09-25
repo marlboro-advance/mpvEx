@@ -91,8 +91,6 @@ class DlnaBrowserViewModel(
   }
 
   companion object {
-    private const val TAG = "DlnaBrowserVM"
-
     fun factory(
       application: Application,
       deviceUdn: String,

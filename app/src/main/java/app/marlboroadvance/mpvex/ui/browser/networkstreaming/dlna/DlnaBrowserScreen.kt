@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.CircularProgressIndicator
@@ -196,7 +196,7 @@ private fun DlnaBrowserContent(
     else -> {
       val folders = files.filter { it.isDirectory }
       val videos = files.filter { !it.isDirectory }
-      val networkListState = LazyListState()
+      val networkListState = rememberLazyListState()
 
       // Check if at top of list to hide scrollbar during pull-to-refresh
       val isAtTop by remember {

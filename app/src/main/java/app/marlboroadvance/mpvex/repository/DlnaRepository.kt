@@ -9,11 +9,16 @@ import android.util.Log
 import app.marlboroadvance.mpvex.dlna.DlnaUpnpService
 import app.marlboroadvance.mpvex.domain.dlna.DlnaDevice
 import app.marlboroadvance.mpvex.domain.network.NetworkFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +36,7 @@ import org.jupnp.registry.DefaultRegistryListener
 import org.jupnp.registry.Registry
 import org.jupnp.support.contentdirectory.callback.Browse
 import org.jupnp.support.model.BrowseFlag
+import org.jupnp.support.model.BrowseResult
 import org.jupnp.support.model.DIDLContent
 import org.jupnp.support.model.item.Item
 import org.jupnp.support.model.item.VideoItem
@@ -64,6 +70,7 @@ class DlnaRepository(private val context: Context) {
   private var pendingBinder = CompletableDeferred<AndroidUpnpService>()
   private var refCount = 0
   private val bindLock = Any()
+  private var scanJob: Job? = null
 
   private val registryListener = object : DefaultRegistryListener() {
     override fun remoteDeviceAdded(registry: Registry, device: RemoteDevice) {
@@ -145,6 +152,8 @@ class DlnaRepository(private val context: Context) {
 
   private fun unbind() {
     bound = false
+    scanJob?.cancel()
+    scanJob = null
     binder?.let { upnp ->
       try {
         upnp.registry.removeListener(registryListener)
@@ -167,12 +176,19 @@ class DlnaRepository(private val context: Context) {
       if (!bound) throw IllegalStateException("DLNA service is not bound")
       pendingBinder
     }
-    return withTimeout(5_000) { pending.await() }
+    return try {
+      withTimeout(5_000) { pending.await() }
+    } catch (e: TimeoutCancellationException) {
+      throw IllegalStateException("Timed out waiting for the DLNA service to bind", e)
+    }
   }
 
   /** Trigger SSDP discovery. Devices appear in [devices] as they hydrate. */
   fun scan() {
-    scope.launch {
+    // A re-scan owns the indicator; cancelling the previous job keeps its
+    // trailing reset from clearing the new scan's state early
+    scanJob?.cancel()
+    scanJob = scope.launch {
       val upnp =
         try {
           awaitService()
@@ -198,7 +214,7 @@ class DlnaRepository(private val context: Context) {
    */
   suspend fun browse(deviceUdn: String, objectId: String): Result<List<NetworkFile>> =
     withContext(Dispatchers.IO) {
-      runCatching {
+      try {
         val upnp = awaitService()
         val device =
           upnp.registry.getRemoteDevice(UDN.valueOf(deviceUdn), false)
@@ -206,19 +222,55 @@ class DlnaRepository(private val context: Context) {
         val service =
           findContentDirectory(device)
             ?: throw IllegalStateException("Device has no ContentDirectory service")
-
-        val files = mutableListOf<NetworkFile>()
-        val pageSize = 500L
-        var first = 0L
-        var page: List<NetworkFile>
-        do {
-          page = browsePage(upnp, service, objectId, first, pageSize)
-          files.addAll(page)
-          first += pageSize
-        } while (page.size >= pageSize && (first / pageSize) < 20)
-        files
+        Result.success(browseAll(upnp, service, objectId))
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Result.failure(e)
       }
     }
+
+  /**
+   * Page through a container until the server signals the end. Servers may cap
+   * NumberReturned below the requested page size, report TotalMatches as 0
+   * (unknown), or ignore StartingIndex and resend the same entries every page —
+   * so progress is deduplicated by ObjectID and the loop stops when a page
+   * contributes nothing new.
+   */
+  private suspend fun browseAll(upnp: AndroidUpnpService, service: Service<*, *>, objectId: String): List<NetworkFile> {
+    val pageSize = 500L
+    val maxPages = 100
+    val maxFiles = 10_000
+    var first = 0L
+    val seenIds = HashSet<String>()
+    val files = mutableListOf<NetworkFile>()
+    var pages = 0
+    while (true) {
+      currentCoroutineContext().ensureActive()
+      val page = browsePage(upnp, service, objectId, first, pageSize)
+      pages++
+      val newIds = page.ids.filterTo(HashSet()) { seenIds.add(it) }
+      files += page.files.filter { it.path in newIds }
+      if (page.ids.isEmpty() || newIds.isEmpty()) break
+      // Advance by what the server actually returned — some servers cap
+      // NumberReturned below the requested count
+      first += if (page.numberReturned > 0) page.numberReturned else page.ids.size.toLong()
+      if (page.totalMatches > 0 && first >= page.totalMatches) break
+      if (files.size >= maxFiles || pages >= maxPages) {
+        Log.w(TAG, "Browse of '$objectId' stopped early at ${files.size} items after $pages pages")
+        break
+      }
+    }
+    return files
+  }
+
+  /** One browse action's outcome: mapped files, raw ObjectIDs, and paging counters. */
+  private class DlnaPage(
+    val files: List<NetworkFile>,
+    val ids: List<String>,
+    val numberReturned: Long,
+    val totalMatches: Long,
+  )
 
   private class DlnaBrowse(
     service: Service<*, *>,
@@ -226,8 +278,14 @@ class DlnaRepository(private val context: Context) {
     first: Long,
     count: Long,
     val onReceived: (DIDLContent) -> Unit,
+    val onRaw: (numberReturned: Long, totalMatches: Long) -> Unit,
     val onError: (String) -> Unit,
   ) : Browse(service, objectId, BrowseFlag.DIRECT_CHILDREN, "*", first, count) {
+    override fun receivedRaw(invocation: ActionInvocation<*>, result: BrowseResult): Boolean {
+      onRaw(result.countLong, result.totalMatchesLong)
+      return true // default: parse DIDL and call received()
+    }
+
     override fun received(invocation: ActionInvocation<*>, didl: DIDLContent) = onReceived(didl)
 
     override fun updateStatus(status: Browse.Status) {}
@@ -244,9 +302,11 @@ class DlnaRepository(private val context: Context) {
     objectId: String,
     first: Long,
     count: Long,
-  ): List<NetworkFile> {
+  ): DlnaPage {
     var didl: DIDLContent? = null
     var failure: Exception? = null
+    var numberReturned = 0L
+    var totalMatches = 0L
     val browse =
       DlnaBrowse(
         service = service,
@@ -254,6 +314,10 @@ class DlnaRepository(private val context: Context) {
         first = first,
         count = count,
         onReceived = { didl = it },
+        onRaw = { returned, matches ->
+          numberReturned = returned
+          totalMatches = matches
+        },
         onError = { failure = IllegalStateException(it) },
       )
     // ActionCallbacks must run through the ControlPoint; block until the page completes
@@ -264,7 +328,13 @@ class DlnaRepository(private val context: Context) {
       throw IllegalStateException("Browse failed: ${e.cause?.message ?: e.message}")
     }
     failure?.let { throw it }
-    return didl?.let { mapDidl(it) } ?: emptyList()
+    val content = didl
+    return DlnaPage(
+      files = content?.let { mapDidl(it) } ?: emptyList(),
+      ids = content?.let { it.containers.map { c -> c.id } + it.items.map { i -> i.id } } ?: emptyList(),
+      numberReturned = numberReturned,
+      totalMatches = totalMatches,
+    )
   }
 
   private fun mapDidl(didl: DIDLContent): List<NetworkFile> {

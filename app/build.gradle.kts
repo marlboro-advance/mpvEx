@@ -83,10 +83,10 @@ android {
   signingConfigs {
     if (keystorePropertiesFile.exists()) {
       create("release") {
-        storeFile = file(keystoreProperties["store.file"] as String)
-        storePassword = keystoreProperties["store.password"] as String
-        keyAlias = keystoreProperties["key.alias"] as String
-        keyPassword = keystoreProperties["key.password"] as String
+        storeFile = file(requiredSigningProperty("store.file"))
+        storePassword = requiredSigningProperty("store.password")
+        keyAlias = requiredSigningProperty("key.alias")
+        keyPassword = requiredSigningProperty("key.password")
       }
     }
   }
@@ -253,6 +253,15 @@ dependencies {
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
 }
+
+/* ---------------- Signing helpers ---------------- */
+
+fun requiredSigningProperty(key: String): String =
+  keystoreProperties.getProperty(key)
+    ?: throw GradleException(
+      "signing.properties is missing required key '$key'. Expected keys: " +
+        "store.file, store.password, key.alias, key.password"
+    )
 
 /* ---------------- Git helpers ---------------- */
 
