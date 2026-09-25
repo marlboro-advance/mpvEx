@@ -12,6 +12,7 @@ import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRe
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
+import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
@@ -432,18 +433,24 @@ class FileSystemBrowserViewModel(
 
       videoFiles.forEach { videoFile ->
         val video = videoFile.video
-        val playbackState = playbackStateRepository.getVideoDataByTitle(video.displayName)
+        val playbackState = playbackStateRepository.getVideoDataByTitle(MediaIdentifier.forLocalPath(video.path))
+          ?: playbackStateRepository.getVideoDataByTitle(video.displayName)
 
-        if (playbackState != null && video.duration > 0) {
-          val durationSeconds = video.duration / 1000
-          val timeRemaining = playbackState.timeRemaining.toLong()
-          val watched = durationSeconds - timeRemaining
-          val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+        if (playbackState != null) {
+          val durationSeconds = if (video.duration > 0) {
+            video.duration / 1000
+          } else {
+            (playbackState.lastPosition + playbackState.timeRemaining).toLong()
+          }
+          if (durationSeconds > 0) {
+            val watched = playbackState.lastPosition.toLong()
+            val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
 
-          // Only show progress for videos that are 1-99% complete
-          // Similar to how media players show partial progress
-          if (progressValue in 0.01f..0.99f) {
-            playbackMap[video.id] = progressValue
+            // Only show progress for videos that are 1-99% complete
+            // Similar to how media players show partial progress
+            if (progressValue in 0.01f..0.99f) {
+              playbackMap[video.id] = progressValue
+            }
           }
         }
       }

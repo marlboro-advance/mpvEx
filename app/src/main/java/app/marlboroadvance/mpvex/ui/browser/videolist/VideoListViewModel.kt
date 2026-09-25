@@ -307,11 +307,16 @@ class VideoListViewModel(
         val watchedThreshold = browserPreferences.watchedThreshold.get()
 
         // Calculate watch progress (0.0 to 1.0)
-        val progress = if (playbackState != null && video.duration > 0) {
-          // Duration is in milliseconds, convert to seconds
-          val durationSeconds = video.duration / 1000
-          val timeRemaining = playbackState.timeRemaining.toLong()
-          val watched = durationSeconds - timeRemaining
+        val durationSeconds = if (playbackState != null) {
+          if (video.duration > 0) {
+            video.duration / 1000
+          } else {
+            (playbackState.lastPosition + playbackState.timeRemaining).toLong()
+          }
+        } else 0L
+
+        val progress = if (playbackState != null && durationSeconds > 0) {
+          val watched = playbackState.lastPosition.toLong()
           val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
 
           // Only show progress for videos that are 1-99% complete
@@ -334,15 +339,17 @@ class VideoListViewModel(
           false
         }
 
-        val isWatched = if (playbackState != null && video.duration > 0) {
-           val durationSeconds = video.duration / 1000
-           val timeRemaining = playbackState.timeRemaining.toLong()
-           val watched = durationSeconds - timeRemaining
-           val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-           val calculatedWatched = progressValue >= (watchedThreshold / 100f)
-           playbackState.hasBeenWatched || calculatedWatched
+        val isWatched = if (playbackState != null) {
+          if (durationSeconds > 0) {
+            val watched = playbackState.lastPosition.toLong()
+            val progressValue = (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+            val calculatedWatched = progressValue >= (watchedThreshold / 100f)
+            playbackState.hasBeenWatched || calculatedWatched
+          } else {
+            playbackState.hasBeenWatched
+          }
         } else {
-           false
+          false
         }
 
         VideoWithPlaybackInfo(
