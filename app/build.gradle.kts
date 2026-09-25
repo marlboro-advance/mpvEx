@@ -18,8 +18,8 @@ android {
     applicationId = "app.marlboroadvance.mpvex"
     minSdk = 26
     targetSdk = 36
-    versionCode = 130
-    versionName = "1.3.0"
+    versionCode = 131
+    versionName = "1.3.1"
 
     vectorDrawables {
       useSupportLibrary = true
@@ -211,7 +211,7 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation(files("libs/mpv-android-lib-v0.0.1.aar"))
+  implementation(libs.mpv.android)
 
   // Network protocol libraries
   implementation(libs.smbj)
