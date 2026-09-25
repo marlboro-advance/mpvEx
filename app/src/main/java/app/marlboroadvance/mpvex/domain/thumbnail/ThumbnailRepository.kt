@@ -28,11 +28,6 @@ import kotlin.math.max
 class ThumbnailRepository(
   private val context: Context,
 ) {
-  private val appearancePreferences by lazy { 
-    org.koin.java.KoinJavaComponent.get<app.marlboroadvance.mpvex.preferences.AppearancePreferences>(
-      app.marlboroadvance.mpvex.preferences.AppearancePreferences::class.java
-    ) 
-  }
   private val diskCacheDimension = 1024
   private val diskJpegQuality = 85
   private val memoryCache: LruCache<String, Bitmap>
@@ -79,7 +74,7 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val key = thumbnailKey(video, widthPx, heightPx)
 
-      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+      if (isNetworkUrl(video.path)) {
         return@withContext null
       }
 
@@ -98,7 +93,7 @@ class ThumbnailRepository(
               return@async thumbnail
             }
 
-            if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+            if (isNetworkUrl(video.path)) {
               return@async null
             }
 
@@ -145,7 +140,7 @@ class ThumbnailRepository(
     heightPx: Int,
   ): Bitmap? =
     withContext(Dispatchers.IO) {
-      if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+      if (isNetworkUrl(video.path)) {
         return@withContext null
       }
       
@@ -163,7 +158,7 @@ class ThumbnailRepository(
     widthPx: Int,
     heightPx: Int,
   ): Bitmap? {
-    if (isNetworkUrl(video.path) && !appearancePreferences.showNetworkThumbnails.get()) {
+    if (isNetworkUrl(video.path)) {
       return null
     }
     
@@ -200,11 +195,7 @@ class ThumbnailRepository(
     folderJobs.remove(folderId)?.cancel()
     folderJobs[folderId] =
       repositoryScope.launch(Dispatchers.Default) {
-        val filteredVideos = if (appearancePreferences.showNetworkThumbnails.get()) {
-          videos
-        } else {
-          videos.filterNot { isNetworkUrl(it.path) }
-        }
+        val filteredVideos = videos.filterNot { isNetworkUrl(it.path) }
 
         if (filteredVideos.isEmpty() || !isActive) return@launch
 
@@ -265,11 +256,7 @@ class ThumbnailRepository(
 
   private fun diskKey(video: Video): String {
     val baseKey = videoBaseKey(video)
-    return if (isNetworkUrl(video.path)) {
-      "$baseKey|disk|d$diskCacheDimension|pos3"
-    } else {
-      "$baseKey|disk|d$diskCacheDimension"
-    }
+    return "$baseKey|disk|d$diskCacheDimension"
   }
 
   private fun loadFromDisk(video: Video, targetWidthPx: Int = 0): Bitmap? {
@@ -446,18 +433,6 @@ class ThumbnailRepository(
   }
 
   private fun preferredPositionSeconds(video: Video): Double {
-    val isNetworkUrl = isNetworkUrl(video.path)
-    
-    if (isNetworkUrl) {
-      val durationSec = video.duration / 1000.0
-      
-      if (durationSec > 0.0) {
-        return 2.0.coerceIn(0.0, max(0.0, durationSec - 0.1))
-      }
-      
-      return 2.0
-    }
-    
     val durationSec = video.duration / 1000.0
     
     if (durationSec <= 0.0 || durationSec < 20.0) return 0.0

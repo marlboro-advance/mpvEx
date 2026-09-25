@@ -66,13 +66,6 @@ object SearchablePreferences {
                 category = "Appearance",
                 screen = AppearancePreferencesScreen,
             ))
-            add(SearchablePreference(
-                titleRes = R.string.pref_appearance_show_network_thumbnails_title,
-                summaryRes = R.string.pref_appearance_show_network_thumbnails_summary,
-                keywords = listOf("network", "thumbnail", "stream", "preview", "images"),
-                category = "Appearance",
-                screen = AppearancePreferencesScreen,
-            ))
 
             // Layout preferences
             add(SearchablePreference(
