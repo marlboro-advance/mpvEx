@@ -21,8 +21,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.content.ContentUris
+import android.content.Context
+import android.provider.MediaStore
 import org.koin.java.KoinJavaComponent.inject
 import java.io.File
+import java.util.Locale
 import kotlin.math.pow
 
 class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(application) {
@@ -129,16 +133,18 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
           continue
         }
 
-        val video = if (isNetworkUri) {
-          // For network URLs, create video object directly using parsed title from entity
-          createNetworkVideoFromUrl(filePath, entity?.videoTitle, entity)
-        } else {
-          // For local files, check if they exist
-          val file = File(filePath)
-          if (file.exists()) {
-            createVideoFromFilePath(filePath, file, entity?.videoTitle)
-          } else {
-            null
+        val isContentUri = filePath.startsWith("content://", ignoreCase = true)
+
+        val video = when {
+          isNetworkUri -> createNetworkVideoFromUrl(filePath, entity?.videoTitle, entity)
+          isContentUri -> createVideoFromContentUri(filePath, Uri.parse(filePath), entity?.videoTitle, entity)
+          else -> {
+            val file = File(filePath)
+            if (file.exists()) {
+              createVideoFromFilePath(filePath, file, entity?.videoTitle, entity)
+            } else {
+              null
+            }
           }
         }
 
@@ -167,27 +173,68 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
     filePath: String,
     file: File,
     parsedVideoTitle: String? = null,
+    entity: RecentlyPlayedEntity? = null,
   ): Video? {
     return try {
       val context = getApplication<Application>()
 
-      // Extract metadata directly from file using metadata cache
+      // 1. Try MediaStore first to get matching MediaStore ID, duration, size, and content URI
+      val mediaStoreVideo = queryVideoFromMediaStore(context, file)
+      if (mediaStoreVideo != null) {
+        val effectiveDuration = if (mediaStoreVideo.duration > 0L) {
+          mediaStoreVideo.duration
+        } else {
+          entity?.duration?.takeIf { it > 0L } ?: 0L
+        }
+        val effectiveTitle = parsedVideoTitle ?: mediaStoreVideo.title
+        return mediaStoreVideo.copy(
+          title = effectiveTitle,
+          duration = effectiveDuration,
+          durationFormatted = formatDuration(effectiveDuration),
+        )
+      }
+
+      // 2. Fallback for local files not indexed in MediaStore
       val uri = Uri.fromFile(file)
       val displayName = file.name
-      val title = file.nameWithoutExtension
+      val title = parsedVideoTitle ?: file.nameWithoutExtension
 
-      // Get metadata from cache or extract it
-      val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
-      val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
+      val entityDuration = entity?.duration?.takeIf { it > 0L } ?: 0L
+      val entitySize = entity?.fileSize?.takeIf { it > 0L } ?: file.length()
+      val entityWidth = entity?.width ?: 0
+      val entityHeight = entity?.height ?: 0
 
-      val duration = metadata?.durationMs ?: 0L
-      val width = metadata?.width ?: 0
-      val height = metadata?.height ?: 0
-      val fps = metadata?.fps ?: 0f
-      val size = if (metadata?.sizeBytes != null && metadata.sizeBytes > 0) {
-        metadata.sizeBytes
-      } else {
-        file.length()
+      var duration = entityDuration
+      var width = entityWidth
+      var height = entityHeight
+      var size = entitySize
+
+      // Get metadata from cache or extract it if duration is missing
+      if (duration <= 0L) {
+        val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
+        val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
+        if (metadata != null) {
+          if (metadata.durationMs > 0L) duration = metadata.durationMs
+          if (metadata.width > 0 && width == 0) width = metadata.width
+          if (metadata.height > 0 && height == 0) height = metadata.height
+          if (metadata.sizeBytes > 0L && size <= 0L) size = metadata.sizeBytes
+        }
+      }
+
+      // If still 0, try MediaMetadataRetriever directly on the file
+      if (duration <= 0L) {
+        runCatching {
+          val mmr = android.media.MediaMetadataRetriever()
+          mmr.setDataSource(file.absolutePath)
+          duration = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+          if (width == 0) {
+            width = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+          }
+          if (height == 0) {
+            height = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+          }
+          mmr.release()
+        }
       }
 
       val dateModified = file.lastModified() / 1000
@@ -197,7 +244,7 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
       val bucketDisplayName = File(parent).name
 
       // Determine mime type from extension
-      val mimeType = when (file.extension.lowercase()) {
+      val mimeType = when (file.extension.lowercase(Locale.US)) {
         "mp4" -> "video/mp4"
         "mkv" -> "video/x-matroska"
         "webm" -> "video/webm"
@@ -228,13 +275,170 @@ class RecentlyPlayedViewModel(application: Application) : AndroidViewModel(appli
         bucketDisplayName = bucketDisplayName,
         width = width,
         height = height,
-        fps = fps,
+        fps = 0f,
         resolution = formatResolution(width, height),
       )
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error creating video from path: $filePath", e)
       null
     }
+  }
+
+  private fun queryVideoFromMediaStore(context: Context, file: File): Video? {
+    val projection = arrayOf(
+      MediaStore.Video.Media._ID,
+      MediaStore.Video.Media.DISPLAY_NAME,
+      MediaStore.Video.Media.TITLE,
+      MediaStore.Video.Media.DATA,
+      MediaStore.Video.Media.SIZE,
+      MediaStore.Video.Media.DURATION,
+      MediaStore.Video.Media.DATE_MODIFIED,
+      MediaStore.Video.Media.DATE_ADDED,
+      MediaStore.Video.Media.MIME_TYPE,
+      MediaStore.Video.Media.WIDTH,
+      MediaStore.Video.Media.HEIGHT,
+    )
+    val selection = "${MediaStore.Video.Media.DATA} = ?"
+    val selectionArgs = arrayOf(file.absolutePath)
+
+    return runCatching {
+      context.contentResolver.query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        projection,
+        selection,
+        selectionArgs,
+        null,
+      )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+          val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
+          val displayName = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)) ?: file.name
+          val title = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)) ?: file.nameWithoutExtension
+          val size = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE))
+          val duration = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION))
+          val dateModified = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED))
+          val dateAdded = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED))
+          val mimeType = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)) ?: "video/*"
+          val width = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH))
+          val height = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT))
+
+          val uri = ContentUris.withAppendedId(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            id,
+          )
+          val parent = file.parent ?: ""
+
+          Video(
+            id = id,
+            title = title,
+            displayName = displayName,
+            path = file.absolutePath,
+            uri = uri,
+            duration = duration,
+            durationFormatted = formatDuration(duration),
+            size = size,
+            sizeFormatted = formatFileSize(size),
+            dateModified = dateModified,
+            dateAdded = dateAdded,
+            mimeType = mimeType,
+            bucketId = parent.hashCode().toString(),
+            bucketDisplayName = File(parent).name,
+            width = width,
+            height = height,
+            fps = 0f,
+            resolution = formatResolution(width, height),
+          )
+        } else null
+      }
+    }.getOrNull()
+  }
+
+  private fun createVideoFromContentUri(
+    uriString: String,
+    uri: Uri,
+    parsedVideoTitle: String?,
+    entity: RecentlyPlayedEntity?,
+  ): Video? {
+    return runCatching {
+      val context = getApplication<Application>()
+      val projection = arrayOf(
+        MediaStore.Video.Media._ID,
+        MediaStore.Video.Media.DISPLAY_NAME,
+        MediaStore.Video.Media.SIZE,
+        MediaStore.Video.Media.DURATION,
+        MediaStore.Video.Media.DATE_MODIFIED,
+        MediaStore.Video.Media.WIDTH,
+        MediaStore.Video.Media.HEIGHT,
+      )
+
+      var id = uriString.hashCode().toLong()
+      var displayName = parsedVideoTitle ?: uri.lastPathSegment ?: "Video"
+      var duration = entity?.duration ?: 0L
+      var size = entity?.fileSize ?: 0L
+      var width = entity?.width ?: 0
+      var height = entity?.height ?: 0
+      var dateModified = System.currentTimeMillis() / 1000
+
+      context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) {
+          val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
+          if (idCol >= 0) id = cursor.getLong(idCol)
+
+          val nameCol = cursor.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME)
+          if (nameCol >= 0) displayName = cursor.getString(nameCol) ?: displayName
+
+          val durCol = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+          if (durCol >= 0 && duration <= 0L) duration = cursor.getLong(durCol)
+
+          val sizeCol = cursor.getColumnIndex(MediaStore.Video.Media.SIZE)
+          if (sizeCol >= 0 && size <= 0L) size = cursor.getLong(sizeCol)
+
+          val dateCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_MODIFIED)
+          if (dateCol >= 0) dateModified = cursor.getLong(dateCol)
+
+          val wCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
+          if (wCol >= 0 && width == 0) width = cursor.getInt(wCol)
+
+          val hCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+          if (hCol >= 0 && height == 0) height = cursor.getInt(hCol)
+        }
+      }
+
+      if (duration <= 0L) {
+        runCatching {
+          val mmr = android.media.MediaMetadataRetriever()
+          mmr.setDataSource(context, uri)
+          duration = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+          if (width == 0) {
+            width = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+          }
+          if (height == 0) {
+            height = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+          }
+          mmr.release()
+        }
+      }
+
+      Video(
+        id = id,
+        title = parsedVideoTitle ?: displayName,
+        displayName = displayName,
+        path = uriString,
+        uri = uri,
+        duration = duration,
+        durationFormatted = formatDuration(duration),
+        size = size,
+        sizeFormatted = formatFileSize(size),
+        dateModified = dateModified,
+        dateAdded = dateModified,
+        mimeType = "video/*",
+        bucketId = "content",
+        bucketDisplayName = "External",
+        width = width,
+        height = height,
+        fps = 0f,
+        resolution = formatResolution(width, height),
+      )
+    }.getOrNull()
   }
 
   /**

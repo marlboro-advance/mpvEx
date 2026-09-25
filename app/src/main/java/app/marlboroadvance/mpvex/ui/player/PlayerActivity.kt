@@ -1648,6 +1648,7 @@ class PlayerActivity :
         if (!isReady) {
           isReady = true
         }
+        updateRecentlyPlayedDurationIfAvailable()
       }
     }
   }
@@ -2221,9 +2222,13 @@ class PlayerActivity :
       }.getOrNull()?.takeIf { it.isNotBlank() && it != fileName }
 
       // Get duration and file size from MPV
-      val duration = runCatching {
+      var duration = runCatching {
         (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
       }.getOrDefault(0L)
+
+      if (duration <= 0L) {
+        duration = getVideoDurationFromUri(uri)
+      }
 
       val fileSize = runCatching {
         // Try multiple properties to get file size
@@ -3197,9 +3202,13 @@ class PlayerActivity :
       }.getOrNull()?.takeIf { it.isNotBlank() && it != name }
 
       // Get duration and file size from MPV
-      val duration = runCatching {
+      var duration = runCatching {
         (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
       }.getOrDefault(0L)
+
+      if (duration <= 0L) {
+        duration = getVideoDurationFromUri(uri)
+      }
 
       val fileSize = runCatching {
         // Try multiple properties to get file size
@@ -3238,6 +3247,109 @@ class PlayerActivity :
       Log.d(TAG, "  - playlistId: $playlistId")
     }.onFailure { e ->
       Log.e(TAG, "Error saving recently played for playlist item", e)
+    }
+  }
+
+  private fun getVideoDurationFromUri(uri: Uri): Long {
+    return runCatching {
+      val projection = arrayOf(MediaStore.Video.Media.DURATION)
+      when (uri.scheme) {
+        "content" -> {
+          contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+              val idx = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+              if (idx >= 0) {
+                val dur = cursor.getLong(idx)
+                if (dur > 0L) return dur
+              }
+            }
+          }
+        }
+        "file" -> {
+          val path = uri.path
+          if (path != null) {
+            val selection = "${MediaStore.Video.Media.DATA} = ?"
+            contentResolver.query(
+              MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+              projection,
+              selection,
+              arrayOf(path),
+              null,
+            )?.use { cursor ->
+              if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+                if (idx >= 0) {
+                  val dur = cursor.getLong(idx)
+                  if (dur > 0L) return dur
+                }
+              }
+            }
+          }
+        }
+      }
+      val retriever = android.media.MediaMetadataRetriever()
+      try {
+        if (uri.scheme == "file") {
+          retriever.setDataSource(uri.path)
+        } else {
+          retriever.setDataSource(this, uri)
+        }
+        retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+      } finally {
+        runCatching { retriever.release() }
+      }
+    }.getOrDefault(0L)
+  }
+
+  private fun updateRecentlyPlayedDurationIfAvailable() {
+    lifecycleScope.launch(Dispatchers.IO) {
+      val durMs = runCatching {
+        (MPVLib.getPropertyDouble("duration") ?: 0.0).times(1000).toLong()
+      }.getOrDefault(0L)
+      if (durMs > 0L) {
+        val uri = extractUriFromIntent(intent) ?: return@launch
+        val filePath = when (uri.scheme) {
+          "file" -> uri.path ?: uri.toString()
+          "content" -> {
+            contentResolver.query(
+              uri,
+              arrayOf(MediaStore.MediaColumns.DATA),
+              null,
+              null,
+              null,
+            )?.use { cursor ->
+              if (cursor.moveToFirst()) {
+                val columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                if (columnIndex != -1) cursor.getString(columnIndex) else null
+              } else null
+            } ?: uri.toString()
+          }
+          else -> uri.toString()
+        }
+        val fileSize = runCatching {
+          MPVLib.getPropertyDouble("file-size")?.toLong()
+            ?: MPVLib.getPropertyDouble("stream-end")?.toLong()
+            ?: 0L
+        }.getOrDefault(0L)
+        val width = runCatching {
+          MPVLib.getPropertyInt("width") ?: MPVLib.getPropertyInt("video-params/w") ?: 0
+        }.getOrDefault(0)
+        val height = runCatching {
+          MPVLib.getPropertyInt("height") ?: MPVLib.getPropertyInt("video-params/h") ?: 0
+        }.getOrDefault(0)
+        val videoTitle = runCatching {
+          MPVLib.getPropertyString("media-title")
+        }.getOrNull()?.takeIf { it.isNotBlank() && it != fileName }
+
+        RecentlyPlayedOps.updateVideoMetadata(
+          filePath = filePath,
+          videoTitle = videoTitle,
+          duration = durMs,
+          fileSize = fileSize,
+          width = width,
+          height = height,
+        )
+      }
     }
   }
 

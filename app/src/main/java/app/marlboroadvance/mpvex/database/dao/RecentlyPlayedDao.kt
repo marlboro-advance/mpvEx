@@ -99,7 +99,17 @@ interface RecentlyPlayedDao {
     videoTitle: String,
   )
 
-  @Query("UPDATE RecentlyPlayedEntity SET videoTitle = :videoTitle, duration = :duration, fileSize = :fileSize, width = :width, height = :height WHERE filePath = :filePath")
+  @Query(
+    """
+    UPDATE RecentlyPlayedEntity 
+    SET videoTitle = COALESCE(:videoTitle, videoTitle), 
+        duration = CASE WHEN :duration > 0 THEN :duration ELSE duration END, 
+        fileSize = CASE WHEN :fileSize > 0 THEN :fileSize ELSE fileSize END, 
+        width = CASE WHEN :width > 0 THEN :width ELSE width END, 
+        height = CASE WHEN :height > 0 THEN :height ELSE height END 
+    WHERE filePath = :filePath
+    """
+  )
   suspend fun updateVideoMetadata(
     filePath: String,
     videoTitle: String?,
