@@ -102,8 +102,8 @@ fun AddTrackRow(
 fun getTrackTitle(
   track: TrackNode,
 ): String {
-  // Handle external subtitles
-  if (track.isSubtitle && track.external == true && track.externalFilename != null) {
+  // Handle external subtitles and audio tracks
+  if ((track.isSubtitle || track.isAudio) && track.external == true && track.externalFilename != null) {
     val decoded = Uri.decode(track.externalFilename)
     val fileName = decoded.substringAfterLast("/")
     return stringResource(R.string.player_sheets_track_title_wo_lang, track.id, fileName)
