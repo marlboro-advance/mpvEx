@@ -1,8 +1,11 @@
 package app.marlboroadvance.mpvex.ui.mediainfo
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -62,6 +65,7 @@ import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.ui.theme.DarkMode
 import app.marlboroadvance.mpvex.ui.theme.MpvexTheme
+import app.marlboroadvance.mpvex.utils.media.HttpUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,9 +76,11 @@ import java.io.File
 class MediaInfoActivity : ComponentActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val TAG = "MediaInfoActivity"
+  private val currentIntent = mutableStateOf<Intent?>(null)
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    currentIntent.value = intent
 
     setContent {
       val dark by appearancePreferences.darkMode.collectAsState()
@@ -97,6 +103,12 @@ class MediaInfoActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    currentIntent.value = intent
   }
 
   @OptIn(ExperimentalMaterial3Api::class)
@@ -124,61 +136,49 @@ class MediaInfoActivity : ComponentActivity() {
     val surfaceContainerColor = MaterialTheme.colorScheme.surfaceContainer
     val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
 
-    LaunchedEffect(Unit) {
-      val uri = when (intent?.action) {
-        Intent.ACTION_SEND -> {
-          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-          } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-          }
-        }
+    val activeIntent = currentIntent.value
 
-        Intent.ACTION_VIEW -> {
-          intent.data
-        }
+    LaunchedEffect(activeIntent) {
+      isLoading = true
+      error = null
+      mediaInfo = null
+      textContent = null
+      fullMediaInfoText = null
 
-        else -> null
-      }
+      val uri = extractUriFromIntent(activeIntent)
 
       if (uri == null) {
-        error = "No media file provided"
+        error = "No media file or link provided"
         isLoading = false
         return@LaunchedEffect
       }
 
       fileUri = uri
+      val resolvedName = resolveFileName(context, uri)
+      fileName = resolvedName
 
-      // Get the file name
-      fileName = try {
-        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-          val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-          if (nameIndex >= 0 && cursor.moveToFirst()) {
-            cursor.getString(nameIndex) ?: uri.lastPathSegment ?: "Unknown"
-          } else {
-            uri.lastPathSegment ?: "Unknown"
-          }
-        } ?: uri.lastPathSegment ?: "Unknown"
-      } catch (e: Exception) {
-        Log.e(TAG, "Error getting file name", e)
-        uri.lastPathSegment ?: "Unknown"
-      }
+      val headers = extractHeadersFromIntent(activeIntent, uri)
 
       // Load media info
       scope.launch {
         try {
-          val result = MediaInfoOps.getMediaInfo(context, uri, fileName)
+          val result = MediaInfoOps.getMediaInfo(context, uri, fileName, headers)
           result.onSuccess { mediaInfoResult ->
-            mediaInfo = mediaInfoResult
+            if (mediaInfoResult.general.format.isEmpty() &&
+                mediaInfoResult.videoStreams.isEmpty() &&
+                mediaInfoResult.audioStreams.isEmpty() &&
+                mediaInfoResult.rawReport.isEmpty()
+            ) {
+              error = "Unable to read media information. The link may be unreachable or unsupported."
+            } else {
+              mediaInfo = mediaInfoResult
 
-            // Also generate text content for sharing/copying
-            val textResult = MediaInfoOps.generateTextOutput(context, uri, fileName)
-            textResult.onSuccess { text ->
+              val text = mediaInfoResult.rawReport.ifEmpty {
+                MediaInfoOps.generateTextOutput(context, uri, fileName, headers).getOrNull() ?: ""
+              }
               textContent = text
               fullMediaInfoText = text
             }
-
             isLoading = false
           }.onFailure { e ->
             error = e.message ?: "Failed to load media information"
@@ -531,5 +531,105 @@ class MediaInfoActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  private fun extractUriFromIntent(intent: Intent?): Uri? {
+    if (intent == null) return null
+
+    // 1. Direct intent data (ACTION_VIEW, or explicit data URI)
+    intent.data?.let { return it }
+
+    // 2. Extra stream (ACTION_SEND with file/media URI)
+    if (intent.hasExtra(Intent.EXTRA_STREAM)) {
+      val streamUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+      }
+      if (streamUri != null) return streamUri
+    }
+
+    // 3. String extra "uri" (internal mpvEx intents)
+    intent.getStringExtra("uri")?.let { uriStr ->
+      val parsed = Uri.parse(uriStr)
+      if (parsed.scheme != null) return parsed
+    }
+
+    // 4. EXTRA_TEXT (shared links from browsers, YouTube, Twitter/X, social apps, chat, etc.)
+    val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+      ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+
+    if (!sharedText.isNullOrBlank()) {
+      val trimmed = sharedText.trim()
+      // Extract URL from shared text (e.g. "Watch: https://example.com/stream.mp4")
+      val urlRegex = Regex("""https?://[^\s<>"]+""")
+      val match = urlRegex.find(trimmed)
+      if (match != null) {
+        return Uri.parse(match.value)
+      }
+      val directUri = Uri.parse(trimmed)
+      if (directUri.scheme != null) {
+        return directUri
+      }
+    }
+
+    // 5. ClipData URI
+    intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri?.let { return it }
+
+    return null
+  }
+
+  private fun extractHeadersFromIntent(intent: Intent?, uri: Uri?): Map<String, String> {
+    val headerMap = mutableMapOf<String, String>()
+    if (uri != null && HttpUtils.isNetworkStream(uri)) {
+      HttpUtils.extractRefererDomain(uri)?.let { referer ->
+        headerMap["Referer"] = referer
+      }
+    }
+    intent?.getStringArrayExtra("headers")?.let { headers ->
+      for (i in 0 until headers.size - 1 step 2) {
+        headerMap[headers[i]] = headers[i + 1]
+      }
+    }
+    return headerMap
+  }
+
+  private fun resolveFileName(context: Context, uri: Uri): String {
+    val scheme = uri.scheme?.lowercase()
+    if (scheme == "http" || scheme == "https") {
+      val path = uri.path.orEmpty()
+      val lastSegment = path.substringAfterLast('/')
+      val decoded = Uri.decode(lastSegment.substringBefore('?').substringBefore('#'))
+      if (decoded.isNotBlank()) {
+        return decoded
+      }
+      return uri.host ?: "Online Stream"
+    }
+
+    if (scheme == "content") {
+      try {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+          val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (nameIndex >= 0 && cursor.moveToFirst()) {
+            val name = cursor.getString(nameIndex)
+            if (!name.isNullOrBlank()) return name
+          }
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error querying content resolver for file name", e)
+      }
+      val segment = uri.lastPathSegment
+      if (!segment.isNullOrBlank()) return segment
+    }
+
+    if (scheme == "file") {
+      val path = uri.path
+      if (!path.isNullOrBlank()) {
+        return File(path).name
+      }
+    }
+
+    return uri.lastPathSegment ?: uri.toString()
   }
 }
