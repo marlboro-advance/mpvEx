@@ -1,5 +1,6 @@
 import com.android.build.api.variant.FilterConfiguration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -8,6 +9,13 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
   alias(libs.plugins.aboutlibraries)
+}
+
+// Local release signing: signing.properties is gitignored; CI signs with apksigner instead
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("signing.properties")
+if (keystorePropertiesFile.exists()) {
+  keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
 android {
@@ -72,10 +80,24 @@ android {
     }
   }
 
+  signingConfigs {
+    if (keystorePropertiesFile.exists()) {
+      create("release") {
+        storeFile = file(keystoreProperties["store.file"] as String)
+        storePassword = keystoreProperties["store.password"] as String
+        keyAlias = keystoreProperties["key.alias"] as String
+        keyPassword = keystoreProperties["key.password"] as String
+      }
+    }
+  }
+
   buildTypes {
     named("release") {
       isMinifyEnabled = true
       isShrinkResources = true
+      if (keystorePropertiesFile.exists()) {
+        signingConfig = signingConfigs.getByName("release")
+      }
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro"
@@ -220,6 +242,14 @@ dependencies {
     exclude(group = "xpp3", module = "xpp3")
   }
   implementation(libs.nanohttpd)
+
+  // DLNA / UPnP
+  implementation(libs.jupnp.android)
+  implementation(libs.jupnp.support)
+  implementation(libs.jetty.client)
+  implementation(libs.jetty.server)
+  implementation(libs.jetty.servlet)
+  implementation(libs.slf4j.jdk14)
   implementation(libs.lazycolumnscrollbar)
   implementation(libs.reorderable)
 }

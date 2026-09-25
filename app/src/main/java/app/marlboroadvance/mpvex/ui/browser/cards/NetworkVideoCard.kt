@@ -41,7 +41,7 @@ import java.util.Locale
 @Composable
 fun NetworkVideoCard(
   file: NetworkFile,
-  connection: NetworkConnection,
+  connection: NetworkConnection? = null,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   onLongClick: (() -> Unit)? = null,

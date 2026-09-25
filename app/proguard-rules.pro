@@ -73,3 +73,44 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# jUPnP (copied from org.jupnp.android JAR META-INF/proguard/proguard-rules.pro)
+# R8 shrinking breaks jUPnP's SOAP request writing even with names preserved
+# (-dontobfuscate) — keep the whole namespace like Jetty below.
+-keep class org.jupnp.** { *; }
+-keepclassmembers class ** extends org.jupnp.model.message.header.UpnpHeader {
+   public <init>(...);
+}
+
+-keep @interface org.jupnp.binding.annotations.**
+
+-keepnames @org.jupnp.binding.annotations.UpnpService class **
+
+-keepclassmembers @org.jupnp.binding.annotations.UpnpService class ** {
+    public <init>(...);
+    @org.jupnp.binding.annotations.UpnpStateVariable <fields>;
+    @org.jupnp.binding.annotations.UpnpAction <methods>;
+    public <methods>;
+    public <fields>;
+}
+
+-dontwarn org.osgi.service.component.annotations.Component
+-dontwarn org.osgi.service.metatype.annotations.Designate
+-dontwarn org.osgi.framework.BundleContext
+-dontwarn org.osgi.service.component.ComponentContext
+-dontwarn org.osgi.service.component.annotations.Activate
+-dontwarn org.osgi.service.component.annotations.Deactivate
+-dontwarn org.osgi.service.component.annotations.Modified
+-dontwarn org.osgi.service.component.annotations.Reference
+-dontwarn org.osgi.service.http.HttpContext
+-dontwarn org.osgi.service.http.HttpService
+-dontwarn org.osgi.service.http.NamespaceException
+-dontwarn org.osgi.service.metatype.annotations.AttributeDefinition
+-dontwarn org.osgi.service.metatype.annotations.ObjectClassDefinition
+-dontwarn com.sun.net.httpserver.Headers
+-dontwarn com.sun.net.httpserver.HttpExchange
+
+# Jetty 9 (jUPnP Android transport)
+-keep class org.eclipse.jetty.** { *; }
+-dontwarn org.eclipse.jetty.**
+-dontwarn javax.servlet.**
