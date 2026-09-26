@@ -438,6 +438,13 @@ object SearchablePreferences {
                 screen = SubtitlesPreferencesScreen,
             ))
             add(SearchablePreference(
+                titleRes = R.string.pref_subtitles_remove_hi_title,
+                summaryRes = R.string.pref_subtitles_remove_hi_summary,
+                keywords = listOf("remove hi", "hearing impaired", "hearing implant", "sdh", "subtitles", "clean", "dialogue"),
+                category = "Subtitles",
+                screen = SubtitlesPreferencesScreen,
+            ))
+            add(SearchablePreference(
                 titleRes = R.string.pref_subtitles_fonts_dir,
                 keywords = listOf("fonts", "directory", "subtitle", "custom", "folder"),
                 category = "Subtitles",

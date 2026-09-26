@@ -1960,6 +1960,11 @@ class PlayerActivity :
     MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
     MPVLib.setPropertyString("sub-use-margins", scaleValue)
 
+    val removeHI = subtitlesPreferences.removeHI.get()
+    val removeHIValue = if (removeHI) "yes" else "no"
+    MPVLib.setPropertyString("sub-filter-sdh", removeHIValue)
+    MPVLib.setPropertyString("sub-filter-sdh-harder", removeHIValue)
+
     MPVLib.setPropertyFloat("sub-scale", subtitlesPreferences.subScale.get())
     MPVLib.setPropertyInt("sub-pos", subtitlesPreferences.subPos.get())
 
