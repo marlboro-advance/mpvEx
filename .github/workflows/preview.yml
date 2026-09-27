@@ -120,57 +120,32 @@ jobs:
           <html lang='en'>
           <head>
             <meta charset='UTF-8'>
-            <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
             <title>mpvEx Preview Builds</title>
             <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; line-height: 1.6; padding: 1.25rem; max-width: 800px; margin: 0 auto; }
-              header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
-              .brand { font-size: 1.1rem; font-weight: 700; color: #f0f6fc; text-decoration: none; }
-              .nav { display: flex; gap: 1rem; flex-wrap: wrap; }
-              .nav a { color: #8b949e; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
-              .nav a:hover { color: #58a6ff; }
-              h1 { color: #58a6ff; font-size: 1.75rem; margin-bottom: 0.35rem; }
-              .build-info { color: #8b949e; font-size: 0.88rem; margin-bottom: 1.25rem; }
-              ul { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; margin: 1rem 0; }
-              li a { display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #58a6ff; text-decoration: none; font-weight: 500; transition: border-color 0.15s; }
-              li a:hover { border-color: #58a6ff; background: #1c2128; }
-              .filesize { color: #8b949e; font-size: 0.85em; font-weight: normal; }
-              .footer { color: #8b949e; font-size: 0.85rem; margin-top: 2rem; border-top: 1px solid #30363d; padding-top: 1.25rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
-              .footer a { color: #58a6ff; text-decoration: none; }
-              @media (max-width: 600px) {
-                body { padding: 1rem; }
-                h1 { font-size: 1.45rem; }
-                li a { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
-              }
+              body { font-family: sans-serif; padding: 2em; background: #0d1117; color: #c9d1d9; }
+              h1 { color: #58a6ff; }
+              a { color: #58a6ff; text-decoration: none; display: block; margin: 8px 0; }
+              a:hover { text-decoration: underline; }
+              .note { color: #8b949e; font-size: 0.9em; margin-top: 1em; }
+              .filesize { color: #8b949e; font-size: 0.9em; }
             </style>
           </head>
           <body>
-            <header>
-              <a href='index.html' class='brand'>mpvExtended</a>
-              <nav class='nav'>
-                <a href='index.html'>Preview Builds</a>
-                <a href='privacy-policy.html'>Privacy Policy</a>
-                <a href='https://github.com/marlboro-advance/mpvEx'>GitHub</a>
-              </nav>
-            </header>
             <h1>mpvEx Preview Build r${commit_count}</h1>
-            <p class='build-info'>Build time: ${build_time}</p>
-            <p>Download signed test APKs:</p>
+            <p>Build time: ${build_time}</p>
+            <p>Download the latest signed APKs:</p>
             <ul>
-              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'><span>Universal</span> <span class='filesize'>${{ needs.build.outputs.universal_size }}</span></a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'><span>arm64-v8a</span> <span class='filesize'>${{ needs.build.outputs.arm64-v8a_size }}</span></a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'><span>armeabi-v7a</span> <span class='filesize'>${{ needs.build.outputs.armeabi-v7a_size }}</span></a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'><span>x86</span> <span class='filesize'>${{ needs.build.outputs.x86_size }}</span></a></li>
-              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'><span>x86_64</span> <span class='filesize'>${{ needs.build.outputs.x86_64_size }}</span></a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-universal.apk'>Universal (${{ needs.build.outputs.universal_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-arm64-v8a.apk'>arm64-v8a (${{ needs.build.outputs.arm64-v8a_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-armeabi-v7a.apk'>armeabi-v7a (${{ needs.build.outputs.armeabi-v7a_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86 (${{ needs.build.outputs.x86_size }})</a></li>
+              <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
             </ul>
-            <div class='footer'>
-              <div>Built automatically from the <code>dev</code> branch.</div>
-              <div><a href='privacy-policy.html'>Privacy Policy</a> &bull; <a href='https://github.com/marlboro-advance/mpvEx'>GitHub</a></div>
-            </div>
+            <p class='note'>Built automatically from the <code>dev</code> branch.</p>
           </body>
           </html>" > ./public/index.html
-          cp -r docs/* ./public/ 2>/dev/null || true
+          cp docs/privacy-policy.html ./public/privacy-policy.html 2>/dev/null || true
 
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
