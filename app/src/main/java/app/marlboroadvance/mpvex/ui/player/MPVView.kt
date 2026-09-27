@@ -324,6 +324,10 @@ class MPVView(
     MPVLib.setOptionString("sub-use-margins", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-scale-by-window", scaleByWindow)
     MPVLib.setOptionString("secondary-sub-use-margins", scaleByWindow)
+
+    val removeHI = if (subtitlesPreferences.removeHI.get()) "yes" else "no"
+    MPVLib.setOptionString("sub-filter-sdh", removeHI)
+    MPVLib.setOptionString("sub-filter-sdh-harder", removeHI)
   }
 
 
