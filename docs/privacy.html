@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <title>Privacy Policy | mpvExtended (mpvEx)</title>
-  <meta name="description" content="Privacy Policy for mpvEx (mpvExtended) Android media player. Outlining permissions, data handling, and open-source transparency.">
+  <meta name="description" content="Privacy Policy for mpvEx (mpvExtended) Android media player. Outlining permissions, local data handling, and open-source transparency.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -51,6 +51,12 @@
       padding: 0;
     }
 
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       font-family: var(--font-sans);
       background-color: var(--bg);
@@ -59,20 +65,25 @@
       font-size: 16px;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     header {
       border-bottom: 1px solid var(--border);
       background-color: var(--surface);
+      width: 100%;
     }
 
     .header-inner {
       max-width: 860px;
       margin: 0 auto;
-      padding: 1.1rem 1.5rem;
+      padding: 1rem 1.25rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .brand-title {
@@ -85,9 +96,10 @@
 
     .nav-links {
       display: flex;
-      gap: 1.5rem;
+      gap: 1.25rem;
       align-items: center;
       font-size: 0.9rem;
+      flex-wrap: wrap;
     }
 
     .nav-links a {
@@ -102,46 +114,47 @@
     }
 
     main {
+      width: 100%;
       max-width: 860px;
       margin: 0 auto;
-      padding: 3rem 1.5rem 6rem;
+      padding: 2.5rem 1.25rem 5rem;
     }
 
     .doc-header {
-      padding-bottom: 2rem;
-      margin-bottom: 2.5rem;
+      padding-bottom: 1.75rem;
+      margin-bottom: 2rem;
       border-bottom: 1px solid var(--border);
     }
 
     .doc-kicker {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-subtle);
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     h1 {
-      font-size: 2.25rem;
+      font-size: 2rem;
       font-weight: 700;
       color: var(--text-main);
       letter-spacing: -0.025em;
       line-height: 1.25;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
     }
 
     .doc-meta {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 0.75rem 1.5rem;
-      font-size: 0.88rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem 1.25rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       background: var(--bg-alt);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 1rem 1.25rem;
-      margin-top: 1.5rem;
+      padding: 0.9rem 1.1rem;
+      margin-top: 1.25rem;
     }
 
     .meta-field strong {
@@ -154,19 +167,19 @@
       border: 1px solid var(--callout-border);
       border-left: 4px solid var(--text-subtle);
       border-radius: 4px;
-      padding: 1.25rem 1.5rem;
-      margin: 2rem 0;
+      padding: 1.15rem 1.25rem;
+      margin: 1.75rem 0;
     }
 
     .callout-title {
       font-weight: 600;
-      font-size: 0.98rem;
+      font-size: 0.95rem;
       color: var(--text-main);
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .callout p {
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
       margin-bottom: 0;
     }
@@ -178,48 +191,48 @@
     }
 
     .callout li {
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.3rem;
     }
 
     section {
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
     }
 
     h2 {
-      font-size: 1.35rem;
+      font-size: 1.25rem;
       font-weight: 600;
       color: var(--text-main);
       letter-spacing: -0.015em;
-      margin-top: 2rem;
-      margin-bottom: 0.85rem;
-      padding-bottom: 0.4rem;
+      margin-top: 1.75rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
       border-bottom: 1px solid var(--border);
     }
 
     h3 {
-      font-size: 1.08rem;
+      font-size: 1.02rem;
       font-weight: 600;
       color: var(--text-main);
-      margin: 1.5rem 0 0.5rem;
+      margin: 1.25rem 0 0.4rem;
     }
 
     p {
       color: var(--text-muted);
-      margin-bottom: 1.15rem;
-      line-height: 1.7;
+      margin-bottom: 1rem;
+      line-height: 1.65;
     }
 
     ul, ol {
-      margin-bottom: 1.25rem;
-      padding-left: 1.5rem;
+      margin-bottom: 1.15rem;
+      padding-left: 1.25rem;
       color: var(--text-muted);
     }
 
     li {
-      margin-bottom: 0.5rem;
-      line-height: 1.65;
+      margin-bottom: 0.45rem;
+      line-height: 1.6;
     }
 
     strong {
@@ -231,6 +244,7 @@
       color: var(--accent);
       text-decoration: underline;
       text-underline-offset: 3px;
+      word-break: break-all;
     }
 
     a:hover {
@@ -241,16 +255,19 @@
       font-family: var(--font-mono);
       background-color: var(--code-bg);
       border: 1px solid var(--border);
-      padding: 0.15rem 0.35rem;
+      padding: 0.12rem 0.35rem;
       border-radius: 4px;
-      font-size: 0.88em;
+      font-size: 0.85em;
       color: var(--text-main);
+      word-break: break-word;
     }
 
+    /* Desktop Table View */
     .table-wrapper {
       width: 100%;
       overflow-x: auto;
-      margin: 1.5rem 0;
+      -webkit-overflow-scrolling: touch;
+      margin: 1.25rem 0;
       border: 1px solid var(--border);
       border-radius: 6px;
     }
@@ -268,6 +285,7 @@
       font-weight: 600;
       padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     td {
@@ -281,12 +299,49 @@
       border-bottom: none;
     }
 
+    /* Mobile Permission Cards */
+    .permission-cards {
+      display: none;
+    }
+
+    .permission-card {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .permission-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .permission-card-scope {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-subtle);
+    }
+
+    .permission-card p {
+      font-size: 0.88rem;
+      margin-bottom: 0;
+      line-height: 1.55;
+    }
+
     footer {
       border-top: 1px solid var(--border);
       background-color: var(--bg-alt);
-      padding: 2.5rem 1.5rem;
+      padding: 2rem 1.25rem;
       font-size: 0.85rem;
       color: var(--text-subtle);
+      width: 100%;
     }
 
     .footer-inner {
@@ -295,13 +350,14 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      gap: 1rem;
+      gap: 0.85rem;
       align-items: center;
     }
 
     .footer-links {
       display: flex;
-      gap: 1.25rem;
+      gap: 1.15rem;
+      flex-wrap: wrap;
     }
 
     .footer-links a {
@@ -313,15 +369,46 @@
       color: var(--text-main);
     }
 
+    /* Responsive Breakpoints */
     @media (max-width: 640px) {
+      body {
+        font-size: 15px;
+      }
+
       h1 {
-        font-size: 1.75rem;
+        font-size: 1.6rem;
       }
+
+      h2 {
+        font-size: 1.18rem;
+      }
+
       main {
-        padding: 2rem 1rem 4rem;
+        padding: 1.75rem 1rem 3.5rem;
       }
+
+      .header-inner {
+        padding: 0.85rem 1rem;
+      }
+
       .doc-meta {
         grid-template-columns: 1fr;
+        padding: 0.75rem 0.85rem;
+      }
+
+      /* Switch table to cards for mobile screens */
+      .table-wrapper {
+        display: none;
+      }
+
+      .permission-cards {
+        display: block;
+        margin: 1rem 0;
+      }
+
+      .footer-inner {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
@@ -332,7 +419,8 @@
     <div class="header-inner">
       <a href="https://github.com/marlboro-advance/mpvEx" class="brand-title">mpvExtended</a>
       <nav class="nav-links">
-        <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">Source Repository</a>
+        <a href="index.html">Preview Builds</a>
+        <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="https://github.com/marlboro-advance/mpvEx/releases" target="_blank" rel="noopener noreferrer">Releases</a>
       </nav>
     </div>
@@ -394,6 +482,7 @@
         To perform media playback and local file management operations, the Application requests specific system permissions. These permissions are utilized strictly for on-device operations:
       </p>
 
+      <!-- Desktop Table -->
       <div class="table-wrapper">
         <table>
           <thead>
@@ -448,6 +537,57 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile Permission Cards (Shows on small screens) -->
+      <div class="permission-cards">
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>READ_MEDIA_VIDEO</code>
+            <span class="permission-card-scope">Media Access</span>
+          </div>
+          <p>Allows the app to locate, index, generate thumbnails for, and play audio and video files on your device or SD card.</p>
+        </div>
+
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>MANAGE_EXTERNAL_STORAGE</code>
+            <span class="permission-card-scope">File Management</span>
+          </div>
+          <p>Required in direct-distribution builds to rename, move, and delete files across custom folders and USB OTG drives. Not requested on Google Play builds.</p>
+        </div>
+
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>INTERNET</code>
+            <span class="permission-card-scope">Network</span>
+          </div>
+          <p>Allows streaming user-specified URLs (HTTP/HLS/RTSP), network shares (SMB/WebDAV/FTP), and checking GitHub release updates.</p>
+        </div>
+
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>FOREGROUND_SERVICE</code>
+            <span class="permission-card-scope">Background Audio</span>
+          </div>
+          <p>Keeps audio and video playing smoothly in Picture-in-Picture mode, background playback, or when the screen is off.</p>
+        </div>
+
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>POST_NOTIFICATIONS</code>
+            <span class="permission-card-scope">Notifications</span>
+          </div>
+          <p>Displays media playback controls (play, pause, seek, track info) in the Android notification drawer.</p>
+        </div>
+
+        <div class="permission-card">
+          <div class="permission-card-header">
+            <code>REQUEST_INSTALL_PACKAGES</code>
+            <span class="permission-card-scope">Updates</span>
+          </div>
+          <p>Allows self-updating when you choose to install a newer version downloaded from GitHub releases.</p>
+        </div>
       </div>
 
       <p>
@@ -530,6 +670,7 @@
     <div class="footer-inner">
       <div>&copy; 2026 mpvExtended Project. Apache License 2.0.</div>
       <div class="footer-links">
+        <a href="index.html">Preview Builds</a>
         <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">Repository</a>
         <a href="https://github.com/marlboro-advance/mpvEx/releases" target="_blank" rel="noopener noreferrer">Releases</a>
         <a href="https://github.com/marlboro-advance/mpvEx/issues" target="_blank" rel="noopener noreferrer">Issues</a>
