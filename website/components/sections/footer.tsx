@@ -85,6 +85,15 @@ export function Footer() {
             GitHub
           </a>
           <span className="text-muted-foreground/30">•</span>
+          <a
+            href="https://marlboro-advance.github.io/mpvEx/privacy-policy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            Privacy Policy
+          </a>
+          <span className="text-muted-foreground/30">•</span>
           <p className="text-sm text-muted-foreground">
             {`© ${currentYear} mpvExtended Project. Apache 2.0 License`}
           </p>

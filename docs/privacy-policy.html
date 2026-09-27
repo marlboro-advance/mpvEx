@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - mpvEx (mpvExtended)</title>
+  <meta name="description" content="Privacy Policy for mpvEx (mpvExtended) - A privacy-first, open-source video and media player for Android.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #121827;
+      --surface-elevated: #1a2236;
+      --border: #232d45;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #8b5cf6;
+      --primary-light: #a78bfa;
+      --primary-glow: rgba(139, 92, 246, 0.25);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --code-bg: #070a12;
+      --badge-bg: rgba(139, 92, 246, 0.12);
+      --badge-text: #c4b5fd;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root[data-theme="auto"] {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-elevated: #f1f5f9;
+        --border: #e2e8f0;
+        --border-subtle: rgba(0, 0, 0, 0.06);
+        --text: #0f172a;
+        --text-muted: #475569;
+        --text-dim: #94a3b8;
+        --primary: #7c3aed;
+        --primary-light: #6d28d9;
+        --primary-glow: rgba(124, 58, 237, 0.15);
+        --success: #059669;
+        --success-glow: rgba(5, 150, 105, 0.12);
+        --code-bg: #f1f5f9;
+        --badge-bg: rgba(124, 58, 237, 0.08);
+        --badge-text: #6d28d9;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0b0f19;
+      --surface: #121827;
+      --surface-elevated: #1a2236;
+      --border: #232d45;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #8b5cf6;
+      --primary-light: #a78bfa;
+      --primary-glow: rgba(139, 92, 246, 0.25);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --code-bg: #070a12;
+      --badge-bg: rgba(139, 92, 246, 0.12);
+      --badge-text: #c4b5fd;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-elevated: #f1f5f9;
+      --border: #e2e8f0;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --primary: #7c3aed;
+      --primary-light: #6d28d9;
+      --primary-glow: rgba(124, 58, 237, 0.15);
+      --success: #059669;
+      --success-glow: rgba(5, 150, 105, 0.12);
+      --code-bg: #f1f5f9;
+      --badge-bg: rgba(124, 58, 237, 0.08);
+      --badge-text: #6d28d9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 0;
+      margin: 0;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .bg-glow {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: rgba(11, 15, 25, 0.8);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background 0.2s ease;
+    }
+
+    :root[data-theme="light"] header {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .nav-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 800;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--primary-light);
+    }
+
+    .theme-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    .theme-btn:hover {
+      background: var(--surface-elevated);
+      border-color: var(--primary);
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 1.25rem;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .hero-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--text) 40%, var(--primary-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 2rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .meta-item strong {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .tldr-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .tldr-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+    }
+
+    .tldr-header svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--primary);
+    }
+
+    .tldr-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .tldr-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .tldr-list li svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      fill: var(--success);
+      margin-top: 2px;
+    }
+
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h2::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 1.1em;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.6rem;
+      color: var(--text);
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+      font-size: 0.98rem;
+    }
+
+    ul, ol {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+      color: var(--text-muted);
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+      font-size: 0.98rem;
+    }
+
+    strong {
+      color: var(--text);
+    }
+
+    a {
+      color: var(--primary-light);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.15s ease;
+    }
+
+    a:hover {
+      color: #c4b5fd;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      font-size: 0.88em;
+      color: var(--badge-text);
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-elevated);
+      color: var(--text);
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      background: var(--badge-bg);
+      color: var(--badge-text);
+    }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.25rem 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      background: var(--surface);
+      color: var(--text-dim);
+      font-size: 0.88rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: var(--primary-light);
+    }
+
+    @media (max-width: 640px) {
+      .hero-title {
+        font-size: 2rem;
+      }
+      .nav-links {
+        gap: 0.75rem;
+      }
+      .tldr-list {
+        grid-template-columns: 1fr;
+      }
+      main {
+        padding: 1.5rem 1rem 4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header>
+    <div class="nav-container">
+      <a href="https://github.com/marlboro-advance/mpvEx" class="brand" aria-label="mpvEx GitHub Repository">
+        <div class="brand-icon">▶</div>
+        <span>mpvEx</span>
+      </a>
+      <div class="nav-links">
+        <a href="https://github.com/marlboro-advance/mpvEx" class="nav-link" target="_blank" rel="noopener noreferrer">Source Code</a>
+        <a href="https://github.com/marlboro-advance/mpvEx/releases" class="nav-link" target="_blank" rel="noopener noreferrer">Releases</a>
+        <button id="themeToggle" class="theme-btn" type="button" aria-label="Toggle theme">
+          <span id="themeIcon">🌓</span>
+          <span id="themeLabel">Theme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+        </svg>
+        Open Source &amp; Privacy First
+      </div>
+      <h1 class="hero-title">Privacy Policy for mpvEx</h1>
+      <p class="hero-subtitle">
+        mpvEx (mpvExtended) is designed from the ground up to respect your digital freedom and privacy. We do not track you, we do not show advertisements, and we never collect your personal data.
+      </p>
+      <div class="meta-bar">
+        <div class="meta-item"><strong>Application:</strong> mpvEx (mpvExtended)</div>
+        <div class="meta-item"><strong>Package ID:</strong> <code>app.marlboroadvance.mpvex</code></div>
+        <div class="meta-item"><strong>Effective Date:</strong> September 27, 2026</div>
+        <div class="meta-item"><strong>License:</strong> Apache 2.0</div>
+      </div>
+    </div>
+
+    <!-- TL;DR Summary -->
+    <div class="tldr-card">
+      <div class="tldr-header">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+        Key Highlights (At a Glance)
+      </div>
+      <p style="margin-bottom: 0.5rem; font-size: 0.92rem;">
+        Your privacy is paramount. Here is what you need to know about how mpvEx handles data:
+      </p>
+      <ul class="tldr-list">
+        <li>
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span><strong>Zero Data Collection:</strong> We do not collect, store, or sell any personal data.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span><strong>No Ads or Trackers:</strong> Completely free of advertising SDKs and tracking telemetry.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span><strong>Local Processing:</strong> Video playback, history, and preferences stay 100% on your device.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span><strong>100% Open Source:</strong> Fully transparent code auditable by anyone on GitHub.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Section 1 -->
+    <section>
+      <h2>1. Introduction</h2>
+      <p>
+        This Privacy Policy explains how <strong>mpvEx (mpvExtended)</strong> ("the Application", "we", "us", or "our"), available under package name <code>app.marlboroadvance.mpvex</code>, handles information when you install and use our Android media player.
+      </p>
+      <p>
+        mpvEx is a media player built upon the open-source <code>libmpv</code> engine and Material3 design principles. We believe that media playback is personal, and our software is built strictly as a client-side tool for users to play their own audio and video files.
+      </p>
+    </section>
+
+    <!-- Section 2 -->
+    <section>
+      <h2>2. Information We Do NOT Collect</h2>
+      <p>
+        We do not collect any personal data or usage analytics. In particular:
+      </p>
+      <ul>
+        <li><strong>No Personal Identifiers:</strong> We do not collect your name, email address, phone number, physical address, or account information.</li>
+        <li><strong>No Device Identifiers:</strong> We do not record your IMEI, Android ID, MAC address, advertising ID, or hardware fingerprints.</li>
+        <li><strong>No Telemetry or Analytics:</strong> There are no analytics libraries (such as Google Analytics, Firebase Analytics, Flurry, Mixpanel, etc.) embedded in the app.</li>
+        <li><strong>No Advertising Networks:</strong> There are no advertising SDKs, banner ads, interstitial ads, or tracking cookies.</li>
+        <li><strong>No Media Uploads:</strong> We never upload, inspect, transmit, or copy your private video files, audio files, photos, or playback history to any remote server or cloud infrastructure.</li>
+      </ul>
+    </section>
+
+    <!-- Section 3 -->
+    <section>
+      <h2>3. Device Permissions &amp; How They Are Used</h2>
+      <p>
+        To function as a media player on Android, mpvEx requests certain system permissions. Each permission is used exclusively for the specified feature and operates locally on your device:
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Permission</th>
+              <th>Type / Target</th>
+              <th>Purpose &amp; Functionality</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>READ_MEDIA_VIDEO</code> / <code>READ_EXTERNAL_STORAGE</code></td>
+              <td><span class="badge-pill">Media / Storage</span></td>
+              <td>
+                Allows the app to locate, browse, read metadata (using MediaInfo), generate thumbnails, and play video and audio files stored on your device or SD card.
+              </td>
+            </tr>
+            <tr>
+              <td><code>MANAGE_EXTERNAL_STORAGE</code><br><small style="color: var(--text-dim)">(Standard flavor only)</small></td>
+              <td><span class="badge-pill">All Files Access</span></td>
+              <td>
+                Used in the direct distribution build to enable full file management features (renaming, moving, deleting video files, subtitle loading across arbitrary directories, and USB OTG drives). Not present or used in Scoped Storage builds.
+              </td>
+            </tr>
+            <tr>
+              <td><code>INTERNET</code></td>
+              <td><span class="badge-pill">Network</span></td>
+              <td>
+                Required solely to stream network media streams initiated by you (e.g., via "Open URL", HTTP/HLS/DASH/RTSP streams), network shares (SMB/WebDAV/FTP), and to check for application updates on GitHub (in non-store builds).
+              </td>
+            </tr>
+            <tr>
+              <td><code>FOREGROUND_SERVICE</code> &amp; <code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code></td>
+              <td><span class="badge-pill">Background Service</span></td>
+              <td>
+                Allows uninterrupted audio and video playback when switching apps, using Picture-in-Picture (PiP), or turning off the screen, and exposes system media session controls.
+              </td>
+            </tr>
+            <tr>
+              <td><code>POST_NOTIFICATIONS</code></td>
+              <td><span class="badge-pill">Notifications</span></td>
+              <td>
+                Required on Android 13+ to display the active media playback notification with playback controls (play, pause, next, previous, seek bar).
+              </td>
+            </tr>
+            <tr>
+              <td><code>REQUEST_INSTALL_PACKAGES</code><br><small style="color: var(--text-dim)">(Standard flavor only)</small></td>
+              <td><span class="badge-pill">App Updates</span></td>
+              <td>
+                Allows self-updating the application when you manually choose to download an update from GitHub releases. Not used for installing third-party applications.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        You can revoke any runtime permission at any time through your Android device settings (<em>Settings &gt; Apps &gt; mpvEx &gt; Permissions</em>). Note that revoking storage permissions will prevent the app from browsing and playing local media.
+      </p>
+    </section>
+
+    <!-- Section 4 -->
+    <section>
+      <h2>4. Local Data Storage &amp; User Data Control</h2>
+      <p>
+        All application state, user preferences, and playback metadata are stored strictly on your local device:
+      </p>
+      <ul>
+        <li><strong>Playback History &amp; Resumption:</strong> Information about recently played media files, playback positions, timestamps, and durations are stored locally in an on-device SQLite / Room database.</li>
+        <li><strong>Application Preferences:</strong> Your configured settings (playback speed, gesture controls, subtitle styling, hardware decoding preferences, mpv config scripts) are stored locally in Android DataStore / SharedPreferences.</li>
+        <li><strong>Data Deletion:</strong> You have complete control over your data. You can clear your playback history at any time from within the app settings, or clear all app data and cache via Android System Settings (<em>Settings &gt; Apps &gt; mpvEx &gt; Storage &gt; Clear Data</em>). Uninstalling the application removes all local app databases and preferences.</li>
+      </ul>
+    </section>
+
+    <!-- Section 5 -->
+    <section>
+      <h2>5. Network Streaming &amp; Third-Party Servers</h2>
+      <p>
+        When you choose to play a remote URL (such as an HTTP, HTTPS, HLS, or RTSP stream), or connect to a custom network share (SMB, WebDAV, FTP):
+      </p>
+      <ul>
+        <li>mpvEx connects directly from your device to the target server you provided.</li>
+        <li>We operate no proxy servers, intermediary relay servers, or logging gateways. Your connection to that third-party streaming source is governed by that third party's privacy policy and terms.</li>
+        <li>Any authentication credentials entered for network shares (e.g., SMB/WebDAV passwords) are stored securely on your device and are never sent anywhere other than the designated host server.</li>
+      </ul>
+    </section>
+
+    <!-- Section 6 -->
+    <section>
+      <h2>6. Crash Reporting &amp; Diagnostics</h2>
+      <p>
+        mpvEx includes a local crash viewer (<code>CrashActivity</code>) that displays crash stack traces directly to you on screen if an unexpected error occurs.
+      </p>
+      <p>
+        Crash logs are <strong>never</strong> transmitted automatically. If you encounter an issue and choose to report it on our GitHub Issues page, you may manually copy and paste the log, giving you full discretion to inspect and redact any personal information or file names before sharing.
+      </p>
+    </section>
+
+    <!-- Section 7 -->
+    <section>
+      <h2>7. Children's Privacy</h2>
+      <p>
+        mpvEx is a general-purpose media player utility. We do not knowingly solicit, collect, or process personal data from children under the age of 13 (or under 16 in the European Union). Because our application does not collect any personal data from any user, it is fully compliant with regulations such as COPPA (Children's Online Privacy Protection Act) and GDPR-K.
+      </p>
+    </section>
+
+    <!-- Section 8 -->
+    <section>
+      <h2>8. Open Source &amp; Independent Verification</h2>
+      <p>
+        mpvEx is proud to be free and open-source software (FOSS) licensed under the <strong>Apache License 2.0</strong>. The complete source code is publicly accessible on GitHub:
+      </p>
+      <div class="info-card">
+        <p style="margin: 0;">
+          <strong>GitHub Repository:</strong> <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">https://github.com/marlboro-advance/mpvEx</a>
+        </p>
+        <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-dim);">
+          Anyone can independently inspect, audit, build, and verify our source code to confirm compliance with this Privacy Policy.
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 9 -->
+    <section>
+      <h2>9. Changes to This Privacy Policy</h2>
+      <p>
+        We may occasionally update this Privacy Policy to reflect updates to the application, new Android platform requirements, or changes in legal regulations. When changes are made, the "Effective Date" at the top of this page will be updated. Because we do not collect contact information, we encourage users to check this page or the repository for updates.
+      </p>
+    </section>
+
+    <!-- Section 10 -->
+    <section>
+      <h2>10. Contact Us</h2>
+      <p>
+        If you have any questions, feedback, or concerns regarding this Privacy Policy or mpvEx, please contact us:
+      </p>
+      <ul>
+        <li><strong>GitHub Issues:</strong> <a href="https://github.com/marlboro-advance/mpvEx/issues" target="_blank" rel="noopener noreferrer">https://github.com/marlboro-advance/mpvEx/issues</a></li>
+        <li><strong>Project Repository:</strong> <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">https://github.com/marlboro-advance/mpvEx</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://github.com/marlboro-advance/mpvEx" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/marlboro-advance/mpvEx/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="https://github.com/marlboro-advance/mpvEx/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+      <a href="https://github.com/marlboro-advance/mpvEx/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">License (Apache 2.0)</a>
+    </div>
+    <p>&copy; 2026 mpvExtended Project. Released under the Apache-2.0 License.</p>
+  </footer>
+
+  <script>
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
+    const root = document.documentElement;
+
+    function getPreferredTheme() {
+      const saved = localStorage.getItem('mpvex_theme');
+      if (saved) return saved;
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      localStorage.setItem('mpvex_theme', theme);
+      if (theme === 'light') {
+        themeIcon.textContent = '☀️';
+        themeLabel.textContent = 'Light';
+      } else {
+        themeIcon.textContent = '🌙';
+        themeLabel.textContent = 'Dark';
+      }
+    }
+
+    applyTheme(getPreferredTheme());
+
+    themeToggle.addEventListener('click', () => {
+      const current = root.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+  </script>
+</body>
+</html>

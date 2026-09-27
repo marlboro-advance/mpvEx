@@ -142,9 +142,10 @@ jobs:
               <li><a href='mpvEx-preview-r${commit_count}-x86.apk'>x86 (${{ needs.build.outputs.x86_size }})</a></li>
               <li><a href='mpvEx-preview-r${commit_count}-x86_64.apk'>x86_64 (${{ needs.build.outputs.x86_64_size }})</a></li>
             </ul>
-            <p class='note'>Built automatically from the <code>dev</code> branch.</p>
+            <p class='note'><a href='privacy-policy.html' style='color:#58a6ff;'>Privacy Policy</a> &bull; Built automatically from the <code>dev</code> branch.</p>
           </body>
           </html>" > ./public/index.html
+          cp -r docs/* ./public/ 2>/dev/null || true
 
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
