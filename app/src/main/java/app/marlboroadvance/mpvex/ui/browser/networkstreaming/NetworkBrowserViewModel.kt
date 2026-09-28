@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex.ui.browser.networkstreaming
 import android.app.Application
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -71,6 +72,28 @@ class NetworkBrowserViewModel(
   }
 
 
+
+  /**
+   * Delete a file and remove it from the list
+   */
+  fun deleteFile(file: NetworkFile) {
+    viewModelScope.launch {
+      try {
+        val connection = repository.getConnectionById(connectionId)
+          ?: throw Exception("Connection not found")
+
+        repository.deleteFile(connection, file.path)
+          .onSuccess { _files.value = _files.value.filterNot { it.path == file.path } }
+          .onFailure { e ->
+            Log.e(TAG, "Error deleting file", e)
+            Toast.makeText(application, "Delete failed: ${e.message}", Toast.LENGTH_LONG).show()
+          }
+      } catch (e: Exception) {
+        Log.e(TAG, "Error deleting file", e)
+        Toast.makeText(application, "Delete failed: ${e.message}", Toast.LENGTH_LONG).show()
+      }
+    }
+  }
 
   /**
    * Play a video file

@@ -37,4 +37,9 @@ interface NetworkClient {
    * Get file URI for playback
    */
   suspend fun getFileUri(path: String): Result<Uri>
+
+  /**
+   * Delete a file at the given path
+   */
+  suspend fun deleteFile(path: String): Result<Unit>
 }
