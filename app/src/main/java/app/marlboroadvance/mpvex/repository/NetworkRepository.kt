@@ -194,28 +194,35 @@ class NetworkRepository(
     path: String,
   ): Result<List<NetworkFile>> =
     try {
-      // Always fetch the latest connection from database to ensure we have current credentials
-      val latestConnection = dao.getConnectionById(connection.id) ?: connection
-
-      // Check if we have an active client
-      val existingClient = activeClients[connection.id]
-
-      // If no client exists, or if connection details have changed, create a new one
-      val client = if (existingClient == null) {
-        // Create new client with latest connection settings
-        NetworkClientFactory.createClient(latestConnection).also { newClient ->
-          newClient.connect().getOrThrow()
-          activeClients[connection.id] = newClient
-        }
-      } else {
-        existingClient
-      }
-
-      // List files
-      client.listFiles(path)
+      getOrCreateClient(connection).listFiles(path)
     } catch (e: Exception) {
       Result.failure(e)
     }
+
+  /**
+   * Delete a file on a network share
+   */
+  suspend fun deleteFile(
+    connection: NetworkConnection,
+    path: String,
+  ): Result<Unit> =
+    try {
+      getOrCreateClient(connection).deleteFile(path)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
+
+  private suspend fun getOrCreateClient(connection: NetworkConnection): NetworkClient {
+    // Always fetch the latest connection from database to ensure we have current credentials
+    val latestConnection = dao.getConnectionById(connection.id) ?: connection
+
+    // If no client exists, create a new one with latest connection settings
+    return activeClients[connection.id]
+      ?: NetworkClientFactory.createClient(latestConnection).also { newClient ->
+        newClient.connect().getOrThrow()
+        activeClients[connection.id] = newClient
+      }
+  }
 
   /**
    * Get an active client for a connection

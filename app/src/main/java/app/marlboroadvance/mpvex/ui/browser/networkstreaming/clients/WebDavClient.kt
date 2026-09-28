@@ -200,6 +200,17 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
       }
     }
 
+  override suspend fun deleteFile(path: String): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        val client = sardine ?: return@withContext Result.failure(Exception("Not connected"))
+        client.delete(buildUrl(path))
+        Result.success(Unit)
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
+    }
+
   private fun getMimeType(fileName: String): String? {
     val extension = fileName.substringAfterLast('.', "").lowercase()
     return when (extension) {

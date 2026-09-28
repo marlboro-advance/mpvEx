@@ -205,51 +205,7 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
 
         // Build the relative path within the share
         // The 'path' parameter is the navigation path from the share root
-        val relativePath = when {
-          path.startsWith("smb://") -> {
-            // Extract path from smb:// URL
-            // Use try-catch for URI parsing as spaces might not be encoded
-            val extracted = try {
-              val uri = java.net.URI(path)
-              // uri.path is like: /shareName/folder/file
-              // Remove /shareName to get: folder/file
-              val pathParts = uri.path.trim('/').split('/', limit = 2)
-              pathParts.getOrNull(1) ?: ""
-            } catch (e: Exception) {
-              // If URI parsing fails (e.g., due to spaces), extract manually
-              val pathAfterProtocol = path.substringAfter("smb://")
-              val pathPart = pathAfterProtocol.substringAfter("/") // Remove host
-              val pathParts = pathPart.trim('/').split('/', limit = 2)
-              pathParts.getOrNull(1) ?: ""
-            }
-            android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
-            extracted
-          }
-
-          path == "/" || path.isEmpty() -> {
-            // Root of the share
-            android.util.Log.d("SmbClient", "  Using share root (empty path)")
-            ""
-          }
-
-          else -> {
-            // Check if path is just the share name (means root)
-            val cleaned = path.trim('/')
-            if (cleaned.equals(shareName, ignoreCase = true)) {
-              android.util.Log.d("SmbClient", "  Path equals share name - using root")
-              ""
-            } else if (cleaned.startsWith("$shareName/", ignoreCase = true)) {
-              // Path includes share name prefix - remove it
-              val withoutShare = cleaned.substring(shareName.length + 1)
-              android.util.Log.d("SmbClient", "  Removed share prefix: '$withoutShare'")
-              withoutShare
-            } else {
-              // Normal subfolder navigation
-              android.util.Log.d("SmbClient", "  Using cleaned path: '$cleaned'")
-              cleaned
-            }
-          }
-        }
+        val relativePath = toRelativePath(path)
 
         android.util.Log.d("SmbClient", "  Final relativePath: '$relativePath'")
         android.util.Log.d("SmbClient", "  Will call: diskShare.list('$relativePath')")
@@ -429,6 +385,73 @@ class SmbClient(private val connection: NetworkConnection) : NetworkClient {
         Result.success(Uri.parse(uriString))
       } catch (e: Exception) {
         Result.failure(e)
+      }
+    }
+
+  override suspend fun deleteFile(path: String): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        val sess = session ?: return@withContext Result.failure(Exception("Not connected"))
+        val diskShare = sess.connectShare(shareName) as? DiskShare
+          ?: return@withContext Result.failure(Exception("Share '$shareName' is not a disk share"))
+        try {
+          diskShare.rm(toRelativePath(path))
+          Result.success(Unit)
+        } finally {
+          diskShare.close()
+        }
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
+    }
+
+  /**
+   * Convert a browser path (smb:// URL or share-relative path) to a path within the share
+   */
+  private fun toRelativePath(path: String): String =
+    when {
+      path.startsWith("smb://") -> {
+        // Extract path from smb:// URL
+        // Use try-catch for URI parsing as spaces might not be encoded
+        val extracted = try {
+          val uri = java.net.URI(path)
+          // uri.path is like: /shareName/folder/file
+          // Remove /shareName to get: folder/file
+          val pathParts = uri.path.trim('/').split('/', limit = 2)
+          pathParts.getOrNull(1) ?: ""
+        } catch (e: Exception) {
+          // If URI parsing fails (e.g., due to spaces), extract manually
+          val pathAfterProtocol = path.substringAfter("smb://")
+          val pathPart = pathAfterProtocol.substringAfter("/") // Remove host
+          val pathParts = pathPart.trim('/').split('/', limit = 2)
+          pathParts.getOrNull(1) ?: ""
+        }
+        android.util.Log.d("SmbClient", "  Extracted from SMB URL: '$extracted'")
+        extracted
+      }
+
+      path == "/" || path.isEmpty() -> {
+        // Root of the share
+        android.util.Log.d("SmbClient", "  Using share root (empty path)")
+        ""
+      }
+
+      else -> {
+        // Check if path is just the share name (means root)
+        val cleaned = path.trim('/')
+        if (cleaned.equals(shareName, ignoreCase = true)) {
+          android.util.Log.d("SmbClient", "  Path equals share name - using root")
+          ""
+        } else if (cleaned.startsWith("$shareName/", ignoreCase = true)) {
+          // Path includes share name prefix - remove it
+          val withoutShare = cleaned.substring(shareName.length + 1)
+          android.util.Log.d("SmbClient", "  Removed share prefix: '$withoutShare'")
+          withoutShare
+        } else {
+          // Normal subfolder navigation
+          android.util.Log.d("SmbClient", "  Using cleaned path: '$cleaned'")
+          cleaned
+        }
       }
     }
 

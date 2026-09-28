@@ -175,6 +175,20 @@ class FtpClient(private val connection: NetworkConnection) : NetworkClient {
       }
     }
 
+  override suspend fun deleteFile(path: String): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        val client = ftpClient ?: return@withContext Result.failure(Exception("Not connected"))
+        if (client.deleteFile(path)) {
+          Result.success(Unit)
+        } else {
+          Result.failure(Exception("Failed to delete file: ${client.replyString?.trim()}"))
+        }
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
+    }
+
   override suspend fun getFileStream(path: String): Result<InputStream> =
     withContext(Dispatchers.IO) {
       try {

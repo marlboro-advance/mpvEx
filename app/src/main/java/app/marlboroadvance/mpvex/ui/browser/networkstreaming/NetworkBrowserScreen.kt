@@ -40,6 +40,7 @@ import app.marlboroadvance.mpvex.presentation.components.pullrefresh.PullRefresh
 import app.marlboroadvance.mpvex.ui.browser.cards.NetworkFolderCard
 import app.marlboroadvance.mpvex.ui.browser.cards.NetworkVideoCard
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
+import app.marlboroadvance.mpvex.ui.browser.dialogs.DeleteConfirmationDialog
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
@@ -76,6 +77,7 @@ data class NetworkBrowserScreen(
 
     // UI State
     val isRefreshing = remember { mutableStateOf(false) }
+    var fileToDelete by remember { mutableStateOf<NetworkFile?>(null) }
 
     // Load files when connectionId or currentPath changes
     LaunchedEffect(connectionId, currentPath) {
@@ -132,9 +134,22 @@ data class NetworkBrowserScreen(
         onVideoClick = { video ->
           viewModel.playVideo(video)
         },
+        onVideoLongClick = { video -> fileToDelete = video },
         modifier = Modifier.padding(padding),
       )
     }
+
+    DeleteConfirmationDialog(
+      isOpen = fileToDelete != null,
+      onDismiss = { fileToDelete = null },
+      onConfirm = {
+        fileToDelete?.let { viewModel.deleteFile(it) }
+        fileToDelete = null
+      },
+      itemType = "video",
+      itemCount = 1,
+      itemNames = listOfNotNull(fileToDelete?.name),
+    )
   }
 }
 
@@ -149,6 +164,7 @@ private fun NetworkBrowserContent(
   onRefresh: suspend () -> Unit,
   onFolderClick: (NetworkFile) -> Unit,
   onVideoClick: (NetworkFile) -> Unit,
+  onVideoLongClick: (NetworkFile) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   // Load connection details
@@ -293,6 +309,7 @@ private fun NetworkBrowserContent(
                     file = video,
                     connection = conn,
                     onClick = { onVideoClick(video) },
+                    onLongClick = { onVideoLongClick(video) },
                     modifier = Modifier,
                   )
                 }
