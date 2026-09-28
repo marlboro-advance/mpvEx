@@ -3,6 +3,7 @@ package app.marlboroadvance.mpvex
 import android.app.Application
 import app.marlboroadvance.mpvex.database.repository.VideoMetadataCacheRepository
 import app.marlboroadvance.mpvex.di.DatabaseModule
+import app.marlboroadvance.mpvex.di.DlnaModule
 import app.marlboroadvance.mpvex.di.FileManagerModule
 import app.marlboroadvance.mpvex.di.PreferencesModule
 import app.marlboroadvance.mpvex.presentation.crash.CrashActivity
@@ -32,6 +33,7 @@ class App : Application() {
       modules(
         PreferencesModule,
         DatabaseModule,
+        DlnaModule,
         FileManagerModule,
         app.marlboroadvance.mpvex.di.domainModule,
       )

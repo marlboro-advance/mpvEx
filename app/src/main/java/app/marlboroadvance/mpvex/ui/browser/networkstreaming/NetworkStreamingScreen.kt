@@ -11,32 +11,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SignalWifiConnectedNoInternet4
+import androidx.compose.material.icons.rounded.Router
 import androidx.compose.material.icons.rounded.SignalWifiStatusbarConnectedNoInternet4
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -61,6 +66,9 @@ import app.marlboroadvance.mpvex.ui.browser.dialogs.EditConnectionSheet
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
 import app.marlboroadvance.mpvex.ui.preferences.PreferencesScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
+import app.marlboroadvance.mpvex.ui.browser.cards.DlnaDeviceCard
+import app.marlboroadvance.mpvex.ui.browser.networkstreaming.dlna.DlnaBrowserScreen
+import app.marlboroadvance.mpvex.repository.DlnaRepository
 import app.marlboroadvance.mpvex.utils.media.MediaUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -80,12 +88,20 @@ object NetworkStreamingScreen : Screen {
     val connections by viewModel.connections.collectAsState()
     val connectionStatuses by viewModel.connectionStatuses.collectAsState()
     val browserPreferences = koinInject<app.marlboroadvance.mpvex.preferences.BrowserPreferences>()
+    val dlnaRepository = koinInject<DlnaRepository>()
+    val dlnaDevices by dlnaRepository.devices.collectAsState()
+    val isDlnaScanning by dlnaRepository.isScanning.collectAsState()
+
+    DisposableEffect(Unit) {
+      dlnaRepository.retain()
+      onDispose { dlnaRepository.release() }
+    }
     var showAddSheet by remember { mutableStateOf(false) }
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
     val navigationBarHeight = app.marlboroadvance.mpvex.ui.browser.LocalNavigationBarHeight.current
 
     // LazyList state for scroll tracking
-    val listState = LazyListState()
+    val listState = rememberLazyListState()
 
     // Track scroll direction to show/hide FAB
     var previousFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
@@ -252,6 +268,109 @@ object NetworkStreamingScreen : Screen {
                 isConnected = status?.isConnected ?: false,
                 isConnecting = status?.isConnecting ?: false,
                 error = status?.error,
+                modifier = Modifier.padding(bottom = 16.dp),
+              )
+            }
+          }
+
+          // Section 3: DLNA media servers
+          item {
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                text = "DLNA Media Servers",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                  .weight(1f)
+                  .padding(vertical = 8.dp),
+              )
+              FilledTonalButton(
+                onClick = { dlnaRepository.scan() },
+                enabled = !isDlnaScanning,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                  contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+              ) {
+                Icon(
+                  Icons.Filled.Refresh,
+                  contentDescription = null,
+                  modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                  text = "Scan",
+                  fontWeight = FontWeight.Bold,
+                )
+              }
+            }
+          }
+
+          if (isDlnaScanning) {
+            item {
+              LinearProgressIndicator(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(vertical = 8.dp),
+              )
+            }
+          }
+
+          if (dlnaDevices.isEmpty() && !isDlnaScanning) {
+            item {
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                  containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+              ) {
+                Column(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                  Icon(
+                    imageVector = Icons.Rounded.Router,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                  )
+                  Spacer(modifier = Modifier.height(16.dp))
+                  Text(
+                    text = "No DLNA media servers found",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                  )
+                  Spacer(modifier = Modifier.height(8.dp))
+                  Text(
+                    text = "Tap Scan to discover DLNA media servers on your network",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                  )
+                }
+              }
+            }
+          } else {
+            items(dlnaDevices, key = { it.udn }) { device ->
+              DlnaDeviceCard(
+                device = device,
+                onClick = {
+                  backstack.add(
+                    DlnaBrowserScreen(
+                      deviceUdn = device.udn,
+                      deviceName = device.friendlyName,
+                      objectId = "0",
+                    ),
+                  )
+                },
                 modifier = Modifier.padding(bottom = 16.dp),
               )
             }

@@ -10,4 +10,6 @@ data class NetworkFile(
   val isDirectory: Boolean,
   val lastModified: Long = 0,
   val mimeType: String? = null,
+  // For DLNA items: the direct HTTP resource URL; null for SMB/FTP/WebDAV
+  val remoteUri: String? = null,
 )
