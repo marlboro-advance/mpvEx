@@ -20,6 +20,7 @@ Get the latest stable release directly from GitHub or the IzzyOnDroid repository
 
 | Source              | Link                                                                                                                                                              |
 | :------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Google Play**     | [![Google Play](https://img.shields.io/badge/Get%20it%20on-Google%20Play-414141?style=flat-square&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=app.adityanarvekar.mpvex&pli=1) |
 | **GitHub Releases** | [![Download](https://img.shields.io/badge/Download-Latest%20APK-7C3AED?style=flat-square&logo=github)](https://github.com/marlboro-advance/mpvEx/releases/latest) |
 | **IzzyOnDroid**     | [![IzzyOnDroid](https://img.shields.io/badge/Get%20it%20on-IzzyOnDroid-blue?style=flat-square)](https://apt.izzysoft.de/packages/app.marlboroadvance.mpvex)       |
 

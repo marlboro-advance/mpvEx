@@ -1,6 +1,7 @@
 ![banner](fastlane/metadata/android/en-US/images/featureGraphic.png)
 
 # mpvExtended
+[![Google Play](https://img.shields.io/badge/Google_Play-Install-414141?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=app.adityanarvekar.mpvex&pli=1)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/marlboro-advance/mpvex.svg?logo=github&label=GitHub&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/marlboro-advance/mpvex/total?logo=github&cacheSeconds=3600)](https://github.com/marlboro-advance/mpvex/releases/latest)
 [![Privacy Policy](https://img.shields.io/badge/Privacy%20Policy-View-brightgreen?logo=shield)](https://marlboro-advance.github.io/mpvEx/privacy-policy.html)
@@ -36,12 +37,13 @@ the [Issues](https://github.com/marlboro-advance/mpvEx/issues) section.**
 ## Installation
 
 ### Stable Release
-Download the latest stable version from the [GitHub releases page](https://github.com/marlboro-advance/mpvEx/releases).
+Download the latest stable version from [Google Play](https://play.google.com/store/apps/details?id=app.adityanarvekar.mpvex&pli=1) or the [GitHub releases page](https://github.com/marlboro-advance/mpvEx/releases).
 
 [![Download Release](https://img.shields.io/badge/Download-Release-blue?style=for-the-badge)](https://github.com/marlboro-advance/mpvEx/releases)
 
 Or you can get the stable releases here
 
+[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="75" alt="Get it on Google Play">](https://play.google.com/store/apps/details?id=app.adityanarvekar.mpvex&pli=1)
 [<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroidButtonGreyBorder_nofont.png" height="50" alt="Get it at IzzyOnDroid">](https://apt.izzysoft.de/packages/app.marlboroadvance.mpvex)
 
 ### Preview Builds
