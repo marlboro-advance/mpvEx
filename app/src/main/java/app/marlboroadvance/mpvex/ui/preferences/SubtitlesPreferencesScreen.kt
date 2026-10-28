@@ -240,6 +240,21 @@ object SubtitlesPreferencesScreen : Screen {
 
               PreferenceDivider()
 
+              val removeHI by preferences.removeHI.collectAsState()
+              SwitchPreference(
+                value = removeHI,
+                onValueChange = { preferences.removeHI.set(it) },
+                title = { Text(stringResource(R.string.pref_subtitles_remove_hi_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_subtitles_remove_hi_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               // Directory picker preference with reload and clear icons on the right
               Box(
                 modifier =

@@ -83,6 +83,24 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
           { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
           summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
         )
+        var removeHI by remember {
+          mutableStateOf(
+            MPVLib.getPropertyString("sub-filter-sdh")?.let { it == "yes" }
+              ?: preferences.removeHI.get()
+          )
+        }
+        SwitchPreference(
+          removeHI,
+          onValueChange = {
+            removeHI = it
+            preferences.removeHI.set(it)
+            val value = if (it) "yes" else "no"
+            MPVLib.setPropertyString("sub-filter-sdh", value)
+            MPVLib.setPropertyString("sub-filter-sdh-harder", value)
+          },
+          { Text(stringResource(R.string.pref_subtitles_remove_hi_title)) },
+          summary = { Text(stringResource(R.string.pref_subtitles_remove_hi_summary)) },
+        )
         val subScale by MPVLib.propFloat["sub-scale"].collectAsState()
         val subPos by MPVLib.propInt["sub-pos"].collectAsState()
         SliderItem(
@@ -141,6 +159,11 @@ fun SubtitlesMiscellaneousCard(modifier: Modifier = Modifier) {
               val scaleValue = if (defaultScaleByWindow) "yes" else "no"
               MPVLib.setPropertyString("sub-scale-by-window", scaleValue)
               MPVLib.setPropertyString("sub-use-margins", scaleValue)
+              val defaultRemoveHI = preferences.removeHI.deleteAndGet()
+              removeHI = defaultRemoveHI
+              val removeHIValue = if (defaultRemoveHI) "yes" else "no"
+              MPVLib.setPropertyString("sub-filter-sdh", removeHIValue)
+              MPVLib.setPropertyString("sub-filter-sdh-harder", removeHIValue)
             },
           ) {
             Row {
