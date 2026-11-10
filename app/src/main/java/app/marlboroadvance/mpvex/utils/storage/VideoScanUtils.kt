@@ -36,7 +36,7 @@ object VideoScanUtils {
      */
     suspend fun getVideosInFolder(
         context: Context,
-        folderPath: String
+        folderPath: String,
     ): List<Video> = withContext(Dispatchers.IO) {
         val videosMap = mutableMapOf<String, Video>()
         
@@ -251,4 +251,3 @@ object VideoScanUtils {
     private fun formatFileSize(bytes: Long): String = MediaFormatUtils.formatFileSize(bytes)
     private fun formatResolution(width: Int, height: Int): String = MediaFormatUtils.formatResolution(width, height)
 }
-

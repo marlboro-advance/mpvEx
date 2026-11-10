@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
+import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.history.RecentlyPlayedOps
@@ -14,6 +15,7 @@ import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
+import app.marlboroadvance.mpvex.utils.storage.FolderBlacklistManager
 import app.marlboroadvance.mpvex.repository.VideoStatCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +54,7 @@ class VideoListViewModel(
   private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
   private val browserPreferences: app.marlboroadvance.mpvex.preferences.BrowserPreferences by inject()
   private val recentlyPlayedRepository: app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository by inject()
+  private val foldersPreferences: FoldersPreferences by inject()
   // Using MediaFileRepository singleton directly
 
   // Instant lookup from VideoStatCache (0ms when preloaded or in memory)
@@ -130,6 +133,19 @@ class VideoListViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
         refresh()
+      }
+    }
+
+    // Observe blacklist changes to immediately clear videos if current folder becomes blacklisted
+    viewModelScope.launch(Dispatchers.IO) {
+      foldersPreferences.blacklistedFolders.changes().collectLatest { blacklist ->
+        if (FolderBlacklistManager.isPathBlacklisted(bucketId, blacklist)) {
+          _videos.value = emptyList()
+          _videosWithPlaybackInfo.value = emptyList()
+          _videosWereDeletedOrMoved.value = true
+        } else {
+          loadVideos(isBackgroundRefresh = true)
+        }
       }
     }
   }
