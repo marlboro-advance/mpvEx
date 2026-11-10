@@ -1,6 +1,5 @@
 package app.marlboroadvance.mpvex.ui.preferences
 
-import android.app.Application
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.RemoveCircle
@@ -26,8 +24,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,27 +35,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.marlboroadvance.mpvex.R
-import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
-import app.marlboroadvance.mpvex.preferences.AppearancePreferences
 import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.preferences.preference.collectAsState
 import app.marlboroadvance.mpvex.presentation.Screen
 import app.marlboroadvance.mpvex.ui.browser.components.BrowserTopBar
 import app.marlboroadvance.mpvex.ui.browser.selection.SelectionState
 import app.marlboroadvance.mpvex.ui.browser.states.EmptyState
+import app.marlboroadvance.mpvex.ui.preferences.folderpicker.FolderPickerScreen
 import app.marlboroadvance.mpvex.ui.utils.LocalBackStack
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -70,17 +60,12 @@ object FoldersPreferencesScreen : Screen {
   override fun Content() {
     val preferences = koinInject<FoldersPreferences>()
     val backstack = LocalBackStack.current
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
     val blacklistedFolders by preferences.blacklistedFolders.collectAsState()
-    var availableFolders by remember { mutableStateOf<List<VideoFolder>>(emptyList()) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
     var selectionState by remember { mutableStateOf(SelectionState<String>()) }
     var showClearAllDialog by remember { mutableStateOf(false) }
 
-    val blacklistedFoldersList = remember(blacklistedFolders) { blacklistedFolders.toList() }
+    val blacklistedFoldersList = remember(blacklistedFolders) { blacklistedFolders.toList().sorted() }
 
     Scaffold(
       topBar = {
@@ -92,10 +77,7 @@ object FoldersPreferencesScreen : Screen {
           onCancelSelection = { selectionState = selectionState.clear() },
           onBackClick = backstack::removeLastOrNull,
           onDeleteClick = {
-            val updated = blacklistedFolders.toMutableSet().apply {
-              removeAll(selectionState.selectedIds)
-            }
-            preferences.blacklistedFolders.set(updated)
+            preferences.removeFolders(selectionState.selectedIds)
             selectionState = selectionState.clear()
           },
           onSelectAll = {
@@ -159,14 +141,13 @@ object FoldersPreferencesScreen : Screen {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            items(blacklistedFoldersList) { folderPath ->
+            items(blacklistedFoldersList, key = { it }) { folderPath ->
               BlacklistedFolderItem(
                 folderPath = folderPath,
                 isSelected = selectionState.isSelected(folderPath),
                 isInSelectionMode = selectionState.isInSelectionMode,
                 onRemove = {
-                  val updated = blacklistedFolders.toMutableSet().apply { remove(folderPath) }
-                  preferences.blacklistedFolders.set(updated)
+                  preferences.removeFolder(folderPath)
                 },
                 onLongClick = {
                   selectionState = selectionState.toggle(folderPath)
@@ -184,19 +165,12 @@ object FoldersPreferencesScreen : Screen {
         if (!selectionState.isInSelectionMode) {
           Spacer(modifier = Modifier.height(16.dp))
 
+          // Add Folder Action launches the new navigable FolderPickerScreen
           Card(
             modifier = Modifier
               .fillMaxWidth()
               .clickable {
-                showAddDialog = true
-                isLoading = true
-                coroutineScope.launch(Dispatchers.IO) {
-                  try {
-                    availableFolders = scanAllVideoFolders(context.applicationContext as Application)
-                  } finally {
-                    isLoading = false
-                  }
-                }
+                backstack.add(FolderPickerScreen)
               },
             colors = CardDefaults.cardColors(
               containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -226,19 +200,6 @@ object FoldersPreferencesScreen : Screen {
       }
     }
 
-    if (showAddDialog) {
-      AddFolderDialog(
-        folders = availableFolders,
-        blacklistedFolders = blacklistedFolders,
-        isLoading = isLoading,
-        onDismiss = { showAddDialog = false },
-        onAddFolders = { folderPaths ->
-          val updated = blacklistedFolders.toMutableSet().apply { addAll(folderPaths) }
-          preferences.blacklistedFolders.set(updated)
-        },
-      )
-    }
-
     if (showClearAllDialog) {
       AlertDialog(
         onDismissRequest = { showClearAllDialog = false },
@@ -247,7 +208,7 @@ object FoldersPreferencesScreen : Screen {
         confirmButton = {
           TextButton(
             onClick = {
-              preferences.blacklistedFolders.set(emptySet())
+              preferences.clearAll()
               showClearAllDialog = false
             },
           ) {
@@ -331,160 +292,3 @@ private fun BlacklistedFolderItem(
     }
   }
 }
-
-@Composable
-private fun AddFolderDialog(
-  folders: List<VideoFolder>,
-  blacklistedFolders: Set<String>,
-  isLoading: Boolean,
-  onDismiss: () -> Unit,
-  onAddFolders: (Set<String>) -> Unit,
-) {
-  var selectionState by remember { mutableStateOf(SelectionState<String>()) }
-  var showDropdown by remember { mutableStateOf(false) }
-
-  // Filter folders that are not already blacklisted
-  val availableFolders = remember(folders, blacklistedFolders) {
-    folders.filter { it.path !in blacklistedFolders }
-  }
-
-  // Get all available folder paths
-  val availableFolderPaths = remember(availableFolders) {
-    availableFolders.map { it.path }
-  }
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable(enabled = !isLoading && availableFolders.isNotEmpty()) {
-          showDropdown = true
-        },
-      ) {
-        Text(
-          text = if (selectionState.isInSelectionMode) {
-            stringResource(R.string.selected_items, selectionState.selectedCount, availableFolders.size)
-          } else {
-            stringResource(R.string.pref_folders_select_folders)
-          },
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-        )
-        if (!isLoading && availableFolders.isNotEmpty()) {
-          Icon(
-            Icons.Filled.ArrowDropDown,
-            contentDescription = stringResource(R.string.selection_options),
-            modifier = Modifier.size(24.dp),
-          )
-        }
-
-        DropdownMenu(
-          expanded = showDropdown,
-          onDismissRequest = { showDropdown = false },
-        ) {
-          DropdownMenuItem(
-            text = { Text(stringResource(R.string.select_all)) },
-            onClick = {
-              selectionState = selectionState.selectAll(availableFolderPaths)
-              showDropdown = false
-            },
-          )
-          DropdownMenuItem(
-            text = { Text(stringResource(R.string.invert_selection)) },
-            onClick = {
-              selectionState = selectionState.invertSelection(availableFolderPaths)
-              showDropdown = false
-            },
-          )
-          DropdownMenuItem(
-            text = { Text(stringResource(R.string.deselect_all)) },
-            onClick = {
-              selectionState = selectionState.clear()
-              showDropdown = false
-            },
-          )
-        }
-      }
-    },
-    text = {
-      if (isLoading) {
-        Box(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-          contentAlignment = Alignment.Center,
-        ) {
-          Text(stringResource(R.string.pref_folders_loading))
-        }
-      } else if (availableFolders.isEmpty()) {
-        Text(stringResource(R.string.pref_folders_no_folders))
-      } else {
-        LazyColumn(
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp),
-        ) {
-          items(availableFolders) { folder ->
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                  selectionState = selectionState.toggle(folder.path)
-                }
-                .padding(vertical = 8.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Checkbox(
-                checked = selectionState.isSelected(folder.path),
-                onCheckedChange = {
-                  selectionState = selectionState.toggle(folder.path)
-                },
-              )
-              Column(modifier = Modifier.padding(start = 8.dp)) {
-                Text(
-                  text = folder.name,
-                  style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                  text = folder.path,
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-            }
-          }
-        }
-      }
-    },
-    confirmButton = {
-      TextButton(
-        onClick = {
-          onAddFolders(selectionState.selectedIds)
-          onDismiss()
-        },
-        enabled = selectionState.isInSelectionMode && !isLoading,
-      ) {
-        Text(stringResource(R.string.generic_ok))
-      }
-    },
-    dismissButton = {
-      TextButton(onClick = onDismiss) {
-        Text(stringResource(R.string.generic_cancel))
-      }
-    },
-  )
-}
-
-/**
- * Scans all storage volumes for folders containing videos
- * Uses optimized fast scanning for better performance
- */
-private suspend fun scanAllVideoFolders(context: Application): List<VideoFolder> {
-  // Use fast optimized scanning - 5-10x faster for large libraries
-  return app.marlboroadvance.mpvex.repository.MediaFileRepository
-    .getAllVideoFoldersFast(
-      context = context
-    )
-}
-

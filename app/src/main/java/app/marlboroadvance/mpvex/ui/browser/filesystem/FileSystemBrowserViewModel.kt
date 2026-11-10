@@ -10,6 +10,7 @@ import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.playbackstate.repository.PlaybackStateRepository
 import app.marlboroadvance.mpvex.preferences.BrowserPreferences
+import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.repository.MediaFileRepository
 import app.marlboroadvance.mpvex.ui.browser.base.BaseBrowserViewModel
 import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
@@ -17,6 +18,7 @@ import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.sort.SortUtils
 import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
+import app.marlboroadvance.mpvex.utils.storage.FolderBlacklistManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -44,6 +46,7 @@ class FileSystemBrowserViewModel(
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val appearancePreferences: app.marlboroadvance.mpvex.preferences.AppearancePreferences by inject()
+  private val foldersPreferences: FoldersPreferences by inject()
 
   // Special marker for "show storage volumes" mode
   // Similar to Fossify's root/home folder detection
@@ -145,6 +148,14 @@ class FileSystemBrowserViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       MediaLibraryEvents.changes.collectLatest {
         // Clear cache when media library changes
+        MediaFileRepository.clearCache()
+        loadCurrentDirectory()
+      }
+    }
+
+    // Refresh on blacklist changes
+    viewModelScope.launch(Dispatchers.IO) {
+      foldersPreferences.blacklistedFolders.changes().collectLatest {
         MediaFileRepository.clearCache()
         loadCurrentDirectory()
       }
@@ -327,15 +338,28 @@ class FileSystemBrowserViewModel(
       try {
         val path = _currentPath.value
 
+        val blacklist = foldersPreferences.blacklistedFolders.get()
+
         // Special case: Show storage roots at the special marker
         // Similar to Fossify's StoragePickerDialog logic
         if (path == STORAGE_ROOTS_MARKER) {
           Log.d(TAG, "Loading storage roots")
           _breadcrumbs.value = emptyList()
           val roots = MediaFileRepository.getStorageRoots(getApplication())
-          _unsortedItems.value = roots
-          Log.d(TAG, "Loaded ${roots.size} storage roots")
+          val filteredRoots = FolderBlacklistManager.filterFileSystemItems(roots, blacklist)
+          _unsortedItems.value = filteredRoots
+          Log.d(TAG, "Loaded ${filteredRoots.size} storage roots")
         } else {
+          // If current path is blacklisted, prevent browsing into it
+          if (FolderBlacklistManager.isPathBlacklisted(path, blacklist)) {
+            Log.d(TAG, "Path is blacklisted, denying navigation: $path")
+            _breadcrumbs.value = MediaFileRepository.getPathComponents(path)
+            _unsortedItems.value = emptyList()
+            _items.value = emptyList()
+            _isLoading.value = false
+            return@launch
+          }
+
           // Update breadcrumbs for real paths
           // Similar to Fossify's Breadcrumbs.setBreadcrumb()
           _breadcrumbs.value = MediaFileRepository.getPathComponents(path)
@@ -346,7 +370,8 @@ class FileSystemBrowserViewModel(
           // Always show only videos (showAllFileTypes = false)
           MediaFileRepository
             .scanDirectory(getApplication(), path, showAllFileTypes = false)
-            .onSuccess { items ->
+            .onSuccess { rawItems ->
+              val items = FolderBlacklistManager.filterFileSystemItems(rawItems, blacklist)
               // Get previous count for this path
               val previousCount = itemCountByPath[path] ?: 0
 

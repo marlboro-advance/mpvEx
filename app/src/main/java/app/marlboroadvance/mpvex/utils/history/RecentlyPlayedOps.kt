@@ -5,6 +5,8 @@ import android.net.Uri
 import app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity
 import app.marlboroadvance.mpvex.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.marlboroadvance.mpvex.preferences.AdvancedPreferences
+import app.marlboroadvance.mpvex.preferences.FoldersPreferences
+import app.marlboroadvance.mpvex.utils.storage.FolderBlacklistManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +19,10 @@ import org.koin.java.KoinJavaComponent.inject
 object RecentlyPlayedOps {
   private val repository: RecentlyPlayedRepository by inject(RecentlyPlayedRepository::class.java)
   private val preferences: AdvancedPreferences by inject(AdvancedPreferences::class.java)
+  private val foldersPreferences: FoldersPreferences by inject(FoldersPreferences::class.java)
+
+  private fun getBlacklist(): Set<String> =
+    runCatching { foldersPreferences.blacklistedFolders.get() }.getOrDefault(emptySet())
 
   suspend fun addRecentlyPlayed(
     filePath: String,
@@ -31,6 +37,9 @@ object RecentlyPlayedOps {
   ) {
     // Check if recently played feature is enabled
     if (!preferences.enableRecentlyPlayed.get()) return
+
+    // Never record blacklisted videos in playback history
+    if (FolderBlacklistManager.isFileInBlacklistedFolder(filePath, getBlacklist())) return
 
     val uri = Uri.parse(filePath)
 
@@ -74,9 +83,13 @@ object RecentlyPlayedOps {
 
   suspend fun getLastPlayed(): String? {
     return withContext(Dispatchers.IO) {
+      val blacklist = getBlacklist()
       val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
       for (entity in recent) {
         val path = entity.filePath
+        if (FolderBlacklistManager.isFileInBlacklistedFolder(path, blacklist)) {
+          continue
+        }
         if (isNonFileUri(path)) {
           return@withContext path
         }
@@ -92,9 +105,13 @@ object RecentlyPlayedOps {
 
   suspend fun getLastPlayedEntity(): app.marlboroadvance.mpvex.database.entities.RecentlyPlayedEntity? {
     return withContext(Dispatchers.IO) {
+      val blacklist = getBlacklist()
       val recent = kotlin.runCatching { repository.getRecentlyPlayed(limit = 50) }.getOrDefault(emptyList())
       for (entity in recent) {
         val path = entity.filePath
+        if (FolderBlacklistManager.isFileInBlacklistedFolder(path, blacklist)) {
+          continue
+        }
         if (isNonFileUri(path)) {
           return@withContext entity
         }
@@ -113,7 +130,9 @@ object RecentlyPlayedOps {
     getLastPlayed() != null
   }
   suspend fun getRecentlyPlayed(limit: Int = 50): List<RecentlyPlayedEntity> {
-    return repository.getRecentlyPlayed(limit)
+    val blacklist = getBlacklist()
+    val list = repository.getRecentlyPlayed(limit)
+    return list.filterNot { FolderBlacklistManager.isFileInBlacklistedFolder(it.filePath, blacklist) }
   }
 
   @OptIn(ExperimentalCoroutinesApi::class)
@@ -122,7 +141,10 @@ object RecentlyPlayedOps {
       .observeLastPlayedForHighlight()
       .mapLatest { entity ->
         val path = entity?.filePath
+        val blacklist = getBlacklist()
         if (path.isNullOrEmpty()) {
+          null
+        } else if (FolderBlacklistManager.isFileInBlacklistedFolder(path, blacklist)) {
           null
         } else if (fileExists(path)) {
           path

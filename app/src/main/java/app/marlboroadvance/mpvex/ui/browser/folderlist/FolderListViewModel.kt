@@ -16,6 +16,7 @@ import app.marlboroadvance.mpvex.utils.media.MediaIdentifier
 import app.marlboroadvance.mpvex.utils.media.MediaLibraryEvents
 import app.marlboroadvance.mpvex.utils.media.MetadataRetrieval
 import app.marlboroadvance.mpvex.utils.permission.PermissionUtils
+import app.marlboroadvance.mpvex.utils.storage.FolderBlacklistManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,10 +111,10 @@ class FolderListViewModel(
       }
     }
 
-    // Filter folders based on blacklist
+    // Filter folders based on blacklist using centralized recursive filtering
     viewModelScope.launch {
       combine(_allVideoFolders, foldersPreferences.blacklistedFolders.changes()) { folders, blacklist ->
-        folders.filter { folder -> folder.path !in blacklist }
+        FolderBlacklistManager.filterFolders(folders, blacklist) { it.path }
       }.collectLatest { filteredFolders ->
         // Check if folders became empty after having folders
         if (previousFolderCount > 0 && filteredFolders.isEmpty()) {
@@ -302,8 +303,6 @@ class FolderListViewModel(
     calculateNewVideoCounts(_videoFolders.value)
   }
 
-
-
   /**
    * Scans the filesystem recursively to find all folders containing videos.
    * Uses optimized parallel scanning with complete metadata (including duration)
@@ -438,6 +437,4 @@ class FolderListViewModel(
       }
     }
   }
-
-
 }

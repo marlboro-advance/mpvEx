@@ -9,10 +9,12 @@ import app.marlboroadvance.mpvex.domain.browser.FileSystemItem
 import app.marlboroadvance.mpvex.domain.browser.PathComponent
 import app.marlboroadvance.mpvex.domain.media.model.Video
 import app.marlboroadvance.mpvex.domain.media.model.VideoFolder
+import app.marlboroadvance.mpvex.preferences.FoldersPreferences
 import app.marlboroadvance.mpvex.utils.media.MediaFormatUtils
 import app.marlboroadvance.mpvex.utils.media.MediaInfoOps
 import app.marlboroadvance.mpvex.utils.storage.FileFilterUtils
 import app.marlboroadvance.mpvex.utils.storage.FileTypeUtils
+import app.marlboroadvance.mpvex.utils.storage.FolderBlacklistManager
 import app.marlboroadvance.mpvex.utils.storage.StorageVolumeUtils
 import app.marlboroadvance.mpvex.utils.storage.VideoScanUtils
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +52,14 @@ object MediaFileRepository {
   private var cacheTimestamp: Long = 0L
   private const val CACHE_TTL_MS = 15_000L // 15 seconds TTL
   private val scanMutex = Mutex()
+
+  private val foldersPreferences: FoldersPreferences?
+    get() = runCatching {
+      org.koin.java.KoinJavaComponent.get(FoldersPreferences::class.java)
+    }.getOrNull()
+
+  fun getBlacklist(): Set<String> =
+    foldersPreferences?.blacklistedFolders?.get() ?: emptySet()
 
   /**
    * Clears all discovery caches.
@@ -202,14 +212,17 @@ object MediaFileRepository {
         }
       }
 
-      cachedFolders = result
+      val blacklist = getBlacklist()
+      val filteredResult = FolderBlacklistManager.filterFolders(result, blacklist) { it.path }
+
+      cachedFolders = filteredResult
       cachedFolderCounts = directCounts
       cachedRecursiveCounts = recursiveCounts
       cachedRecursiveSizes = recursiveSizes
       cachedRecursiveDurations = recursiveDurations
       cacheTimestamp = now
 
-      result
+      filteredResult
     }
   }
 
@@ -284,7 +297,12 @@ object MediaFileRepository {
   ): List<Video> =
     withContext(Dispatchers.IO) {
       try {
-        VideoScanUtils.getVideosInFolder(context, bucketId)
+        val blacklist = getBlacklist()
+        if (FolderBlacklistManager.isPathBlacklisted(bucketId, blacklist)) {
+          return@withContext emptyList()
+        }
+        val rawVideos = VideoScanUtils.getVideosInFolder(context, bucketId)
+        FolderBlacklistManager.filterVideos(rawVideos, blacklist) { it.path }
       } catch (e: Exception) {
         Log.e(TAG, "Error getting videos for folder $bucketId", e)
         emptyList()
@@ -425,6 +443,11 @@ object MediaFileRepository {
           return@withContext Result.failure(Exception("Path is not a directory: $path"))
         }
 
+        val blacklist = getBlacklist()
+        if (FolderBlacklistManager.isPathBlacklisted(path, blacklist)) {
+          return@withContext Result.success(emptyList())
+        }
+
         // Ensure index is populated for fast recursive counts and filtering
         if (cachedFolders == null) {
           getAllVideoFolders(context)
@@ -437,6 +460,9 @@ object MediaFileRepository {
         for (file in childFiles) {
           if (file.isDirectory && !FileFilterUtils.shouldSkipFolder(file)) {
             val subfolderPath = file.absolutePath
+            if (FolderBlacklistManager.isPathBlacklisted(subfolderPath, blacklist)) {
+              continue
+            }
 
             // Recursive count from index
             var recursiveCount = cachedRecursiveCounts[subfolderPath] ?: 0
@@ -482,7 +508,8 @@ object MediaFileRepository {
         items.sortBy { it.name.lowercase(Locale.getDefault()) }
 
         // 2. Videos in current directory
-        val videos = VideoScanUtils.getVideosInFolder(context, path)
+        val rawVideos = VideoScanUtils.getVideosInFolder(context, path)
+        val videos = FolderBlacklistManager.filterVideos(rawVideos, blacklist) { it.path }
         for (video in videos) {
           items.add(
             FileSystemItem.VideoFile(
@@ -560,7 +587,7 @@ object MediaFileRepository {
         Log.e(TAG, "Error getting storage roots", e)
       }
 
-      roots
+      FolderBlacklistManager.filterFileSystemItems(roots, getBlacklist())
     }
 
   // =============================================================================
